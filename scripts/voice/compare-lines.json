@@ -1,0 +1,265 @@
+{
+  "_說明": "預錄語音試聽比較用的句子與聲音（scripts/voice/compare.mjs 讀取）。句子取自遊戲實際會唸的內容；破音字與注音兩組是測試用。fish／azureSsml 欄位有值時，該引擎改用這段文字或標記。only 限定只用某個引擎產生。 zhuyinVoice 指定「注音逐個確認」用哪個聲音直接唸 37 個注音符號，zhuyinSpeeds 是要比較的語速。",
+  "speed": {
+    "zh": 0.9,
+    "en": 0.85
+  },
+  "zhuyinVoice": "azure-hsiaochen",
+  "zhuyinSpeeds": [
+    0.9,
+    0.7,
+    0.55
+  ],
+  "voices": {
+    "zh": [
+      {
+        "id": "azure-hsiaochen",
+        "engine": "azure",
+        "voice": "zh-TW-HsiaoChenNeural",
+        "label": "Azure 曉臻 HsiaoChen（女）"
+      },
+      {
+        "id": "azure-hsiaoyu",
+        "engine": "azure",
+        "voice": "zh-TW-HsiaoYuNeural",
+        "label": "Azure 曉雨 HsiaoYu（女）"
+      },
+      {
+        "id": "fish-shihan",
+        "engine": "fish",
+        "voice": "91ec588cf8ef443a9c0d5b21d0c1fa36",
+        "label": "Fish 詩涵 Shihan（女，台灣）"
+      },
+      {
+        "id": "fish-chenghan",
+        "engine": "fish",
+        "voice": "1e85fd1e0d3e4cc2b79fbca800e7e3fe",
+        "label": "Fish 承翰 Chenghan（男，台灣）"
+      }
+    ],
+    "en": [
+      {
+        "id": "azure-ava",
+        "engine": "azure",
+        "voice": "en-US-AvaNeural",
+        "label": "Azure Ava（女，美式）"
+      },
+      {
+        "id": "azure-ana",
+        "engine": "azure",
+        "voice": "en-US-AnaNeural",
+        "label": "Azure Ana（童聲，美式）"
+      },
+      {
+        "id": "fish-hannah",
+        "engine": "fish",
+        "voice": "9a9cf47702da476aa4629e2506d4a857",
+        "label": "Fish Hannah（女）"
+      },
+      {
+        "id": "fish-shihan",
+        "engine": "fish",
+        "voice": "91ec588cf8ef443a9c0d5b21d0c1fa36",
+        "label": "Fish 詩涵 Shihan（中文聲音唸英文）"
+      }
+    ]
+  },
+  "lines": [
+    {
+      "id": "welcome",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "歡迎來到知識島大冒險！",
+      "from": "標題畫面"
+    },
+    {
+      "id": "praise",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "太厲害了！",
+      "from": "答對時的鼓勵語"
+    },
+    {
+      "id": "praise-happy",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "太厲害了！",
+      "fish": "[happy] 太厲害了！",
+      "only": "fish",
+      "from": "同一句鼓勵語，Fish 加上 [happy] 情緒標記",
+      "note": "Azure 的台灣國語不支援說話風格，所以只有 Fish"
+    },
+    {
+      "id": "retry",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "再想想看！",
+      "from": "答錯時"
+    },
+    {
+      "id": "answer",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "正確答案是：繫好安全帶",
+      "from": "答錯兩次公布答案"
+    },
+    {
+      "id": "result-3",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "太厲害了！全部都難不倒你！",
+      "from": "結算三顆星"
+    },
+    {
+      "id": "result-1",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "有進步喔！我們再試一次吧！",
+      "from": "結算一顆星"
+    },
+    {
+      "id": "tip-stroke",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "寫國字要注意筆順：先上後下、先左後右、先外後內。",
+      "from": "熊熊老師的提示"
+    },
+    {
+      "id": "tip-clock",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "去數學城堡練習看時鐘吧！短針是時針，長針是分針。",
+      "from": "熊熊老師的提示"
+    },
+    {
+      "id": "intro-zh",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "文字森林！來學注音和寫國字。",
+      "from": "走到建築門口"
+    },
+    {
+      "id": "rest",
+      "lang": "zh",
+      "group": "介面固定句子",
+      "text": "今天玩很久囉！讓眼睛休息一下，看看遠方吧。",
+      "from": "遊玩時間到"
+    },
+    {
+      "id": "life-q",
+      "lang": "zh",
+      "group": "生活與健康",
+      "text": "走路過馬路，看到綠燈（綠色的人），還要先做什麼？",
+      "from": "交通安全題目"
+    },
+    {
+      "id": "life-opt",
+      "lang": "zh",
+      "group": "生活與健康",
+      "text": "再看左右有沒有車",
+      "from": "同一題的選項"
+    },
+    {
+      "id": "life-tf",
+      "lang": "zh",
+      "group": "生活與健康",
+      "text": "小綠人已經在閃了，還沒走上斑馬線的人，最好不要再走進去，等下一次綠燈。",
+      "from": "交通安全是非題"
+    },
+    {
+      "id": "poly-wei",
+      "lang": "zh",
+      "group": "破音字（測試句）",
+      "text": "因為下雨，我們在家裡玩；他成為班上的小老師。",
+      "note": "為：ㄨㄟˋ（因為）、ㄨㄟˊ（成為）"
+    },
+    {
+      "id": "poly-zhong",
+      "lang": "zh",
+      "group": "破音字（測試句）",
+      "text": "花園裡有各種顏色的花，還有一隻小蝦子。",
+      "note": "種：ㄓㄨㄥˇ；還：ㄏㄞˊ；蝦：ㄒㄧㄚ"
+    },
+    {
+      "id": "poly-da",
+      "lang": "zh",
+      "group": "破音字（測試句）",
+      "text": "小明回答得很好；屋頂的雨滴滴答答。",
+      "note": "答：ㄉㄚˊ（回答）、ㄉㄚ（滴滴答答）"
+    },
+    {
+      "id": "poly-dao",
+      "lang": "zh",
+      "group": "破音字（測試句）",
+      "text": "他倒立的樣子，和哥哥一模一樣。",
+      "note": "倒：ㄉㄠˋ；模：ㄇㄨˊ"
+    },
+    {
+      "id": "zy-raw",
+      "lang": "zh",
+      "group": "注音（語音模型能不能唸）",
+      "text": "ㄅ",
+      "note": "直接給注音符號「ㄅ」"
+    },
+    {
+      "id": "zy-phoneme",
+      "lang": "zh",
+      "group": "注音（語音模型能不能唸）",
+      "text": "ㄅ",
+      "fish": "<|phoneme_start|>bo1<|phoneme_end|>",
+      "azureSsml": "<sub alias=\"玻\">ㄅ</sub>",
+      "note": "指定唸 bo（一聲）。Fish 用拼音讀音標記；Azure 的台灣國語不接受拼音或帶聲調的 IPA 標記（HTTP 400），改用同音字「玻」替代"
+    },
+    {
+      "id": "control-huan",
+      "lang": "zh",
+      "group": "注音（語音模型能不能唸）",
+      "text": "還有一顆蘋果。",
+      "fish": "<|phoneme_start|>huan2<|phoneme_end|>有一顆蘋果。",
+      "azureSsml": "<sub alias=\"環\">還</sub>有一顆蘋果。",
+      "note": "對照組：故意把「還」改唸 ㄏㄨㄢˊ（正確是 ㄏㄞˊ）。Fish 用拼音標記 huan2，Azure 用同音字「環」替代。聽到「ㄏㄨㄢˊ有一顆蘋果」才代表這個方法有效"
+    },
+    {
+      "id": "zy-syllable",
+      "lang": "zh",
+      "group": "注音（語音模型能不能唸）",
+      "text": "ㄏㄨㄚ",
+      "note": "直接給一個注音拼音（花）"
+    },
+    {
+      "id": "en-word",
+      "lang": "en",
+      "group": "英語",
+      "text": "apple",
+      "from": "單字圖卡"
+    },
+    {
+      "id": "en-letter",
+      "lang": "en",
+      "group": "英語",
+      "text": "B",
+      "from": "聽字母（字母名稱）"
+    },
+    {
+      "id": "en-greet",
+      "lang": "en",
+      "group": "英語",
+      "text": "Good morning, Ms. Wang.",
+      "from": "生活用語"
+    },
+    {
+      "id": "en-howareyou",
+      "lang": "en",
+      "group": "英語",
+      "text": "How are you? I'm fine, thank you.",
+      "from": "生活用語"
+    },
+    {
+      "id": "en-pattern",
+      "lang": "en",
+      "group": "英語",
+      "text": "This is my pencil.",
+      "from": "句型"
+    }
+  ]
+}
