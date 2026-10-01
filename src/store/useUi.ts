@@ -1,0 +1,67 @@
+/**
+ * 畫面狀態（不存檔）：目前在哪個畫面、哪個建築、哪個活動，以及 3D 舞台的情緒。
+ */
+import { create } from 'zustand';
+import type { SessionResult } from '../core/types';
+
+/** 畫面 */
+export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop';
+
+/** 島上的區域（建築） */
+export type ZoneId = 'math' | 'zh' | 'en' | 'life' | 'tower' | 'shop';
+
+/** 正在進行的活動 */
+export interface ActivityRun {
+  activityId: string;
+  level: 1 | 2 | 3;
+  seed: number;
+  /** 從錯題本出題時帶入題目 id 清單 */
+  reviewIds?: string[];
+  /** 玩法：一般答題或氣球射擊（預設一般答題） */
+  mode?: 'quiz' | 'shooter';
+}
+
+/** 3D 舞台上角色的反應 */
+export type StageMood = 'idle' | 'happy' | 'oops' | 'cheer';
+
+interface UiStore {
+  screen: Screen;
+  zone: ZoneId | null;
+  /** 角色目前靠近的建築門口（顯示「進去嗎？」） */
+  nearZone: ZoneId | null;
+  run: ActivityRun | null;
+  lastResult: SessionResult | null;
+  mood: StageMood;
+  /** mood 變更的序號，讓相同情緒連續觸發也能重播動畫 */
+  moodTick: number;
+  /** 熊熊老師的對話泡泡 */
+  bubble: { text: string; id: number } | null;
+  goto: (screen: Screen) => void;
+  /** 顯示對話泡泡（幾秒後由介面自動收起） */
+  say: (text: string) => void;
+  clearBubble: () => void;
+  enterZone: (zone: ZoneId) => void;
+  setNearZone: (zone: ZoneId | null) => void;
+  startActivity: (run: ActivityRun) => void;
+  showResult: (result: SessionResult) => void;
+  setMood: (mood: StageMood) => void;
+}
+
+export const useUi = create<UiStore>((set) => ({
+  screen: 'title',
+  zone: null,
+  nearZone: null,
+  run: null,
+  lastResult: null,
+  mood: 'idle',
+  moodTick: 0,
+  bubble: null,
+  goto: (screen) => set({ screen }),
+  say: (text) => set((s) => ({ bubble: { text, id: (s.bubble?.id ?? 0) + 1 } })),
+  clearBubble: () => set({ bubble: null }),
+  enterZone: (zone) => set({ zone, screen: zone === 'shop' ? 'shop' : 'zone' }),
+  setNearZone: (nearZone) => set({ nearZone }),
+  startActivity: (run) => set({ run, screen: 'activity', mood: 'idle' }),
+  showResult: (lastResult) => set({ lastResult, screen: 'result', mood: 'cheer' }),
+  setMood: (mood) => set((s) => ({ mood, moodTick: s.moodTick + 1 })),
+}));

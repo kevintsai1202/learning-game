@@ -1,0 +1,755 @@
+{
+  "format": "learning-island-edition",
+  "version": 1,
+  "id": "kanghsuan-math",
+  "subject": "math",
+  "publisher": "康軒",
+  "grade": 2,
+  "volumes": [
+    {
+      "term": "上",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "200 以內的數",
+          "skills": [
+            "math.place-value",
+            "math.compare",
+            "math.money-count",
+            "math.money-pay"
+          ],
+          "maxNumber": 200,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "數到200、幾個百幾個十幾個一、使用錢幣（1、5、10、50、100元的混合使用與付款）、比大小。教材只到200，專案出題範圍是三位數（至999），無法限縮。"
+        },
+        {
+          "no": 2,
+          "title": "二位數的直式加減",
+          "skills": [
+            "math.add",
+            "math.sub",
+            "math.word-addsub"
+          ],
+          "maxNumber": 200,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "加法與減法的直式計算、加加減減（三個數連加連減）。二位數、一次進位或退位，專案難度 3（兩次進位、含0）超出範圍，故限 2。"
+        },
+        {
+          "no": 3,
+          "title": "量長度",
+          "skills": [
+            "math.length"
+          ],
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "個別單位的測量、認識公分、量長度、長度的加減。專案 length 難度 3 是公尺公分換算（二下才學），故限 2。"
+        },
+        {
+          "no": 4,
+          "title": "加減關係與應用",
+          "skills": [
+            "math.word-addsub",
+            "math.add",
+            "math.sub"
+          ],
+          "maxNumber": 200,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "加減關係（互逆）、用加法驗算減法、加減應用問題。"
+        },
+        {
+          "no": 5,
+          "title": "面積的大小比較",
+          "skills": [
+            "math.measure-compare"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "面積的直接比較、間接比較、個別單位比較。均一版本對照寫作「面積大小的比較」。"
+        },
+        {
+          "no": 6,
+          "title": "兩步驟的加減",
+          "skills": [
+            "math.word-addsub",
+            "math.add",
+            "math.sub"
+          ],
+          "maxNumber": 200,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "兩步驟的加法、減法、加減混合問題。專案 math.two-step 只含乘與加減、不含純加減兩步驟，故對應 word-addsub。"
+        },
+        {
+          "no": 7,
+          "title": "2、5、4、8 的乘法",
+          "skills": [
+            "math.mul-meaning",
+            "math.times"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "「倍」的問題、2 的乘法、5 的乘法、4 的乘法、8 的乘法。專案 times 難度 1 只有 2、5、10，難度 2 含 3、6，難度 3 才有 7～9，沒有哪一級剛好是 2、5、4、8，故不設 maxLevel。"
+        },
+        {
+          "no": 8,
+          "title": "幾時幾分",
+          "skills": [
+            "math.clock-read",
+            "math.clock-set"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "幾時幾分、數字鐘、經過幾小時、會是幾時幾分。"
+        },
+        {
+          "no": 9,
+          "title": "3、6、9、7 的乘法",
+          "skills": [
+            "math.times",
+            "math.mul-meaning"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "3、6、9、7 的乘法與擬題活動。至此二上已學完 2～9 的乘法（不是只學 2、5、10）。"
+        },
+        {
+          "no": 10,
+          "title": "容量與重量",
+          "skills": [
+            "math.measure-compare"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "容量的比較（直接與間接）、重量的比較、重量的遞移關係；不教常用單位。"
+        }
+      ]
+    },
+    {
+      "term": "下",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "1000 以內的數",
+          "skills": [
+            "math.place-value",
+            "math.compare",
+            "math.money-count",
+            "math.money-pay"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "數到1000、幾個百幾個十幾個一、認識及使用錢幣（新增500元、1000元與錢幣兌換）、比大小。"
+        },
+        {
+          "no": 2,
+          "title": "三位數的加減",
+          "skills": [
+            "math.add",
+            "math.sub",
+            "math.word-addsub",
+            "math.estimate"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "三位數的加法、減法、加減應用問題、加減估算。"
+        },
+        {
+          "no": 3,
+          "title": "平面圖形",
+          "skills": [
+            "math.shapes",
+            "math.perimeter"
+          ],
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "平面圖形的邊、角和頂點、正三角形正方形長方形、認識周界、周長的實測與計算。shapes 難度 3 是立體形體（康軒在第8單元教），故限 2；perimeter 的正方形題（難度 3）會被排除。"
+        },
+        {
+          "no": 4,
+          "title": "年、月、日",
+          "skills": [
+            "math.time-units"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "認識年月日、年和月的換算、共有多少天、是幾月幾日、認識1星期。"
+        },
+        {
+          "no": 5,
+          "title": "乘法",
+          "skills": [
+            "math.times",
+            "math.mul-meaning"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "10 的乘法、1 和 0 的乘法、乘法的關係。專案 times 的被乘數不含 0 與 1，0 的乘法未涵蓋。"
+        },
+        {
+          "no": 6,
+          "title": "兩步驟應用問題",
+          "skills": [
+            "math.two-step",
+            "math.times",
+            "math.word-addsub"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "先乘再加、先乘再減、先加再乘、先減再乘（乘與加減的兩步驟）。"
+        },
+        {
+          "no": 7,
+          "title": "公尺和公分",
+          "skills": [
+            "math.length"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "認識公尺、公尺和公分的換算、長度的計算（對應 length 難度 3）。"
+        },
+        {
+          "no": 8,
+          "title": "分類與立體形體",
+          "skills": [
+            "math.chart",
+            "math.shapes"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "先大分類再小分類、認識正方體和長方體。shapes 的立體題在難度 3。均一版本對照寫作「分類與立體圖形」。"
+        },
+        {
+          "no": 9,
+          "title": "分分看",
+          "skills": [
+            "math.share"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "分裝活動、認識平分、平分活動（不列除式）。"
+        },
+        {
+          "no": 10,
+          "title": "分數",
+          "skills": [
+            "math.fraction"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣太保國小 115學年度課程計畫：表13-1 二年級普通班數學領域（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣布袋國小 115學年度課程計畫：2年級數學領域部定課程計畫（康軒版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104607&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣大竹國小 115學年度二年級數學領域課程計畫（康軒版國小數學2）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1442/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣太保國小 114學年度課程計畫：表13-1 二年級普通班數學領域（康軒版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104669&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類康軒版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/k-m2a"
+            }
+          ],
+          "note": "平分、幾分之一、單位分數的比大小。專案刻意不做單位分數比大小，該部分未涵蓋。"
+        }
+      ]
+    }
+  ],
+  "note": "整理自各國小公告的 115 學年度二年級數學領域課程計畫（嘉義縣、彰化縣課程計畫平台），與 114 學年度計畫及均一教育平台版本對照互相印證。只收單元名稱與內容範圍；skills、maxLevel 是專案自行對應，非出版社分類。"
+}

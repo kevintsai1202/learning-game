@@ -1,0 +1,627 @@
+{
+  "format": "learning-island-edition",
+  "version": 1,
+  "id": "kanghsuan-zh",
+  "subject": "zh",
+  "publisher": "康軒",
+  "grade": 2,
+  "volumes": [
+    {
+      "term": "上",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "新學年新希望",
+          "chars": ["年", "希", "望", "坐", "位", "本", "淡", "書", "老", "師", "以", "為", "故", "用", "力", "只", "現", "還"],
+          "readChars": ["聲", "矮"],
+          "words": ["學年", "希望", "位子", "課本", "淡淡", "書香", "老師", "以前", "大聲", "成為", "故事", "用力", "現在"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第1課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150101",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 2,
+          "title": "一起做早餐",
+          "chars": ["全", "蛋", "煎", "圓", "番", "茄", "切", "輪", "司", "夾", "吐", "中", "方", "城", "堡", "接", "畫", "臉"],
+          "readChars": ["餐", "醬"],
+          "words": ["早餐", "全家", "番茄", "輪子", "起司", "吐司", "四四方方", "城堡", "接著", "番茄醬", "笑臉"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第2課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150102",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 3,
+          "title": "走過小巷",
+          "chars": ["巷", "叔", "貓", "屋", "捧", "蝴", "蝶", "忙", "娶", "娘", "黃", "筆", "打", "扮", "樣", "越", "美", "麗"],
+          "readChars": ["牆", "模"],
+          "words": ["叔叔", "捧花", "蝴蝶", "新娘", "彩筆", "打扮", "模樣", "美麗"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第3課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150103",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 4,
+          "title": "運動會",
+          "chars": ["運", "動", "飄", "熱", "鬧", "舞", "哇", "往", "容", "步", "汗", "腳", "協", "聲", "河", "氣", "最", "可"],
+          "readChars": ["賽", "拔"],
+          "words": ["運動會", "熱鬧", "大會舞", "笑容", "跑步", "比賽", "汗水", "協力", "拔河", "力氣", "最後"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第4課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150104",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 5,
+          "title": "坐竹籃船",
+          "chars": ["竹", "籃", "鄉", "南", "暑", "假", "帶", "等", "跨", "划", "吹", "邊", "叫", "原", "近", "捕", "活", "識"],
+          "readChars": ["碗", "轉"],
+          "words": ["家鄉", "越南", "暑假", "碗公", "划船", "轉動", "一邊", "叫好", "原本", "近海", "捕魚", "活動", "認識"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第5課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150105",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ],
+          "note": "113 學年同課次為〈水上木偶戲〉。"
+        },
+        {
+          "no": 6,
+          "title": "小鎮的柿餅節",
+          "chars": ["鎮", "餅", "節", "因", "此", "進", "排", "遠", "色", "愛", "月", "乾", "甜", "客", "買", "親", "如", "意"],
+          "readChars": ["柿", "埔"],
+          "words": ["小鎮", "因此", "走進", "金黃色", "可愛", "風乾", "遊客", "親朋好友", "如意"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第6課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150106",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 7,
+          "title": "國王的新衣裳",
+          "chars": ["衣", "胖", "針", "簡", "單", "聰", "明", "臣", "敢", "東", "西", "直", "棒", "街", "滿", "眼", "哪", "思"],
+          "readChars": ["裳", "慌"],
+          "words": ["衣裳", "簡單", "聰明", "大臣", "不敢", "東西", "慌張", "一直", "大街", "滿街", "左思右想"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第7課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150107",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 8,
+          "title": "「聰明」的小熊",
+          "chars": ["渴", "烏", "喝", "瓶", "法", "森", "林", "物", "旅", "行", "午", "裝", "許", "石", "難", "忘", "哈", "但"],
+          "readChars": ["熊", "鴉"],
+          "words": ["口渴", "烏鴉", "瓶子", "方法", "森林", "動物", "旅行", "中午", "許多", "石頭", "難道", "但是"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第8課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150108",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 9,
+          "title": "大象有多重？",
+          "chars": ["象", "操", "粗", "腿", "柱", "砍", "幾", "部", "搖", "沖", "首", "牽", "沉", "少", "沿", "然", "紀", "竟"],
+          "readChars": ["曹", "秤"],
+          "words": ["大象", "曹操", "粗大", "柱子", "部分", "搖頭", "首先", "下沉", "多少", "然後", "年紀", "竟然"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第9課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150109",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 10,
+          "title": "新年快樂",
+          "chars": ["雪", "梨", "夜", "卻", "冷", "冬", "臺", "季", "相", "反", "煙", "火", "待", "雖", "春", "貨", "期", "飯"],
+          "readChars": ["灣", "綻"],
+          "words": ["雪梨", "冬天", "臺灣", "季節", "相反", "煙火", "等待", "綻放", "雖然", "春節", "年貨", "期待", "年夜飯"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第10課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150110",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ],
+          "note": "113 學年同課次為〈我愛冬天〉。"
+        },
+        {
+          "no": 11,
+          "title": "遠方來的黑皮",
+          "chars": ["皮", "具", "飛", "者", "洋", "寒", "北", "嘴", "伸", "飽", "沙", "急", "服", "站", "翅", "膀", "充", "念"],
+          "readChars": ["戴", "扁"],
+          "words": ["面具", "舞者", "海洋", "寒冷", "北方", "沙子", "著急", "衣服", "翅膀", "充滿", "思念"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第11課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150111",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 12,
+          "title": "我愛冬天",
+          "chars": ["灰", "涼", "牠", "鼓", "絡", "欣", "發", "居", "冒", "冰", "圍", "咪", "幸", "團", "聚", "愉", "鍋", "妙"],
+          "readChars": ["聊"],
+          "words": ["牠們", "圓鼓鼓", "熱絡", "聊天", "欣喜", "發現", "居然", "冒煙", "笑咪咪", "幸福", "團聚", "愉快", "火鍋", "美妙"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二上 第12課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021150112",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1678501344",
+              "schoolYear": "115"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 上課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/13MHoZaWYBcQ0C588_CGP8jX2rxc1BElf/view",
+              "schoolYear": "115"
+            }
+          ],
+          "note": "113 學年同課次為〈新年快樂〉。"
+        }
+      ]
+    },
+    {
+      "term": "下",
+      "schoolYear": "114",
+      "units": [
+        {
+          "no": 1,
+          "title": "春天的顏色",
+          "chars": ["顏", "池", "塘", "藍", "田", "洞", "綠", "蜜", "蜂", "窩", "粉", "桃", "興", "處", "景"],
+          "readChars": ["鼠", "燕"],
+          "words": ["顏色", "池塘", "田鼠", "地洞", "蜜蜂", "蜂窩", "粉紅", "桃花", "高興", "燕子", "到處", "景色"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第1課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140201",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 2,
+          "title": "花衣裳",
+          "chars": ["裳", "驚", "所", "躲", "房", "間", "討", "論", "指", "裙", "而", "且", "紫", "將", "工", "合", "貼", "候"],
+          "readChars": ["剪", "慶"],
+          "words": ["衣裳", "驚喜", "所以", "房間", "討論", "裙子", "而且", "紫色", "分工合作", "時候", "慶生"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第2課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140202",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 3,
+          "title": "彩色王國",
+          "chars": ["座", "對", "微", "表", "各", "突", "強", "被", "綻", "特", "舌", "賞", "果", "定", "互", "換", "共", "漸"],
+          "readChars": ["壞", "融"],
+          "words": ["一座", "微笑", "表情", "各自", "突然", "變壞", "強風", "綻放", "奇特", "七嘴八舌", "欣賞", "如果", "一定", "互換", "共同", "漸漸"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第3課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140203",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 4,
+          "title": "爸爸",
+          "chars": ["散", "芒", "透", "暗", "照", "掛", "角", "揚", "星", "閃", "晶", "當", "睡", "悄", "常", "旁", "臂", "永"],
+          "readChars": ["窗", "避"],
+          "words": ["散發", "光芒", "透過", "照亮", "嘴角", "星星", "一閃", "亮晶晶", "睡著", "悄悄", "時常", "臂膀", "永遠", "避風港"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第4課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140204",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 5,
+          "title": "我的家人",
+          "chars": ["剛", "品", "爺", "採", "蕉", "軍", "告", "訴", "辛", "苦", "流", "堅", "固", "安", "寶", "貝", "幅", "管"],
+          "readChars": ["機", "蓋"],
+          "words": ["剛剛", "作品", "爺爺", "採收", "香蕉", "軍人", "飛機", "告訴", "辛苦", "堅固", "安全", "寶貝", "不管"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第5課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140205",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 6,
+          "title": "愛笑的大樹",
+          "chars": ["教", "室", "棵", "及", "終", "立", "刻", "抱", "並", "猜", "文", "借", "枝", "鉛", "校", "車", "哥", "牛"],
+          "readChars": ["騎", "踏"],
+          "words": ["教室", "來不及", "終於", "立刻", "並且", "課文", "鉛筆", "校園", "腳踏車", "哥哥", "牛排"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第6課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140206",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 7,
+          "title": "月光河",
+          "chars": ["久", "條", "祕", "兔", "其", "猴", "病", "探", "體", "惜", "無", "辦", "之", "請", "鼻", "吸", "模", "度"],
+          "readChars": ["挖", "坑"],
+          "words": ["神祕", "白兔", "其他", "猴子", "生病", "探望", "身體", "可惜", "無法", "辦法", "之後", "鼻子", "一模一樣", "度過"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第7課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140207",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 8,
+          "title": "黃狗生蛋",
+          "chars": ["狗", "雞", "經", "怪", "羊", "鴨", "信", "錯", "睛", "仔", "細", "能", "消", "傳", "嚇", "忍", "住", "顧"],
+          "readChars": ["議", "鴕"],
+          "words": ["經過", "奇怪", "不可思議", "山羊", "鴨子", "鴕鳥", "相信", "沒錯", "眼睛", "仔細", "不可能", "消息", "忍不住", "照顧"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第8課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140208",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 9,
+          "title": "神筆馬良",
+          "chars": ["良", "孩", "錢", "醒", "尾", "巴", "村", "貪", "皇", "帝", "派", "抓", "銀", "准", "島", "元", "波", "浪"],
+          "readChars": ["艘", "掀"],
+          "words": ["馬良", "孩子", "尾巴", "村子", "貪心", "皇帝", "不准", "元寶", "掀起"],
+          "confidence": "single-source",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第9課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140209",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ],
+          "note": "試算表缺「抓」且「掀」重複，疑為筆誤；以教育百科為準。"
+        },
+        {
+          "no": 10,
+          "title": "小熊的邀請",
+          "chars": ["熊", "朝", "踮", "尖", "木", "架", "些", "足", "蹈", "轉", "趕", "耳", "啄", "袋", "鼠", "摸", "讀", "琅"],
+          "readChars": ["邀", "蹦"],
+          "words": ["邀請", "朝陽", "一些", "手舞足蹈", "趕著", "耳朵", "袋鼠", "蹦蹦跳跳", "琅琅"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第10課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140210",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ],
+          "note": "113 學年同課次為〈快樂的探險家〉。"
+        },
+        {
+          "no": 11,
+          "title": "小讀者樂園",
+          "chars": ["圖", "館", "參", "題", "士", "講", "甲", "形", "志", "約", "數", "迎", "交", "令", "世", "界", "險", "庫"],
+          "readChars": ["索", "奧"],
+          "words": ["圖書館", "參加", "主題", "大力士", "主講", "甲蟲", "外形", "志工", "數學", "歡迎", "交流", "世界", "冒險", "寶庫", "探索", "奧祕"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第11課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140211",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 12,
+          "title": "巨人山",
+          "chars": ["巨", "累", "髮", "根", "牆", "狂", "呼", "差", "睜", "緊", "餓", "百", "食", "桶", "倒", "量", "底"],
+          "words": ["巨人", "頭髮", "樹根", "城牆", "狂風", "呼吸", "差點兒", "睜開", "趕緊", "食物", "分量", "到底"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（康軒版 二下 第12課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0103021140212",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 康軒 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1678501344",
+              "schoolYear": "114"
+            },
+            {
+              "name": "康軒 115 學年度國語 2 下課程計畫（官方 docx，核對課名）",
+              "url": "https://drive.google.com/file/d/18dnibp43K6ZoJWQZG0eMc98Pu8uQanii/view",
+              "schoolYear": "115"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "note": "二上整理自 115 學年度、二下自 114 學年度（115 下尚無公開生字資料）。同課名的生字逐年有調整，勿與其他學年度混用。習寫字與認讀字的區分以教育百科為準；試算表來源不分兩者。"
+}

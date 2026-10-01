@@ -1,0 +1,754 @@
+{
+  "format": "learning-island-edition",
+  "version": 1,
+  "id": "hanlin-math",
+  "subject": "math",
+  "publisher": "翰林",
+  "grade": 2,
+  "volumes": [
+    {
+      "term": "上",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "200 以內的數",
+          "skills": [
+            "math.place-value",
+            "math.compare",
+            "math.money-count",
+            "math.money-pay"
+          ],
+          "maxNumber": 200,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "數到200、幾個百幾個十幾個一、付錢（認識100元）、數的大小比較。教材只到200，專案出題範圍是三位數（至999），無法限縮。"
+        },
+        {
+          "no": 2,
+          "title": "二位數的加減法",
+          "skills": [
+            "math.add",
+            "math.sub",
+            "math.compare"
+          ],
+          "maxNumber": 200,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "二位數的加法、減法、等於大於和小於（算式比較）。二位數、一次進位或退位，專案難度 3（兩次進位、含0）超出範圍，故限 2。"
+        },
+        {
+          "no": 3,
+          "title": "認識公分",
+          "skills": [
+            "math.length"
+          ],
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "個別單位、認識公分、量一量畫一畫、長度的加減。專案 length 難度 3 是公尺公分換算（二下才學），故限 2。"
+        },
+        {
+          "no": 4,
+          "title": "加減應用",
+          "skills": [
+            "math.word-addsub",
+            "math.add",
+            "math.sub"
+          ],
+          "maxNumber": 200,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "加法和減法的關係、解題和驗算；含加數、減數未知的題型。"
+        },
+        {
+          "no": 5,
+          "title": "容量",
+          "skills": [
+            "math.measure-compare"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "認識容量、容量的比較（直接、間接與個別單位）。"
+        },
+        {
+          "no": 6,
+          "title": "加減兩步驟",
+          "skills": [
+            "math.word-addsub",
+            "math.add",
+            "math.sub"
+          ],
+          "maxNumber": 200,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "加法兩步驟、減法兩步驟、加減兩步驟。專案 math.two-step 只含乘與加減、不含純加減兩步驟，故對應 word-addsub。"
+        },
+        {
+          "no": 7,
+          "title": "乘法(一)",
+          "skills": [
+            "math.mul-meaning",
+            "math.times"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "幾的幾倍、2 和 5 的乘法、4 的乘法、8 的乘法、乘法的應用。專案 times 難度 1 只有 2、5、10，難度 2 含 3、6，難度 3 才有 7～9，沒有哪一級剛好是 2、5、4、8，故不設 maxLevel。"
+        },
+        {
+          "no": 8,
+          "title": "時間",
+          "skills": [
+            "math.clock-read",
+            "math.clock-set"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "認識鐘面、報讀時刻、點數經過的時間。"
+        },
+        {
+          "no": 9,
+          "title": "乘法(二)",
+          "skills": [
+            "math.times",
+            "math.mul-meaning"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "3、6、7、9 的乘法與乘法的應用。至此二上已學完 2～9 的乘法（不是只學 2、5、10）。"
+        },
+        {
+          "no": 10,
+          "title": "面的大小比較",
+          "skills": [
+            "math.measure-compare"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "面的直接比較、面的間接比較（含個別單位）。"
+        }
+      ]
+    },
+    {
+      "term": "下",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "1000 以內的數",
+          "skills": [
+            "math.place-value",
+            "math.compare",
+            "math.money-count",
+            "math.money-pay"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "數到1000、幾個百幾個十幾個一、數的大小比較、使用錢幣（100元、500元、1000元）。"
+        },
+        {
+          "no": 2,
+          "title": "重量",
+          "skills": [
+            "math.measure-compare"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "重量與天平、重量的間接比較；不教常用單位。"
+        },
+        {
+          "no": 3,
+          "title": "加加減減",
+          "skills": [
+            "math.add",
+            "math.sub",
+            "math.word-addsub",
+            "math.estimate"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "三位數加法（含兩次進位）、三位數減法（含一次退位）、加減應用、比較與加減、估算。"
+        },
+        {
+          "no": 4,
+          "title": "平面圖形與立體形體",
+          "skills": [
+            "math.shapes",
+            "math.perimeter",
+            "math.chart"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "圖形的邊、角和頂點、圖形的周界、邊長和周長、正方體與長方體、分類（對應 chart）。"
+        },
+        {
+          "no": 5,
+          "title": "乘法",
+          "skills": [
+            "math.times",
+            "math.mul-meaning"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "10、1 和 0 的乘法、乘法的關係（交換）、十幾乘以2或3。專案 times 的被乘數不含 0 與 1，0 的乘法與十幾乘以一位數未涵蓋。"
+        },
+        {
+          "no": 6,
+          "title": "公尺與公分",
+          "skills": [
+            "math.length"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "認識公尺、公尺與公分、長度的比較與計算（對應 length 難度 3）。"
+        },
+        {
+          "no": 7,
+          "title": "乘與加減兩步驟",
+          "skills": [
+            "math.two-step",
+            "math.times",
+            "math.word-addsub"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "乘加、乘減、加乘、減乘問題（不含併式）。均一版本對照寫作「乘與加兩步驟」。"
+        },
+        {
+          "no": 8,
+          "title": "年、月、日",
+          "skills": [
+            "math.time-units"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "年和月、月和星期、天數和日期（查年曆與月曆）。"
+        },
+        {
+          "no": 9,
+          "title": "分裝與平分",
+          "skills": [
+            "math.share"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "分裝、平分（不列除式）。"
+        },
+        {
+          "no": 10,
+          "title": "認識分數",
+          "skills": [
+            "math.fraction"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣安東國小 115學年度課程計畫：二年級課程計畫-數學（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104670&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣雙溪國小 115學年度課程計畫：二年級數學課程計畫（翰林版國小數學2 上、下）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104603&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣南興國小 115學年度二年級數學領域課程計畫（翰林版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1470/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣新埤國小 114學年度課程計畫：二年級數學領域課程計畫（翰林版）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104672&q_year=114",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類翰林版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/h-m2a"
+            }
+          ],
+          "note": "等分、二分之一和四分之一、幾分之一（單位分數）。"
+        }
+      ]
+    }
+  ],
+  "note": "整理自各國小公告的 115 學年度二年級數學領域課程計畫（嘉義縣、彰化縣課程計畫平台），與 114 學年度計畫及均一教育平台版本對照互相印證。只收單元名稱與內容範圍；skills、maxLevel 是專案自行對應，非出版社分類。"
+}

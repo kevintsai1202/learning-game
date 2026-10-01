@@ -1,0 +1,46 @@
+# 推到 main 時建置並部署到 GitHub Pages（https://kevintsai1202.github.io/learning-game/）
+# vite 的 base 是相對路徑 './'，建置產物放在 Pages 的子路徑底下不用另外設定。
+name: 部署到 GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  # 也可以在 Actions 頁面手動重新部署
+  workflow_dispatch:
+
+# deploy-pages 需要 pages 寫入權限與 OIDC token
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一時間只跑一個部署；不取消進行中的部署，避免網站停在半套狀態
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # 型別檢查＋建置到 dist/
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

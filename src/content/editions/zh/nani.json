@@ -1,0 +1,499 @@
+{
+  "format": "learning-island-edition",
+  "version": 1,
+  "id": "nani-zh",
+  "subject": "zh",
+  "publisher": "南一",
+  "grade": 2,
+  "volumes": [
+    {
+      "term": "上",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "打招呼",
+          "chars": ["呼", "白", "雲", "柔", "前", "游", "噴", "美", "麗", "柱", "試", "吸", "用", "力", "哇", "又", "第", "功"],
+          "readChars": ["擠"],
+          "words": ["打招呼", "白雲", "向前", "美麗", "水柱", "試一試", "用力", "第一次", "成功"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第1課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150101",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 2,
+          "title": "爬梯子",
+          "chars": ["爬", "梯", "紙", "條", "線", "像", "身", "生", "迫", "及", "待", "站", "沿", "頂", "格", "哪", "才", "最"],
+          "words": ["梯子", "白紙", "好像", "身高", "生日", "迫不及待", "頭頂"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第2課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150102",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 3,
+          "title": "勇氣樹",
+          "chars": ["勇", "教", "室", "棵", "葉", "克", "服", "害", "怕", "努", "完", "事", "倒", "時", "黑", "低", "聲", "故"],
+          "readChars": ["跌", "騎"],
+          "words": ["勇氣", "教室", "葉子", "克服", "害怕", "努力", "完成", "跌倒", "騎車", "故事"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第3課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150103",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 4,
+          "title": "一天的時間",
+          "chars": ["塊", "圓", "形", "芝", "麻", "餅", "咬", "飯", "做", "課", "洗", "澡", "拾", "整", "包", "遊", "戲", "剩"],
+          "words": ["一塊", "圓形", "吃飯", "功課", "洗澡", "收拾", "整理", "書包", "遊戲"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第4課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150104",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 5,
+          "title": "小書蟲",
+          "chars": ["蟲", "森", "動", "物", "王", "坐", "午", "停", "座", "急", "百", "科", "全", "原", "從", "此", "管", "種"],
+          "readChars": ["橋", "圖", "館"],
+          "words": ["書蟲", "森林", "動物", "大王", "下午", "一座", "圖書館", "百科全書", "原來", "從此", "不管"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第5課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150105",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 6,
+          "title": "從自己開始",
+          "chars": ["自", "己", "沙", "撿", "垃", "圾", "眼", "膠", "對", "牠", "安", "吧", "如", "該", "留", "便", "減", "少"],
+          "readChars": ["灘", "塑"],
+          "words": ["自己", "沙灘", "垃圾", "眼前", "塑膠", "牠們", "安全", "如果", "便條", "減少"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第6課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150106",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 7,
+          "title": "等兔子來撞樹",
+          "chars": ["等", "兔", "撞", "農", "夫", "夏", "剛", "趕", "路", "幸", "運", "以", "耕", "守", "夜", "晚", "北", "搖"],
+          "words": ["兔子", "農夫", "夏天", "趕路", "幸運", "以後", "夜晚", "北風"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第7課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150107",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 8,
+          "title": "角和腳",
+          "chars": ["角", "腳", "渴", "鹿", "喝", "影", "意", "卻", "獅", "追", "被", "枝", "掙", "脫", "速", "度", "直", "救"],
+          "readChars": ["瘦", "嚇"],
+          "words": ["口渴", "倒影", "滿意", "獅子", "樹枝", "掙脫", "速度", "直到"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第8課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150108",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 9,
+          "title": "赤腳國王",
+          "chars": ["赤", "國", "熱", "宮", "涼", "踩", "毯", "暖", "馬", "壞", "難", "定", "更", "隨", "主", "法", "於", "舒"],
+          "readChars": ["燙", "蹺"],
+          "words": ["赤腳", "國王", "王宮", "涼快", "地毯", "暖和", "馬車", "難走", "一定", "踩高蹺", "隨身", "主意", "想法", "於是", "舒服"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第9課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150109",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 10,
+          "title": "去農場玩",
+          "chars": ["群", "靜", "抬", "非", "趣", "近", "堆", "棉", "遠", "景", "忽", "聽", "揮", "慢", "依", "捨", "放", "假"],
+          "words": ["成群", "靜靜的", "非常", "有趣", "棉花", "風景畫", "忽然", "聽見", "揮手", "慢慢", "依依不捨", "放假"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第10課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150110",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 11,
+          "title": "幸福湯圓",
+          "chars": ["湯", "今", "至", "妹", "升", "陽", "因", "期", "盯", "米", "團", "粉", "南", "黃", "真", "呵", "接", "牛"],
+          "readChars": ["糯", "變"],
+          "words": ["湯圓", "今天", "冬至", "妹妹", "太陽", "因為", "期待", "變成", "黃色", "真是", "笑呵呵", "接著"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第11課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150111",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        },
+        {
+          "no": 12,
+          "title": "到野外上課",
+          "chars": ["野", "本", "模", "型", "蜜", "蜂", "蝴", "蝶", "飛", "活", "圖", "筆", "料", "湖", "調", "迷", "逛", "兒"],
+          "readChars": ["盤"],
+          "words": ["野外", "課本", "模型", "蜜蜂", "蝴蝶", "活生生", "圖片", "顏料", "調色盤", "迷宮", "魚兒"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二上 第12課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021150112",
+              "schoolYear": "115"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（115 上 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/10Nq6prSt0s_ZI1Z1phlGEtr0MDDE1wDqEiPmnHWSM_Q/edit?gid=1142161459",
+              "schoolYear": "115"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "term": "下",
+      "schoolYear": "114",
+      "units": [
+        {
+          "no": 1,
+          "title": "彩色心情",
+          "chars": ["情", "候", "翠", "溜", "滑", "傳", "深", "泳", "淚", "火", "奔", "怒", "拋", "潔", "舞", "各", "同", "受"],
+          "readChars": ["藏"],
+          "words": ["心情", "時候", "翠綠", "滑梯", "游泳", "眼淚", "火紅", "奔跑", "怒氣", "潔白", "跳舞", "各種", "不同", "感受"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第1課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140201",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 2,
+          "title": "勇敢超人",
+          "chars": ["敢", "超", "弟", "院", "正", "破", "所", "伸", "點", "重", "石", "消", "失", "合", "掉", "乾", "淨", "哥"],
+          "readChars": ["盆"],
+          "words": ["勇敢", "超人", "弟弟", "院子", "正當", "花盆", "所以", "伸長", "一點", "重重的", "石頭", "消失", "合力", "破掉", "乾淨", "哥哥"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第2課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140202",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 3,
+          "title": "小波氣球飛上天",
+          "chars": ["綿", "已", "經", "輸", "鼓", "取", "越", "竟", "飄", "抓", "啦", "喊", "踢", "結", "變", "讓", "終", "冷"],
+          "readChars": ["脾"],
+          "words": ["綿羊", "已經", "取笑", "竟然", "抓住", "大喊", "結果", "終於", "冷靜", "發脾氣"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第3課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140203",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 4,
+          "title": "小水珠，去哪裡？",
+          "chars": ["珠", "微", "醒", "甲", "瓢", "腰", "香", "掛", "閃", "晶", "串", "項", "鍊", "仙", "禮", "探", "幫", "姐"],
+          "readChars": ["懶", "滾"],
+          "words": ["水珠", "微微", "甲蟲", "瓢蟲", "伸懶腰", "花香", "一閃", "亮晶晶", "項鍊", "仙子", "禮物", "滾動", "幫忙", "姐姐"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第4課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140204",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 5,
+          "title": "生日快樂",
+          "chars": ["病", "睛", "份", "牽", "步", "段", "毛", "晃", "籃", "亭", "忍", "祕", "耳", "聞", "味", "浪", "寶", "清"],
+          "words": ["眼睛", "一份", "一步", "一段", "毛毛雨", "搖搖晃晃", "搖籃", "忍不住", "神祕", "味道", "海浪", "寶貝", "清涼"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第5課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140205",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 6,
+          "title": "給地球的一封信",
+          "chars": ["封", "信", "親", "貴", "洋", "蝦", "植", "量", "汙", "染", "使", "決", "具", "資", "源", "費", "康", "復"],
+          "readChars": ["餐"],
+          "words": ["親愛", "寶貴", "海洋", "魚蝦", "動植物", "大量", "汙染", "決定", "餐具", "資源回收", "浪費", "康復"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第6課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140206",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 7,
+          "title": "傘",
+          "chars": ["傘", "烏", "暗", "爺", "字", "謎", "語", "屋", "枴", "杖", "滴", "答", "叩", "嘻", "哈", "落", "街", "案"],
+          "readChars": ["撐"],
+          "words": ["烏雲", "爺爺", "謎語", "撐開", "屋頂", "枴杖", "滴滴答答", "嘻嘻哈哈", "大街", "答案"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第7課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140207",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 8,
+          "title": "老園丁的話",
+          "chars": ["丁", "公", "每", "認", "比", "客", "相", "興", "照", "皮", "摘", "立", "位", "新", "它", "欣", "賞", "妙"],
+          "readChars": ["牌"],
+          "words": ["園丁", "公園", "每天", "認真", "遊客", "相當", "高興", "拍照", "草皮", "摘花", "布告牌", "各位", "重新", "欣賞", "奇妙"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第8課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140208",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 9,
+          "title": "小小說書人",
+          "chars": ["排", "介", "紹", "其", "賣", "帽", "蛋", "糕", "扶", "買", "休", "息", "拿", "精", "采", "希", "望", "讀"],
+          "readChars": ["戴", "猴"],
+          "words": ["安排", "介紹", "其中", "蛋糕", "休息", "猴子", "精采", "希望"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第9課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140209",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 10,
+          "title": "點金術",
+          "chars": ["銀", "女", "願", "摸", "品", "指", "桌", "椅", "食", "年", "幼", "純", "慌", "並", "切", "狀", "明", "而"],
+          "readChars": ["術"],
+          "words": ["女神", "許願", "物品", "手指", "食物", "年幼", "純金", "慌張", "一切", "原狀", "明白"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第10課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140210",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 11,
+          "title": "我喜歡你",
+          "chars": ["敗", "操", "旁", "脖", "瞇", "密", "件", "特", "別", "唱", "歌", "練", "習", "彈", "琴", "講", "論", "颳"],
+          "readChars": ["勵"],
+          "words": ["失敗", "鼓勵", "操場", "脖子", "祕密", "特別", "唱歌", "練習", "彈琴", "不論", "颳風"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第11課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140211",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ]
+        },
+        {
+          "no": 12,
+          "title": "如果，我的房間……",
+          "chars": ["牆", "壁", "窗", "床", "鋪", "錯", "輪", "搬", "冰", "且", "交", "往", "刻", "顆", "鮮", "汁", "晨", "由"],
+          "readChars": ["極", "磚"],
+          "words": ["牆壁", "門窗", "床鋪", "不錯", "輪子", "北極", "冰屋", "冰磚", "而且", "立刻", "新鮮", "早晨", "自由自在"],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "教育百科生字詞彙表（南一版 二下 第12課）",
+              "url": "https://pedia.cloud.edu.tw/Bookmark/TCollection?TextNameId=0102021140212",
+              "schoolYear": "114"
+            },
+            {
+              "name": "顏國雄「各版本筆順練習」試算表（114 下 南一 2 年級）",
+              "url": "https://docs.google.com/spreadsheets/d/1veHorc7pgqXK-TX68mrki-78V4Rdt_zE6AXNq9a3jBU/edit?gid=1142161459",
+              "schoolYear": "114"
+            }
+          ],
+          "note": "課名結尾為刪節號（教育百科作 ...）。"
+        }
+      ]
+    }
+  ],
+  "note": "二上整理自 115 學年度、二下自 114 學年度（115 下尚無公開生字資料）。同課名的生字逐年有調整，勿與其他學年度混用。習寫字與認讀字的區分以教育百科為準；試算表來源不分兩者。"
+}

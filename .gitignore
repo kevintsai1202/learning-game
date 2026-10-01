@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+test-results/
+playwright-report/
+e2e/screenshots/
+logs/
+# 資料管線下載的原始開放資料（體積大，可由 scripts 重新下載）
+data-src/raw/
+.venv/
+# 子代理各自的建置輸出
+dist-*/

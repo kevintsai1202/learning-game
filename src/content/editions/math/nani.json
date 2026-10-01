@@ -1,0 +1,755 @@
+{
+  "format": "learning-island-edition",
+  "version": 1,
+  "id": "nani-math",
+  "subject": "math",
+  "publisher": "南一",
+  "grade": 2,
+  "volumes": [
+    {
+      "term": "上",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "數到300",
+          "skills": [
+            "math.place-value",
+            "math.compare"
+          ],
+          "maxNumber": 300,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "認識300以內的數、百位與位值單位的化聚、兩數的大小比較（>、<）。教材到300，專案出題範圍是三位數（至999），無法限縮。"
+        },
+        {
+          "no": 2,
+          "title": "二位數的加減",
+          "skills": [
+            "math.add",
+            "math.sub",
+            "math.word-addsub"
+          ],
+          "maxNumber": 300,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "加法的直式計算、減法的直式計算、加減的應用。二位數、一次進位或退位，專案難度 3（兩次進位、含0）超出範圍，故限 2。"
+        },
+        {
+          "no": 3,
+          "title": "幾公分",
+          "skills": [
+            "math.length"
+          ],
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "有多長（個別單位）、認識1公分、長度的測量、長度的加減、畫長度。專案 length 難度 3 是公尺公分換算（二下才學），故限 2。"
+        },
+        {
+          "no": 4,
+          "title": "加減的關係與應用",
+          "skills": [
+            "math.word-addsub",
+            "math.add",
+            "math.sub",
+            "math.compare"
+          ],
+          "maxNumber": 300,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "加法和減法的關係、解題、驗算、大於小於和等於（算式比較）。"
+        },
+        {
+          "no": 5,
+          "title": "容量",
+          "skills": [
+            "math.measure-compare"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "認識容量、哪個裝得多（直接、間接與個別單位的比較）。"
+        },
+        {
+          "no": 6,
+          "title": "兩步驟的加減",
+          "skills": [
+            "math.word-addsub",
+            "math.add",
+            "math.sub"
+          ],
+          "maxNumber": 300,
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "兩步驟的加法、減法、加減應用。專案 math.two-step 只含乘與加減、不含純加減兩步驟，故對應 word-addsub。"
+        },
+        {
+          "no": 7,
+          "title": "2、5、4、8 的乘法",
+          "skills": [
+            "math.mul-meaning",
+            "math.times"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "「倍」的概念與 2、5、4、8 的乘法、乘法的應用。專案 times 難度 1 只有 2、5、10，難度 2 含 3、6，難度 3 才有 7～9，沒有哪一級剛好是 2、5、4、8，故不設 maxLevel。"
+        },
+        {
+          "no": 8,
+          "title": "幾時幾分",
+          "skills": [
+            "math.clock-read",
+            "math.clock-set"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "認識鐘面、幾時幾分、點數經過的時間。"
+        },
+        {
+          "no": 9,
+          "title": "3、6、7、9 的乘法",
+          "skills": [
+            "math.times",
+            "math.mul-meaning"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "3、6、7、9 的乘法與乘法的應用。至此二上已學完 2～9 的乘法（不是只學 2、5、10）。"
+        },
+        {
+          "no": 10,
+          "title": "平面圖形",
+          "skills": [
+            "math.shapes",
+            "math.perimeter"
+          ],
+          "maxLevel": 2,
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "平面圖形的邊、角和頂點、正三角形正方形長方形、認識周界（內部與外部）、認識周長。南一在二上就教周長（康軒、翰林在二下）。shapes 難度 3 是立體形體，故限 2。"
+        }
+      ]
+    },
+    {
+      "term": "下",
+      "schoolYear": "115",
+      "units": [
+        {
+          "no": 1,
+          "title": "數到1000",
+          "skills": [
+            "math.place-value",
+            "math.compare",
+            "math.money-count",
+            "math.money-pay"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "認識1000以內的數、幾個百幾個十幾個一、兩數的大小比較、認識錢幣及應用（500元、1000元）。"
+        },
+        {
+          "no": 2,
+          "title": "加加減減",
+          "skills": [
+            "math.add",
+            "math.sub",
+            "math.word-addsub",
+            "math.estimate"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "三位數的加法、減法、加減應用、加減估算；含三個數的連加連減與加減混合。"
+        },
+        {
+          "no": 3,
+          "title": "幾公尺",
+          "skills": [
+            "math.length"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "認識1公尺、長度的實測和估測、公尺和公分的關係及換算、長度的加減與關係。"
+        },
+        {
+          "no": 4,
+          "title": "年月日",
+          "skills": [
+            "math.time-units"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "認識年月日、認識1星期、共幾天、年和月的換算；另含查年曆認識大月、小月、平年和閏年。"
+        },
+        {
+          "no": 5,
+          "title": "0、1、10 的乘法",
+          "skills": [
+            "math.times",
+            "math.mul-meaning"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "0 和 1 的整數倍、10 的乘法與十十乘法表、乘法的關係及應用（含十幾乘以一位數）。專案 times 的被乘數不含 0 與 1，0 的乘法未涵蓋。"
+        },
+        {
+          "no": 6,
+          "title": "重量",
+          "skills": [
+            "math.measure-compare"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "認識重量、認識天平、重量的比較（直接與間接）；不教常用單位。"
+        },
+        {
+          "no": 7,
+          "title": "兩步驟的計算",
+          "skills": [
+            "math.two-step",
+            "math.times",
+            "math.word-addsub"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "乘加、乘減、加乘、減乘問題。114 學年度計畫（嘉義縣多校、臺南市安慶國小）寫作「兩步驟的乘法」，115 學年度計畫多數改為「兩步驟的計算」，此處採 115 名稱。"
+        },
+        {
+          "no": 8,
+          "title": "分東西",
+          "skills": [
+            "math.share"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "分裝與平分，用算式記錄並發現與乘法的關連（不列除式）。"
+        },
+        {
+          "no": 9,
+          "title": "單位分數",
+          "skills": [
+            "math.fraction"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "一樣大（平分成2、4、8份）、幾分之一、幾分之一的大小比較。專案刻意不做單位分數比大小，該部分未涵蓋。"
+        },
+        {
+          "no": 10,
+          "title": "面的大小與立體",
+          "skills": [
+            "math.measure-compare",
+            "math.shapes",
+            "math.chart"
+          ],
+          "confidence": "verified",
+          "sources": [
+            {
+              "name": "嘉義縣朴子國小 115學年度課程計畫：115二年級數學課程計畫（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104601&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "嘉義縣大同國小 115學年度課程計畫：數學領域課程計畫_二年級（南一版第三、四冊）",
+              "url": "https://course.cyc.edu.tw/course/pub/cou_dsp.php?sch_id=104602&q_year=115",
+              "schoolYear": "115"
+            },
+            {
+              "name": "彰化縣和東國小 115學年度二年級數學領域課程計畫（南一版）",
+              "url": "https://www.curriculum.chc.edu.tw/years/115/plans/1561/views/5-2%E6%95%B8%E5%AD%B8.pdf",
+              "schoolYear": "115"
+            },
+            {
+              "name": "臺南市安慶國小 114學年度二年級數學領域學習課程計畫（教材版本：南一）",
+              "url": "http://course.tn.edu.tw/course/114E%E5%AE%89%E6%85%B6%E5%9C%8B%E5%B0%8FC5-1%E9%A0%98%E5%9F%9F%E5%AD%B8%E7%BF%92%E8%AA%B2%E7%A8%8B(%E8%AA%BF%E6%95%B4)%E8%A8%88%E7%95%AB%E7%89%B9%E6%95%99%E7%8F%AD%E4%BA%8C%E5%B9%B4%E7%B4%9A%E6%95%B8%E5%AD%B8%E8%B3%87%E6%BA%90%E7%8F%AD0702203233.pdf",
+              "schoolYear": "114"
+            },
+            {
+              "name": "均一教育平台「類南一版」二年級數學單元",
+              "url": "https://www.junyiacademy.org/topics/n-m2a"
+            }
+          ],
+          "note": "面的認識與直觀比較、面的直接比較、面的間接比較、認識正方體和長方體；課程目標另有「分類再分類」（對應 chart）。"
+        }
+      ]
+    }
+  ],
+  "note": "整理自各國小公告的 115 學年度二年級數學領域課程計畫（嘉義縣、彰化縣課程計畫平台），與 114 學年度計畫及均一教育平台版本對照互相印證。只收單元名稱與內容範圍；skills、maxLevel 是專案自行對應，非出版社分類。二下第7單元名稱 114、115 學年度不同，見該單元 note。"
+}
