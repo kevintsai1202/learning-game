@@ -2,7 +2,7 @@
  * 家長專區：PIN 保護，內容有學習報告、錯題本、設定、自訂題庫匯入、備份、資料來源與授權。
  * 這區給大人看，用一般字型、資訊密度較高。
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
 import { usePacks } from '../../store/usePacks';
@@ -10,9 +10,10 @@ import { ALL_ACTIVITIES } from '../../activities/registry';
 import { indicatorLabel, splitIndicatorKey } from '../../content/indicators';
 import { SOURCES } from '../../content/sources';
 import { dateKey, skillMastery, type Profile, type Settings } from '../../store/save';
-import type { SubjectId } from '../../core/types';
+import type { SpeakLang, SubjectId } from '../../core/types';
 import { starText } from './ZoneMenu';
-import { hasVoice } from '../../audio/speech';
+import { currentVoice, getVoicePref, listVoices, onlyBasicVoice, onVoicesChanged, previewVoice, setVoicePref } from '../../audio/speech';
+import { voiceId, voiceTag } from '../../audio/voices';
 import { CurriculumTab } from './CurriculumTab';
 
 const SUBJECT_NAME: Record<SubjectId, string> = { zh: '國語', math: '數學', en: '英語', life: '生活與健康' };
@@ -214,8 +215,63 @@ function WrongTab({ profile }: { profile: Profile }) {
   );
 }
 
+/** 聲音清單變動時重新繪製（Chrome 系列的聲音是非同步載入，第一次畫面可能還是空的） */
+function useVoicesTick(): number {
+  const [tick, setTick] = useState(0);
+  useEffect(() => onVoicesChanged(() => setTick((n) => n + 1)), []);
+  return tick;
+}
+
+/** 選擇朗讀聲音：自動（建議）或指定這台裝置上的某個聲音，並可試聽 */
+function VoicePicker({ lang, label }: { lang: SpeakLang; label: string }) {
+  const [pref, setPref] = useState(() => getVoicePref(lang) ?? '');
+  const voices = listVoices(lang);
+  const using = currentVoice(lang);
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap', margin: '10px 0', fontSize: 18 }}>
+      <span style={{ minWidth: 170, paddingTop: 6 }}>{label}</span>
+      {/* 窄螢幕時整組換到標籤下面；選單限寬，避免被很長的聲音名稱撐開 */}
+      <div style={{ flex: '1 1 280px', minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <select
+            value={pref}
+            data-testid={`voice-${lang}`}
+            onChange={(e) => {
+              setPref(e.target.value);
+              setVoicePref(lang, e.target.value || null);
+            }}
+            // 用百分比寬度：選單的最小寬度才不會由最長的聲音名稱決定，手機上不會把整個面板撐寬
+            style={{ fontSize: 18, flex: '1 1 auto', width: '100%', minWidth: 0, maxWidth: 460 }}
+          >
+            <option value="">自動（建議）</option>
+            {voices.map((v) => (
+              <option key={voiceId(v)} value={voiceId(v)}>
+                {v.name}（{voiceTag(v)}）
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            className="btn small white"
+            data-testid={`voice-test-${lang}`}
+            onClick={() => previewVoice(lang, pref || null)}
+            style={{ whiteSpace: 'nowrap', flexShrink: 0 }}
+          >
+            🔊 試聽
+          </button>
+        </div>
+        <div style={{ fontSize: 15, marginTop: 4 }} data-testid={`voice-using-${lang}`}>
+          目前使用：{using ? `${using.name}（${voiceTag(using)}）` : '沒有找到這個語言的聲音'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** 設定 */
 function SettingsTab() {
+  // 聲音清單載入後重繪整頁：選單和「只有基本語音」的提示都依清單決定
+  useVoicesTick();
   const settings = useGame((s) => s.save.settings);
   const update = useGame((s) => s.updateSettings);
   const row = (label: string, control: React.ReactNode) => (
@@ -235,6 +291,8 @@ function SettingsTab() {
         '朗讀速度',
         <input type="range" min={0.6} max={1.3} step={0.1} value={settings.voiceRate} onChange={(e) => update({ voiceRate: Number(e.target.value) })} />,
       )}
+      <VoicePicker lang="zh-TW" label="中文聲音" />
+      <VoicePicker lang="en-US" label="英文聲音" />
       {row('音效', toggle('sfx'))}
       {row('背景音樂', toggle('music'))}
       {row(
@@ -255,9 +313,13 @@ function SettingsTab() {
           <option value="high">高畫質</option>
         </select>,
       )}
-      <p className="notice">
-        這台裝置的中文語音：{hasVoice('zh-TW') ? '有' : '沒有找到（朗讀會無聲，可在系統設定加裝「中文（台灣）」語音）'}；英文語音：{hasVoice('en-US') ? '有' : '沒有找到'}。
-      </p>
+      {onlyBasicVoice('zh-TW') && (
+        <p className="notice" data-testid="voice-hint">
+          這台裝置只有基本語音，聽起來比較機械。Windows 建議改用 Microsoft Edge 開啟（有免費的自然語音），Android 與電腦可以用 Chrome；iPad 的 Safari 目前只能用內建聲音。
+          {!currentVoice('zh-TW') && '另外，這台裝置沒有中文語音，朗讀會沒有聲音，可在系統設定加裝「中文（台灣）」語音。'}
+        </p>
+      )}
+      <p className="notice">聲音的選擇只記在這台裝置；換裝置或還原備份後要重新選。</p>
     </div>
   );
 }
