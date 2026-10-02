@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 242,
-  "全部": 3325,
-  "zh": 1704,
+  "介面": 250,
+  "全部": 3333,
+  "zh": 1712,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 33989,
+ "chars": 34008,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -16785,6 +16785,15 @@
    ]
   },
   {
+   "key": "zh-TW|大象",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "大象",
+   "sources": [
+    "ui:animal"
+   ]
+  },
+  {
    "key": "zh-TW|大樹",
    "lang": "zh-TW",
    "voice": "zh",
@@ -16951,6 +16960,15 @@
    "sources": [
     "life.traffic",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|小豬",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "小豬",
+   "sources": [
+    "ui:animal"
    ]
   },
   {
@@ -17632,6 +17650,15 @@
    "sources": [
     "life.season",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|卡皮巴拉",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "卡皮巴拉",
+   "sources": [
+    "ui:animal"
    ]
   },
   {
@@ -26783,6 +26810,15 @@
    ]
   },
   {
+   "key": "zh-TW|企鵝",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "企鵝",
+   "sources": [
+    "ui:animal"
+   ]
+  },
+  {
    "key": "zh-TW|光腳去踩",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27499,6 +27535,15 @@
    "sources": [
     "life.community",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|老鷹",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "老鷹",
+   "sources": [
+    "ui:animal"
    ]
   },
   {
@@ -28425,6 +28470,15 @@
    "sources": [
     "life.season",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|狐狸",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "狐狸",
+   "sources": [
+    "ui:animal"
    ]
   },
   {
@@ -31195,6 +31249,15 @@
    ]
   },
   {
+   "key": "zh-TW|無尾熊",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "無尾熊",
+   "sources": [
+    "ui:animal"
+   ]
+  },
+  {
    "key": "zh-TW|發生火災或有人受傷需要救護車，要打哪一支電話？",
    "lang": "zh-TW",
    "voice": "zh",
@@ -31976,6 +32039,15 @@
    "sources": [
     "life.emotion",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|熊貓",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "熊貓",
+   "sources": [
+    "ui:animal"
    ]
   },
   {
