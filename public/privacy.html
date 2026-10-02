@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>隱私權政策｜知識島大冒險</title>
+    <meta name="description" content="知識島大冒險（國小二年級 3D 學習遊戲）的隱私權政策：收集哪些資料、怎麼使用、Google 帳號快速登入取用的資料，以及如何刪除。" />
+    <style>
+      /* 配色與遊戲一致（src/styles/global.css） */
+      :root {
+        --ink: #2b2a4c;
+        --ink-soft: #5b5a7c;
+        --paper: #fffaf0;
+        --cream: #fff1d6;
+        --sea: #2bb5c8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--paper);
+        color: var(--ink);
+        font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', 'Heiti TC', sans-serif;
+        line-height: 1.75;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+      header {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 8px;
+      }
+      header svg {
+        flex: none;
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        border: 3px solid var(--ink);
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0;
+        line-height: 1.3;
+      }
+      h2 {
+        font-size: 20px;
+        margin: 32px 0 8px;
+        padding-bottom: 4px;
+        border-bottom: 3px solid var(--cream);
+      }
+      p,
+      li {
+        font-size: 16px;
+      }
+      ul {
+        padding-left: 1.4em;
+      }
+      .updated {
+        color: var(--ink-soft);
+        margin: 0;
+      }
+      .lead {
+        background: var(--cream);
+        border: 3px solid var(--ink);
+        border-radius: 16px;
+        padding: 12px 16px;
+      }
+      a {
+        color: #1d6fb8;
+        word-break: break-all;
+      }
+      footer {
+        margin-top: 40px;
+        color: var(--ink-soft);
+        font-size: 14px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <!-- 標誌（docs/brand/logo-island.svg） -->
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" role="img" aria-label="知識島大冒險標誌">
+          <defs>
+            <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#4fc0ff" />
+              <stop offset="1" stop-color="#bfeaff" />
+            </linearGradient>
+          </defs>
+          <rect width="120" height="120" fill="url(#sky)" />
+          <path d="M27.0 13.0 L30.6 22.0 L40.3 22.7 L32.9 28.9 L35.2 38.3 L27.0 33.2 L18.8 38.3 L21.1 28.9 L13.7 22.7 L23.4 22.0 Z" fill="#ffc93c" stroke="#2b2a4c" stroke-width="3" stroke-linejoin="round" />
+          <path d="M0 84 Q10 80 20 84 T40 84 T60 84 T80 84 T100 84 T120 84 V120 H0 Z" fill="#2bb5c8" />
+          <ellipse cx="60" cy="96" rx="47" ry="10" fill="#ffe2a8" stroke="#2b2a4c" stroke-width="3" />
+          <path d="M60 72 C58 60 59 48 65 39" stroke="#2b2a4c" stroke-width="9" stroke-linecap="round" fill="none" />
+          <path d="M60 72 C58 60 59 48 65 39" stroke="#b5733a" stroke-width="4.5" stroke-linecap="round" fill="none" />
+          <g fill="#3fbf7f" stroke="#2b2a4c" stroke-width="2.5" stroke-linejoin="round">
+            <path d="M65 39 Q51 41 44 54 Q55 45 65 39 Z" fill="#2e9e66" />
+            <path d="M65 39 Q79 42 86 55 Q75 45 65 39 Z" fill="#2e9e66" />
+            <path d="M65 39 Q50 29 37 37 Q51 34 65 39 Z" />
+            <path d="M65 39 Q60 23 47 20 Q58 28 65 39 Z" />
+            <path d="M65 39 Q74 23 88 24 Q75 30 65 39 Z" />
+            <path d="M65 39 Q81 31 93 40 Q79 36 65 39 Z" />
+          </g>
+          <g stroke="#2b2a4c" stroke-width="3.5" stroke-linejoin="round" fill="#fffaf0">
+            <path d="M60 72 C48 64 34 64 22 68 L22 93 C34 89 48 89 60 97 Z" />
+            <path d="M60 72 C72 64 86 64 98 68 L98 93 C86 89 72 89 60 97 Z" />
+          </g>
+          <path d="M60 72 V97" stroke="#2b2a4c" stroke-width="3" stroke-linecap="round" />
+        </svg>
+        <div>
+          <h1>知識島大冒險 隱私權政策</h1>
+          <p class="updated">最後更新：2026 年 10 月 3 日</p>
+        </div>
+      </header>
+
+      <p class="lead">
+        「知識島大冒險」是給國小二年級孩子的 3D 學習遊戲（<a href="./">https://kevintsai1202.github.io/learning-game/</a>）。我們只保存提供遊戲功能需要的資料；不放廣告、不出售或分享資料，也不使用任何追蹤或分析工具。
+      </p>
+
+      <h2>1. 單機遊玩（沒有加入班級）</h2>
+      <ul>
+        <li>角色名字、外觀、學習進度（星星、金幣、錯題本、遊玩時間、獎章等）與設定，只存在這台裝置的瀏覽器裡，不會傳送到任何伺服器。</li>
+        <li>語音朗讀使用預錄的音檔或裝置內建的語音功能。遊戲不會使用麥克風或相機，也不會錄音。</li>
+        <li>清除瀏覽器的網站資料，這些資料就會刪除。</li>
+      </ul>
+
+      <h2>2. 加入班級（選用）</h2>
+      <p>老師建立班級後，孩子用「房間代碼＋暱稱＋4 位數密碼」登入，進度會存到班級伺服器，換裝置也能接著玩。班級伺服器保存：</p>
+      <ul>
+        <li><strong>孩子：</strong>暱稱、4 位數密碼（只保存無法還原的雜湊值）、學習進度與收藏（星星、金幣、錯題本、遊玩時間、外觀道具、獎章、貼紙），以及送出與收到的禮物紀錄。</li>
+        <li><strong>老師：</strong>房間名稱與管理密碼（只保存雜湊值）。</li>
+        <li>我們不收集孩子的真實姓名、生日、照片、聯絡方式或所在位置。請使用綽號當暱稱，不要用真名。</li>
+        <li>同一個班級的同學看得到彼此的暱稱、角色外觀、在島上的位置，以及從固定短句挑選的聊天內容（遊戲裡沒有可以自由打字的地方）。老師看得到班上孩子的學習摘要（星星、金幣、錯題數、遊玩回合數、最後上線時間）。</li>
+        <li>資料存放在班級伺服器的資料庫（託管於雲端服務 Zeabur），只用來提供存檔同步與班級功能。</li>
+      </ul>
+
+      <h2>3. 使用 Google 帳號快速登入（選用）</h2>
+      <p>家長或老師可以把 Google 帳號綁定到孩子的班級帳號或老師的房間，之後用 Google 帳號登入，不必再輸入代碼與密碼。原本的代碼登入一直可以使用。</p>
+      <ul>
+        <li>登入時，Google 會提供一張登入憑證。我們只從中取出 <strong>Google 帳號識別碼</strong>與<strong>電子郵件地址</strong>並保存，用途只有辨識是誰在登入；憑證裡的其他資料（例如名稱、大頭貼）不保存。</li>
+        <li>我們不會讀取 Gmail、雲端硬碟、聯絡人或任何其他 Google 資料；Google 帳號資料不會用於廣告，也不會分享或出售給任何人。</li>
+        <li>家長專區與老師管理頁只顯示遮住部分字元的電子郵件。</li>
+        <li>隨時可以在家長專區或老師管理頁「解除綁定」，解除後會刪除該筆綁定紀錄（帳號識別碼與電子郵件）。</li>
+        <li>Google 登入按鈕由 Google 提供，使用時適用 <a href="https://policies.google.com/privacy" rel="noopener">Google 隱私權政策</a>。</li>
+      </ul>
+
+      <h2>4. 資料的使用與分享</h2>
+      <ul>
+        <li>資料只用於提供遊戲功能：保存與同步進度、班級的多人同島、短句聊天、送禮物，以及老師的學習摘要。</li>
+        <li>我們不會把資料提供給第三方，也不做廣告或使用者分析。法律要求時除外。</li>
+      </ul>
+
+      <h2>5. 資料保存與刪除</h2>
+      <ul>
+        <li>班級帳號存在期間，資料會一直保存。老師在管理頁移出成員時，該孩子的帳號與進度會一併刪除；同學已經收到的禮物紀錄裡，仍會留著送禮人的暱稱。</li>
+        <li>家長或老師想刪除班級伺服器上的資料，可以透過下方的聯絡方式提出，我們會盡快處理。</li>
+        <li>單機遊玩的資料由使用者自行管理（清除瀏覽器的網站資料即可刪除）。</li>
+      </ul>
+
+      <h2>6. 兒童隱私</h2>
+      <p>本遊戲的使用者是國小學童。班級由老師建立，孩子只用暱稱與 4 位數密碼登入；Google 帳號登入是給家長與老師使用的選項。建議家長陪同孩子使用，並提醒孩子不要在暱稱裡使用真名。</p>
+
+      <h2>7. 資料安全</h2>
+      <ul>
+        <li>網站與班級伺服器之間的傳輸使用 HTTPS 加密；密碼與登入權杖在伺服器上只保存雜湊值。</li>
+        <li>孩子的 4 位數密碼是方便孩子使用的措施，不是高強度的防護；連續輸入錯誤會暫時鎖住。</li>
+      </ul>
+
+      <h2>8. 政策更新</h2>
+      <p>政策有變動時，會更新本頁內容與上方的日期。</p>
+
+      <h2>9. 聯絡我們</h2>
+      <ul>
+        <li>在 GitHub 專案頁提出問題：<a href="https://github.com/kevintsai1202/learning-game/issues" rel="noopener">https://github.com/kevintsai1202/learning-game/issues</a>（這是公開頁面，請不要留下孩子的個人資料）</li>
+      </ul>
+
+      <footer>知識島大冒險 · <a href="./">回到遊戲</a></footer>
+    </main>
+  </body>
+</html>
