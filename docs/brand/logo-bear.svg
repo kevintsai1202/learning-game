@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- 知識島大冒險標誌 B：島上的嚮導熊熊老師（台灣黑熊：胸前白色 V 字、金色圓眼鏡）。顏色和 src/world/Teacher.tsx 一致 -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fc0ff" />
+      <stop offset="1" stop-color="#bfeaff" />
+    </linearGradient>
+  </defs>
+  <!-- 天空（滿版方形，被裁成圓形或圓角時也好看）與小星星 -->
+  <rect width="120" height="120" fill="url(#sky)" />
+  <path d="M96.0 13.0 L98.4 18.8 L104.6 19.2 L99.8 23.2 L101.3 29.3 L96.0 26.0 L90.7 29.3 L92.2 23.2 L87.4 19.2 L93.6 18.8 Z" fill="#ffc93c" stroke="#2b2a4c" stroke-width="2.5" stroke-linejoin="round" />
+  <!-- 綠色山丘 -->
+  <path d="M0 100 Q60 82 120 100 V120 H0 Z" fill="#3fbf7f" stroke="#2b2a4c" stroke-width="3" />
+  <!-- 身體與胸前的白色 V 字 -->
+  <path d="M24 122 C25 101 41 90 60 90 C79 90 95 101 96 122 Z" fill="#26262e" stroke="#2b2a4c" stroke-width="3" />
+  <path d="M40 99 L60 114 L80 99 L73 97.5 L60 107 L47 97.5 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.5" stroke-linejoin="round" />
+  <!-- 耳朵 -->
+  <circle cx="35" cy="33" r="10.5" fill="#26262e" stroke="#2b2a4c" stroke-width="3" />
+  <circle cx="85" cy="33" r="10.5" fill="#26262e" stroke="#2b2a4c" stroke-width="3" />
+  <circle cx="35" cy="33" r="5" fill="#6b4a3a" />
+  <circle cx="85" cy="33" r="5" fill="#6b4a3a" />
+  <!-- 頭 -->
+  <circle cx="60" cy="58" r="30" fill="#26262e" stroke="#2b2a4c" stroke-width="3" />
+  <!-- 臉頰 -->
+  <circle cx="40" cy="68" r="4.5" fill="#ff8fa8" opacity="0.75" />
+  <circle cx="80" cy="68" r="4.5" fill="#ff8fa8" opacity="0.75" />
+  <!-- 眼睛 -->
+  <circle cx="48" cy="54" r="3.6" fill="#ffffff" />
+  <circle cx="72" cy="54" r="3.6" fill="#ffffff" />
+  <circle cx="48.6" cy="54.6" r="2" fill="#1a1a22" />
+  <circle cx="72.6" cy="54.6" r="2" fill="#1a1a22" />
+  <!-- 金色圓眼鏡 -->
+  <g fill="#ffffff" fill-opacity="0.16" stroke="#ffc93c" stroke-width="3.2">
+    <circle cx="48" cy="54" r="9" />
+    <circle cx="72" cy="54" r="9" />
+  </g>
+  <path d="M57 53 Q60 50 63 53" stroke="#ffc93c" stroke-width="3" fill="none" stroke-linecap="round" />
+  <!-- 口鼻 -->
+  <ellipse cx="60" cy="71" rx="14.5" ry="10.5" fill="#c9a27a" stroke="#2b2a4c" stroke-width="2.5" />
+  <ellipse cx="60" cy="66.5" rx="5.5" ry="4" fill="#1a1a22" />
+  <path d="M60 70 Q60 75 55 76 M60 70 Q60 75 65 76" stroke="#1a1a22" stroke-width="2" fill="none" stroke-linecap="round" />
+</svg>

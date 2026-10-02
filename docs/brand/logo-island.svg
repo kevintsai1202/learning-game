@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- 知識島大冒險標誌 A：海上的小島是一本打開的書，書中間長出椰子樹，旁邊一顆星星（答對拿星星）。配色取自 src/styles/global.css -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4fc0ff" />
+      <stop offset="1" stop-color="#bfeaff" />
+    </linearGradient>
+  </defs>
+  <!-- 天空（滿版方形，被裁成圓形或圓角時也好看） -->
+  <rect width="120" height="120" fill="url(#sky)" />
+  <!-- 星星 -->
+  <path d="M27.0 13.0 L30.6 22.0 L40.3 22.7 L32.9 28.9 L35.2 38.3 L27.0 33.2 L18.8 38.3 L21.1 28.9 L13.7 22.7 L23.4 22.0 Z" fill="#ffc93c" stroke="#2b2a4c" stroke-width="3" stroke-linejoin="round" />
+  <!-- 海與浪花 -->
+  <path d="M0 84 Q10 80 20 84 T40 84 T60 84 T80 84 T100 84 T120 84 V120 H0 Z" fill="#2bb5c8" />
+  <path d="M5 109 q7 -4 14 0 M101 111 q7 -4 14 0" stroke="#ffffff" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.85" />
+  <!-- 沙灘 -->
+  <ellipse cx="60" cy="96" rx="47" ry="10" fill="#ffe2a8" stroke="#2b2a4c" stroke-width="3" />
+  <!-- 椰子樹：樹幹（深色描邊＋咖啡色） -->
+  <path d="M60 72 C58 60 59 48 65 39" stroke="#2b2a4c" stroke-width="9" stroke-linecap="round" fill="none" />
+  <path d="M60 72 C58 60 59 48 65 39" stroke="#b5733a" stroke-width="4.5" stroke-linecap="round" fill="none" />
+  <!-- 椰子樹：葉子 -->
+  <g fill="#3fbf7f" stroke="#2b2a4c" stroke-width="2.5" stroke-linejoin="round">
+    <path d="M65 39 Q51 41 44 54 Q55 45 65 39 Z" fill="#2e9e66" />
+    <path d="M65 39 Q79 42 86 55 Q75 45 65 39 Z" fill="#2e9e66" />
+    <path d="M65 39 Q50 29 37 37 Q51 34 65 39 Z" />
+    <path d="M65 39 Q60 23 47 20 Q58 28 65 39 Z" />
+    <path d="M65 39 Q74 23 88 24 Q75 30 65 39 Z" />
+    <path d="M65 39 Q81 31 93 40 Q79 36 65 39 Z" />
+  </g>
+  <!-- 椰子 -->
+  <circle cx="62" cy="42" r="3.2" fill="#8a5a2b" stroke="#2b2a4c" stroke-width="2" />
+  <circle cx="68" cy="43" r="3.2" fill="#8a5a2b" stroke="#2b2a4c" stroke-width="2" />
+  <!-- 打開的書 -->
+  <g stroke="#2b2a4c" stroke-width="3.5" stroke-linejoin="round" fill="#fffaf0">
+    <path d="M60 72 C48 64 34 64 22 68 L22 93 C34 89 48 89 60 97 Z" />
+    <path d="M60 72 C72 64 86 64 98 68 L98 93 C86 89 72 89 60 97 Z" />
+  </g>
+  <!-- 書頁上的字（淡淡的線） -->
+  <path d="M28 76 C36 73 45 73 54 77 M28 83 C36 80 45 80 54 84 M66 77 C75 73 84 73 92 76 M66 84 C75 80 84 80 92 83" stroke="#5b5a7c" stroke-width="2" stroke-linecap="round" fill="none" opacity="0.55" />
+  <path d="M60 72 V97" stroke="#2b2a4c" stroke-width="3" stroke-linecap="round" />
+</svg>
