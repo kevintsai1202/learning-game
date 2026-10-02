@@ -83,6 +83,8 @@ test.describe('動物角色', () => {
     await page.waitForTimeout(2500);
     await zoomCameraOnPlayer(page);
     await enterZone(page, 'shop');
+    // 動物按鈕在百寶屋的「換造型」分頁
+    await page.getByTestId('shop-tab-look').click();
 
     for (const a of ANIMALS) {
       await page.getByRole('button', { name: a.name, exact: true }).click();
@@ -108,6 +110,8 @@ test.describe('動物角色', () => {
       await page.evaluate(
         ({ id }) => {
           const game = (window as any).__game.game.getState();
+          // 畫面只畫真的擁有的道具：先擁有派對帽（本機角色用 0 金幣買）
+          game.purchase('hat.party', 0);
           const avatar = game.profile().avatar;
           game.updateAvatar({ ...avatar, animal: id, hat: 'hat.party' });
         },
@@ -165,6 +169,7 @@ test.describe('動物角色', () => {
     await page.waitForTimeout(2500);
     await zoomCameraOnPlayer(page);
     await enterZone(page, 'shop');
+    await page.getByTestId('shop-tab-look').click();
 
     await page.getByRole('button', { name: '卡皮巴拉', exact: true }).click();
     await expect.poll(() => savedAnimal(page)).toBe('capybara');
@@ -187,6 +192,7 @@ test.describe('動物角色', () => {
     // 戴帽子：帽子取代橘子
     await page.evaluate(() => {
       const game = (window as any).__game.game.getState();
+      game.purchase('hat.party', 0);
       game.updateAvatar({ ...game.profile().avatar, hat: 'hat.party' });
     });
     await page.waitForTimeout(600);

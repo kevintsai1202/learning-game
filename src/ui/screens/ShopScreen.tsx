@@ -1,9 +1,13 @@
 /**
- * 百寶屋：用金幣買帽子、換動物和顏色（換外觀免費，帽子要用金幣買）。
+ * 百寶屋：分頁列出帽子、眼鏡、背後、手持道具，以及換動物和顏色（換外觀免費）。
+ * 金幣道具買了就自動戴上；獎章專屬道具鎖起來並寫出需要的獎章，點一下帶孩子到獎章簿看怎麼拿。
  */
+import { useState } from 'react';
 import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
-import { HATS } from '../../world/Hats';
+import { itemsOfSlot, owns, type CatalogItem, type Slot } from '../../store/catalog';
+import { badgeById } from '../../store/badges';
+import { normalizeAvatar } from '../../store/save';
 import { ANIMALS, COLORS } from './ProfilesScreen';
 import { AnimalIcon } from '../AnimalIcon';
 import { sfx } from '../../audio/sfx';
@@ -12,31 +16,82 @@ import { boughtLine } from '../lines';
 import { teleport } from '../../world/input';
 import { doorOf, zoneById } from '../../world/layout';
 
-/** 帽子在選單上的圖示 */
-const HAT_EMOJI: Record<string, string> = {
-  'hat.party': '🎉',
-  'hat.cap': '🧢',
-  'hat.flower': '🌸',
-  'hat.straw': '👒',
-  'hat.helmet': '⛑️',
-  'hat.chef': '👨‍🍳',
-  'hat.crown': '👑',
-  'hat.wizard': '🧙',
-};
+/** 分頁：四種道具格子，加上換造型 */
+type Tab = Slot | 'look';
+const TABS: { id: Tab; name: string }[] = [
+  { id: 'hat', name: '🎩 帽子' },
+  { id: 'face', name: '👓 眼鏡' },
+  { id: 'back', name: '🎒 背後' },
+  { id: 'hand', name: '🎈 手持' },
+  { id: 'look', name: '🐻 換造型' },
+];
 
 export function ShopScreen() {
   const profile = useGame((s) => s.profile());
   const purchase = useGame((s) => s.purchase);
   const updateAvatar = useGame((s) => s.updateAvatar);
   const goto = useUi((s) => s.goto);
+  const [tab, setTab] = useState<Tab>('hat');
   if (!profile) return null;
+  const avatar = normalizeAvatar(profile.avatar);
   const leave = () => {
     teleport(doorOf(zoneById('shop')));
     goto('island');
   };
+
+  /** 戴上或脫下某一格的道具 */
+  const toggleWear = (item: CatalogItem) => {
+    sfx.tap();
+    const wearing = avatar[item.slot] === item.id;
+    updateAvatar({ ...avatar, [item.slot]: wearing ? null : item.id });
+  };
+
+  /** 買道具：成功就唸出來並自動戴上 */
+  const buy = (item: CatalogItem) => {
+    if (item.price === undefined || !purchase(item.id, item.price)) return;
+    sfx.coin();
+    speak(boughtLine(item.name));
+    const now = normalizeAvatar(useGame.getState().profile()!.avatar);
+    updateAvatar({ ...now, [item.slot]: item.id });
+  };
+
+  /** 一項道具的卡片：擁有就能戴上／脫下；獎章專屬沒拿到就鎖住；其他用金幣買 */
+  const card = (item: CatalogItem) => {
+    const has = owns(profile, item.id);
+    const wearing = avatar[item.slot] === item.id;
+    const badge = item.badge ? badgeById(item.badge) : undefined;
+    return (
+      <div key={item.id} className={`activity-card shop-card ${!has && badge ? 'locked' : ''}`} style={{ cursor: 'default' }}>
+        <span className="icon">{item.emoji}</span>
+        <span className="name">{item.name}</span>
+        {has ? (
+          <button className={`btn small ${wearing ? 'white' : 'green'}`} onClick={() => toggleWear(item)} data-testid={`wear-${item.id}`}>
+            {wearing ? '脫下' : '戴上'}
+          </button>
+        ) : badge ? (
+          <button
+            className="btn small white"
+            onClick={() => {
+              sfx.tap();
+              speak(badge.name);
+              goto('badges');
+            }}
+            data-testid={`locked-${item.id}`}
+          >
+            🔒 {badge.name}
+          </button>
+        ) : (
+          <button className="btn small" disabled={profile.coins < (item.price ?? 0)} onClick={() => buy(item)} data-testid={`buy-${item.id}`}>
+            🪙 {item.price}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="panel-screen" style={{ placeItems: 'center end' }}>
-      <div className="panel card" style={{ width: 'min(620px, 100%)' }} role="dialog" aria-label="百寶屋">
+      <div className="panel card" style={{ width: 'min(640px, 100%)' }} role="dialog" aria-label="百寶屋">
         <div className="panel-head">
           <span className="ribbon" style={{ background: '#e8457c' }}>
             🎁 百寶屋
@@ -46,61 +101,35 @@ export function ShopScreen() {
             回島上
           </button>
         </div>
+        <div className="tabs">
+          {TABS.map((t) => (
+            <button key={t.id} className={`btn small white ${tab === t.id ? 'on' : ''}`} onClick={() => setTab(t.id)} data-testid={`shop-tab-${t.id}`}>
+              {t.name}
+            </button>
+          ))}
+        </div>
         <div className="panel-body">
-          <span className="label">帽子</span>
-          <div className="activity-grid">
-            {HATS.map((h) => {
-              const owned = profile.inventory.includes(h.id);
-              const wearing = profile.avatar.hat === h.id;
-              return (
-                <div key={h.id} className="activity-card" style={{ cursor: 'default' }}>
-                  <span className="icon">{HAT_EMOJI[h.id]}</span>
-                  <span className="name">{h.name}</span>
-                  {owned ? (
-                    <button
-                      className={`btn small ${wearing ? 'white' : 'green'}`}
-                      onClick={() => {
-                        sfx.tap();
-                        updateAvatar({ ...profile.avatar, hat: wearing ? null : h.id });
-                      }}
-                    >
-                      {wearing ? '脫下' : '戴上'}
-                    </button>
-                  ) : (
-                    <button
-                      className="btn small"
-                      disabled={profile.coins < h.price}
-                      onClick={() => {
-                        if (purchase(h.id, h.price)) {
-                          sfx.coin();
-                          speak(boughtLine(h.name));
-                          updateAvatar({ ...useGame.getState().profile()!.avatar, hat: h.id });
-                        }
-                      }}
-                      data-testid={`buy-${h.id}`}
-                    >
-                      🪙 {h.price}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <span className="label">換動物</span>
-          <div className="choice-row">
-            {ANIMALS.map((a) => (
-              <button key={a.id} className={`animal-btn ${profile.avatar.animal === a.id ? 'on' : ''}`} onClick={() => updateAvatar({ ...profile.avatar, animal: a.id })} aria-label={a.name}>
-                <AnimalIcon animal={a.id} />
-              </button>
-            ))}
-          </div>
-          <span className="label">換顏色</span>
-          <div className="choice-row">
-            {COLORS.map((c) => (
-              <button key={c} className={`swatch ${profile.avatar.color === c ? 'on' : ''}`} style={{ background: c }} onClick={() => updateAvatar({ ...profile.avatar, color: c })} aria-label={`顏色 ${c}`} />
-            ))}
-          </div>
-          <p className="notice">答題可以賺金幣：一次答對 1 枚，每顆星再加 2 枚。</p>
+          {tab === 'look' ? (
+            <>
+              <span className="label">換動物</span>
+              <div className="choice-row">
+                {ANIMALS.map((a) => (
+                  <button key={a.id} className={`animal-btn ${avatar.animal === a.id ? 'on' : ''}`} onClick={() => updateAvatar({ ...avatar, animal: a.id })} aria-label={a.name}>
+                    <AnimalIcon animal={a.id} />
+                  </button>
+                ))}
+              </div>
+              <span className="label">換顏色</span>
+              <div className="choice-row">
+                {COLORS.map((c) => (
+                  <button key={c} className={`swatch ${avatar.color === c ? 'on' : ''}`} style={{ background: c }} onClick={() => updateAvatar({ ...avatar, color: c })} aria-label={`顏色 ${c}`} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="activity-grid">{itemsOfSlot(tab).map(card)}</div>
+          )}
+          <p className="notice">答題可以賺金幣：一次答對 1 枚，每顆星再加 2 枚。鎖起來的道具要拿到獎章才有，點一下看怎麼拿。</p>
         </div>
       </div>
     </div>

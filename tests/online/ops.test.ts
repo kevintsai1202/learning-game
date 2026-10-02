@@ -126,6 +126,47 @@ describe('操作套用：遊玩時間、購買、外觀', () => {
   });
 });
 
+describe('操作套用：外觀道具（R2）', () => {
+  it('獎章專屬道具不能用金幣買', () => {
+    expect(applyOp(kid(), { id: 'b1', at: AT, kind: 'buy', itemId: 'hat.scholar' }, NOW)).toEqual({ ok: false, reason: '這個要用獎章換' });
+  });
+
+  it('眼鏡、背後、手持：擁有才能戴，類別要相符', () => {
+    const rich = { ...kid(), inventory: ['face.round', 'back.bag', 'hand.balloon'] };
+    const wear = (avatar: object) =>
+      applyOp(rich, { id: 'w', at: AT, kind: 'avatar', avatar: { animal: 'bear', color: '#8b5a2b', hat: null, ...avatar } } as Op, NOW);
+    const r = wear({ face: 'face.round', back: 'back.bag', hand: 'hand.balloon' });
+    expect(r.ok && r.profile.avatar).toEqual({ animal: 'bear', color: '#8b5a2b', hat: null, face: 'face.round', back: 'back.bag', hand: 'hand.balloon' });
+    expect(wear({ face: 'face.sun' })).toEqual({ ok: false, reason: '還沒有這個道具' });
+    expect(wear({ face: 'back.bag' })).toEqual({ ok: false, reason: '還沒有這個道具' });
+  });
+
+  it('得到獎章後可以戴獎章專屬帽子（不必在收藏裡）', () => {
+    const hero = { ...kid(), badges: { 'tower-hero': '2026-10-01' } };
+    const r = applyOp(hero, { id: 'w', at: AT, kind: 'avatar', avatar: { animal: 'bear', color: '#8b5a2b', hat: 'hat.scholar' } }, NOW);
+    expect(r.ok && r.profile.avatar.hat).toBe('hat.scholar');
+  });
+
+  it('沒戴的格子一律存成 null（本機與伺服器的存檔 JSON 才會一樣）', () => {
+    const r = applyOp(kid(), { id: 'w', at: AT, kind: 'avatar', avatar: { animal: 'dog', color: '#ffffff', hat: null } }, NOW);
+    expect(r.ok && JSON.stringify(r.profile.avatar)).toBe(JSON.stringify({ animal: 'dog', color: '#ffffff', hat: null, face: null, back: null, hand: null }));
+  });
+
+  it('眼鏡的購買與裝備：applyOp 和本機路徑結果相同（含 JSON 序列化）', () => {
+    const ops: Op[] = [
+      { id: 'o1', at: AT, kind: 'buy', itemId: 'face.heart' },
+      { id: 'o2', at: AT, kind: 'avatar', avatar: { animal: 'bear', color: '#8b5a2b', hat: null, face: 'face.heart' } },
+    ];
+    const start = kid();
+    const viaOps = applyAll(start, ops);
+    let s: SaveData = { ...createEmptySave(), profiles: [start], activeProfileId: start.id };
+    s = buyItem(s, start.id, 'face.heart', 80);
+    s = setAvatar(s, start.id, { animal: 'bear', color: '#8b5a2b', hat: null, face: 'face.heart' });
+    expect(viaOps).toEqual(s.profiles[0]);
+    expect(JSON.stringify(viaOps)).toBe(JSON.stringify(s.profiles[0]));
+  });
+});
+
 describe('操作套用：稱號（R1）', () => {
   it('只能選已得到、而且有稱號的獎章；沒得到的拒絕', () => {
     const fresh = kid();

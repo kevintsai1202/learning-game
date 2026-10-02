@@ -9,6 +9,7 @@ import { useUi } from '../store/useUi';
 import { useGame } from '../store/useGame';
 import { findActivity } from '../activities/resolve';
 import type { AvatarConfig } from '../store/save';
+import { equippedOf } from '../store/catalog';
 
 const FALLBACK_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
 
@@ -48,7 +49,7 @@ export function GameCanvas() {
       {onStage ? (
         <StageScene avatar={profile?.avatar ?? FALLBACK_AVATAR} subject={theme} />
       ) : (
-        <IslandScene mode={mode} avatar={profile?.avatar ?? null} shadows={!low} />
+        <IslandScene mode={mode} avatar={profile ? equippedOf(profile) : null} shadows={!low} />
       )}
     </Canvas>
   );

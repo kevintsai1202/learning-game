@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { SessionResult } from '../core/types';
 import { subjectSchema } from '../content/schema';
 import { scoreSession } from '../engine/check';
-import { findItem } from '../store/catalog';
+import { findItem, owns, type Slot } from '../store/catalog';
 import { badgeById } from '../store/badges';
 import {
   ANIMAL_IDS,
@@ -63,6 +63,9 @@ export const avatarSchema = z.object({
   animal: z.enum(ANIMAL_IDS),
   color: z.string().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/),
   hat: z.string().max(40).nullable(),
+  face: z.string().max(40).nullable().optional(),
+  back: z.string().max(40).nullable().optional(),
+  hand: z.string().max(40).nullable().optional(),
 });
 
 /** 操作的格式（伺服器逐筆驗證） */
@@ -140,12 +143,19 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
     case 'buy': {
       const item = findItem(op.itemId);
       if (!item) return { ok: false, reason: '沒有這個商品' };
-      if (!profile.inventory.includes(item.id) && profile.coins < item.price) return { ok: false, reason: '金幣不夠' };
-      return { ok: true, profile: onProfile(profile, (s, id) => buyItem(s, id, item.id, item.price)) };
+      if (item.price === undefined) return { ok: false, reason: '這個要用獎章換' };
+      const price = item.price;
+      if (!owns(profile, item.id) && profile.coins < price) return { ok: false, reason: '金幣不夠' };
+      return { ok: true, profile: onProfile(profile, (s, id) => buyItem(s, id, item.id, price)) };
     }
     case 'avatar': {
-      const hat = op.avatar.hat;
-      if (hat !== null && !profile.inventory.includes(hat)) return { ok: false, reason: '還沒有這頂帽子' };
+      // 每一格戴的東西都要已擁有（含靠獎章擁有），而且格子相符
+      const slots: Slot[] = ['hat', 'face', 'back', 'hand'];
+      for (const slot of slots) {
+        const itemId = op.avatar[slot];
+        if (itemId == null) continue;
+        if (findItem(itemId)?.slot !== slot || !owns(profile, itemId)) return { ok: false, reason: slot === 'hat' ? '還沒有這頂帽子' : '還沒有這個道具' };
+      }
       return { ok: true, profile: onProfile(profile, (s, id) => setAvatar(s, id, op.avatar)) };
     }
     case 'curriculum':

@@ -17,6 +17,7 @@ import {
   profileSchema,
   ANIMAL_IDS,
   setTitle,
+  setAvatar,
 } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
 
@@ -363,5 +364,26 @@ describe('存檔：學習統計與獎章（R1）', () => {
     expect(setTitle(s, pid, 'first-adventure').profiles[0].title).toBe('first-adventure');
     expect(() => setTitle(s, pid, 'wrong-20')).toThrow();
     expect(setTitle(setTitle(s, pid, 'first-adventure'), pid, null).profiles[0].title).toBeNull();
+  });
+});
+
+describe('存檔：外觀道具（R2）', () => {
+  const base = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'bear', color: '#8B5A2B', hat: null } }, NOW);
+  const pid = base.profiles[0].id;
+
+  it('換外觀時沒戴的格子存成 null；有道具的外觀可以存回來', () => {
+    const s = setAvatar(base, pid, { animal: 'cat', color: '#ffffff', hat: null, face: 'face.round' });
+    expect(s.profiles[0].avatar).toEqual({ animal: 'cat', color: '#ffffff', hat: null, face: 'face.round', back: null, hand: null });
+    expect(loadSave(JSON.stringify(s)).profiles[0].avatar.face).toBe('face.round');
+  });
+
+  it('舊存檔的外觀沒有眼鏡、背後、手持也讀得進來', () => {
+    const old = { ...base, profiles: [{ ...base.profiles[0], avatar: { animal: 'bear', color: '#8B5A2B', hat: null } }] };
+    expect(loadSave(JSON.stringify(old)).profiles[0].avatar.animal).toBe('bear');
+  });
+
+  it('已經擁有（含靠獎章擁有）的東西不重複扣款', () => {
+    const hero = replaceProfile(base, { ...base.profiles[0], coins: 500, badges: { 'tower-hero': '2026-10-01' } });
+    expect(buyItem(hero, pid, 'hat.scholar', 100).profiles[0].coins).toBe(500);
   });
 });

@@ -25,7 +25,7 @@ import { clipKey, isSymbolSentence } from '../../src/audio/clips';
 import { answerLine, optionSpeech, questionSpeech } from '../../src/quiz/spoken';
 import * as LINES from '../../src/ui/lines';
 import { ZONES } from '../../src/world/layout';
-import { HATS } from '../../src/world/Hats';
+import { ITEMS } from '../../src/store/catalog';
 import { ANIMALS } from '../../src/ui/screens/ProfilesScreen';
 import { BADGES } from '../../src/store/badges';
 
@@ -106,7 +106,8 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
   addSpoken(LINES.RESULT_DONE, 'zh-TW', 'ui:result');
   addSpoken(LINES.REST_LINE, 'zh-TW', 'ui:rest');
   LINES.TEACHER_TIPS.forEach((t) => addSpoken(t, 'zh-TW', 'ui:teacher'));
-  HATS.forEach((h) => addSpoken(LINES.boughtLine(h.name), 'zh-TW', 'ui:shop'));
+  // 百寶屋買到道具（獎章專屬道具不能買，不用預錄）
+  ITEMS.filter((i) => i.price !== undefined).forEach((i) => addSpoken(LINES.boughtLine(i.name), 'zh-TW', 'ui:shop'));
   ANIMALS.forEach((a) => addSpoken(a.name, 'zh-TW', 'ui:animal'));
   // 獎章簿點獎章唸名稱；結算畫面唸「得到新獎章：○○！」
   BADGES.forEach((b) => {

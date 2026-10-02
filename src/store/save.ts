@@ -7,6 +7,7 @@ import { hashString } from '../core/rng';
 import type { Question, SessionResult, SubjectId } from '../core/types';
 import { subjectSchema } from '../content/schema';
 import { awardBadges, badgeById } from './badges';
+import { owns } from './catalog';
 
 /** 存檔格式版本；欄位有不相容變更時加一，並在 loadSave 補上轉換（v2：加入 recent、curriculum） */
 export const SAVE_SCHEMA_VERSION = 2;
@@ -49,6 +50,17 @@ export interface AvatarConfig {
   color: string;
   /** 戴的帽子（商店物品 id），沒有則為 null */
   hat: string | null;
+  /** 眼鏡（2026-10 新增；舊存檔沒有時當作沒戴，寫入時一律存成 null） */
+  face?: string | null;
+  /** 背後（書包、披風、翅膀） */
+  back?: string | null;
+  /** 手持道具 */
+  hand?: string | null;
+}
+
+/** 整理外觀：沒戴的格子一律寫成 null（不留 undefined，存檔轉成 JSON 時本機與伺服器才會一樣） */
+export function normalizeAvatar(a: AvatarConfig): AvatarConfig {
+  return { animal: a.animal, color: a.color, hat: a.hat ?? null, face: a.face ?? null, back: a.back ?? null, hand: a.hand ?? null };
 }
 
 /** 某個技能的熟練度 */
@@ -204,7 +216,7 @@ export function addProfile(save: SaveData, input: { name: string; avatar: Avatar
   const profile: Profile = {
     id: newId(now),
     name,
-    avatar: { ...input.avatar },
+    avatar: normalizeAvatar(input.avatar),
     createdAt: now.toISOString(),
     coins: 0,
     bestStars: {},
@@ -328,10 +340,10 @@ export function secondsPlayedOn(p: Profile, day: Date): number {
   return p.playLog[dateKey(day)] ?? 0;
 }
 
-/** 購買商店物品；已擁有則不重複扣款，金幣不足丟出錯誤 */
+/** 購買商店物品；已擁有（含靠獎章擁有）則不重複扣款，金幣不足丟出錯誤 */
 export function buyItem(save: SaveData, profileId: string, itemId: string, price: number): SaveData {
   return updateProfile(save, profileId, (p) => {
-    if (p.inventory.includes(itemId)) return p;
+    if (owns(p, itemId) || p.inventory.includes(itemId)) return p;
     if (p.coins < price) throw new Error('金幣不夠');
     return { ...p, coins: p.coins - price, inventory: [...p.inventory, itemId] };
   });
@@ -339,7 +351,7 @@ export function buyItem(save: SaveData, profileId: string, itemId: string, price
 
 /** 更新角色外觀 */
 export function setAvatar(save: SaveData, profileId: string, avatar: AvatarConfig): SaveData {
-  return updateProfile(save, profileId, (p) => ({ ...p, avatar: { ...avatar } }));
+  return updateProfile(save, profileId, (p) => ({ ...p, avatar: normalizeAvatar(avatar) }));
 }
 
 /** 設定某位小朋友的教材版本與學期 */
@@ -387,7 +399,15 @@ export const storedQuestion = z.looseObject({ id: z.string(), type: z.string(), 
 export const profileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  avatar: z.object({ animal: z.enum(ANIMAL_IDS), color: z.string(), hat: z.string().nullable() }),
+  avatar: z.object({
+    animal: z.enum(ANIMAL_IDS),
+    color: z.string(),
+    hat: z.string().nullable(),
+    // 2026-10 新增：可省略
+    face: z.string().nullable().optional(),
+    back: z.string().nullable().optional(),
+    hand: z.string().nullable().optional(),
+  }),
   createdAt: z.string(),
   coins: int.min(0),
   bestStars: z.record(z.string(), int.min(0).max(3)),
