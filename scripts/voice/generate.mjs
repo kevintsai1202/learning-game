@@ -22,7 +22,8 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { azureTts, esc, finish, fishTts, hash, pool, seconds, sleep } from './lib.mjs';
+import { azureTts, esc, finish, fishTts, pool, seconds, sleep } from './lib.mjs';
+import { VOICES, clipName, synthText, voiceIndex } from './rules.mjs';
 
 const INVENTORY = path.resolve('data-src/voice/inventory.json');
 const OUT = path.resolve('public/audio/voice');
@@ -30,53 +31,11 @@ const RAW = path.resolve('data-src/raw/voice-gen');
 mkdirSync(OUT, { recursive: true });
 mkdirSync(RAW, { recursive: true });
 
-const SHIHAN = '91ec588cf8ef443a9c0d5b21d0c1fa36';
-/** 各類句子用的聲音（索引寫進對照表的 v 欄位） */
-const VOICES = [
-  { id: 'fish-shihan-zh', engine: 'fish', model: 's2.1-pro-free', voice: SHIHAN, speed: 0.9 },
-  { id: 'fish-shihan-en', engine: 'fish', model: 's2.1-pro-free', voice: SHIHAN, speed: 0.85 },
-  { id: 'azure-hsiaochen-zhuyin', engine: 'azure', model: 'neural', voice: 'zh-TW-HsiaoChenNeural', speed: 0.7, tailPad: 0.25 },
-];
-
 const args = process.argv.slice(2);
 const limit = args.includes('--limit') ? Number(args[args.indexOf('--limit') + 1]) : 0;
 /** --match <正規式>：只產生鍵符合的句子（驗證特定句子用，不刪舊檔） */
 const match = args.includes('--match') ? new RegExp(args[args.indexOf('--match') + 1]) : null;
 const env = { fish: process.env.FISH_API_KEY ?? '', azureKey: process.env.AZURE_SPEECH_KEY ?? '', azureRegion: process.env.AZURE_SPEECH_REGION ?? '' };
-
-const CJK = /[一-鿿]/;
-const DIGIT_ZH = '零一二三四五六七八九';
-
-/** 這一句用哪個聲音：注音符號用 Azure；含中文一律用中文語速（即使鍵是 en-US） */
-function voiceIndex(item) {
-  if (item.voice === 'zhuyin') return 2;
-  if (CJK.test(item.text)) return 0;
-  return item.voice === 'en' ? 1 : 0;
-}
-
-/** 緊急與服務電話：在台灣習慣逐字唸（一一九），不唸成一百一十九 */
-const PHONE = /(?<!\d)(110|119|113|165|1999|1925|1957|1966|1995)(?!\d)/g;
-/** 數字逐字轉國字（110 → 一一零） */
-const digitsZh = (s) => [...s].map((d) => DIGIT_ZH[Number(d)]).join('');
-
-/** 1～99 轉國字（序數用：2 → 二，不是兩） */
-function numberZh(n) {
-  if (n <= 10) return n === 10 ? '十' : DIGIT_ZH[n];
-  const tens = Math.floor(n / 10);
-  const ones = n % 10;
-  return `${tens === 1 ? '' : DIGIT_ZH[tens]}十${ones ? DIGIT_ZH[ones] : ''}`;
-}
-
-/**
- * 實際送去合成的文字（中文句子）：
- * - 序數「第 N」改成國字：Whisper 抽查發現「第 2 課」會被唸成「第兩課」
- * - 緊急與服務電話、只有數字的短句（電話選項 123、000）改成逐字國字
- */
-function synthText(item) {
-  if (item.lang !== 'zh-TW') return item.text;
-  if (/^\d{2,4}$/.test(item.text)) return digitsZh(item.text);
-  return item.text.replace(/第\s*(\d{1,2})(?!\d)\s*/g, (_, n) => `第${numberZh(Number(n))}`).replace(PHONE, (m) => digitsZh(m));
-}
 
 /** --limit 時挑一小批涵蓋各類的句子：先挑介面句子，再輪流挑中文、英文、注音 */
 function pickSample(items, n) {
@@ -98,7 +57,7 @@ async function makeClip(item) {
   const vi = voiceIndex(item);
   const v = VOICES[vi];
   const text = synthText(item);
-  const name = `${hash(`${v.engine}|${v.model}|${v.voice}|${v.speed}|${item.lang}|${text}`, 16)}.mp3`;
+  const name = clipName(item);
   const out = path.join(OUT, name);
   if (!existsSync(out)) {
     const raw = path.join(RAW, name);
@@ -157,8 +116,9 @@ if (!partial) {
   }
 }
 const files = readdirSync(OUT).filter((f) => f.endsWith('.mp3'));
-const total = files.reduce((n, f) => n + seconds(path.join(OUT, f)), 0);
-console.log(`完成：對照表 ${Object.keys(clips).length} 句、音檔 ${files.length} 個（總長 ${Math.round(total)} 秒），刪除舊檔 ${removed} 個，失敗 ${failures.length} 句`);
+// 總長要逐一用 ffprobe 量（三千多個檔約幾分鐘），只在完整執行時計算
+const total = partial ? null : Math.round(files.reduce((n, f) => n + seconds(path.join(OUT, f)), 0));
+console.log(`完成：對照表 ${Object.keys(clips).length} 句、音檔 ${files.length} 個${total === null ? '' : `（總長 ${total} 秒）`}，刪除舊檔 ${removed} 個，失敗 ${failures.length} 句`);
 if (failures.length) {
   writeFileSync(path.join(RAW, 'failures.json'), JSON.stringify(failures, null, 1));
   process.exitCode = 1;

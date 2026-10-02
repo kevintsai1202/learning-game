@@ -62,6 +62,12 @@ describe('answerText／answerLine', () => {
     expect(answerLine(choice({}))).toEqual({ text: '正確答案是：繫好安全帶', lang: 'zh-TW' });
   });
 
+  it('選項有朗讀文字時，公布答案和按 🔊 唸的一樣（例如字首音題選項顯示「Ee」、唸「E」）', () => {
+    const q = choice({ options: [{ text: 'Ee', speak: 'E', speakLang: 'en-US' }, { text: 'Bb', speak: 'B', speakLang: 'en-US' }], answer: 0 });
+    expect(answerLine(q).text).toBe('正確答案是：E');
+    expect(answerText(q)).toBe('Ee');
+  });
+
   it('選項只有 emoji 時，朗讀才唸 emoji（例如數字鍵帽，交給 cleanForSpeech 轉成數字）', () => {
     const q = choice({ options: [{ emoji: '1️⃣' }, { emoji: '2️⃣' }], answer: 0 });
     expect(answerLine(q).text).toBe('正確答案是：1️⃣');

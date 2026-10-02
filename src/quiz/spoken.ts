@@ -43,11 +43,12 @@ export function answerText(q: Question): string {
 }
 
 /**
- * 答錯兩次、公布答案時朗讀的句子。選擇題有文字就只唸文字（emoji 是給眼睛看的，例如「5️⃣ 五」唸「五」），
- * 只有 emoji 時才唸 emoji（數字鍵帽由 cleanForSpeech 轉成數字）；其他題型和畫面顯示的答案相同。
+ * 答錯兩次、公布答案時朗讀的句子。選擇題唸的和按選項 🔊 一樣：有朗讀文字唸朗讀文字（例如字首音題選項顯示「Ee」、唸「E」），
+ * 否則唸文字（emoji 是給眼睛看的，例如「5️⃣ 五」唸「五」），只有 emoji 時才唸 emoji（數字鍵帽由 cleanForSpeech 轉成數字）；
+ * 其他題型和畫面顯示的答案相同。
  */
 export function answerLine(q: Question): Spoken {
   const o = q.type === 'choice' ? q.options[q.answer] : undefined;
-  const said = o ? (o.text ?? o.emoji ?? '') : answerText(q);
+  const said = o ? (o.speak ?? o.text ?? o.emoji ?? '') : answerText(q);
   return { text: `正確答案是：${said}`, lang: 'zh-TW' };
 }

@@ -2,12 +2,12 @@
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
   "介面": 242,
-  "全部": 3377,
-  "zh": 1756,
+  "全部": 3325,
+  "zh": 1704,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34392,
+ "chars": 33989,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -17941,38 +17941,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：",
-   "sources": [
-    "en.phonics",
-    "en.word-cards",
-    "en.words-num"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：0",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：0",
-   "sources": [
-    "en.phonics",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：1",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：1",
-   "sources": [
-    "en.word-cards",
-    "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：110",
    "lang": "zh-TW",
    "voice": "zh",
@@ -18003,17 +17971,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：2",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：2",
-   "sources": [
-    "en.word-cards",
-    "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：20 秒",
    "lang": "zh-TW",
    "voice": "zh",
@@ -18021,83 +17978,6 @@
    "sources": [
     "life.health",
     "tower.life"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：3",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：3",
-   "sources": [
-    "en.word-cards",
-    "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：4",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：4",
-   "sources": [
-    "en.word-cards",
-    "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：5",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：5",
-   "sources": [
-    "en.word-cards",
-    "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：6",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：6",
-   "sources": [
-    "en.phonics",
-    "en.word-cards",
-    "en.words-num"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：7",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：7",
-   "sources": [
-    "en.word-cards",
-    "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：8",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：8",
-   "sources": [
-    "en.word-cards",
-    "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：9",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：9",
-   "sources": [
-    "en.phonics",
-    "en.word-cards",
-    "en.words-num"
    ]
   },
   {
@@ -22281,9 +22161,7 @@
    "voice": "zh",
    "text": "正確答案是：a",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -22298,32 +22176,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：A、a",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：A、a",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Aa",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Aa",
-   "sources": [
-    "en.phonics",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：angry",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：angry",
    "sources": [
-    "en.word-cards"
+    "en.phonics",
+    "en.word-cards",
+    "tower.en"
    ]
   },
   {
@@ -22332,9 +22192,9 @@
    "voice": "zh",
    "text": "正確答案是：ant",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -22343,9 +22203,9 @@
    "voice": "zh",
    "text": "正確答案是：apple",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -22385,9 +22245,7 @@
    "voice": "zh",
    "text": "正確答案是：b",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -22402,16 +22260,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：B、b",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：B、b",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：baby",
    "lang": "zh-TW",
    "voice": "zh",
@@ -22419,7 +22267,7 @@
    "sources": [
     "en.word-cards",
     "en.words-family",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22439,7 +22287,7 @@
    "sources": [
     "en.word-cards",
     "en.words-school",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22448,8 +22296,9 @@
    "voice": "zh",
    "text": "正確答案是：ball",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22459,6 +22308,7 @@
    "text": "正確答案是：balloon",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -22470,17 +22320,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Bb",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Bb",
-   "sources": [
-    "en.phonics",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22499,9 +22339,9 @@
    "voice": "zh",
    "text": "正確答案是：bear",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -22510,7 +22350,8 @@
    "voice": "zh",
    "text": "正確答案是：bed",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -22529,7 +22370,8 @@
    "voice": "zh",
    "text": "正確答案是：bike",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -22538,9 +22380,9 @@
    "voice": "zh",
    "text": "正確答案是：bird",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -22571,7 +22413,8 @@
    "voice": "zh",
    "text": "正確答案是：boat",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -22582,7 +22425,7 @@
    "sources": [
     "en.word-cards",
     "en.words-school",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22592,6 +22435,7 @@
    "text": "正確答案是：box",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -22603,7 +22447,7 @@
    "sources": [
     "en.word-cards",
     "en.words-family",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22645,8 +22489,9 @@
    "voice": "zh",
    "text": "正確答案是：bus",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22655,9 +22500,7 @@
    "voice": "zh",
    "text": "正確答案是：c",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -22672,15 +22515,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：C、c",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：C、c",
-   "sources": [
-    "en.case-match"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：cake",
    "lang": "zh-TW",
    "voice": "zh",
@@ -22688,7 +22522,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22699,7 +22533,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22709,6 +22543,7 @@
    "text": "正確答案是：car",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -22718,19 +22553,9 @@
    "voice": "zh",
    "text": "正確答案是：cat",
    "sources": [
-    "en.word-cards",
-    "en.words-animal",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Cc",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Cc",
-   "sources": [
     "en.phonics",
-    "tower.en"
+    "en.word-cards",
+    "en.words-animal"
    ]
   },
   {
@@ -22741,7 +22566,7 @@
    "sources": [
     "en.word-cards",
     "en.words-school",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22788,7 +22613,8 @@
    "voice": "zh",
    "text": "正確答案是：cloud",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -22849,7 +22675,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22868,9 +22694,9 @@
    "voice": "zh",
    "text": "正確答案是：cow",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -22881,7 +22707,7 @@
    "sources": [
     "en.word-cards",
     "en.words-school",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22909,9 +22735,7 @@
    "voice": "zh",
    "text": "正確答案是：d",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -22923,16 +22747,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：D、d",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：D、d",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -22952,16 +22766,7 @@
    "voice": "zh",
    "text": "正確答案是：dance",
    "sources": [
-    "en.word-cards"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Dd",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Dd",
-   "sources": [
-    "en.phonics",
+    "en.word-cards",
     "tower.en"
    ]
   },
@@ -22984,7 +22789,7 @@
    "sources": [
     "en.word-cards",
     "en.words-family",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -22993,9 +22798,9 @@
    "voice": "zh",
    "text": "正確答案是：dog",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -23014,7 +22819,9 @@
    "voice": "zh",
    "text": "正確答案是：door",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns",
+    "tower.en"
    ]
   },
   {
@@ -23034,6 +22841,7 @@
    "text": "正確答案是：dress",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -23052,9 +22860,9 @@
    "voice": "zh",
    "text": "正確答案是：duck",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -23063,9 +22871,7 @@
    "voice": "zh",
    "text": "正確答案是：e",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -23080,16 +22886,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：E、e",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：E、e",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：ear",
    "lang": "zh-TW",
    "voice": "zh",
@@ -23097,7 +22893,7 @@
    "sources": [
     "en.word-cards",
     "en.words-body",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23110,24 +22906,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Ee",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Ee",
-   "sources": [
-    "en.phonics",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：egg",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：egg",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -23158,9 +22944,9 @@
    "voice": "zh",
    "text": "正確答案是：elephant",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -23193,7 +22979,7 @@
    "sources": [
     "en.word-cards",
     "en.words-body",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23202,9 +22988,7 @@
    "voice": "zh",
    "text": "正確答案是：f",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -23216,16 +23000,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：F、f",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：F、f",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -23247,7 +23021,7 @@
    "sources": [
     "en.word-cards",
     "en.words-family",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23257,16 +23031,6 @@
    "text": "正確答案是：fast",
    "sources": [
     "en.word-cards"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Ff",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Ff",
-   "sources": [
-    "en.phonics",
-    "tower.en"
    ]
   },
   {
@@ -23286,9 +23050,9 @@
    "voice": "zh",
    "text": "正確答案是：fish",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -23319,7 +23083,7 @@
    "sources": [
     "en.word-cards",
     "en.words-body",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23345,6 +23109,16 @@
    ]
   },
   {
+   "key": "zh-TW|正確答案是：fox",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "正確答案是：fox",
+   "sources": [
+    "en.phonics",
+    "tower.en"
+   ]
+  },
+  {
    "key": "zh-TW|正確答案是：friend",
    "lang": "zh-TW",
    "voice": "zh",
@@ -23352,7 +23126,7 @@
    "sources": [
     "en.word-cards",
     "en.words-family",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23361,9 +23135,9 @@
    "voice": "zh",
    "text": "正確答案是：frog",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -23372,9 +23146,7 @@
    "voice": "zh",
    "text": "正確答案是：g",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -23389,32 +23161,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：G、g",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：G、g",
-   "sources": [
-    "en.case-match"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：game",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：game",
    "sources": [
-    "en.word-cards",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Gg",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Gg",
-   "sources": [
     "en.phonics",
-    "tower.en"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -23423,9 +23177,9 @@
    "voice": "zh",
    "text": "正確答案是：girl",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-family",
-    "tower.en"
+    "en.words-family"
    ]
   },
   {
@@ -23456,6 +23210,16 @@
    "text": "正確答案是：Go back to your seat, please.",
    "sources": [
     "en.phrases",
+    "tower.en"
+   ]
+  },
+  {
+   "key": "zh-TW|正確答案是：goat",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "正確答案是：goat",
+   "sources": [
+    "en.phonics",
     "tower.en"
    ]
   },
@@ -23556,9 +23320,9 @@
    "voice": "zh",
    "text": "正確答案是：grape",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -23589,9 +23353,7 @@
    "voice": "zh",
    "text": "正確答案是：h",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -23603,15 +23365,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：H、h",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：H、h",
-   "sources": [
-    "en.case-match"
    ]
   },
   {
@@ -23633,7 +23386,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23642,9 +23395,9 @@
    "voice": "zh",
    "text": "正確答案是：hand",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-body",
-    "tower.en"
+    "en.words-body"
    ]
   },
   {
@@ -23663,8 +23416,9 @@
    "voice": "zh",
    "text": "正確答案是：hat",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23709,16 +23463,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Hh",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Hh",
-   "sources": [
-    "en.phonics",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：Hi!",
    "lang": "zh-TW",
    "voice": "zh",
@@ -23734,7 +23478,9 @@
    "voice": "zh",
    "text": "正確答案是：home",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns",
+    "tower.en"
    ]
   },
   {
@@ -23743,9 +23489,9 @@
    "voice": "zh",
    "text": "正確答案是：horse",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -23754,7 +23500,8 @@
    "voice": "zh",
    "text": "正確答案是：hot",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "tower.en"
    ]
   },
   {
@@ -23783,9 +23530,7 @@
    "voice": "zh",
    "text": "正確答案是：i",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -23797,16 +23542,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：I、i",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：I、i",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -23837,17 +23572,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Ii",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Ii",
-   "sources": [
-    "en.phonics",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -23857,6 +23582,16 @@
    "text": "正確答案是：in",
    "sources": [
     "en.word-cards",
+    "tower.en"
+   ]
+  },
+  {
+   "key": "zh-TW|正確答案是：insect",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "正確答案是：insect",
+   "sources": [
+    "en.phonics",
     "tower.en"
    ]
   },
@@ -24768,9 +24503,7 @@
    "voice": "zh",
    "text": "正確答案是：j",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -24785,32 +24518,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：J、j",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：J、j",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：jacket",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：jacket",
    "sources": [
-    "en.word-cards"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Jj",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Jj",
-   "sources": [
     "en.phonics",
-    "tower.en"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -24819,9 +24534,9 @@
    "voice": "zh",
    "text": "正確答案是：juice",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -24839,9 +24554,7 @@
    "voice": "zh",
    "text": "正確答案是：k",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -24856,22 +24569,23 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：K、k",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：K、k",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：key",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：key",
    "sources": [
+    "en.phonics",
     "en.word-cards",
+    "en.patterns"
+   ]
+  },
+  {
+   "key": "zh-TW|正確答案是：king",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "正確答案是：king",
+   "sources": [
+    "en.phonics",
     "tower.en"
    ]
   },
@@ -24881,18 +24595,9 @@
    "voice": "zh",
    "text": "正確答案是：kite",
    "sources": [
-    "en.word-cards",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Kk",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Kk",
-   "sources": [
     "en.phonics",
-    "tower.en"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -24901,9 +24606,7 @@
    "voice": "zh",
    "text": "正確答案是：l",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -24918,24 +24621,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：L、l",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：L、l",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：leg",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：leg",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-body",
-    "tower.en"
+    "en.words-body"
    ]
   },
   {
@@ -24944,9 +24637,9 @@
    "voice": "zh",
    "text": "正確答案是：lemon",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -24974,9 +24667,9 @@
    "voice": "zh",
    "text": "正確答案是：lion",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -25006,16 +24699,6 @@
    "text": "正確答案是：Listen!",
    "sources": [
     "en.phrases",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Ll",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Ll",
-   "sources": [
-    "en.phonics",
     "tower.en"
    ]
   },
@@ -25064,9 +24747,7 @@
    "voice": "zh",
    "text": "正確答案是：m",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -25081,15 +24762,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：M、m",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：M、m",
-   "sources": [
-    "en.case-match"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：mango",
    "lang": "zh-TW",
    "voice": "zh",
@@ -25097,7 +24769,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -25106,19 +24778,9 @@
    "voice": "zh",
    "text": "正確答案是：milk",
    "sources": [
-    "en.word-cards",
-    "en.words-food",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Mm",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Mm",
-   "sources": [
     "en.phonics",
-    "tower.en"
+    "en.word-cards",
+    "en.words-food"
    ]
   },
   {
@@ -25138,9 +24800,9 @@
    "voice": "zh",
    "text": "正確答案是：monkey",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -25149,9 +24811,9 @@
    "voice": "zh",
    "text": "正確答案是：mouse",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -25162,7 +24824,7 @@
    "sources": [
     "en.word-cards",
     "en.words-body",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -25171,7 +24833,9 @@
    "voice": "zh",
    "text": "正確答案是：MRT",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns",
+    "tower.en"
    ]
   },
   {
@@ -25260,9 +24924,7 @@
    "voice": "zh",
    "text": "正確答案是：n",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -25274,16 +24936,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：N、n",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：N、n",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -25301,9 +24953,9 @@
    "voice": "zh",
    "text": "正確答案是：nine",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-num",
-    "tower.en"
+    "en.words-num"
    ]
   },
   {
@@ -25314,16 +24966,6 @@
    "sources": [
     "en.word-cards",
     "en.words-num",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Nn",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Nn",
-   "sources": [
-    "en.phonics",
     "tower.en"
    ]
   },
@@ -25363,9 +25005,9 @@
    "voice": "zh",
    "text": "正確答案是：nose",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-body",
-    "tower.en"
+    "en.words-body"
    ]
   },
   {
@@ -25376,7 +25018,7 @@
    "sources": [
     "en.word-cards",
     "en.words-school",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -25385,9 +25027,9 @@
    "voice": "zh",
    "text": "正確答案是：nurse",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-family",
-    "tower.en"
+    "en.words-family"
    ]
   },
   {
@@ -25396,9 +25038,7 @@
    "voice": "zh",
    "text": "正確答案是：o",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -25410,16 +25050,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：O、o",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：O、o",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -25463,16 +25093,6 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Oo",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Oo",
-   "sources": [
-    "en.phonics",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：open",
    "lang": "zh-TW",
    "voice": "zh",
@@ -25498,9 +25118,18 @@
    "voice": "zh",
    "text": "正確答案是：orange",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-color",
-    "tower.en"
+    "en.words-color"
+   ]
+  },
+  {
+   "key": "zh-TW|正確答案是：ox",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "正確答案是：ox",
+   "sources": [
+    "en.phonics"
    ]
   },
   {
@@ -25509,9 +25138,7 @@
    "voice": "zh",
    "text": "正確答案是：p",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -25523,16 +25150,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：P、p",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：P、p",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -25553,6 +25170,7 @@
    "text": "正確答案是：park",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -25564,7 +25182,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -25573,9 +25191,9 @@
    "voice": "zh",
    "text": "正確答案是：pen",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-school",
-    "tower.en"
+    "en.words-school"
    ]
   },
   {
@@ -25586,7 +25204,7 @@
    "sources": [
     "en.word-cards",
     "en.words-school",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -25595,9 +25213,9 @@
    "voice": "zh",
    "text": "正確答案是：pig",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -25608,7 +25226,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -25628,9 +25246,9 @@
    "voice": "zh",
    "text": "正確答案是：pizza",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -25639,7 +25257,8 @@
    "voice": "zh",
    "text": "正確答案是：plane",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -25659,16 +25278,6 @@
    "text": "正確答案是：Point to the word \"fish.\"",
    "sources": [
     "en.phrases",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Pp",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Pp",
-   "sources": [
-    "en.phonics",
     "tower.en"
    ]
   },
@@ -25709,6 +25318,7 @@
    "text": "正確答案是：puzzle",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -25718,9 +25328,7 @@
    "voice": "zh",
    "text": "正確答案是：q",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -25735,20 +25343,10 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Q、q",
+   "key": "zh-TW|正確答案是：queen",
    "lang": "zh-TW",
    "voice": "zh",
-   "text": "正確答案是：Q、q",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Qq",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Qq",
+   "text": "正確答案是：queen",
    "sources": [
     "en.phonics",
     "tower.en"
@@ -25760,7 +25358,9 @@
    "voice": "zh",
    "text": "正確答案是：quiet",
    "sources": [
-    "en.word-cards"
+    "en.phonics",
+    "en.word-cards",
+    "tower.en"
    ]
   },
   {
@@ -25769,9 +25369,7 @@
    "voice": "zh",
    "text": "正確答案是：r",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -25786,24 +25384,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：R、r",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：R、r",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：rabbit",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：rabbit",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -25812,7 +25400,9 @@
    "voice": "zh",
    "text": "正確答案是：rain",
    "sources": [
-    "en.word-cards"
+    "en.phonics",
+    "en.word-cards",
+    "tower.en"
    ]
   },
   {
@@ -25821,7 +25411,8 @@
    "voice": "zh",
    "text": "正確答案是：rainbow",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -25859,9 +25450,9 @@
    "voice": "zh",
    "text": "正確答案是：red",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-color",
-    "tower.en"
+    "en.words-color"
    ]
   },
   {
@@ -25900,16 +25491,8 @@
    "voice": "zh",
    "text": "正確答案是：robot",
    "sources": [
-    "en.word-cards"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Rr",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Rr",
-   "sources": [
-    "en.phonics",
+    "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -25921,7 +25504,7 @@
    "sources": [
     "en.word-cards",
     "en.words-school",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -25940,9 +25523,7 @@
    "voice": "zh",
    "text": "正確答案是：s",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -25954,16 +25535,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：S、s",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：S、s",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -25983,6 +25554,7 @@
    "text": "正確答案是：school",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -25992,7 +25564,8 @@
    "voice": "zh",
    "text": "正確答案是：scooter",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -26054,7 +25627,7 @@
    "sources": [
     "en.word-cards",
     "en.words-animal",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26063,7 +25636,9 @@
    "voice": "zh",
    "text": "正確答案是：shirt",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "en.patterns",
+    "tower.en"
    ]
   },
   {
@@ -26131,9 +25706,9 @@
    "voice": "zh",
    "text": "正確答案是：six",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-num",
-    "tower.en"
+    "en.words-num"
    ]
   },
   {
@@ -26184,7 +25759,7 @@
    "sources": [
     "en.word-cards",
     "en.words-animal",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26203,7 +25778,8 @@
    "voice": "zh",
    "text": "正確答案是：socks",
    "sources": [
-    "en.word-cards"
+    "en.word-cards",
+    "tower.en"
    ]
   },
   {
@@ -26212,19 +25788,9 @@
    "voice": "zh",
    "text": "正確答案是：soup",
    "sources": [
-    "en.word-cards",
-    "en.words-food",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Ss",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Ss",
-   "sources": [
     "en.phonics",
-    "tower.en"
+    "en.word-cards",
+    "en.words-food"
    ]
   },
   {
@@ -26254,7 +25820,7 @@
    "sources": [
     "en.word-cards",
     "en.words-food",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26265,7 +25831,7 @@
    "sources": [
     "en.word-cards",
     "en.words-family",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26274,6 +25840,7 @@
    "voice": "zh",
    "text": "正確答案是：sun",
    "sources": [
+    "en.phonics",
     "en.word-cards",
     "tower.en"
    ]
@@ -26304,9 +25871,7 @@
    "voice": "zh",
    "text": "正確答案是：t",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -26318,16 +25883,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：T、t",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：T、t",
-   "sources": [
-    "en.case-match",
-    "tower.en"
    ]
   },
   {
@@ -26366,7 +25921,9 @@
    "voice": "zh",
    "text": "正確答案是：taxi",
    "sources": [
-    "en.word-cards"
+    "en.phonics",
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -26388,7 +25945,7 @@
    "sources": [
     "en.word-cards",
     "en.words-family",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26450,9 +26007,9 @@
    "voice": "zh",
    "text": "正確答案是：tiger",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
-    "tower.en"
+    "en.words-animal"
    ]
   },
   {
@@ -26472,7 +26029,7 @@
    "sources": [
     "en.word-cards",
     "en.words-body",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26481,6 +26038,7 @@
    "voice": "zh",
    "text": "正確答案是：toy",
    "sources": [
+    "en.phonics",
     "en.word-cards",
     "tower.en"
    ]
@@ -26492,6 +26050,7 @@
    "text": "正確答案是：train",
    "sources": [
     "en.word-cards",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -26502,16 +26061,7 @@
    "text": "正確答案是：truck",
    "sources": [
     "en.word-cards",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Tt",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Tt",
-   "sources": [
-    "en.phonics",
+    "en.patterns",
     "tower.en"
    ]
   },
@@ -26554,9 +26104,7 @@
    "voice": "zh",
    "text": "正確答案是：u",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -26571,22 +26119,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：U、u",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：U、u",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：umbrella",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：umbrella",
    "sources": [
-    "en.word-cards"
+    "en.phonics",
+    "en.word-cards",
+    "en.patterns"
    ]
   },
   {
@@ -26620,24 +26160,12 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Uu",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Uu",
-   "sources": [
-    "en.phonics",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：v",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：v",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -26652,12 +26180,13 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：V、v",
+   "key": "zh-TW|正確答案是：vegetable",
    "lang": "zh-TW",
    "voice": "zh",
-   "text": "正確答案是：V、v",
+   "text": "正確答案是：vegetable",
    "sources": [
-    "en.case-match"
+    "en.phonics",
+    "tower.en"
    ]
   },
   {
@@ -26671,10 +26200,19 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Vv",
+   "key": "zh-TW|正確答案是：vest",
    "lang": "zh-TW",
    "voice": "zh",
-   "text": "正確答案是：Vv",
+   "text": "正確答案是：vest",
+   "sources": [
+    "en.phonics"
+   ]
+  },
+  {
+   "key": "zh-TW|正確答案是：violin",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "正確答案是：violin",
    "sources": [
     "en.phonics",
     "tower.en"
@@ -26686,9 +26224,7 @@
    "voice": "zh",
    "text": "正確答案是：w",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -26700,15 +26236,6 @@
     "en.letter-write",
     "en.case-match",
     "en.letter-listen"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：W、w",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：W、w",
-   "sources": [
-    "en.case-match"
    ]
   },
   {
@@ -26756,9 +26283,9 @@
    "voice": "zh",
    "text": "正確答案是：water",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -26767,9 +26294,9 @@
    "voice": "zh",
    "text": "正確答案是：watermelon",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-food",
-    "tower.en"
+    "en.words-food"
    ]
   },
   {
@@ -26818,8 +26345,9 @@
    "voice": "zh",
    "text": "正確答案是：window",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26841,24 +26369,12 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Ww",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Ww",
-   "sources": [
-    "en.phonics",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：x",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：x",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -26873,23 +26389,12 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：X、x",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：X、x",
-   "sources": [
-    "en.case-match"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：y",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：y",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -26904,24 +26409,14 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Y、y",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Y、y",
-   "sources": [
-    "en.case-match",
-    "tower.en"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：yellow",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：yellow",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-color",
-    "tower.en"
+    "en.words-color"
    ]
   },
   {
@@ -26950,8 +26445,9 @@
    "voice": "zh",
    "text": "正確答案是：yo-yo",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "tower.en"
+    "en.patterns"
    ]
   },
   {
@@ -26970,17 +26466,8 @@
    "voice": "zh",
    "text": "正確答案是：yummy",
    "sources": [
-    "en.word-cards",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Yy",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Yy",
-   "sources": [
     "en.phonics",
+    "en.word-cards",
     "tower.en"
    ]
   },
@@ -26990,9 +26477,7 @@
    "voice": "zh",
    "text": "正確答案是：z",
    "sources": [
-    "en.letter-write",
-    "en.case-match",
-    "en.letter-listen"
+    "en.letter-write"
    ]
   },
   {
@@ -27007,22 +26492,23 @@
    ]
   },
   {
-   "key": "zh-TW|正確答案是：Z、z",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Z、z",
-   "sources": [
-    "en.case-match"
-   ]
-  },
-  {
    "key": "zh-TW|正確答案是：zebra",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "正確答案是：zebra",
    "sources": [
+    "en.phonics",
     "en.word-cards",
-    "en.words-animal",
+    "en.words-animal"
+   ]
+  },
+  {
+   "key": "zh-TW|正確答案是：zero",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "正確答案是：zero",
+   "sources": [
+    "en.phonics",
     "tower.en"
    ]
   },
@@ -27033,16 +26519,6 @@
    "text": "正確答案是：zoo",
    "sources": [
     "en.word-cards",
-    "tower.en"
-   ]
-  },
-  {
-   "key": "zh-TW|正確答案是：Zz",
-   "lang": "zh-TW",
-   "voice": "zh",
-   "text": "正確答案是：Zz",
-   "sources": [
-    "en.phonics",
     "tower.en"
    ]
   },

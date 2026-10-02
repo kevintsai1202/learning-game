@@ -20,6 +20,8 @@ npx playwright test  # e2e（需先 build）
 npx vitest run --config vitest.voice.config.ts                                  # 盤點要預錄的句子 → data-src/voice/inventory.json
 node --env-file-if-exists=.env scripts/voice/generate.mjs 2>&1 | Tee-Object -FilePath logs\voice-generate.log   # 產生 public/audio/voice/
 node --env-file-if-exists=.env scripts/voice/check.mjs 2>&1 | Tee-Object -FilePath logs\voice-check.log         # Whisper 聽寫抽查
+node --env-file-if-exists=.env scripts/voice/variants.mjs   # 讀音修正：同一句做幾種寫法給使用者挑（清單在 data-src/voice/variants.json）
+node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的版本設成正式音檔（先在 scripts/voice/rules.mjs 改好規則），再跑 generate.mjs
 ```
 
 長時指令的輸出 tee 到 `logs/`（不進版控）。
