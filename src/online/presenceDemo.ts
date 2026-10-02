@@ -5,7 +5,7 @@
  */
 import { usePresence } from './usePresence';
 import type { RemoteMember } from './presence';
-import type { Animal } from '../store/save';
+import type { Animal, AvatarConfig } from '../store/save';
 import type { ZoneId } from '../store/useUi';
 
 /** 模擬用的短句（P2 會改成 src/ui/lines.ts 的正式短句，並補預錄語音） */
@@ -22,12 +22,14 @@ interface DemoKid {
   heading: number;
   zone?: ZoneId;
   path?: { x: number; z: number }[];
+  /** 戴的道具、寵物、走路特效 */
+  gear?: Partial<AvatarConfig>;
 }
 
 /** 模擬的同學：新動物都在島上，兩位在建築裡（島上看不到，公頻名單顯示在哪裡） */
 const KIDS: DemoKid[] = [
-  { id: 'demo-capybara', nickname: '阿寶', animal: 'capybara', color: '#8b5a2b', x: -1.8, z: 5.2, heading: 0.2 },
-  { id: 'demo-panda', nickname: '小美', animal: 'panda', color: '#5b5b6b', x: 2.7, z: 4.4, heading: -0.5 },
+  { id: 'demo-capybara', nickname: '阿寶', animal: 'capybara', color: '#8b5a2b', x: -1.8, z: 5.2, heading: 0.2, gear: { pet: 'pet.chick' } },
+  { id: 'demo-panda', nickname: '小美', animal: 'panda', color: '#5b5b6b', x: 2.7, z: 4.4, heading: -0.5, gear: { face: 'face.round', hand: 'hand.balloon' } },
   {
     id: 'demo-penguin',
     nickname: '皮皮',
@@ -36,6 +38,7 @@ const KIDS: DemoKid[] = [
     x: -3.2,
     z: 8.4,
     heading: 1.6,
+    gear: { trail: 'trail.stars', back: 'back.cape' },
     path: [
       { x: 3.4, z: 8.4 },
       { x: 3.4, z: 2.6 },
@@ -43,8 +46,8 @@ const KIDS: DemoKid[] = [
       { x: -3.2, z: 8.4 },
     ],
   },
-  { id: 'demo-fox', nickname: '小橘', animal: 'fox', color: '#f2b36b', x: -5.6, z: 2.4, heading: 0.9 },
-  { id: 'demo-koala', nickname: '圓圓', animal: 'koala', color: '#5b5b6b', x: 5.8, z: 7.4, heading: -1.0 },
+  { id: 'demo-fox', nickname: '小橘', animal: 'fox', color: '#f2b36b', x: -5.6, z: 2.4, heading: 0.9, gear: { hat: 'hat.pirate' } },
+  { id: 'demo-koala', nickname: '圓圓', animal: 'koala', color: '#5b5b6b', x: 5.8, z: 7.4, heading: -1.0, gear: { pet: 'pet.owl', hat: 'hat.scholar' } },
   {
     id: 'demo-pig',
     nickname: '嘟嘟',
@@ -53,6 +56,7 @@ const KIDS: DemoKid[] = [
     x: 5.6,
     z: 1.2,
     heading: -1.4,
+    gear: { pet: 'pet.butterfly', trail: 'trail.flowers' },
     path: [
       { x: -0.8, z: 0.8 },
       { x: -6.8, z: 6.2 },
@@ -69,6 +73,7 @@ const KIDS: DemoKid[] = [
     x: 4.4,
     z: -0.6,
     heading: -0.4,
+    gear: { back: 'back.wings' },
     path: [
       { x: 7.6, z: -3.4 },
       { x: 4.4, z: -0.6 },
@@ -100,7 +105,15 @@ export function startPresenceDemo(): () => void {
   const store = usePresence.getState();
   store.clear();
   for (const k of KIDS) {
-    const m: RemoteMember = { id: k.id, nickname: k.nickname, avatar: { animal: k.animal, color: k.color, hat: null }, x: k.x, z: k.z, heading: k.heading, zone: k.zone ?? null };
+    const m: RemoteMember = {
+      id: k.id,
+      nickname: k.nickname,
+      avatar: { animal: k.animal, color: k.color, hat: null, ...k.gear },
+      x: k.x,
+      z: k.z,
+      heading: k.heading,
+      zone: k.zone ?? null,
+    };
     store.upsert(m);
   }
   const now = Date.now();
