@@ -1,5 +1,5 @@
 /**
- * 島上的介面：角色名牌、金幣與星星、門口提示泡泡、熊熊老師的話、觸控搖桿。
+ * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、門口提示泡泡、熊熊老師的話、觸控搖桿。
  */
 import { useEffect, useRef } from 'react';
 import { useGame } from '../../store/useGame';
@@ -10,6 +10,37 @@ import { speak } from '../../audio/speech';
 import { sfx } from '../../audio/sfx';
 import { animalEmoji } from './ProfilesScreen';
 import { teacherTalk } from '../teacherTips';
+import { useCloud, type CloudStatus } from '../../online/useCloud';
+
+/** 同步狀態的圖示與文字 */
+const CLOUD_LABEL: Record<CloudStatus, string> = {
+  idle: '☁️',
+  syncing: '🔄 同步中',
+  synced: '☁️ 已存到班級',
+  offline: '📴 離線',
+  needLogin: '🔑 請重新登入',
+  error: '⚠️ 同步失敗',
+};
+
+/** 雲端角色才顯示：進度有沒有存到班級；需要重新登入時點一下去登入 */
+function CloudChip() {
+  const status = useCloud((s) => s.status);
+  const pending = useCloud((s) => s.pending);
+  const goto = useUi((s) => s.goto);
+  const label = CLOUD_LABEL[status] + (pending > 0 && status !== 'synced' ? `・${pending} 筆待上傳` : '');
+  return (
+    <button
+      className="hud-chip"
+      style={{ paddingLeft: 14 }}
+      onClick={() => status === 'needLogin' && goto('class')}
+      aria-label={`同步狀態：${label}`}
+      data-testid="hud-cloud"
+      data-status={status}
+    >
+      {label}
+    </button>
+  );
+}
 
 /** 觸控搖桿：拖曳圓鈕控制方向 */
 function Joystick() {
@@ -117,6 +148,7 @@ export function IslandHud() {
           <span className="hud-chip" style={{ paddingLeft: 14 }}>
             ⭐ {totalStars}
           </span>
+          {profile?.cloud && <CloudChip />}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn round white" onClick={teacherTalk} aria-label="問熊熊老師">

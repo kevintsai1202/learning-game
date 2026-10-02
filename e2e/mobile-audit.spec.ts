@@ -196,6 +196,16 @@ for (const d of DEVICES) {
         await check(`20-parent-${tab}`);
       }
 
+      // 班級（線上版）：沒有設定伺服器也能顯示表單，直接切過去量版面
+      await page.evaluate(() => (window as any).__game.ui.getState().goto('class'));
+      await check('22-class-login');
+      await page.getByTestId('class-tab-join').click();
+      await check('23-class-join');
+      await page.evaluate(() => (window as any).__game.ui.getState().goto('teacher'));
+      await check('24-teacher-create');
+      await page.getByTestId('teacher-tab-login').click();
+      await check('25-teacher-login');
+
       writeFileSync(`${OUT}/${d.name}-report.json`, JSON.stringify({ unreachable, report }, null, 1));
       const problems = Object.entries(report).filter(([, r]) => r.pageScrollX || r.offenders.length);
       console.log(`${d.name}：${problems.length}／${Object.keys(report).length} 個畫面有超出`);

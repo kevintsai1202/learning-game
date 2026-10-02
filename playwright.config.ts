@@ -17,12 +17,23 @@ export default defineConfig({
       args: ['--enable-unsafe-swiftshader', '--use-angle=swiftshader', '--autoplay-policy=no-user-gesture-required'],
     },
   },
+  // 本機：同時啟動前端（vite preview）與班級伺服器（PGlite 記憶體資料庫，每次啟動都是空的）。
+  // 線上功能只有 online.spec.ts 會用（它把伺服器網址寫進 localStorage），其他測試不受影響。
   webServer: process.env.BASE_URL
     ? undefined
-    : {
-        command: 'npm run preview',
-        url: 'http://localhost:4183',
-        reuseExistingServer: true,
-        timeout: 60_000,
-      },
+    : [
+        {
+          command: 'npm run preview',
+          url: 'http://localhost:4183',
+          reuseExistingServer: true,
+          timeout: 60_000,
+        },
+        {
+          command: 'npm run server:build && npm run server:start',
+          url: 'http://localhost:8787/healthz',
+          reuseExistingServer: true,
+          timeout: 120_000,
+          env: { PORT: '8787', ALLOWED_ORIGINS: 'http://localhost:4183' },
+        },
+      ],
 });

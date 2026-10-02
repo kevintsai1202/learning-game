@@ -3,17 +3,8 @@
  */
 import { toon } from './materials';
 
-/** 商店物品清單（帽子） */
-export const HATS = [
-  { id: 'hat.party', name: '派對帽', price: 20 },
-  { id: 'hat.cap', name: '棒球帽', price: 30 },
-  { id: 'hat.flower', name: '花圈', price: 40 },
-  { id: 'hat.straw', name: '草帽', price: 50 },
-  { id: 'hat.helmet', name: '安全帽', price: 60 },
-  { id: 'hat.chef', name: '廚師帽', price: 60 },
-  { id: 'hat.crown', name: '皇冠', price: 120 },
-  { id: 'hat.wizard', name: '魔法帽', price: 150 },
-] as const;
+/** 商店物品清單（帽子）；資料在 src/store/catalog.ts，伺服器也用同一份查價 */
+export { HATS } from '../store/catalog';
 
 export function Hat({ id }: { id: string }) {
   switch (id) {

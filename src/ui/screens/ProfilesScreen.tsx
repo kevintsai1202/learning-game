@@ -1,5 +1,6 @@
 /**
  * 選角畫面：選擇小朋友，或建立新角色（名字、動物、顏色）。
+ * 有設定班級伺服器時，多一張「🏫 班級」卡片（加入或登入班級）；雲端角色的卡片標示班級名稱。
  */
 import { useState } from 'react';
 import { useGame } from '../../store/useGame';
@@ -10,6 +11,7 @@ import { speak } from '../../audio/speech';
 import { enterIslandLine } from '../lines';
 import { teleport } from '../../world/input';
 import { SPAWN } from '../../world/layout';
+import { onlineEnabled } from '../../online/config';
 
 /** 動物選項 */
 export const ANIMALS: { id: Animal; emoji: string; name: string }[] = [
@@ -94,6 +96,11 @@ export function ProfilesScreen() {
             >
               ✓ 完成，出發！
             </button>
+            {onlineEnabled() && (
+              <button className="btn small white" style={{ marginTop: 12 }} onClick={() => goto('class')} data-testid="create-open-class">
+                🏫 已經在班級裡了？用班級登入
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -128,8 +135,16 @@ export function ProfilesScreen() {
                 <span className="meta">
                   🪙 {p.coins}　⭐ {Object.values(p.bestStars).reduce((s, v) => s + v, 0)}
                 </span>
+                {p.cloud && <span className="cloud-badge">🏫 {p.cloud.roomName}</span>}
               </button>
             ))}
+            {onlineEnabled() && (
+              <button className="profile-card add" onClick={() => goto('class')} data-testid="open-class">
+                <span className="face">🏫</span>
+                班級
+                <span className="meta">加入或登入</span>
+              </button>
+            )}
             <button className="profile-card add" onClick={() => setCreating(true)}>
               <span className="face">➕</span>
               新增角色

@@ -1,0 +1,203 @@
+/**
+ * 雲端同步的畫面狀態與排程（zustand）。同步邏輯本身在 cloudSync.ts（有單元測試）。
+ *
+ * 什麼時候同步：
+ * - 雲端角色做了動作：一般操作約 1 秒後送；遊玩時間每 30 秒才會來一筆，不急，等 30 秒
+ * - 換成雲端角色、分頁回到前景、瀏覽器回報連上網路：馬上同步
+ * - 每 2 分鐘拉一次（看其他裝置或老師的變更）
+ * - 連不上：2、4、8…秒後重試，最多 60 秒一次；需要重新登入時停止重試
+ */
+import { create } from 'zustand';
+import { api } from './api';
+import { serverUrl } from './config';
+import { joinClass, loginClass, logoutClass, syncProfile, type CloudDeps, type JoinInput, type LoginInput, type SyncOutcome } from './cloudSync';
+import { getToken, loadOutbox, onRecorded, saveOutbox, setToken } from './storage';
+import { outboxSize } from './sync';
+import { useGame } from '../store/useGame';
+import type { Profile } from '../store/save';
+
+/** 同步狀態 */
+export type CloudStatus = 'idle' | 'syncing' | 'synced' | 'offline' | 'needLogin' | 'error';
+
+interface CloudStore {
+  /** 目前角色的同步狀態（本機角色是 idle） */
+  status: CloudStatus;
+  /** 最近一次失敗的訊息 */
+  message: string | null;
+  /** 目前角色還沒送出的操作筆數 */
+  pending: number;
+  /** 最近一次同步成功的時間（毫秒） */
+  lastSyncAt: number | null;
+  /** 加入班級（用目前設定的伺服器）；成功後該角色成為目前角色 */
+  join: (input: JoinInput) => Promise<Profile>;
+  /** 登入班級；成功後該角色成為目前角色，並把這台裝置待送的進度送出 */
+  login: (input: LoginInput) => Promise<Profile>;
+  /** 登出這台裝置並移除本機的這個角色 */
+  logout: (profileId: string) => Promise<void>;
+  /** 馬上同步 */
+  syncNow: () => Promise<void>;
+  /** 重新計算目前角色的待送筆數 */
+  refresh: () => void;
+}
+
+/** 正式環境的依賴 */
+const deps: CloudDeps = {
+  call: (method, path, opts) => api(method, path, opts),
+  getProfile: (id) => useGame.getState().save.profiles.find((p) => p.id === id) ?? null,
+  putProfile: (p) => useGame.getState().putProfile(p),
+  loadOutbox,
+  saveOutbox,
+  getToken,
+  setToken,
+  now: () => new Date(),
+};
+
+/** 目前角色（雲端角色才回傳） */
+const activeCloudProfile = (): Profile | null => {
+  const p = useGame.getState().profile();
+  return p?.cloud ? p : null;
+};
+
+/** 排程用的狀態（不需要觸發畫面更新） */
+const timer = { handle: null as ReturnType<typeof setTimeout> | null, at: 0, running: false, again: false, failures: 0 };
+
+export const useCloud = create<CloudStore>((set, get) => ({
+  status: 'idle',
+  message: null,
+  pending: 0,
+  lastSyncAt: null,
+
+  join: async (input) => {
+    const server = serverUrl();
+    if (!server) throw new Error('還沒有設定班級伺服器');
+    const p = await joinClass(deps, server, input);
+    useGame.getState().selectProfile(p.id);
+    set({ status: 'synced', message: null, lastSyncAt: Date.now() });
+    get().refresh();
+    return p;
+  },
+
+  login: async (input) => {
+    const server = serverUrl();
+    if (!server) throw new Error('還沒有設定班級伺服器');
+    const p = await loginClass(deps, server, input);
+    useGame.getState().selectProfile(p.id);
+    timer.failures = 0;
+    void get().syncNow();
+    return p;
+  },
+
+  logout: async (profileId) => {
+    await logoutClass(deps, profileId);
+    useGame.getState().deleteProfile(profileId);
+    set({ status: 'idle', message: null, pending: 0 });
+  },
+
+  syncNow: async () => {
+    if (timer.running) {
+      timer.again = true;
+      return;
+    }
+    timer.running = true;
+    try {
+      do {
+        timer.again = false;
+        await runSync(set);
+      } while (timer.again);
+    } finally {
+      timer.running = false;
+    }
+  },
+
+  refresh: () => {
+    const p = activeCloudProfile();
+    set({ pending: p ? outboxSize(loadOutbox(p.cloud!.accountId)) : 0, ...(p ? {} : { status: 'idle' as const }) });
+  },
+}));
+
+/** 同步目前角色，以及其他還有待送進度的雲端角色；依結果決定下次什麼時候再試 */
+async function runSync(set: (s: Partial<CloudStore>) => void): Promise<void> {
+  const active = activeCloudProfile();
+  const others = useGame
+    .getState()
+    .save.profiles.filter((p) => p.cloud && p.id !== active?.id && getToken(p.cloud.accountId) && outboxSize(loadOutbox(p.cloud.accountId)) > 0);
+  if (active) set({ status: 'syncing' });
+  let outcome: SyncOutcome = { status: 'skipped' };
+  if (active) outcome = await syncProfile(deps, active.id);
+  for (const p of others) await syncProfile(deps, p.id);
+
+  if (!active) {
+    set({ status: 'idle', pending: 0 });
+    return;
+  }
+  const pending = outboxSize(loadOutbox(active.cloud!.accountId));
+  switch (outcome.status) {
+    case 'synced':
+      timer.failures = 0;
+      set({ status: 'synced', message: null, pending, lastSyncAt: Date.now() });
+      schedule(PULL_EVERY_MS);
+      return;
+    case 'offline':
+    case 'error':
+      timer.failures += 1;
+      set({ status: outcome.status, message: outcome.message, pending });
+      schedule(Math.min(60_000, 2000 * 2 ** (timer.failures - 1)));
+      return;
+    case 'needLogin':
+      set({ status: 'needLogin', message: '請重新登入班級', pending });
+      return;
+    case 'skipped':
+      set({ status: 'idle', pending: 0 });
+  }
+}
+
+/** 定時拉一次的間隔 */
+const PULL_EVERY_MS = 120_000;
+
+/** 安排下次同步；已經有更早的排程就不動 */
+function schedule(delayMs: number): void {
+  const at = Date.now() + delayMs;
+  if (timer.handle && timer.at <= at) return;
+  if (timer.handle) clearTimeout(timer.handle);
+  timer.at = at;
+  timer.handle = setTimeout(() => {
+    timer.handle = null;
+    void useCloud.getState().syncNow();
+  }, delayMs);
+}
+
+/**
+ * 啟動同步排程（App 掛載時呼叫一次）；回傳停止的函式。
+ */
+export function startCloudSync(): () => void {
+  const offRecorded = onRecorded((_accountId, op) => {
+    useCloud.getState().refresh();
+    schedule(op.kind === 'playTime' ? 30_000 : 1000);
+  });
+  // 換角色：雲端角色馬上同步一次
+  const offProfile = useGame.subscribe((s, prev) => {
+    if (s.save.activeProfileId !== prev.save.activeProfileId) {
+      useCloud.getState().refresh();
+      if (activeCloudProfile()) schedule(0);
+    }
+  });
+  const onOnline = () => {
+    timer.failures = 0;
+    schedule(0);
+  };
+  const onVisible = () => {
+    if (document.visibilityState === 'visible') schedule(0);
+  };
+  window.addEventListener('online', onOnline);
+  document.addEventListener('visibilitychange', onVisible);
+  useCloud.getState().refresh();
+  if (activeCloudProfile()) schedule(0);
+  return () => {
+    offRecorded();
+    offProfile();
+    window.removeEventListener('online', onOnline);
+    document.removeEventListener('visibilitychange', onVisible);
+    if (timer.handle) clearTimeout(timer.handle);
+    timer.handle = null;
+  };
+}

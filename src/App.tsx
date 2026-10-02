@@ -18,7 +18,10 @@ import { ActivityScreen } from './ui/screens/ActivityScreen';
 import { ResultScreen } from './ui/screens/ResultScreen';
 import { ShopScreen } from './ui/screens/ShopScreen';
 import { ParentScreen } from './ui/screens/ParentScreen';
+import { ClassScreen } from './ui/screens/ClassScreen';
+import { TeacherScreen } from './ui/screens/TeacherScreen';
 import { RestGuard } from './ui/RestGuard';
+import { startCloudSync } from './online/useCloud';
 
 /** 各畫面的配樂 */
 const SCREEN_MUSIC: Record<Screen, Track> = {
@@ -30,6 +33,8 @@ const SCREEN_MUSIC: Record<Screen, Track> = {
   result: 'result',
   shop: 'shop',
   parent: 'shop',
+  class: 'island',
+  teacher: 'shop',
 };
 
 export function App() {
@@ -43,6 +48,9 @@ export function App() {
     setMusicEnabled(settings.music);
     document.body.classList.toggle('no-zhuyin', !settings.zhuyin);
   }, [settings]);
+
+  // 雲端角色的同步排程（沒有雲端角色時什麼都不做）
+  useEffect(() => startCloudSync(), []);
 
   // 換畫面就換配樂
   useEffect(() => playMusic(SCREEN_MUSIC[screen]), [screen]);
@@ -73,6 +81,8 @@ export function App() {
         {screen === 'result' && <ResultScreen />}
         {screen === 'shop' && <ShopScreen />}
         {screen === 'parent' && <ParentScreen />}
+        {screen === 'class' && <ClassScreen />}
+        {screen === 'teacher' && <TeacherScreen />}
         <RestGuard />
       </div>
     </>

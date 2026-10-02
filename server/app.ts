@@ -1,0 +1,411 @@
+/**
+ * 班級伺服器的 HTTP 路由（Hono）。createApp 不開網路埠，測試直接用 app.request() 呼叫。
+ * 介面規格見 docs/plans/online.md 第 10 節。
+ */
+import { Hono, type Context } from 'hono';
+import { cors } from 'hono/cors';
+import { bodyLimit } from 'hono/body-limit';
+import type { z } from 'zod';
+import type { Db, Queryable } from './db';
+import { LoginLimiter, RateLimiter, checkNickname, hashSecret, newAccountId, newRoomCode, newToken, tokenHash, verifySecret } from './auth';
+import { applyOp, parseOp } from '../src/online/ops';
+import {
+  createRoomRequest,
+  joinRequest,
+  loginRequest,
+  opsRequest,
+  resetPinRequest,
+  roomPatchRequest,
+  teacherLoginRequest,
+  type MemberSummary,
+  type OpsResponse,
+  type RoomSettings,
+  type SessionResponse,
+} from '../src/online/protocol';
+import { addProfile, createEmptySave, parseProfile, type Profile } from '../src/store/save';
+
+/** createApp 的設定 */
+export interface AppOptions {
+  db: Db;
+  /** 現在時間（測試可以換成假的時鐘） */
+  now?: () => Date;
+  /** 允許跨網域呼叫的前端網址 */
+  allowedOrigins?: string[];
+  /** 同一個 IP 每分鐘最多幾次登入類請求（建立房間、加入、登入） */
+  floodLimit?: number;
+  /** 某個帳號目前是否在線上（P2 的即時連線提供；沒有時一律 false） */
+  isOnline?: (accountId: string) => boolean;
+  /** 某個帳號的存檔在伺服器端改變了（P2 用來通知該帳號的其他裝置） */
+  onProfileChanged?: (accountId: string, rev: number) => void;
+}
+
+/** 權杖有效天數 */
+const TOKEN_DAYS = 180;
+/** 房間名稱最多幾個字 */
+const ROOM_NAME_MAX = 20;
+
+/** 會回給前端的錯誤（訊息是給大人看的中文） */
+class ApiError extends Error {
+  constructor(
+    readonly status: 400 | 401 | 403 | 404 | 409 | 413 | 423 | 429,
+    readonly code: string,
+    message: string,
+    readonly retryAfter?: number,
+  ) {
+    super(message);
+  }
+}
+
+/** 資料表 accounts 的一列 */
+interface AccountRow {
+  id: string;
+  room_code: string;
+  nickname: string;
+  pin_hash: string;
+  profile: Profile;
+  rev: number;
+  created_at: Date;
+  last_seen: Date;
+}
+
+/** 資料表 rooms 的一列 */
+interface RoomRow {
+  code: string;
+  name: string;
+  teacher_hash: string;
+  join_open: boolean;
+  chat_open: boolean;
+  gifts_open: boolean;
+}
+
+/** 權杖驗證後的身分 */
+interface Identity {
+  roomCode: string;
+  accountId: string | null;
+  hash: string;
+}
+
+/** 讀取並驗證 JSON 請求內容 */
+async function readBody<T extends z.ZodType>(c: Context, schema: T): Promise<z.infer<T>> {
+  let raw: unknown;
+  try {
+    raw = await c.req.json();
+  } catch {
+    throw new ApiError(400, 'bad_json', '資料格式不符');
+  }
+  const r = schema.safeParse(raw);
+  if (!r.success) throw new ApiError(400, 'bad_request', '資料格式不符');
+  return r.data;
+}
+
+/**
+ * 請求來源的 IP：Zeabur 前面有反向代理，取 X-Forwarded-For 的最後一個（代理加上的）；
+ * 直接連線時用 socket 位址。只用來擋大量請求，不用來鎖帳號。
+ */
+function clientIp(c: Context): string {
+  const xff = c.req.header('x-forwarded-for');
+  if (xff) return xff.split(',').pop()!.trim();
+  const env = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;
+  return env?.incoming?.socket?.remoteAddress ?? 'unknown';
+}
+
+/** 房間設定的回應格式 */
+function roomSettings(r: RoomRow): RoomSettings {
+  return { code: r.code, name: r.name, joinOpen: r.join_open, chatOpen: r.chat_open, giftsOpen: r.gifts_open };
+}
+
+/** 建立 Hono app */
+export function createApp(opts: AppOptions) {
+  const { db } = opts;
+  const now = opts.now ?? (() => new Date());
+  const nowMs = () => now().getTime();
+  const limiter = new LoginLimiter(nowMs);
+  const flood = new RateLimiter(nowMs, opts.floodLimit ?? 300);
+  const allowed = new Set(opts.allowedOrigins ?? []);
+  const isOnline = opts.isOnline ?? (() => false);
+
+  /** 擋同一個 IP 的大量請求 */
+  const checkFlood = (c: Context) => {
+    if (!flood.hit(clientIp(c))) throw new ApiError(429, 'too_many', '請求太頻繁，請稍後再試');
+  };
+
+  /** 發一張權杖並存進資料庫 */
+  const issueToken = async (q: Queryable, kind: 'kid' | 'teacher', roomCode: string, accountId: string | null) => {
+    const token = newToken();
+    const expires = new Date(nowMs() + TOKEN_DAYS * 24 * 3600 * 1000).toISOString();
+    await q.query('INSERT INTO tokens (token_hash, kind, room_code, account_id, expires_at) VALUES ($1, $2, $3, $4, $5::timestamptz)', [tokenHash(token), kind, roomCode, accountId, expires]);
+    return token;
+  };
+
+  /** 驗證 Authorization 標頭的權杖，種類不符或過期回 401 */
+  const authenticate = async (c: Context, kind: 'kid' | 'teacher'): Promise<Identity> => {
+    const m = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '');
+    if (!m) throw new ApiError(401, 'unauthorized', '請重新登入');
+    const hash = tokenHash(m[1]);
+    const rows = await db.query<{ kind: string; room_code: string; account_id: string | null }>(
+      'SELECT kind, room_code, account_id FROM tokens WHERE token_hash = $1 AND expires_at > $2::timestamptz',
+      [hash, now().toISOString()],
+    );
+    const row = rows[0];
+    if (!row || row.kind !== kind) throw new ApiError(401, 'unauthorized', '請重新登入');
+    return { roomCode: row.room_code, accountId: row.account_id, hash };
+  };
+
+  /** 讀房間；不存在回 404 */
+  const loadRoom = async (q: Queryable, code: string): Promise<RoomRow> => {
+    const room = (await q.query<RoomRow>('SELECT * FROM rooms WHERE code = $1', [code]))[0];
+    if (!room) throw new ApiError(404, 'no_room', '找不到這個房間代碼');
+    return room;
+  };
+
+  /** 加入或登入成功的回應 */
+  const sessionResponse = async (account: AccountRow, room: RoomRow): Promise<SessionResponse> => ({
+    token: await issueToken(db, 'kid', room.code, account.id),
+    account: { id: account.id, nickname: account.nickname },
+    profile: account.profile,
+    rev: account.rev,
+    room: { code: room.code, name: room.name },
+  });
+
+  /** 鎖定中就回 423 */
+  const assertNotLocked = (key: string) => {
+    const ms = limiter.lockedFor(key);
+    if (ms > 0) throw new ApiError(423, 'locked', '錯太多次了，請過幾分鐘再試', Math.ceil(ms / 1000));
+  };
+
+  const app = new Hono();
+
+  app.use(
+    '*',
+    cors({
+      origin: (origin) => (allowed.has(origin) ? origin : null),
+      allowHeaders: ['content-type', 'authorization'],
+      allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+      maxAge: 600,
+    }),
+  );
+  app.use('/api/*', bodyLimit({ maxSize: 1024 * 1024, onError: () => Promise.reject(new ApiError(413, 'too_large', '資料太大')) }));
+
+  app.onError((err, c) => {
+    if (err instanceof ApiError) {
+      return c.json({ error: err.message, code: err.code, ...(err.retryAfter ? { retryAfter: err.retryAfter } : {}) }, err.status);
+    }
+    console.error(err);
+    return c.json({ error: '伺服器出了點問題，請稍後再試', code: 'internal' }, 500);
+  });
+
+  app.get('/healthz', (c) => c.json({ ok: true }));
+
+  // ---------- 老師 ----------
+
+  app.post('/api/rooms', async (c) => {
+    checkFlood(c);
+    const body = await readBody(c, createRoomRequest);
+    const name = body.name.trim();
+    if (!name || [...name].length > ROOM_NAME_MAX) throw new ApiError(400, 'bad_name', `房間名稱要 1～${ROOM_NAME_MAX} 個字`);
+    const teacherHash = await hashSecret(body.password);
+    // 代碼撞到既有房間就重抽
+    for (let i = 0; i < 20; i++) {
+      const code = newRoomCode();
+      const rows = await db.query<{ code: string }>(
+        'INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ($1, $2, $3, $4::timestamptz) ON CONFLICT (code) DO NOTHING RETURNING code',
+        [code, name, teacherHash, now().toISOString()],
+      );
+      if (rows.length) return c.json({ code, token: await issueToken(db, 'teacher', code, null) });
+    }
+    throw new Error('房間代碼產生失敗');
+  });
+
+  app.post('/api/teacher/login', async (c) => {
+    checkFlood(c);
+    const body = await readBody(c, teacherLoginRequest);
+    const key = `teacher:${body.code}`;
+    assertNotLocked(key);
+    const room = (await db.query<RoomRow>('SELECT * FROM rooms WHERE code = $1', [body.code]))[0];
+    if (!room || !(await verifySecret(body.password, room.teacher_hash))) {
+      limiter.fail(key);
+      throw new ApiError(401, 'bad_login', '房間代碼或管理密碼不對');
+    }
+    limiter.reset(key);
+    return c.json({ token: await issueToken(db, 'teacher', room.code, null), room: roomSettings(room) });
+  });
+
+  app.get('/api/teacher/room', async (c) => {
+    const who = await authenticate(c, 'teacher');
+    const room = await loadRoom(db, who.roomCode);
+    const rows = await db.query<AccountRow>('SELECT * FROM accounts WHERE room_code = $1 ORDER BY created_at, nickname', [room.code]);
+    const members: MemberSummary[] = rows.map((a) => ({
+      id: a.id,
+      nickname: a.nickname,
+      coins: a.profile.coins,
+      stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),
+      wrongCount: Object.keys(a.profile.wrongBook).length,
+      sessions: a.profile.history.length,
+      createdAt: new Date(a.created_at).toISOString(),
+      lastSeen: new Date(a.last_seen).toISOString(),
+      online: isOnline(a.id),
+    }));
+    return c.json({ room: roomSettings(room), members });
+  });
+
+  app.patch('/api/teacher/room', async (c) => {
+    const who = await authenticate(c, 'teacher');
+    const body = await readBody(c, roomPatchRequest);
+    const rows = await db.query<RoomRow>(
+      `UPDATE rooms SET join_open = COALESCE($2, join_open), chat_open = COALESCE($3, chat_open), gifts_open = COALESCE($4, gifts_open)
+       WHERE code = $1 RETURNING *`,
+      [who.roomCode, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null],
+    );
+    return c.json({ room: roomSettings(rows[0]) });
+  });
+
+  app.post('/api/teacher/members/:id/pin', async (c) => {
+    const who = await authenticate(c, 'teacher');
+    const body = await readBody(c, resetPinRequest);
+    const pinHash = await hashSecret(body.pin);
+    const rows = await db.query<{ nickname_key: string }>('UPDATE accounts SET pin_hash = $3 WHERE id = $1 AND room_code = $2 RETURNING nickname_key', [
+      c.req.param('id'),
+      who.roomCode,
+      pinHash,
+    ]);
+    if (!rows.length) throw new ApiError(404, 'no_member', '找不到這位成員');
+    // 舊密碼可能被別人知道了：那位孩子其他裝置的登入一併失效
+    await db.query('DELETE FROM tokens WHERE account_id = $1', [c.req.param('id')]);
+    limiter.reset(`kid:${who.roomCode}:${rows[0].nickname_key}`);
+    return c.json({ ok: true });
+  });
+
+  app.delete('/api/teacher/members/:id', async (c) => {
+    const who = await authenticate(c, 'teacher');
+    const rows = await db.query('DELETE FROM accounts WHERE id = $1 AND room_code = $2 RETURNING id', [c.req.param('id'), who.roomCode]);
+    if (!rows.length) throw new ApiError(404, 'no_member', '找不到這位成員');
+    return c.json({ ok: true });
+  });
+
+  // ---------- 孩子 ----------
+
+  app.post('/api/join', async (c) => {
+    checkFlood(c);
+    const body = await readBody(c, joinRequest);
+    const room = await loadRoom(db, body.code);
+    if (!room.join_open) throw new ApiError(403, 'join_closed', '這個房間目前不開放加入，請問老師');
+    const nick = checkNickname(body.nickname);
+    if (!nick.ok) throw new ApiError(400, 'bad_nickname', nick.reason);
+
+    let profile: Profile;
+    if (body.profile !== undefined) {
+      const parsed = parseProfile(body.profile);
+      if (!parsed) throw new ApiError(400, 'bad_profile', '角色資料格式不符');
+      // 本機的雲端標記不存到伺服器；名字一律用暱稱
+      const { cloud: _local, ...rest } = parsed;
+      profile = { ...rest, name: nick.nickname };
+    } else {
+      profile = addProfile(createEmptySave(), { name: nick.nickname, avatar: body.avatar! }, now()).profiles[0];
+    }
+
+    const taken = await db.query('SELECT 1 FROM accounts WHERE room_code = $1 AND nickname_key = $2', [room.code, nick.key]);
+    if (taken.length) throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
+    const id = newAccountId();
+    const t = now().toISOString();
+    let rows: AccountRow[];
+    try {
+      rows = await db.query<AccountRow>(
+        `INSERT INTO accounts (id, room_code, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+         VALUES ($1, $2, $3, $4, $5, $6::jsonb, 1, $7::timestamptz, $7::timestamptz) RETURNING *`,
+        [id, room.code, nick.nickname, nick.key, await hashSecret(body.pin), JSON.stringify(profile), t],
+      );
+    } catch (err) {
+      // 兩個人同時用同一個暱稱加入：唯一鍵衝突
+      if ((err as { code?: string }).code === '23505') throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
+      throw err;
+    }
+    return c.json(await sessionResponse(rows[0], room));
+  });
+
+  app.post('/api/login', async (c) => {
+    checkFlood(c);
+    const body = await readBody(c, loginRequest);
+    const nick = checkNickname(body.nickname);
+    const key = `kid:${body.code}:${nick.ok ? nick.key : body.nickname}`;
+    assertNotLocked(key);
+    const account = nick.ok
+      ? (await db.query<AccountRow>('SELECT * FROM accounts WHERE room_code = $1 AND nickname_key = $2', [body.code, nick.key]))[0]
+      : undefined;
+    if (!account || !(await verifySecret(body.pin, account.pin_hash))) {
+      limiter.fail(key);
+      throw new ApiError(401, 'bad_login', '房間代碼、暱稱或密碼不對');
+    }
+    limiter.reset(key);
+    await db.query('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1', [account.id, now().toISOString()]);
+    return c.json(await sessionResponse(account, await loadRoom(db, account.room_code)));
+  });
+
+  app.post('/api/logout', async (c) => {
+    const m = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '');
+    if (m) await db.query('DELETE FROM tokens WHERE token_hash = $1', [tokenHash(m[1])]);
+    return c.json({ ok: true });
+  });
+
+  app.get('/api/me', async (c) => {
+    const who = await authenticate(c, 'kid');
+    const account = (await db.query<AccountRow>('SELECT * FROM accounts WHERE id = $1', [who.accountId]))[0];
+    if (!account) throw new ApiError(401, 'unauthorized', '請重新登入');
+    const room = await loadRoom(db, account.room_code);
+    return c.json({ account: { id: account.id, nickname: account.nickname }, profile: account.profile, rev: account.rev, room: { code: room.code, name: room.name } });
+  });
+
+  app.post('/api/ops', async (c) => {
+    const who = await authenticate(c, 'kid');
+    const body = await readBody(c, opsRequest);
+    const t = now();
+    const result = await db.transaction<OpsResponse & { changed: boolean }>(async (tx) => {
+      // 鎖住這個帳號的那一列，同時來的請求排隊套用
+      const row = (await tx.query<AccountRow>('SELECT * FROM accounts WHERE id = $1 FOR UPDATE', [who.accountId]))[0];
+      if (!row) throw new ApiError(401, 'unauthorized', '請重新登入');
+      let profile = row.profile;
+      let changed = false;
+      const rejected: OpsResponse['rejected'] = [];
+      for (const raw of body.ops) {
+        const op = parseOp(raw);
+        if (!op) {
+          const id = (raw as { id?: unknown } | null)?.id;
+          if (typeof id === 'string') rejected.push({ id, reason: '格式不符' });
+          continue;
+        }
+        // 套用過的（含被拒絕的）不再套用；被拒絕的照樣回報拒絕，裝置重送也不會之後才成功
+        const seen = (await tx.query<{ rejected_reason: string | null }>('SELECT rejected_reason FROM applied_ops WHERE account_id = $1 AND op_id = $2', [row.id, op.id]))[0];
+        if (seen) {
+          if (seen.rejected_reason) rejected.push({ id: op.id, reason: seen.rejected_reason });
+          continue;
+        }
+        const r = applyOp(profile, op, t);
+        if (r.ok) {
+          profile = r.profile;
+          changed = true;
+        } else {
+          rejected.push({ id: op.id, reason: r.reason });
+        }
+        await tx.query('INSERT INTO applied_ops (account_id, op_id, rejected_reason, applied_at) VALUES ($1, $2, $3, $4::timestamptz)', [
+          row.id,
+          op.id,
+          r.ok ? null : r.reason,
+          t.toISOString(),
+        ]);
+      }
+      // 存檔有變才升版本號；沒變（空批次或重送）只更新最後上線時間
+      const updated = changed
+        ? await tx.query<{ rev: number }>('UPDATE accounts SET profile = $2::jsonb, rev = rev + 1, last_seen = $3::timestamptz WHERE id = $1 RETURNING rev', [
+            row.id,
+            JSON.stringify(profile),
+            t.toISOString(),
+          ])
+        : await tx.query<{ rev: number }>('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1 RETURNING rev', [row.id, t.toISOString()]);
+      return { profile, rev: updated[0].rev, rejected, changed };
+    });
+    if (result.changed) opts.onProfileChanged?.(who.accountId!, result.rev);
+    const { changed: _changed, ...response } = result;
+    return c.json(response);
+  });
+
+  return app;
+}

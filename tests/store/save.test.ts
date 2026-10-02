@@ -13,6 +13,8 @@ import {
   addPlayTime,
   RECENT_LIMIT,
   setCurriculum,
+  replaceProfile,
+  profileSchema,
 } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
 
@@ -247,5 +249,36 @@ describe('存檔：版本遷移與最近做過的題', () => {
     const base = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'bear', color: '#8B5A2B', hat: null } }, NOW);
     const s = setCurriculum(base, base.profiles[0].id, { zh: 'hanlin-zh', math: 'kanghsuan-math', term: '下' });
     expect(s.profiles[0].curriculum).toEqual({ zh: 'hanlin-zh', math: 'kanghsuan-math', term: '下' });
+  });
+});
+
+describe('存檔：雲端角色', () => {
+  const base = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'bear', color: '#8B5A2B', hat: null } }, NOW);
+  const cloud = { server: 'https://island.example', room: '123456', roomName: '二年一班', accountId: 'a_1' };
+
+  it('雲端標記可以存回來；舊存檔沒有這個欄位也讀得進來', () => {
+    const linked = replaceProfile(base, { ...base.profiles[0], cloud });
+    expect(loadSave(JSON.stringify(linked)).profiles[0].cloud).toEqual(cloud);
+    expect(loadSave(JSON.stringify(base)).profiles[0].cloud).toBeUndefined();
+  });
+
+  it('profileSchema 可以單獨驗證一位小朋友的資料（伺服器收上傳的進度用）', () => {
+    expect(profileSchema.safeParse(base.profiles[0]).success).toBe(true);
+    expect(profileSchema.safeParse({ ...base.profiles[0], coins: -1 }).success).toBe(false);
+  });
+
+  it('replaceProfile：同 id 就取代，其他角色與目前角色不變', () => {
+    const two = addProfile(base, { name: '小美', avatar: { animal: 'cat', color: '#ffffff', hat: null } }, NOW);
+    const first = two.profiles[0];
+    const s = replaceProfile(two, { ...first, coins: 99 });
+    expect(s.profiles.map((p) => p.coins)).toEqual([99, 0]);
+    expect(s.profiles[1]).toBe(two.profiles[1]);
+    expect(s.activeProfileId).toBe(two.activeProfileId);
+  });
+
+  it('replaceProfile：沒有同 id 的角色就加在最後', () => {
+    const other = { ...base.profiles[0], id: 'p_other', name: '小華' };
+    const s = replaceProfile(base, other);
+    expect(s.profiles.map((p) => p.id)).toEqual([base.profiles[0].id, 'p_other']);
   });
 });

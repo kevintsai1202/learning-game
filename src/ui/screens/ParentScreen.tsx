@@ -1,5 +1,5 @@
 /**
- * 家長專區：PIN 保護，內容有學習報告、錯題本、設定、自訂題庫匯入、備份、資料來源與授權。
+ * 家長專區：PIN 保護，內容有學習報告、錯題本、教材版本、班級帳號、設定、自訂題庫匯入、備份、資料來源與授權。
  * 這區給大人看，用一般字型、資訊密度較高。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,6 +15,9 @@ import { starText } from './ZoneMenu';
 import { currentVoice, getVoicePref, listVoices, onlyBasicVoice, onVoicesChanged, previewVoice, setVoicePref } from '../../audio/speech';
 import { voiceId, voiceTag } from '../../audio/voices';
 import { CurriculumTab } from './CurriculumTab';
+import { useCloud } from '../../online/useCloud';
+import { onlineEnabled } from '../../online/config';
+import { getToken } from '../../online/storage';
 
 const SUBJECT_NAME: Record<SubjectId, string> = { zh: '國語', math: '數學', en: '英語', life: '生活與健康' };
 
@@ -416,7 +419,7 @@ function BackupTab() {
   const [msg, setMsg] = useState('');
   return (
     <div className="plain">
-      <p>進度只存在這台裝置的瀏覽器。換裝置或清除瀏覽器資料前，請先下載備份。</p>
+      <p>沒有加入班級的角色，進度只存在這台裝置的瀏覽器。換裝置或清除瀏覽器資料前，請先下載備份。（加入班級的角色，進度存在班級伺服器。）</p>
       <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
         <button className="btn small" onClick={() => download(`知識島備份-${dateKey(new Date())}.json`, exportBackup())}>
           ⬇ 下載備份
@@ -439,6 +442,91 @@ function BackupTab() {
         }}
       />
       {msg && <p>{msg}</p>}
+    </div>
+  );
+}
+
+/** 班級帳號：雲端角色的同步狀態、立即同步、登出這台裝置 */
+function ClassTab({ profile }: { profile: Profile }) {
+  const goto = useUi((s) => s.goto);
+  const activeId = useGame((s) => s.save.activeProfileId);
+  const status = useCloud((s) => s.status);
+  const pending = useCloud((s) => s.pending);
+  const lastSyncAt = useCloud((s) => s.lastSyncAt);
+  const message = useCloud((s) => s.message);
+  const syncNow = useCloud((s) => s.syncNow);
+  const logout = useCloud((s) => s.logout);
+  const [confirmLogout, setConfirmLogout] = useState(false);
+  const cloud = profile.cloud;
+  if (!cloud) {
+    return (
+      <div className="plain">
+        <p>「{profile.name}」的進度只存在這台裝置。</p>
+        <p>加入班級後，進度（成績、錯題本、金幣、帽子）會存到班級伺服器，換一台平板登入也能接著玩。請到選角畫面點「🏫 班級」→「第一次加入」，可以選擇把這個角色的進度帶過去。</p>
+        <button className="btn small" onClick={() => goto('class')}>
+          🏫 前往班級畫面
+        </button>
+      </div>
+    );
+  }
+  const isActive = profile.id === activeId;
+  const hasToken = !!getToken(cloud.accountId);
+  return (
+    <div className="plain" data-testid="class-tab">
+      <table className="report-table">
+        <tbody>
+          <tr>
+            <th>班級</th>
+            <td>
+              {cloud.roomName}（房間代碼 {cloud.room}）
+            </td>
+          </tr>
+          <tr>
+            <th>暱稱</th>
+            <td>{profile.name}</td>
+          </tr>
+          {isActive && (
+            <>
+              <tr>
+                <th>同步狀態</th>
+                <td data-testid="class-status">
+                  {!hasToken ? '需要重新登入' : status === 'synced' ? '已同步' : status === 'syncing' ? '同步中' : status === 'offline' ? '離線（連上網路後自動上傳）' : status === 'needLogin' ? '需要重新登入' : status === 'error' ? `同步失敗：${message ?? ''}` : '—'}
+                </td>
+              </tr>
+              <tr>
+                <th>待上傳</th>
+                <td>{pending} 筆</td>
+              </tr>
+              <tr>
+                <th>最近同步</th>
+                <td>{lastSyncAt ? new Date(lastSyncAt).toLocaleString('zh-TW') : '—'}</td>
+              </tr>
+            </>
+          )}
+        </tbody>
+      </table>
+      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 10 }}>
+        {isActive && hasToken && (
+          <button className="btn small" onClick={() => void syncNow()} data-testid="class-sync-now">
+            🔄 立即同步
+          </button>
+        )}
+        {!hasToken && (
+          <button className="btn small" onClick={() => goto('class')}>
+            🔑 重新登入
+          </button>
+        )}
+        {!confirmLogout ? (
+          <button className="btn small white" onClick={() => setConfirmLogout(true)} data-testid="class-logout">
+            登出這台裝置
+          </button>
+        ) : (
+          <button className="btn small red" onClick={() => void logout(profile.id).then(() => goto('title'))} data-testid="class-logout-confirm">
+            {isActive && pending > 0 ? `還有 ${pending} 筆進度沒上傳，登出會遺失。確定登出？` : '確定登出（進度留在班級，之後可以再登入）'}
+          </button>
+        )}
+      </div>
+      <p className="notice">登出後，這台裝置上的「{profile.name}」會移除；進度存在班級伺服器，用房間代碼＋暱稱＋密碼就能再登入。忘記密碼請老師重設。</p>
     </div>
   );
 }
@@ -474,11 +562,12 @@ function SourcesTab() {
   );
 }
 
-type Tab = 'report' | 'wrong' | 'curriculum' | 'settings' | 'packs' | 'backup' | 'sources';
+type Tab = 'report' | 'wrong' | 'curriculum' | 'class' | 'settings' | 'packs' | 'backup' | 'sources';
 const TABS: { id: Tab; name: string }[] = [
   { id: 'report', name: '學習報告' },
   { id: 'wrong', name: '錯題本' },
   { id: 'curriculum', name: '教材版本' },
+  { id: 'class', name: '班級帳號' },
   { id: 'settings', name: '設定' },
   { id: 'packs', name: '自訂題庫' },
   { id: 'backup', name: '備份' },
@@ -494,6 +583,8 @@ export function ParentScreen() {
   const [pid, setPid] = useState(activeId ?? profiles[0]?.id ?? '');
   const profile = profiles.find((p) => p.id === pid) ?? null;
   const back = () => goto(activeId ? 'island' : 'title');
+  // 班級帳號分頁：有設定班級伺服器、或這台裝置上有雲端角色時才顯示
+  const tabs = onlineEnabled() || profiles.some((p) => p.cloud) ? TABS : TABS.filter((t) => t.id !== 'class');
   return (
     <div className="panel-screen">
       <div className="panel card" role="dialog" aria-label="家長專區">
@@ -511,12 +602,12 @@ export function ParentScreen() {
         ) : (
           <>
             <div className="tabs">
-              {TABS.map((t) => (
+              {tabs.map((t) => (
                 <button key={t.id} className={`btn small white ${tab === t.id ? 'on' : ''}`} onClick={() => setTab(t.id)} data-testid={`tab-${t.id}`}>
                   {t.name}
                 </button>
               ))}
-              {(tab === 'report' || tab === 'wrong' || tab === 'curriculum') && profiles.length > 1 && (
+              {(tab === 'report' || tab === 'wrong' || tab === 'curriculum' || tab === 'class') && profiles.length > 1 && (
                 <select value={pid} onChange={(e) => setPid(e.target.value)} style={{ fontSize: 18, marginLeft: 'auto' }}>
                   {profiles.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -530,6 +621,7 @@ export function ParentScreen() {
               {tab === 'report' && (profile ? <ReportTab profile={profile} /> : <p className="plain">還沒有角色。</p>)}
               {tab === 'wrong' && (profile ? <WrongTab profile={profile} /> : <p className="plain">還沒有角色。</p>)}
               {tab === 'curriculum' && (profile ? <CurriculumTab profile={profile} /> : <p className="plain">請先建立角色。</p>)}
+              {tab === 'class' && (profile ? <ClassTab profile={profile} /> : <p className="plain">請先建立角色。</p>)}
               {tab === 'settings' && <SettingsTab />}
               {tab === 'packs' && <PacksTab />}
               {tab === 'backup' && <BackupTab />}

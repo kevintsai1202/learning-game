@@ -80,6 +80,21 @@ export interface SessionRecord {
   seconds: number;
 }
 
+/**
+ * 雲端角色的連結資訊（只存在本機；伺服器不存這個欄位）。
+ * 有這個欄位的角色，進度會同步到班級伺服器。
+ */
+export interface CloudLink {
+  /** 伺服器網址 */
+  server: string;
+  /** 房間代碼（6 位數字） */
+  room: string;
+  /** 房間名稱（顯示用） */
+  roomName: string;
+  /** 伺服器上的帳號 id（與 Profile.id 不同） */
+  accountId: string;
+}
+
 /** 一位小朋友的資料 */
 export interface Profile {
   id: string;
@@ -102,6 +117,8 @@ export interface Profile {
   recent: Record<string, string[]>;
   /** 教材版本設定 */
   curriculum: CurriculumChoice;
+  /** 雲端角色才有：連到哪個班級（2026-10 新增，舊存檔沒有這個欄位） */
+  cloud?: CloudLink;
 }
 
 /** 全機設定 */
@@ -191,6 +208,13 @@ function updateProfile(save: SaveData, profileId: string, fn: (p: Profile) => Pr
   if (idx < 0) throw new Error(`找不到角色 ${profileId}`);
   const profiles = save.profiles.slice();
   profiles[idx] = fn(save.profiles[idx]);
+  return { ...save, profiles };
+}
+
+/** 用同 id 取代角色（雲端同步後套用伺服器版本）；沒有同 id 的角色就加在最後。目前角色不變 */
+export function replaceProfile(save: SaveData, profile: Profile): SaveData {
+  const idx = save.profiles.findIndex((p) => p.id === profile.id);
+  const profiles = idx < 0 ? [...save.profiles, profile] : save.profiles.map((p, i) => (i === idx ? profile : p));
   return { ...save, profiles };
 }
 
@@ -320,8 +344,9 @@ export function verifyPin(save: SaveData, pin: string): boolean {
 
 const int = z.number().int();
 /** 錯題本裡的題目只檢查基本欄位，避免日後新增題型時舊存檔整份讀不進來 */
-const storedQuestion = z.looseObject({ id: z.string(), type: z.string(), prompt: z.string(), skill: z.string(), indicators: z.array(z.string()) });
-const profileSchema = z.object({
+export const storedQuestion = z.looseObject({ id: z.string(), type: z.string(), prompt: z.string(), skill: z.string(), indicators: z.array(z.string()) });
+/** 一位小朋友的資料格式（伺服器驗證上傳的進度也用這份） */
+export const profileSchema = z.object({
   id: z.string(),
   name: z.string(),
   avatar: z.object({ animal: z.enum(['bear', 'rabbit', 'cat', 'dog']), color: z.string(), hat: z.string().nullable() }),
@@ -338,6 +363,8 @@ const profileSchema = z.object({
   inventory: z.array(z.string()),
   recent: z.record(z.string(), z.array(z.string())),
   curriculum: z.object({ zh: z.string(), math: z.string(), term: z.enum(['上', '下', 'auto']) }),
+  // 2026-10 新增：可省略，舊存檔不必升級版本
+  cloud: z.object({ server: z.string(), room: z.string(), roomName: z.string(), accountId: z.string() }).optional(),
 });
 const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),
@@ -356,6 +383,12 @@ const saveSchema = z.object({
     quality: z.enum(['auto', 'low', 'high']),
   }),
 });
+
+/** 驗證一位小朋友的資料（伺服器收上傳的進度用）；格式不符回傳 null。錯題本的題目只做寬鬆檢查 */
+export function parseProfile(raw: unknown): Profile | null {
+  const r = profileSchema.safeParse(raw);
+  return r.success ? (r.data as unknown as Profile) : null;
+}
 
 /**
  * 舊版存檔升級到目前版本（逐版升級，每一步只補新欄位，不刪除舊資料）。

@@ -1156,6 +1156,32 @@ button {
   line-height: 1.6;
 }
 
+/* ===== 班級（線上版） ===== */
+/* 老師管理頁的房間代碼：大字，方便抄在黑板上 */
+.room-code-box {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+}
+.room-code {
+  font-size: 44px;
+  letter-spacing: 6px;
+  color: var(--ink);
+}
+/* 可以橫向捲動的容器（手機版面稽核把它當成允許水平捲動的地方） */
+.scroll-x {
+  overflow-x: auto;
+  max-width: 100%;
+}
+/* 角色卡上的班級標記 */
+.cloud-badge {
+  font-family: var(--font-plain);
+  font-size: 13px;
+  color: #2f8f6b;
+}
+
 /* ===== 手機版面（放在檔案最後，才不會被前面的一般規則蓋掉） ===== */
 
 /* 手機寬度：面板標題列換行、卡片一列兩張、難度按鈕縮小、標題畫面的家長專區按鈕移到右上 */

@@ -10,3 +10,4 @@ data-src/raw/
 .venv/
 # 子代理各自的建置輸出
 dist-*/
+server-dist/

@@ -4,8 +4,8 @@
 import { create } from 'zustand';
 import type { SessionResult } from '../core/types';
 
-/** 畫面 */
-export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop';
+/** 畫面（class：孩子加入／登入班級；teacher：老師的班級管理） */
+export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'teacher';
 
 /** 島上的區域（建築） */
 export type ZoneId = 'math' | 'zh' | 'en' | 'life' | 'tower' | 'shop';

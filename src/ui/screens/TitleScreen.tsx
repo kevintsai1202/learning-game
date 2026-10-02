@@ -7,6 +7,7 @@ import { useGame } from '../../store/useGame';
 import { unlockAudio, sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
 import { WELCOME_LINE } from '../lines';
+import { onlineEnabled } from '../../online/config';
 
 export function TitleScreen() {
   const goto = useUi((s) => s.goto);
@@ -29,6 +30,20 @@ export function TitleScreen() {
             ▶ {hasProfiles ? '開始冒險' : '建立角色'}
           </button>
         </div>
+        {onlineEnabled() && (
+          <div className="title-actions" style={{ marginTop: 14 }}>
+            <button
+              className="btn small white"
+              onClick={() => {
+                unlockAudio();
+                goto('teacher');
+              }}
+              data-testid="teacher-link"
+            >
+              👩‍🏫 班級管理（老師／家長）
+            </button>
+          </div>
+        )}
       </div>
       <button
         className="btn small white corner-link"

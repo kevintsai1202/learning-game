@@ -5,7 +5,8 @@
 ## 技術棧
 
 - Vite 8 + React 19 + TypeScript 7（Go 版 tsc）+ three 0.186 / @react-three/fiber 9 + zustand 5 + zod 4 + hanzi-writer 3
-- 測試：Vitest 5（`tests/`）、Playwright 1.63（`e2e/`，對 `vite preview` 的建置產物跑）
+- 班級伺服器（線上版）：Node 24 + Hono 4 + PostgreSQL（測試用 PGlite），規範見 `server/CLAUDE.md`
+- 測試：Vitest 5（`tests/`）、Playwright 1.63（`e2e/`，對 `vite preview` 的建置產物跑，同時啟動班級伺服器）
 
 ## 指令（PowerShell 7）
 
@@ -14,7 +15,8 @@ npm install
 npm run dev          # 開發伺服器
 npm test             # 單元測試
 npm run build        # 型別檢查 + 建置到 dist/
-npx playwright test  # e2e（需先 build）
+npx playwright test  # e2e（需先 build；班級伺服器由 playwright 自動打包啟動）
+npm run server:build; npm run server:start   # 本機啟動班級伺服器（port 8787，PGlite 記憶體資料庫）
 .\.venv\Scripts\python scripts\build-font.py   # 內容新增字之後重產注音字型子集
 # 預錄語音（改了題目文字或 src/ui/lines.ts 之後；金鑰在 .env）
 npx vitest run --config vitest.voice.config.ts                                  # 盤點要預錄的句子 → data-src/voice/inventory.json
@@ -33,7 +35,9 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - `src/quiz/` 答題流程（`session.ts` 狀態機）、作答元件、題目附圖
 - `src/writing/` 筆順描寫（Hanzi Writer、注音與字母的中心線字形）
 - `src/world/` 3D 島嶼與舞台（R3F）；`src/ui/` DOM 介面
-- `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、自訂題庫、畫面狀態
+- `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、商品目錄（`catalog.ts`）、自訂題庫、畫面狀態
+- `src/online/` 線上版前端：操作套用（`ops.ts`，伺服器共用）、同步佇列（`sync.ts`）、同步迴圈（`cloudSync.ts`）、狀態與排程（`useCloud.ts`）
+- `server/` 班級伺服器（另有 `server/CLAUDE.md`）；規格與分期在 `docs/plans/online.md`
 - `src/content/` 題庫格式（zod）、課綱代碼對照、資料來源清單
 - `public/data/strokes/` 國字筆順資料（腳本產生）；`public/licenses/` 授權全文
 
@@ -44,4 +48,5 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - 文字一律放 DOM，不要用 three 的文字渲染（注音字型需要 IVS）。
 - 要朗讀的固定句子放 `src/ui/lines.ts`，題目的朗讀文字一律經過 `src/quiz/spoken.ts`；預錄語音的盤點腳本靠這兩處收集句子。
 - 每題要有 `indicators`（108 課綱代碼）與 `source`。
-- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz）讀狀態與自動作答。
+- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud）讀狀態與自動作答。
+- 雲端角色的存檔只能透過「操作」改變（`src/online/ops.ts`），伺服器用同一份規則套用；`src/` 裡給伺服器 import 的模組不能 import 畫面、音訊、3D 的程式。
