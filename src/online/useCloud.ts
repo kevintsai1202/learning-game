@@ -245,6 +245,8 @@ export function startCloudSync(): () => void {
   };
   window.addEventListener('online', onOnline);
   document.addEventListener('visibilitychange', onVisible);
+  // 讀伺服器設定（決定要不要顯示 Google 按鈕）
+  void useCloud.getState().loadConfig();
   useCloud.getState().refresh();
   if (activeCloudProfile()) schedule(0);
   return () => {

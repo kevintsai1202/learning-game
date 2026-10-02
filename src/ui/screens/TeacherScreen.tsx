@@ -1,5 +1,6 @@
 /**
  * 老師／家長的班級管理：建立房間或登入，之後看成員列表、重設孩子密碼、移除成員、開關「允許加入」。
+ * 也可以綁定 Google，之後用 Google 快速登入（備選；綁了多個房間時先選房間）。
  * 登入狀態放 sessionStorage（教室共用電腦關掉分頁就登出）。
  */
 import { useCallback, useEffect, useState, type SubmitEvent } from 'react';
@@ -7,7 +8,9 @@ import { useUi } from '../../store/useUi';
 import { api, ApiFailure } from '../../online/api';
 import { serverUrl } from '../../online/config';
 import { getTeacherSession, setTeacherSession, type TeacherSession } from '../../online/storage';
-import type { MemberSummary, RoomSettings } from '../../online/protocol';
+import type { GoogleRoomsResponse, MemberSummary, RoomSettings } from '../../online/protocol';
+import { useCloud } from '../../online/useCloud';
+import { GoogleButton } from '../GoogleButton';
 
 /** 顯示「多久以前」 */
 function ago(iso: string): string {
@@ -31,7 +34,38 @@ function TeacherLogin({ onLogin }: { onLogin: (s: TeacherSession, created: boole
   const [confirm, setConfirm] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** Google 登入後綁了多個房間：讓老師選一個 */
+  const [rooms, setRooms] = useState<GoogleRoomsResponse['rooms'] | null>(null);
+  const clientId = useCloud((s) => s.googleClientId);
   const server = serverUrl();
+
+  /** 用 Google 登入：只有一個房間直接進管理頁，多個就先選房間 */
+  const googleLogin = async (idToken: string) => {
+    if (!server) return;
+    setError(null);
+    try {
+      const r = await api<GoogleRoomsResponse>('POST', '/api/teacher/google/login', { body: { idToken } });
+      if (r.rooms.length === 1) onLogin({ server, code: r.rooms[0].code, token: r.rooms[0].token }, false);
+      else setRooms(r.rooms);
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  };
+
+  if (rooms && server) {
+    return (
+      <div className="panel-body">
+        <p className="plain">這個 Google 帳號綁了 {rooms.length} 個房間，要管理哪一個？</p>
+        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          {rooms.map((r) => (
+            <button key={r.code} className="btn white" onClick={() => onLogin({ server, code: r.code, token: r.token }, false)} data-testid={`pick-room-${r.code}`}>
+              {r.name}（{r.code}）
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -113,6 +147,12 @@ function TeacherLogin({ onLogin }: { onLogin: (s: TeacherSession, created: boole
             {busy ? '連線中…' : mode === 'create' ? '建立房間' : '登入'}
           </button>
         </div>
+        {mode === 'login' && clientId && (
+          <div style={{ marginTop: 16 }}>
+            <span className="label">或用 Google 登入（要先在管理頁綁定 Google）</span>
+            <GoogleButton clientId={clientId} label="用 Google 登入" testId="teacher-google-login" onCredential={(t) => void googleLogin(t)} />
+          </div>
+        )}
         <p className="notice">
           孩子用「房間代碼＋暱稱＋自己設的 4 位數密碼」加入。伺服器只存暱稱，不收真實姓名；4 位數密碼是給孩子的方便措施，不是高強度防護。
         </p>
@@ -175,6 +215,9 @@ function MemberActions({ member, onReset, onRemove }: { member: MemberSummary; o
 function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSession; justCreated: boolean; onLogout: () => void }) {
   const [room, setRoom] = useState<RoomSettings | null>(null);
   const [members, setMembers] = useState<MemberSummary[]>([]);
+  /** 這個房間綁定的老師 Google 帳號（email 已遮罩） */
+  const [google, setGoogle] = useState<string[]>([]);
+  const clientId = useCloud((s) => s.googleClientId);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
@@ -193,9 +236,10 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
 
   const reload = useCallback(async () => {
     try {
-      const r = await call<{ room: RoomSettings; members: MemberSummary[] }>('GET', '/api/teacher/room');
+      const r = await call<{ room: RoomSettings; members: MemberSummary[]; google: string[] }>('GET', '/api/teacher/room');
       setRoom(r.room);
       setMembers(r.members);
+      setGoogle(r.google);
       setError(null);
     } catch (err) {
       setError(messageOf(err));
@@ -234,6 +278,22 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
             允許新的孩子加入（全班都加入後可以關掉，避免代碼外流後有陌生人加入）
           </label>
         </>
+      )}
+      {clientId && (
+        <div className="plain" style={{ margin: '8px 0' }} data-testid="teacher-google-section">
+          <strong>Google 快速登入（備選）</strong>
+          <p style={{ margin: '4px 0' }} data-testid="teacher-google-linked">
+            {google.length ? `已綁定：${google.join('、')}` : '還沒有綁定。綁定後可以用 Google 登入這個管理頁，不用記管理密碼（管理密碼照樣可以用）。'}
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            <GoogleButton clientId={clientId} label="綁定 Google 帳號" testId="teacher-google-link" onCredential={(t) => void act(() => call('POST', '/api/teacher/google/link', { idToken: t }), '綁定好了！之後可以在管理頁用 Google 登入。')} />
+            {google.length > 0 && (
+              <button className="btn small white" onClick={() => void act(() => call('DELETE', '/api/teacher/google/link'), '已解除 Google 綁定')} data-testid="teacher-google-unlink">
+                解除綁定
+              </button>
+            )}
+          </div>
+        </div>
       )}
       {error && (
         <p className="notice" role="alert" style={{ color: '#c0392b' }}>
@@ -294,6 +354,10 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
 export function TeacherScreen() {
   const goto = useUi((s) => s.goto);
   const [session, setSession] = useState<TeacherSession | null>(() => getTeacherSession());
+  // 讀伺服器設定（決定要不要顯示 Google 按鈕）
+  useEffect(() => {
+    void useCloud.getState().loadConfig();
+  }, []);
   const [justCreated, setJustCreated] = useState(false);
   const logout = useCallback(() => {
     setTeacherSession(null);
