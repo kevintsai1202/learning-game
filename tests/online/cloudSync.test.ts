@@ -7,7 +7,23 @@ import { createApp } from '../../server/app';
 import type { Db } from '../../server/db';
 import { openTestDb, resetDb } from '../server/helpers';
 import { api, ApiFailure, type ApiOptions } from '../../src/online/api';
-import { fetchGoogleLinks, googleLogin, joinClass, linkGoogle, loginClass, logoutClass, syncProfile, unlinkGoogle, type CloudDeps } from '../../src/online/cloudSync';
+import {
+  acceptGift,
+  ackGiftNotices,
+  declineGift,
+  fetchClassmates,
+  fetchGifts,
+  fetchGoogleLinks,
+  googleLogin,
+  joinClass,
+  linkGoogle,
+  loginClass,
+  logoutClass,
+  sendGift,
+  syncProfile,
+  unlinkGoogle,
+  type CloudDeps,
+} from '../../src/online/cloudSync';
 import { createLocalJWKSet } from 'jose';
 import { createGoogleVerifier } from '../../server/google';
 import { makeGoogleKeys, TEST_CLIENT_ID } from '../server/googleKeys';
@@ -309,5 +325,79 @@ describe('Google 快速登入（備選）', () => {
     await linkGoogle(d.deps, a.id, await keys.sign('mom', 'mom@gmail.com'));
     expect(await unlinkGoogle(d.deps, a.id)).toEqual([]);
     await expect(googleLogin(device(app).deps, SERVER, await keys.sign('mom', 'mom@gmail.com'))).rejects.toThrow('還沒有綁定');
+  });
+});
+
+describe('送禮物（P3）', () => {
+  /** 小安（50 金幣，裝置 A）與小美（裝置 B）加入同一個班級 */
+  async function twoKids() {
+    const app = createApp({ db });
+    const code = await newRoom(app);
+    const da = device(app);
+    const db2 = device(app);
+    const local = { ...addProfile(createEmptySave(), { name: '安安', avatar: { animal: 'bear', color: '#8b5a2b', hat: null } }, new Date()).profiles[0], coins: 50 };
+    da.profiles.set(local.id, local);
+    const a = await joinClass(da.deps, SERVER, { code, nickname: '小安', pin: '1111', profile: local });
+    const b = await joinClass(db2.deps, SERVER, { code, nickname: '小美', pin: '2222', avatar: { animal: 'panda', color: '#5b5b6b', hat: null } });
+    return { app, da, db: db2, a, b };
+  }
+
+  it('fetchClassmates：讀到同班同學（不含自己）', async () => {
+    const { da, a } = await twoKids();
+    const list = await fetchClassmates(da.deps, a.id);
+    expect(list.map((m) => m.nickname)).toEqual(['小美']);
+  });
+
+  it('sendGift：先把佇列送完再送禮（伺服器才看得到最新的金幣），回應的存檔寫回本機', async () => {
+    const { da, a, b } = await twoKids();
+    // 還沒同步的購買：本機先扣了 20 金幣
+    expect(da.act(a.id, { id: 'buy-1', at: new Date().toISOString(), kind: 'buy', itemId: 'hat.party' })).toBe(true);
+    const gift = await sendGift(da.deps, a.id, { id: 'gift-0001', to: b.cloud!.accountId, itemId: 'sticker.tulip' });
+    expect(gift).toMatchObject({ to: '小美', itemId: 'sticker.tulip', price: 5 });
+    const local = da.profiles.get(a.id)!;
+    expect(local.coins).toBe(50 - 20 - 5);
+    expect(local.inventory).toEqual(['hat.party']);
+    expect(local.cloud?.accountId).toBe(a.cloud!.accountId);
+    expect(da.outboxes.get(a.cloud!.accountId)?.pending ?? []).toEqual([]);
+  });
+
+  it('sendGift 同一個 id 再送一次：伺服器只扣一次錢', async () => {
+    const { da, a, b } = await twoKids();
+    const input = { id: 'gift-0002', to: b.cloud!.accountId, itemId: 'sticker.star' };
+    await sendGift(da.deps, a.id, input);
+    await sendGift(da.deps, a.id, input);
+    expect(da.profiles.get(a.id)!.coins).toBe(45);
+  });
+
+  it('sendGift 連不上：丟出連不上的錯誤，金幣不變', async () => {
+    const { da, a, b } = await twoKids();
+    da.state.offline = true;
+    await expect(sendGift(da.deps, a.id, { id: 'gift-0003', to: b.cloud!.accountId, itemId: 'sticker.star' })).rejects.toMatchObject({ status: 0 });
+    expect(da.profiles.get(a.id)!.coins).toBe(50);
+  });
+
+  it('收下：本機存檔有貼紙；送禮人讀到「收下了」的通知，看過之後不再出現', async () => {
+    const { da, db: dbb, a, b } = await twoKids();
+    const gift = await sendGift(da.deps, a.id, { id: 'gift-0004', to: b.cloud!.accountId, itemId: 'sticker.tulip' });
+    const inbox = await fetchGifts(dbb.deps, b.id);
+    expect(inbox.incoming.map((g) => [g.from, g.itemId])).toEqual([['小安', 'sticker.tulip']]);
+    expect(await acceptGift(dbb.deps, b.id, gift.id)).toBe('accepted');
+    expect(dbb.profiles.get(b.id)!.stickers).toEqual({ 'sticker.tulip': 1 });
+    // 重複按收下（例如兩台裝置）：當作已處理
+    expect(await acceptGift(dbb.deps, b.id, gift.id)).toBe('done');
+    const notices = (await fetchGifts(da.deps, a.id)).notices;
+    expect(notices).toEqual([{ id: gift.id, kind: 'accepted', to: '小美', itemId: 'sticker.tulip' }]);
+    await ackGiftNotices(da.deps, a.id, [gift.id]);
+    expect((await fetchGifts(da.deps, a.id)).notices).toEqual([]);
+  });
+
+  it('不用了：送禮人同步後金幣退回；重複按不會出錯', async () => {
+    const { da, db: dbb, a, b } = await twoKids();
+    const gift = await sendGift(da.deps, a.id, { id: 'gift-0005', to: b.cloud!.accountId, itemId: 'hat.party' });
+    expect(da.profiles.get(a.id)!.coins).toBe(30);
+    await declineGift(dbb.deps, b.id, gift.id);
+    await declineGift(dbb.deps, b.id, gift.id);
+    expect((await syncProfile(da.deps, a.id)).status).toBe('synced');
+    expect(da.profiles.get(a.id)!.coins).toBe(50);
   });
 });

@@ -14,6 +14,7 @@ import { useCloud } from './online/useCloud';
 import { usePresence } from './online/usePresence';
 import { startPresenceDemo } from './online/presenceDemo';
 import { useRealtime } from './online/realtimeClient';
+import { useGifts } from './online/useGifts';
 import './styles/global.css';
 
 declare global {
@@ -35,6 +36,8 @@ declare global {
       presenceDemo: typeof startPresenceDemo;
       /** 即時連線狀態 */
       realtime: typeof useRealtime;
+      /** 禮物狀態（待收下、送禮結果、送禮視窗） */
+      gifts: typeof useGifts;
     };
   }
 }
@@ -51,6 +54,7 @@ window.__game = {
   presence: usePresence,
   presenceDemo: startPresenceDemo,
   realtime: useRealtime,
+  gifts: useGifts,
 };
 
 createRoot(document.getElementById('root')!).render(

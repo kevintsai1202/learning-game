@@ -6,7 +6,8 @@
 
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
-- 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/store/catalog.ts`（價格）、`src/engine/check.ts`（計分）
+- 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/engine/check.ts`（計分）
+- 路由：`app.ts`（帳號、同步、老師）、`gifts.ts`（送禮物）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
@@ -36,7 +37,7 @@ docker rm -f li-pg-test
 
 - **給伺服器 import 的 `src/` 模組必須是純邏輯**：不能 import 畫面、音訊、3D（three、react）的程式。改了之後看 `npm run server:build` 的產物，import 清單只能有 hono、pg、zod、jose、ws、node 內建模組與動態載入的 PGlite。
 - **改 `src/store/save.ts` 的規則等於同時改伺服器**：`tests/online/ops.test.ts` 的對照測試確認「本機原本的路徑」與 `applyOp` 結果相同。
-- 存檔只靠「操作」改變（`/api/ops`、之後的送禮），不要新增「整份上傳存檔」的 API：會蓋掉伺服器端的變更（例如收到的禮物）。
+- 存檔只靠「操作」（`/api/ops`）與送禮的路由改變，不要新增「整份上傳存檔」的 API：會蓋掉伺服器端的變更（例如收到的禮物）。
 - 會讀後改的帳號資料一律在交易裡 `SELECT … FOR UPDATE`。PGlite 是單一連線測不出搶鎖，要用 Docker 的 PostgreSQL 驗證（`tests/server/sync.test.ts` 的並行測試拿掉列鎖就會失敗）。
 - PGlite 轉接層自己排隊所有查詢；交易裡只能用 `tx.query`，在交易裡呼叫 `db.query` 會卡死。
 - 資料表結構只往後加版本（`server/db.ts` 的 `MIGRATIONS`），不修改已發布的版本。
@@ -45,5 +46,11 @@ docker rm -f li-pg-test
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。
 - 伺服器只保證位置在島的圓形範圍內，不做障礙物碰撞（信任模型，見 `docs/plans/online.md` 第 5 節）。
 - HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onKick` 通知即時中樞（`main.ts` 串接）。
+- **送禮物**（`gifts.ts`，規格見 `docs/plans/online.md` 第 7 節）：
+  - 鎖定順序固定，避免真正的 PostgreSQL 互相等待：送禮只鎖帳號（送禮人與收禮人用一句 `WHERE id = ANY(…) ORDER BY id FOR UPDATE` 一起鎖）；收下、不用了、過期、移出成員先鎖禮物，再依 id 順序鎖帳號。新增會同時鎖禮物與帳號的路由也要照這個順序。
+  - 交易裡不能丟 `ApiError` 卻期待前面的寫入保留（整個交易會撤銷）：例如收下過期的禮物，要先回傳結果讓退款提交，交易結束後再回 409。
+  - 退款一律用 `gifts.price`（送出當時的價格），不查現在的目錄；退款與收下都要呼叫 `onProfileChanged`，禮物狀態有變的人呼叫 `onGift`（中樞送 `{ t: 'gift' }`）。
+  - 禮物 id 由裝置產生，同一個送禮人重送同一個 id 回傳原本那份（不重複扣款）。
+  - `main.ts` 啟動時與每小時跑 `expireGifts`（7 天沒收下就退款），關機時清掉計時器。
 - Google 帳號只存 `sub` 與 email；回給前端的 email 一律遮罩（`maskEmail`），老師的 API 不回傳家長的 email。
 - Google 登入的測試一律用程式產生的金鑰（`tests/server/googleKeys.ts`）或 `e2e/fixtures/google-test-key.json`，不要連到真正的 Google。

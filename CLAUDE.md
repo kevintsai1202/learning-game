@@ -35,8 +35,8 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - `src/quiz/` 答題流程（`session.ts` 狀態機）、作答元件、題目附圖
 - `src/writing/` 筆順描寫（Hanzi Writer、注音與字母的中心線字形）
 - `src/world/` 3D 島嶼與舞台（R3F）；`src/ui/` DOM 介面
-- `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、商品目錄（`catalog.ts`）、自訂題庫、畫面狀態
-- `src/online/` 線上版前端：操作套用（`ops.ts`，伺服器共用）、同步佇列（`sync.ts`）、同步迴圈（`cloudSync.ts`）、狀態與排程（`useCloud.ts`）
+- `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、商品目錄（`catalog.ts`）、禮物目錄（`gifts.ts`）、自訂題庫、畫面狀態
+- `src/online/` 線上版前端：操作套用（`ops.ts`，伺服器共用）、同步佇列（`sync.ts`）、同步迴圈與送禮 API（`cloudSync.ts`）、狀態與排程（`useCloud.ts`）、即時連線（`realtimeClient.ts`）、禮物狀態（`useGifts.ts`）
 - `server/` 班級伺服器（另有 `server/CLAUDE.md`）；規格與分期在 `docs/plans/online.md`
 - `src/content/` 題庫格式（zod）、課綱代碼對照、資料來源清單
 - `public/data/strokes/` 國字筆順資料（腳本產生）；`public/licenses/` 授權全文
@@ -48,5 +48,5 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - 文字一律放 DOM，不要用 three 的文字渲染（注音字型需要 IVS）。
 - 要朗讀的固定句子放 `src/ui/lines.ts`，題目的朗讀文字一律經過 `src/quiz/spoken.ts`；預錄語音的盤點腳本靠這兩處收集句子。
 - 每題要有 `indicators`（108 課綱代碼）與 `source`。
-- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud、presence、realtime、presenceDemo）讀狀態與自動作答。多台裝置的測試用 `e2e/onlineDevice.ts` 開啟（3D 畫質設成低，否則軟體 WebGL 會把 CPU 吃滿）。
+- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud、presence、realtime、presenceDemo、gifts）讀狀態與自動作答。多台裝置的測試用 `e2e/onlineDevice.ts` 開啟（3D 畫質設成低，否則軟體 WebGL 會把 CPU 吃滿）。
 - 雲端角色的存檔只能透過「操作」改變（`src/online/ops.ts`），伺服器用同一份規則套用；`src/` 裡給伺服器 import 的模組不能 import 畫面、音訊、3D 的程式。

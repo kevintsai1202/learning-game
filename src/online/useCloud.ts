@@ -69,8 +69,8 @@ interface CloudStore {
   fetchGoogleLinks: (profileId: string) => Promise<string[]>;
 }
 
-/** 正式環境的依賴 */
-const deps: CloudDeps = {
+/** 正式環境的依賴（送禮物的 useGifts 也用這一份） */
+export const cloudDeps: CloudDeps = {
   call: (method, path, opts) => api(method, path, opts),
   getProfile: (id) => useGame.getState().save.profiles.find((p) => p.id === id) ?? null,
   putProfile: (p) => useGame.getState().putProfile(p),
@@ -99,7 +99,7 @@ export const useCloud = create<CloudStore>((set, get) => ({
   join: async (input) => {
     const server = serverUrl();
     if (!server) throw new Error('還沒有設定班級伺服器');
-    const p = await joinClass(deps, server, input);
+    const p = await joinClass(cloudDeps, server, input);
     useGame.getState().selectProfile(p.id);
     set({ status: 'synced', message: null, lastSyncAt: Date.now() });
     get().refresh();
@@ -109,7 +109,7 @@ export const useCloud = create<CloudStore>((set, get) => ({
   login: async (input) => {
     const server = serverUrl();
     if (!server) throw new Error('還沒有設定班級伺服器');
-    const p = await loginClass(deps, server, input);
+    const p = await loginClass(cloudDeps, server, input);
     useGame.getState().selectProfile(p.id);
     timer.failures = 0;
     void get().syncNow();
@@ -117,7 +117,7 @@ export const useCloud = create<CloudStore>((set, get) => ({
   },
 
   logout: async (profileId) => {
-    await logoutClass(deps, profileId);
+    await logoutClass(cloudDeps, profileId);
     useGame.getState().deleteProfile(profileId);
     set({ status: 'idle', message: null, pending: 0 });
   },
@@ -158,16 +158,16 @@ export const useCloud = create<CloudStore>((set, get) => ({
   googleLogin: async (idToken) => {
     const server = serverUrl();
     if (!server) throw new Error('還沒有設定班級伺服器');
-    const kids = await googleLogin(deps, server, idToken);
+    const kids = await googleLogin(cloudDeps, server, idToken);
     if (kids.length === 1) useGame.getState().selectProfile(kids[0].id);
     timer.failures = 0;
     void get().syncNow();
     return kids;
   },
 
-  linkGoogle: (profileId, idToken) => linkGoogle(deps, profileId, idToken),
-  unlinkGoogle: (profileId) => unlinkGoogle(deps, profileId),
-  fetchGoogleLinks: (profileId) => fetchGoogleLinks(deps, profileId),
+  linkGoogle: (profileId, idToken) => linkGoogle(cloudDeps, profileId, idToken),
+  unlinkGoogle: (profileId) => unlinkGoogle(cloudDeps, profileId),
+  fetchGoogleLinks: (profileId) => fetchGoogleLinks(cloudDeps, profileId),
 }));
 
 /** 同步目前角色，以及其他還有待送進度的雲端角色；依結果決定下次什麼時候再試 */
@@ -178,8 +178,8 @@ async function runSync(set: (s: Partial<CloudStore>) => void): Promise<void> {
     .save.profiles.filter((p) => p.cloud && p.id !== active?.id && getToken(p.cloud.accountId) && outboxSize(loadOutbox(p.cloud.accountId)) > 0);
   if (active) set({ status: 'syncing' });
   let outcome: SyncOutcome = { status: 'skipped' };
-  if (active) outcome = await syncProfile(deps, active.id);
-  for (const p of others) await syncProfile(deps, p.id);
+  if (active) outcome = await syncProfile(cloudDeps, active.id);
+  for (const p of others) await syncProfile(cloudDeps, p.id);
 
   if (!active) {
     set({ status: 'idle', pending: 0 });

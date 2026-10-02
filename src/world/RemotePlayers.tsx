@@ -2,6 +2,7 @@
  * 同房間其他玩家的 3D 角色：每幀往最新收到的位置內插（看起來是走過去的），
  * 頭上用 DOM 顯示暱稱與對話氣泡（drei Html；照專案規則，文字不用 three 渲染）。
  * 在建築裡的玩家不畫在島上。資料來自 usePresence（P2 由伺服器驅動，現在可以用 presenceDemo 模擬）。
+ * 連上班級而且老師開放送禮時，點名牌可以送禮物給那位同學（多人上線模擬的假同學不行）。
  */
 import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -15,6 +16,9 @@ import { usePresence } from '../online/usePresence';
 import { onIsland } from '../online/presence';
 import { Trail } from './Trail';
 import { PetFollower } from './Pets';
+import { useRealtime } from '../online/realtimeClient';
+import { useGifts } from '../online/useGifts';
+import { sfx } from '../audio/sfx';
 
 /** 內插的走路速度（公尺／秒），比自己的角色稍慢，看起來比較從容 */
 const WALK_SPEED = 4.2;
@@ -44,6 +48,8 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
   // 只在外觀、暱稱改變時重畫（移動時外觀物件沿用同一個，見 presence.ts 的 moveMember）
   const look = usePresence(useShallow((s) => ({ nickname: s.members[id]?.nickname ?? '', avatar: s.members[id]?.avatar, title: s.members[id]?.title ?? null })));
   const bubble = usePresence((s) => s.bubbles[id]?.text ?? null);
+  /** 名牌點了可以送禮（真的連上班級、老師開放送禮時） */
+  const giftable = useRealtime((s) => s.status === 'online' && s.flags.giftsOpen);
   const group = useRef<THREE.Group>(null);
   const motion = useRef<MotionState>({ speed: 0 });
   /** 畫面上目前的位置與朝向（往最新位置內插） */
@@ -85,7 +91,7 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
         </mesh>
-        {/* 名牌與氣泡：不攔截點擊（才能點地面走路），z-index 低於畫面上的面板 */}
+        {/* 名牌與氣泡：不攔截點擊（才能點地面走路），z-index 低於畫面上的面板；可以送禮時只有名牌點得到 */}
         <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]}>
           <div className="remote-label">
             {bubble && (
@@ -93,9 +99,29 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
                 {bubble}
               </div>
             )}
-            <div className="name-tag" data-testid="name-tag">
+            <div
+              className={`name-tag ${giftable ? 'giftable' : ''}`}
+              data-testid="name-tag"
+              // 攔下 pointerdown：不然同一下也會點到地面，角色走過去
+              onPointerDown={giftable ? (e) => e.stopPropagation() : undefined}
+              onClick={
+                giftable
+                  ? (e) => {
+                      e.stopPropagation();
+                      sfx.tap();
+                      useGifts.getState().openDialog(id);
+                    }
+                  : undefined
+              }
+              title={giftable ? `送禮物給${look.nickname}` : undefined}
+            >
               {look.title && <small className="name-title">{look.title}</small>}
               {look.nickname}
+              {giftable && (
+                <span className="gift-hint" aria-hidden>
+                  🎁
+                </span>
+              )}
             </div>
           </div>
         </Html>

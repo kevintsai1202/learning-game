@@ -4,7 +4,17 @@
  */
 import { ApiFailure, type ApiOptions } from './api';
 import { ackBatch, emptyOutbox, rebase, takeBatch, type Outbox } from './sync';
-import type { GoogleKidsResponse, GoogleLinksResponse, OpsResponse, SessionResponse } from './protocol';
+import type {
+  AcceptGiftResponse,
+  Classmate,
+  ClassmatesResponse,
+  GiftsResponse,
+  GoogleKidsResponse,
+  GoogleLinksResponse,
+  OpsResponse,
+  SendGiftResponse,
+  SessionResponse,
+} from './protocol';
 import type { AvatarConfig, CloudLink, Profile } from '../store/save';
 
 /** 同步需要的外部功能 */
@@ -167,4 +177,79 @@ export async function syncProfile(deps: CloudDeps, profileId: string): Promise<S
     deps.putProfile(rebase(res.profile, rest, current.cloud, deps.now()));
     if (!rest.pending.length) return { status: 'synced', rev: res.rev, rejected: res.rejected };
   }
+}
+
+// ---------- 送禮物（P3；規格見 docs/plans/online.md 第 7 節） ----------
+
+/** 收下禮物的結果：returned 是已經有了、自動退回；done 是之前已經處理過（例如另一台裝置按過）；expired 是放太久已退回 */
+export type AcceptOutcome = 'accepted' | 'returned' | 'done' | 'expired';
+
+/** 呼叫需要登入的 API；權杖失效時清掉（畫面會請孩子重新登入），錯誤照樣丟出 */
+async function authed<T>(deps: CloudDeps, profileId: string, method: string, path: string, body?: unknown): Promise<T> {
+  const { cloud, token } = credentials(deps, profileId);
+  try {
+    return await deps.call<T>(method, path, { base: cloud.server, token, ...(body !== undefined ? { body } : {}) });
+  } catch (err) {
+    if (err instanceof ApiFailure && err.status === 401) deps.setToken(cloud.accountId, null);
+    throw err;
+  }
+}
+
+/** 伺服器回傳的最新存檔寫回本機：疊上還沒送出的操作（和同步同一條路） */
+function applyServerProfile(deps: CloudDeps, profileId: string, server: Profile): void {
+  const current = deps.getProfile(profileId);
+  if (!current?.cloud) return;
+  deps.putProfile(rebase(server, deps.loadOutbox(current.cloud.accountId), current.cloud, deps.now()));
+}
+
+/** 讀全班同學（不含自己），選送禮對象用 */
+export async function fetchClassmates(deps: CloudDeps, profileId: string): Promise<Classmate[]> {
+  return (await authed<ClassmatesResponse>(deps, profileId, 'GET', '/api/classmates')).classmates;
+}
+
+/** 讀禮物狀態：待收下的禮物、送出的禮物的結果、今天送了幾份 */
+export async function fetchGifts(deps: CloudDeps, profileId: string): Promise<GiftsResponse> {
+  return authed<GiftsResponse>(deps, profileId, 'GET', '/api/gifts');
+}
+
+/**
+ * 送禮物。先把待送的操作送完，伺服器才看得到最新的金幣（直接呼叫 syncProfile：useCloud 的 syncNow
+ * 在同步進行中時會馬上返回，不保證送完）。id 由呼叫端產生，同一次送禮重試時沿用，伺服器不會扣兩次錢。
+ */
+export async function sendGift(deps: CloudDeps, profileId: string, input: { id: string; to: string; itemId: string }): Promise<SendGiftResponse['gift']> {
+  const flushed = await syncProfile(deps, profileId);
+  if (flushed.status === 'offline') throw new ApiFailure(0, 'network', flushed.message);
+  if (flushed.status === 'needLogin') throw new ApiFailure(401, 'unauthorized', '請重新登入班級');
+  if (flushed.status === 'error') throw new ApiFailure(500, 'error', flushed.message);
+  const res = await authed<SendGiftResponse>(deps, profileId, 'POST', '/api/gifts', input);
+  applyServerProfile(deps, profileId, res.profile);
+  return res.gift;
+}
+
+/** 收下禮物；之前已經處理過或放太久時不丟錯誤，回傳結果讓畫面說明 */
+export async function acceptGift(deps: CloudDeps, profileId: string, giftId: string): Promise<AcceptOutcome> {
+  try {
+    const res = await authed<AcceptGiftResponse>(deps, profileId, 'POST', `/api/gifts/${encodeURIComponent(giftId)}/accept`, {});
+    applyServerProfile(deps, profileId, res.profile);
+    return res.status;
+  } catch (err) {
+    if (err instanceof ApiFailure && err.status === 409 && err.code === 'gift_done') return 'done';
+    if (err instanceof ApiFailure && err.status === 409 && err.code === 'gift_expired') return 'expired';
+    throw err;
+  }
+}
+
+/** 不用了（金幣退回送禮人）；之前已經處理過就當作完成 */
+export async function declineGift(deps: CloudDeps, profileId: string, giftId: string): Promise<void> {
+  try {
+    await authed(deps, profileId, 'POST', `/api/gifts/${encodeURIComponent(giftId)}/decline`, {});
+  } catch (err) {
+    if (err instanceof ApiFailure && err.status === 409 && err.code === 'gift_done') return;
+    throw err;
+  }
+}
+
+/** 送禮結果看過了 */
+export async function ackGiftNotices(deps: CloudDeps, profileId: string, ids: string[]): Promise<void> {
+  if (ids.length) await authed(deps, profileId, 'POST', '/api/gifts/notices/ack', { ids });
 }

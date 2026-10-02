@@ -69,3 +69,10 @@ export async function cloudState(page: Page): Promise<{ status: string; pending:
     return { status: s.status, pending: s.pending };
   });
 }
+
+/** 用班級帳號登入並進島，等即時連線連上 */
+export async function loginAndEnter(page: Page, code: string, nickname: string, pin: string): Promise<void> {
+  await page.evaluate(({ code, nickname, pin }) => (window as any).__game.cloud.getState().login({ code, nickname, pin }), { code, nickname, pin });
+  await page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
+  await expect.poll(() => page.evaluate(() => (window as any).__game.realtime.getState().status)).toBe('online');
+}

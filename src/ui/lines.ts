@@ -1,7 +1,9 @@
 /**
  * 遊戲介面固定朗讀的句子。集中在這裡，預錄語音的盤點腳本（scripts/voice/collect.test.ts）才收得到；
  * 改字後要重跑盤點與產生語音檔，否則那一句會退回裝置語音。
+ * 伺服器也 import 這裡（公頻短句），所以只能 import 純模組。
  */
+import { findSticker, giftEmoji, giftName, giftPhrase } from '../store/gifts';
 
 /** 標題畫面的歡迎詞 */
 export const WELCOME_LINE = '歡迎來到知識島大冒險！';
@@ -71,3 +73,30 @@ export const CHAT_PHRASES: { id: string; text: string; group: ChatGroup }[] = [
   { id: 'wow', text: '😮', group: '心情' },
   { id: 'sad', text: '😢', group: '心情' },
 ];
+
+/** 送禮物的固定提示（有預錄語音） */
+export const GIFT_LINES = {
+  pickFriend: '要送給哪位同學呢？',
+  pickGift: '要送什麼禮物呢？',
+  sent: '送出去了！等朋友收下。',
+  accepted: '收下了！放進你的收藏。',
+  returned: '你已經有了，禮物退回給朋友。',
+  expired: '這份禮物放太久，已經退回去了。',
+} as const;
+
+// 下面幾句有暱稱或數字，沒辦法預錄，朗讀時用裝置語音（盤點腳本不收）
+
+/** 動詞後面接禮物：貼紙是「一張 🌷 鬱金香貼紙」，外觀道具不加量詞、前面空一格（「 🎉 派對帽」） */
+const afterVerb = (itemId: string): string => (findSticker(itemId) ? giftPhrase(itemId) : ` ${giftPhrase(itemId)}`);
+
+/** 收到禮物的卡片：「小安送你一張 🌷 鬱金香貼紙！」「小安送你 🎉 派對帽！」 */
+export const giftCardLine = (from: string, itemId: string): string => `${from}送你${afterVerb(itemId)}！`;
+
+/** 送出的禮物被收下：「小美收下了你送的 🌷 鬱金香貼紙！」 */
+export const giftAcceptedLine = (to: string, itemId: string): string => `${to}收下了你送的 ${giftEmoji(itemId)} ${giftName(itemId)}！`;
+
+/** 送出的禮物退回（不用了、過期、已經有了、對方被移出）：不說是誰，避免孩子難過 */
+export const giftRefundLine = (price: number): string => `有一份禮物沒送出，${price} 金幣退回來了。`;
+
+/** 送禮前的確認：「要把一張 🌷 鬱金香貼紙（5 金幣）送給小美嗎？」 */
+export const giftConfirmLine = (to: string, itemId: string, price: number): string => `要把${afterVerb(itemId)}（${price} 金幣）送給${to}嗎？`;

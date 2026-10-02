@@ -105,3 +105,14 @@ describe('存檔格式', () => {
     expect(parseProfile({ ...kid(), stickers: { 'sticker.star': 1.5 } })).toBeNull();
   });
 });
+
+describe('禮物的句子（src/ui/lines.ts）', () => {
+  it('卡片、收下通知、退回通知、確認句：貼紙加「一張」，外觀不加量詞、表情前空一格；退回不說是誰', async () => {
+    const { giftAcceptedLine, giftCardLine, giftConfirmLine, giftRefundLine } = await import('../../src/ui/lines');
+    expect(giftCardLine('小安', 'sticker.tulip')).toBe('小安送你一張 🌷 鬱金香貼紙！');
+    expect(giftCardLine('小安', 'hat.party')).toBe('小安送你 🎉 派對帽！');
+    expect(giftAcceptedLine('小美', 'sticker.tulip')).toBe('小美收下了你送的 🌷 鬱金香貼紙！');
+    expect(giftRefundLine(20)).toBe('有一份禮物沒送出，20 金幣退回來了。');
+    expect(giftConfirmLine('小美', 'hat.party', 20)).toBe('要把 🎉 派對帽（20 金幣）送給小美嗎？');
+  });
+});

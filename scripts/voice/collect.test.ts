@@ -28,6 +28,7 @@ import { ZONES } from '../../src/world/layout';
 import { ITEMS } from '../../src/store/catalog';
 import { ANIMALS } from '../../src/ui/screens/ProfilesScreen';
 import { BADGES } from '../../src/store/badges';
+import { STICKERS, giftName } from '../../src/store/gifts';
 
 /** 連續幾個種子沒有新句子就停 */
 const QUIET = 40;
@@ -116,6 +117,9 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
     addSpoken(b.name, 'zh-TW', 'ui:badge');
     addSpoken(LINES.newBadgeLine(b.name), 'zh-TW', 'ui:badge');
   });
+  // 送禮物：固定提示；貼紙簿點貼紙唸名稱（卡片上有暱稱的句子用裝置語音，不收）
+  Object.values(LINES.GIFT_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:gift'));
+  STICKERS.forEach((st) => addSpoken(giftName(st.id), 'zh-TW', 'ui:gift'));
   ZONES.forEach((z) => addSpoken(z.intro, 'zh-TW', 'ui:zone'));
   // 選單上的活動名稱（含三家版本的課本單元與期中期末模擬）
   const menu: ActivityDef[] = [...ALL_ACTIVITIES];

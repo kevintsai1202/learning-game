@@ -1332,6 +1332,170 @@ button {
 .phrase-btn:active {
   background: var(--sun);
 }
+/* 公頻面板的按鈕列：「說話」與「送禮」並排（同一列，面板不會變高） */
+.chat-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+  align-items: center;
+}
+.chat-actions > * {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.chat-actions .chat-say,
+.chat-actions .chat-notice {
+  margin-top: 0;
+}
+/* 兩個按鈕並排時不換行（換行會讓按鈕和面板變高） */
+.chat-actions .btn {
+  white-space: nowrap;
+  padding-left: 6px;
+  padding-right: 6px;
+}
+
+/* ===== 送禮物（P3） ===== */
+/* 可以送禮時名牌點得到（外層 .remote-label 不攔截點擊，只有名牌接收） */
+.name-tag.giftable {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.name-tag .gift-hint {
+  margin-left: 4px;
+  font-size: 0.85em;
+}
+/* 送禮視窗與禮物卡片：畫在「進去玩」泡泡（z-index 1）上面、休息提醒（50）下面 */
+.gift-layer {
+  z-index: 3;
+}
+.gift-panel {
+  width: min(640px, 100%);
+}
+.gift-title {
+  margin: 4px 0 8px;
+  font-size: 22px;
+}
+.gift-error {
+  color: #c0392b;
+  font-family: var(--font-plain);
+  font-weight: 700;
+}
+.gift-friends {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.gift-friend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff;
+  color: var(--ink);
+  font: inherit;
+  font-size: 18px;
+  text-align: left;
+  cursor: pointer;
+}
+.gift-friend-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gift-online {
+  font-size: 12px;
+}
+.gift-panel .activity-card {
+  font: inherit;
+  color: var(--ink);
+}
+.gift-panel .activity-card:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.gift-price {
+  margin-top: auto;
+  font-family: var(--font-plain);
+  font-size: 15px;
+  font-weight: 700;
+}
+.gift-remaining {
+  margin: 0 0 8px;
+}
+.gift-confirm {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 20px;
+}
+.gift-big {
+  font-size: 56px;
+  line-height: 1;
+}
+.gift-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+/* 島上的禮物卡片：畫面正中間。用 translate 屬性置中——pop-in 動畫只改 transform，不會把置中蓋掉（「進去玩」泡泡就是這樣跑掉的） */
+.gift-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 2;
+  width: min(440px, calc(100% - 24px));
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px 18px 18px;
+  text-align: center;
+  font-size: 22px;
+  animation: pop-in 0.3s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+.gift-card-text {
+  margin: 0;
+  line-height: 1.5;
+}
+/* 百寶屋的貼紙簿 */
+.sticker-card {
+  font: inherit;
+  color: var(--ink);
+}
+.sticker-card.empty {
+  opacity: 0.45;
+}
+.sticker-count {
+  font-family: var(--font-plain);
+  font-weight: 700;
+}
+.sticker-from {
+  font-family: var(--font-plain);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.gift-log {
+  margin: 4px 0 8px;
+  padding-left: 1.2em;
+  font-family: var(--font-plain);
+  font-size: 15px;
+}
+@media (max-width: 600px) {
+  .gift-card {
+    font-size: 18px;
+    padding: 12px 14px 14px;
+  }
+  .gift-big {
+    font-size: 44px;
+  }
+}
 
 /* ===== 獎章與稱號 ===== */
 /* 島上名牌：名字下面一行小字的稱號 */
@@ -1763,17 +1927,24 @@ button {
   .chat-panel:has(.phrase-picker) .chat-inside {
     display: none;
   }
+  .chat-actions .btn {
+    font-size: 15px;
+  }
 }
 
 /*
  * 手機橫放（高度不到 500px）的公頻：縮小、只顯示最近三則，打開短句盤時先藏起對話。
  * 底部貼在提示文字上方（提示 bottom 18px、高約 46px），最高到右上角按鈕下面（按鈕下緣約 68px）。
+ * 寬度要放得下並排的「說話」「送禮」；站在門口時「進去玩」泡泡畫在公頻上面。
  */
 @media (orientation: landscape) and (max-height: 500px) {
+  .chat-actions .btn {
+    font-size: 15px;
+  }
   .chat-panel {
     right: 8px;
     bottom: 74px;
-    width: min(200px, 22vw);
+    width: min(240px, 30vw);
     max-height: calc(100dvh - 74px - 76px);
     padding: 6px 10px 8px;
     font-size: 13px;

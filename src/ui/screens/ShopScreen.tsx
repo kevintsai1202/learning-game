@@ -1,13 +1,15 @@
 /**
  * 百寶屋：分頁列出帽子、眼鏡、背後、手持道具、寵物、走路特效，以及換動物和顏色（換外觀免費）。
  * 金幣道具買了就自動戴上；獎章專屬道具鎖起來並寫出需要的獎章，點一下帶孩子到獎章簿看怎麼拿。
+ * 「貼紙簿」顯示同學送的貼紙（每種幾張、最近是誰送的）與最近收到的禮物。
  */
 import { useState } from 'react';
 import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
 import { itemsOfSlot, owns, type CatalogItem, type Slot } from '../../store/catalog';
 import { badgeById } from '../../store/badges';
-import { normalizeAvatar } from '../../store/save';
+import { normalizeAvatar, type Profile } from '../../store/save';
+import { STICKERS, giftEmoji, giftName } from '../../store/gifts';
 import { ANIMALS, COLORS } from './ProfilesScreen';
 import { AnimalIcon } from '../AnimalIcon';
 import { sfx } from '../../audio/sfx';
@@ -16,8 +18,8 @@ import { boughtLine } from '../lines';
 import { teleport } from '../../world/input';
 import { doorOf, zoneById } from '../../world/layout';
 
-/** 分頁：四種道具格子，加上換造型 */
-type Tab = Slot | 'look';
+/** 分頁：六種道具格子，加上貼紙簿與換造型 */
+type Tab = Slot | 'stickers' | 'look';
 const TABS: { id: Tab; name: string }[] = [
   { id: 'hat', name: '🎩 帽子' },
   { id: 'face', name: '👓 眼鏡' },
@@ -25,6 +27,7 @@ const TABS: { id: Tab; name: string }[] = [
   { id: 'hand', name: '🎈 手持' },
   { id: 'pet', name: '🐥 寵物' },
   { id: 'trail', name: '✨ 特效' },
+  { id: 'stickers', name: '📒 貼紙簿' },
   { id: 'look', name: '🐻 換造型' },
 ];
 
@@ -138,6 +141,8 @@ export function ShopScreen() {
                 ))}
               </div>
             </>
+          ) : tab === 'stickers' ? (
+            <StickerBook profile={profile} />
           ) : (
             <div className="activity-grid">{itemsOfSlot(tab).map(card)}</div>
           )}
@@ -145,5 +150,50 @@ export function ShopScreen() {
         </div>
       </div>
     </div>
+  );
+}
+
+/** 貼紙簿：每種貼紙收到幾張、最近是誰送的；下面列最近收到的 10 份禮物。點貼紙唸出名稱 */
+function StickerBook({ profile }: { profile: Profile }) {
+  const log = profile.giftLog ?? [];
+  return (
+    <>
+      <div className="activity-grid">
+        {STICKERS.map((st) => {
+          const count = profile.stickers?.[st.id] ?? 0;
+          const from = log.find((g) => g.itemId === st.id)?.from;
+          return (
+            <button
+              key={st.id}
+              className={`activity-card sticker-card ${count ? '' : 'empty'}`}
+              onClick={() => {
+                sfx.tap();
+                speak(giftName(st.id));
+              }}
+              data-testid={`sticker-${st.id}`}
+            >
+              <span className="icon">{st.emoji}</span>
+              <span className="name">{st.name}</span>
+              <span className="sticker-count" data-testid={`sticker-count-${st.id}`}>
+                {count ? `× ${count}` : '還沒有'}
+              </span>
+              {from && <small className="sticker-from">{from}送的</small>}
+            </button>
+          );
+        })}
+      </div>
+      <span className="label">最近收到的禮物</span>
+      {log.length ? (
+        <ul className="gift-log" data-testid="gift-log">
+          {log.slice(0, 10).map((g, i) => (
+            <li key={`${g.date}-${i}`}>
+              {g.date.slice(5).replace('-', '/')} {g.from}送你 {giftEmoji(g.itemId)} {giftName(g.itemId)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="plain">{profile.cloud ? '還沒有收到禮物。同學可以在島上送你貼紙！' : '加入班級後，同學可以送你貼紙。'}</p>
+      )}
+    </>
   );
 }

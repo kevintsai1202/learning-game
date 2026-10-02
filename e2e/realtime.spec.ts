@@ -5,18 +5,11 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { enterZone, standAtDoor } from './helpers';
-import { SERVER, flushDeviceLogs, openDevice, pageErrors } from './onlineDevice';
+import { SERVER, flushDeviceLogs, loginAndEnter, openDevice, pageErrors } from './onlineDevice';
 
 const SHOTS = 'e2e/screenshots/realtime';
 
 test.afterEach(async ({}, testInfo) => flushDeviceLogs(testInfo));
-
-/** 用班級帳號登入並進島，等即時連線連上 */
-async function loginAndEnter(page: Page, code: string, nickname: string, pin: string): Promise<void> {
-  await page.evaluate(({ code, nickname, pin }) => (window as any).__game.cloud.getState().login({ code, nickname, pin }), { code, nickname, pin });
-  await page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
-  await expect.poll(() => page.evaluate(() => (window as any).__game.realtime.getState().status)).toBe('online');
-}
 
 /** 同島狀態裡某位成員（用暱稱找） */
 async function memberByName(page: Page, nickname: string): Promise<any> {
@@ -143,6 +136,13 @@ test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「�
     for (const id of ['hud-badges', 'hud-parent', 'hud-coins', 'hud-cloud']) {
       const box = (await page.getByTestId(id).boundingBox())!;
       expect.soft(overlaps(panel, box), `${where} 公頻擋到 ${id}：${JSON.stringify({ panel, box })}`).toBe(false);
+    }
+    // 並排的「說話」「送禮」：不換行（換行會變高）、文字不超出按鈕
+    const buttons = await page.locator('.chat-actions .btn').evaluateAll((els) => els.map((el) => ({ text: el.textContent, h: el.getBoundingClientRect().height, sw: el.scrollWidth, cw: el.clientWidth })));
+    expect.soft(buttons.length, `${where} 按鈕數`).toBe(2);
+    for (const b of buttons) {
+      expect.soft(b.h, `${where}「${b.text}」換行變高`).toBeLessThan(50);
+      expect.soft(b.sw, `${where}「${b.text}」文字超出按鈕`).toBeLessThanOrEqual(b.cw);
     }
   };
   /**

@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 320,
-  "全部": 3403,
-  "zh": 1782,
+  "介面": 336,
+  "全部": 3419,
+  "zh": 1798,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34548,
+ "chars": 34650,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -17646,6 +17646,15 @@
    ]
   },
   {
+   "key": "zh-TW|火箭貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "火箭貼紙",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|牙齒",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27468,6 +27477,15 @@
    ]
   },
   {
+   "key": "zh-TW|收下了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "收下了！",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|收到生日驚喜，大叫一聲：「哇！」",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27731,6 +27749,15 @@
    "text": "估一估",
    "sources": [
     "ui:menu"
+   ]
+  },
+  {
+   "key": "zh-TW|你已經有了，禮物退回給朋友。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "你已經有了，禮物退回給朋友。",
+   "sources": [
+    "ui:gift"
    ]
   },
   {
@@ -28564,6 +28591,15 @@
    ]
   },
   {
+   "key": "zh-TW|放進你的收藏。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "放進你的收藏。",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|放學後，要在學校門口附近安全的地方等爸爸媽媽。",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29094,6 +29130,15 @@
    ]
   },
   {
+   "key": "zh-TW|星星貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "星星貼紙",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|星期與月曆",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29334,6 +29379,24 @@
    "text": "英語總複習",
    "sources": [
     "ui:menu"
+   ]
+  },
+  {
+   "key": "zh-TW|要送什麼禮物呢？",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "要送什麼禮物呢？",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
+   "key": "zh-TW|要送給哪位同學呢？",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "要送給哪位同學呢？",
+   "sources": [
+    "ui:gift"
    ]
   },
   {
@@ -29621,6 +29684,15 @@
    ]
   },
   {
+   "key": "zh-TW|送出去了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "送出去了！",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|逃出火場以後，不要回去拿玩具或書包。",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29813,6 +29885,15 @@
    "sources": [
     "life.season",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|彩虹貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "彩虹貼紙",
+   "sources": [
+    "ui:gift"
    ]
   },
   {
@@ -31272,6 +31353,15 @@
    ]
   },
   {
+   "key": "zh-TW|這份禮物放太久，已經退回去了。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "這份禮物放太久，已經退回去了。",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|這有什麼好高興的",
    "lang": "zh-TW",
    "voice": "zh",
@@ -31749,6 +31839,15 @@
    "sources": [
     "life.traffic",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|等朋友收下。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "等朋友收下。",
+   "sources": [
+    "ui:gift"
    ]
   },
   {
@@ -32723,6 +32822,15 @@
    ]
   },
   {
+   "key": "zh-TW|餅乾貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "餅乾貼紙",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|鼻子",
    "lang": "zh-TW",
    "voice": "zh",
@@ -33174,6 +33282,15 @@
    ]
   },
   {
+   "key": "zh-TW|獨角獸貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "獨角獸貼紙",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|糖果和餅乾",
    "lang": "zh-TW",
    "voice": "zh",
@@ -33522,6 +33639,15 @@
    ]
   },
   {
+   "key": "zh-TW|鯨魚貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "鯨魚貼紙",
+   "sources": [
+    "ui:gift"
+   ]
+  },
+  {
    "key": "zh-TW|繼續一直看",
    "lang": "zh-TW",
    "voice": "zh",
@@ -33538,6 +33664,15 @@
    "text": "蘋果核要丟到哪一個桶子？",
    "sources": [
     "life.recycle3d"
+   ]
+  },
+  {
+   "key": "zh-TW|蘋果貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "蘋果貼紙",
+   "sources": [
+    "ui:gift"
    ]
   },
   {
@@ -33693,6 +33828,15 @@
    "text": "讚喔！",
    "sources": [
     "ui:praise"
+   ]
+  },
+  {
+   "key": "zh-TW|鬱金香貼紙",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "鬱金香貼紙",
+   "sources": [
+    "ui:gift"
    ]
   },
   {

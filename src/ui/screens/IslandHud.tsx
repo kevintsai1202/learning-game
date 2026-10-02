@@ -12,6 +12,8 @@ import { AnimalIcon } from '../AnimalIcon';
 import { teacherTalk } from '../teacherTips';
 import { useCloud, type CloudStatus } from '../../online/useCloud';
 import { ChatPanel } from '../ChatPanel';
+import { GiftInbox } from '../GiftInbox';
+import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 
 /** 同步狀態的圖示與文字 */
@@ -193,6 +195,9 @@ export function IslandHud() {
       )}
       {touch && <Joystick />}
       <ChatPanel />
+      {/* 禮物卡片與送禮視窗：只在島上（不打斷答題） */}
+      <GiftInbox />
+      <GiftDialog />
     </>
   );
 }

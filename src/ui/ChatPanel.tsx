@@ -1,12 +1,14 @@
 /**
  * 公頻：島上畫面角落的小面板，顯示線上人數、最近幾則對話、誰在哪棟建築裡；
- * 連上班級時有「💬 說話」短句盤（只能選短句，不能自由打字），點了先唸出來再送出。
+ * 連上班級時有「💬 說話」短句盤（只能選短句，不能自由打字），點了先唸出來再送出；
+ * 旁邊的「🎁 送禮」打開送禮視窗（老師關閉送禮時不顯示）。兩個按鈕同一列，面板不會變高。
  * 沒有其他人、也沒連上班級時不顯示。
  */
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePresence } from '../online/usePresence';
 import { sayPhrase, useRealtime } from '../online/realtimeClient';
+import { useGifts } from '../online/useGifts';
 import { zoneById } from '../world/layout';
 import { CHAT_PHRASES, type ChatGroup } from './lines';
 import { speak } from '../audio/speech';
@@ -23,6 +25,8 @@ export function ChatPanel() {
   const chat = usePresence((s) => s.chat);
   const status = useRealtime((s) => s.status);
   const chatOpen = useRealtime((s) => s.flags.chatOpen);
+  const giftsOpen = useRealtime((s) => s.flags.giftsOpen);
+  const openGift = useGifts((s) => s.openDialog);
   const notice = useRealtime((s) => s.notice);
   const [picking, setPicking] = useState(false);
   const online = status === 'online';
@@ -67,14 +71,30 @@ export function ChatPanel() {
           {notice}
         </div>
       )}
-      {online &&
-        (chatOpen ? (
-          <button className="btn small white chat-say" onClick={() => setPicking((v) => !v)} aria-expanded={picking} data-testid="chat-say">
-            {picking ? '收起' : '💬 說話'}
-          </button>
-        ) : (
-          <div className="chat-notice">老師把聊天關起來了</div>
-        ))}
+      {online && (
+        <div className="chat-actions">
+          {chatOpen ? (
+            <button className="btn small white chat-say" onClick={() => setPicking((v) => !v)} aria-expanded={picking} data-testid="chat-say">
+              {picking ? '收起' : '💬 說話'}
+            </button>
+          ) : (
+            <div className="chat-notice">老師把聊天關起來了</div>
+          )}
+          {giftsOpen && (
+            <button
+              className="btn small white chat-gift"
+              onClick={() => {
+                sfx.tap();
+                setPicking(false);
+                openGift();
+              }}
+              data-testid="chat-gift"
+            >
+              🎁 送禮
+            </button>
+          )}
+        </div>
+      )}
       {online && chatOpen && picking && (
         <div className="phrase-picker" data-testid="phrase-picker">
           {GROUPS.map((g) => (

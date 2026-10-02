@@ -6,6 +6,7 @@
  * - 換畫面就送所在建築（在建築、答題、結算、百寶屋時算在建築裡）
  * - 斷線依 2、4、8…秒重連（最多 30 秒）；被踢下線（另一台裝置登入、老師移除或重設密碼）就不再自動重連
  * - 收到 profile（自己的存檔在伺服器端變了）就同步一次
+ * - 連上時與收到 gift（禮物狀態有變）時重新讀取禮物
  */
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
@@ -13,6 +14,7 @@ import type { MemberState, RoomFlags, ServerMessage } from './realtime';
 import { usePresence } from './usePresence';
 import { getToken } from './storage';
 import { useCloud } from './useCloud';
+import { useGifts } from './useGifts';
 import { useGame } from '../store/useGame';
 import { useUi, type Screen, type ZoneId } from '../store/useUi';
 import { equippedOf } from '../store/catalog';
@@ -123,6 +125,7 @@ export function startRealtime(): () => void {
     accountId = null;
     s?.close();
     usePresence.getState().clear();
+    useGifts.getState().clear();
     if (useRealtime.getState().status !== 'kicked') useRealtime.setState({ status: 'off' });
   };
 
@@ -144,6 +147,7 @@ export function startRealtime(): () => void {
           useRealtime.setState({ status: 'online', flags: msg.room });
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
           sendWhere(true);
+          void useGifts.getState().load();
           break;
         case 'chat':
           // 對話氣泡時間到就收起來
@@ -154,6 +158,9 @@ export function startRealtime(): () => void {
           break;
         case 'profile':
           void useCloud.getState().syncNow();
+          break;
+        case 'gift':
+          void useGifts.getState().load();
           break;
         case 'kicked':
           kickedFor = accountId;

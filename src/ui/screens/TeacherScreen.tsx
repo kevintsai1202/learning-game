@@ -281,6 +281,10 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
             <input type="checkbox" checked={room.chatOpen} onChange={(e) => void act(() => call('PATCH', '/api/teacher/room', { chatOpen: e.target.checked }), e.target.checked ? '已開放聊天' : '已關閉聊天')} data-testid="toggle-chat" />
             允許公頻聊天（孩子只能選預設短句，不能自由打字）
           </label>
+          <label className="plain" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
+            <input type="checkbox" checked={room.giftsOpen} onChange={(e) => void act(() => call('PATCH', '/api/teacher/room', { giftsOpen: e.target.checked }), e.target.checked ? '已開放送禮' : '已關閉送禮')} data-testid="toggle-gifts" />
+            允許送禮物（用金幣買貼紙或外觀送同學；關掉後不能送新的，已送出的還是可以收下）
+          </label>
         </>
       )}
       {clientId && (
