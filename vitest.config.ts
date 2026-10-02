@@ -5,5 +5,7 @@ export default defineConfig({
   test: {
     include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
     environment: 'node',
+    // 伺服器測試在 beforeAll 啟動 PGlite（WASM 版 PostgreSQL）；全套平行跑時幾個檔案同時啟動，10 秒的預設值不夠
+    hookTimeout: 30_000,
   },
 });

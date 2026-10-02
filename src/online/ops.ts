@@ -9,6 +9,7 @@ import { subjectSchema } from '../content/schema';
 import { scoreSession } from '../engine/check';
 import { findItem } from '../store/catalog';
 import {
+  ANIMAL_IDS,
   addPlayTime,
   buyItem,
   createEmptySave,
@@ -56,7 +57,7 @@ const base = { id: z.string().min(1).max(64), at: z.string().max(40) };
 const opQuestion = storedQuestion.extend({ subject: subjectSchema });
 /** 角色外觀格式（加入班級的請求也用這份） */
 export const avatarSchema = z.object({
-  animal: z.enum(['bear', 'rabbit', 'cat', 'dog']),
+  animal: z.enum(ANIMAL_IDS),
   color: z.string().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/),
   hat: z.string().max(40).nullable(),
 });

@@ -1,6 +1,7 @@
 /**
  * 班級畫面：孩子用「房間代碼＋暱稱＋4 位數密碼」登入班級，或第一次加入班級。
  * 加入時可以選新的外觀，或把這台裝置上的角色進度帶過去（那個角色直接變成雲端角色）。
+ * 家長綁定過 Google 的話，也可以按「使用 Google 帳戶登入」快速登入（備選）。
  */
 import { useState, type SubmitEvent } from 'react';
 import { useGame } from '../../store/useGame';
@@ -9,6 +10,8 @@ import { useCloud } from '../../online/useCloud';
 import { getToken } from '../../online/storage';
 import type { AvatarConfig } from '../../store/save';
 import { ANIMALS, COLORS } from './ProfilesScreen';
+import { AnimalIcon } from '../AnimalIcon';
+import { GoogleButton } from '../GoogleButton';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
 import { enterIslandLine } from '../lines';
@@ -24,6 +27,8 @@ export function ClassScreen() {
   const active = useGame((s) => s.profile());
   const join = useCloud((s) => s.join);
   const login = useCloud((s) => s.login);
+  const googleLogin = useCloud((s) => s.googleLogin);
+  const googleClientId = useCloud((s) => s.googleClientId);
   // 目前角色是雲端角色但需要重新登入時，先填好代碼與暱稱
   const relogin = active?.cloud && !getToken(active.cloud.accountId) ? active : null;
   const [mode, setMode] = useState<'login' | 'join'>('login');
@@ -58,6 +63,26 @@ export function ClassScreen() {
           ? await login(input)
           : await join(source === 'new' ? { ...input, avatar } : { ...input, profile: profiles.find((x) => x.id === source)! });
       enterIsland(p.name);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '發生錯誤，請再試一次');
+      sfx.oops();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /** 用 Google 快速登入：只有一位孩子就直接進島；多位就回選角畫面挑 */
+  const onGoogle = async (idToken: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const kids = await googleLogin(idToken);
+      if (kids.length === 1) {
+        enterIsland(kids[0].name);
+      } else {
+        sfx.fanfare();
+        goto('profiles');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '發生錯誤，請再試一次');
       sfx.oops();
@@ -158,7 +183,7 @@ export function ClassScreen() {
                         aria-label={a.name}
                         aria-pressed={avatar.animal === a.id}
                       >
-                        {a.emoji}
+                        <AnimalIcon animal={a.id} />
                       </button>
                     ))}
                   </div>
@@ -184,6 +209,12 @@ export function ClassScreen() {
               {busy ? '連線中…' : mode === 'login' ? '登入，出發！' : '加入，出發！'}
             </button>
           </div>
+          {mode === 'login' && googleClientId && (
+            <div style={{ marginTop: 16 }}>
+              <span className="label">家長快速登入（要先在家長專區綁定 Google）</span>
+              <GoogleButton clientId={googleClientId} label="用 Google 登入" testId="class-google-login" onCredential={(t) => void onGoogle(t)} />
+            </div>
+          )}
           <p className="notice">登入後，進度會存到班級，換一台平板也能接著玩。沒有網路時照常玩，連上網路後會自動上傳。</p>
         </form>
       </div>

@@ -108,6 +108,16 @@ describe('操作套用：遊玩時間、購買、外觀', () => {
     expect(r.ok && r.profile.avatar.animal).toBe('dog');
   });
 
+  it('可以換成新增的 8 種動物（例如卡皮巴拉）；不存在的動物格式驗證失敗', () => {
+    for (const animal of ['capybara', 'panda', 'penguin', 'fox', 'koala', 'pig', 'eagle', 'elephant'] as const) {
+      const op = { id: `a-${animal}`, at: AT, kind: 'avatar', avatar: { animal, color: '#8b5a2b', hat: null } } as const;
+      expect(opSchema.safeParse(op).success, animal).toBe(true);
+      const r = applyOp(kid(), op, NOW);
+      expect(r.ok && r.profile.avatar.animal).toBe(animal);
+    }
+    expect(opSchema.safeParse({ id: 'x', at: AT, kind: 'avatar', avatar: { animal: 'dragon', color: '#8b5a2b', hat: null } }).success).toBe(false);
+  });
+
   it('不改動傳入的存檔（不可變更新）', () => {
     const p = kid();
     const before = JSON.stringify(p);
