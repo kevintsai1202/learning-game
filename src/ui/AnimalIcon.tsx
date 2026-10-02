@@ -17,19 +17,21 @@ function CapybaraSvg() {
       {/* 頭頂的橘子與葉子 */}
       <circle cx="32" cy="13" r="9" fill="#ff8c1a" />
       <path d="M33 5 Q41 1 43 7 Q37 10 33 5 Z" fill="#3fae4a" />
-      {/* 長寬的口鼻 */}
-      <rect x="15" y="38" width="34" height="20" rx="9" fill="#d9a56a" />
+      {/* 長寬的口鼻：和頭同一個毛色（略深） */}
+      <rect x="13" y="35" width="38" height="23" rx="11" fill="#b9803f" />
       {/* 鼻墊與鼻孔 */}
-      <rect x="19" y="39" width="26" height="6" rx="3" fill="#5a3a20" />
-      <circle cx="27" cy="42" r="1.4" fill="#1d120a" />
-      <circle cx="37" cy="42" r="1.4" fill="#1d120a" />
-      {/* 嘴巴 */}
-      <path d="M27 53 L37 53" stroke="#4a2c16" strokeWidth="2" strokeLinecap="round" />
+      <rect x="17" y="37" width="30" height="10" rx="5" fill="#6b4423" />
+      <ellipse cx="25.5" cy="42" rx="2.2" ry="3" fill="#1d120a" />
+      <ellipse cx="38.5" cy="42" rx="2.2" ry="3" fill="#1d120a" />
+      {/* 嘴巴：淺淺的人字形 */}
+      <path d="M28 52 L32 54.5 L36 52" fill="none" stroke="#4a2c16" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
       {/* 半閉的眼睛：深色圓上面蓋一層毛色眼皮 */}
-      <circle cx="22" cy="31" r="3" fill="#2b2a4c" />
-      <circle cx="42" cy="31" r="3" fill="#2b2a4c" />
-      <path d="M18.5 30.5 A3.6 3.6 0 0 1 25.5 30.5 Z" fill="#c68a4e" />
-      <path d="M38.5 30.5 A3.6 3.6 0 0 1 45.5 30.5 Z" fill="#c68a4e" />
+      <circle cx="22" cy="30" r="3.6" fill="#2b2a4c" />
+      <circle cx="42" cy="30" r="3.6" fill="#2b2a4c" />
+      <circle cx="23" cy="31.2" r="1" fill="#fff" />
+      <circle cx="43" cy="31.2" r="1" fill="#fff" />
+      <path d="M17.6 29.2 A4.4 4.4 0 0 1 26.4 29.2 Z" fill="#c68a4e" />
+      <path d="M37.6 29.2 A4.4 4.4 0 0 1 46.4 29.2 Z" fill="#c68a4e" />
     </svg>
   );
 }

@@ -327,33 +327,39 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
         </>
       );
     case 'capybara': {
-      const snout = toon(lighter(color, 0.28));
-      const padMat = toon(mix(color, '#24150c', 0.7));
+      // 口鼻和頭同一個毛色（略深一點），鼻墊更深
+      const snout = toon(mix(color, '#3a2418', 0.1));
+      const padMat = toon(mix(color, '#24150c', 0.55));
       return (
         <>
-          {/* 又長又寬、前端平鈍的方口鼻（圓角長方形，正面看是跑道形） */}
-          <mesh material={snout} geometry={roundedBox(0.8, 0.4, 0.44, 0.17)} position={[0, -0.13, 0.46]} />
-          {/* 鼻墊：口鼻前端上緣一條寬寬的深色橫條，上面兩個鼻孔 */}
-          <mesh material={padMat} position={[0, 0.03, 0.66]} scale={[2.8, 0.8, 0.6]}>
-            <sphereGeometry args={[0.1, 14, 10]} />
+          {/* 口鼻：頭的前段往前延伸，寬高只比頭前端小一點、底部齊平、邊緣圓，前端鈍圓 */}
+          <mesh material={snout} geometry={roundedBox(0.88, 0.44, 0.52, 0.2)} position={[0, -0.13, 0.5]} />
+          {/* 鼻墊：口鼻前端上緣一塊寬寬的深色橢圓，上面兩個深色橢圓鼻孔 */}
+          <mesh material={padMat} position={[0, 0.0, 0.725]} scale={[3.1, 1.05, 0.6]}>
+            <sphereGeometry args={[0.1, 16, 12]} />
           </mesh>
           {[-1, 1].map((s) => (
-            <mesh key={s} material={dark} position={[s * 0.13, 0.035, 0.71]} scale={[0.9, 1.2, 0.5]}>
-              <sphereGeometry args={[0.03, 8, 6]} />
+            <mesh key={s} material={toon('#1d120a')} position={[s * 0.15, 0.01, 0.775]} scale={[0.8, 1.4, 0.5]}>
+              <sphereGeometry args={[0.04, 10, 8]} />
             </mesh>
           ))}
-          {/* 嘴巴：下面一條短線 */}
-          <mesh material={dark} position={[0, -0.24, 0.685]}>
-            <boxGeometry args={[0.2, 0.025, 0.03]} />
-          </mesh>
-          {/* 小眼睛，位置高，上半部被毛色眼皮蓋住（放空的半閉眼） */}
+          {/* 嘴巴：鼻墊下面一條淺淺的人字形短線 */}
           {[-1, 1].map((s) => (
-            <group key={s} position={[s * 0.3, 0.19, 0.335]}>
+            <mesh key={s} material={dark} position={[s * 0.05, -0.2, 0.745]} rotation={[0, 0, -s * 0.4]}>
+              <boxGeometry args={[0.1, 0.022, 0.03]} />
+            </mesh>
+          ))}
+          {/* 小眼睛，位置高，上半部被毛色眼皮蓋住（放空的半閉眼），加一點反光讓正面看得到 */}
+          {[-1, 1].map((s) => (
+            <group key={s} position={[s * 0.3, 0.215, 0.335]}>
               <mesh material={dark}>
-                <sphereGeometry args={[0.058, 10, 8]} />
+                <sphereGeometry args={[0.072, 12, 10]} />
               </mesh>
-              <mesh material={pal.fur} position={[0, 0.03, 0.016]} scale={[1, 0.62, 1]}>
-                <sphereGeometry args={[0.072, 10, 8]} />
+              <mesh material={pal.white} position={[0.02 * s, -0.012, 0.062]}>
+                <sphereGeometry args={[0.016, 8, 6]} />
+              </mesh>
+              <mesh material={pal.fur} position={[0, 0.036, 0.018]} scale={[1.05, 0.52, 1]}>
+                <sphereGeometry args={[0.084, 12, 10]} />
               </mesh>
             </group>
           ))}
