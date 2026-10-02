@@ -109,6 +109,8 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
   // 百寶屋買到道具（獎章專屬道具不能買，不用預錄）
   ITEMS.filter((i) => i.price !== undefined).forEach((i) => addSpoken(LINES.boughtLine(i.name), 'zh-TW', 'ui:shop'));
   ANIMALS.forEach((a) => addSpoken(a.name, 'zh-TW', 'ui:animal'));
+  // 公頻短句盤：點了先唸出來（只有表情的句子清掉後是空的，不會列入）
+  LINES.CHAT_PHRASES.forEach((p) => addSpoken(p.text, 'zh-TW', 'ui:chat'));
   // 獎章簿點獎章唸名稱；結算畫面唸「得到新獎章：○○！」
   BADGES.forEach((b) => {
     addSpoken(b.name, 'zh-TW', 'ui:badge');

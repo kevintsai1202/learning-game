@@ -13,6 +13,7 @@ import { speechDebug } from './audio/speech';
 import { useCloud } from './online/useCloud';
 import { usePresence } from './online/usePresence';
 import { startPresenceDemo } from './online/presenceDemo';
+import { useRealtime } from './online/realtimeClient';
 import './styles/global.css';
 
 declare global {
@@ -32,6 +33,8 @@ declare global {
       presence: typeof usePresence;
       /** 多人上線模擬（放一群假同學到島上）；回傳停止的函式 */
       presenceDemo: typeof startPresenceDemo;
+      /** 即時連線狀態 */
+      realtime: typeof useRealtime;
     };
   }
 }
@@ -47,6 +50,7 @@ window.__game = {
   cloud: useCloud,
   presence: usePresence,
   presenceDemo: startPresenceDemo,
+  realtime: useRealtime,
 };
 
 createRoot(document.getElementById('root')!).render(

@@ -41,3 +41,33 @@ export const enterIslandLine = (who: string): string => `${who}，出發囉！�
 
 /** 結算畫面：得到新獎章（每個獎章名稱一句，盤點腳本會列出全部獎章，可以預錄） */
 export const newBadgeLine = (name: string): string => `得到新獎章：${name}！`;
+
+/** 公頻短句的分組（短句盤上的分區） */
+export type ChatGroup = '打招呼' | '稱讚' | '邀約' | '學習' | '心情';
+
+/**
+ * 公頻短句：孩子只能選這些句子（不能自由打字）；伺服器只收 id，再換成這裡的文字廣播。
+ * 只有表情符號的句子不唸（語音會把表情清掉）。改字後要重跑預錄語音的盤點與產生。
+ */
+export const CHAT_PHRASES: { id: string; text: string; group: ChatGroup }[] = [
+  { id: 'hi', text: '你好！', group: '打招呼' },
+  { id: 'play', text: '一起玩吧！', group: '打招呼' },
+  { id: 'bye', text: '掰掰！', group: '打招呼' },
+  { id: 'great', text: '好厲害！👍', group: '稱讚' },
+  { id: 'cheer', text: '加油！💪', group: '稱讚' },
+  { id: 'thanks', text: '謝謝你！❤️', group: '稱讚' },
+  { id: 'go-math', text: '一起去數學城堡！', group: '邀約' },
+  { id: 'go-zh', text: '一起去文字森林！', group: '邀約' },
+  { id: 'go-en', text: '一起去 ABC 海灘！', group: '邀約' },
+  { id: 'go-life', text: '一起去生活村！', group: '邀約' },
+  { id: 'go-tower', text: '一起去挑戰塔！', group: '邀約' },
+  { id: 'at-shop', text: '我在百寶屋！', group: '邀約' },
+  { id: 'correct', text: '我答對了！🎉', group: '學習' },
+  { id: 'three-stars', text: '我拿到三顆星！⭐', group: '學習' },
+  { id: 'practice', text: '我在練習錯題！📕', group: '學習' },
+  { id: 'badge', text: '我拿到新獎章了！🏅', group: '學習' },
+  { id: 'smile', text: '😀', group: '心情' },
+  { id: 'laugh', text: '😆', group: '心情' },
+  { id: 'wow', text: '😮', group: '心情' },
+  { id: 'sad', text: '😢', group: '心情' },
+];

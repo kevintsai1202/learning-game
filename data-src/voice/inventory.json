@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 304,
-  "全部": 3387,
-  "zh": 1766,
+  "介面": 320,
+  "全部": 3403,
+  "zh": 1782,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34452,
+ "chars": 34548,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -16478,6 +16478,60 @@
    ]
   },
   {
+   "key": "zh-TW|一起去 ABC 海灘！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "一起去 ABC 海灘！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|一起去文字森林！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "一起去文字森林！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|一起去生活村！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "一起去生活村！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|一起去挑戰塔！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "一起去挑戰塔！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|一起去數學城堡！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "一起去數學城堡！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|一起玩吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "一起玩吧！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
    "key": "zh-TW|一起說英語、寫字母。",
    "lang": "zh-TW",
    "voice": "zh",
@@ -17639,6 +17693,15 @@
    "sources": [
     "life.season",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|加油！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "加油！",
+   "sources": [
+    "ui:chat"
    ]
   },
   {
@@ -27359,6 +27422,15 @@
    ]
   },
   {
+   "key": "zh-TW|好厲害！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "好厲害！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
    "key": "zh-TW|好難吃",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27672,6 +27744,15 @@
    ]
   },
   {
+   "key": "zh-TW|你好！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "你好！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
    "key": "zh-TW|你有兩顆糖，朋友沒有，你可以怎麼做？",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27876,6 +27957,24 @@
    ]
   },
   {
+   "key": "zh-TW|我在百寶屋！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "我在百寶屋！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|我在練習錯題！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "我在練習錯題！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
    "key": "zh-TW|我們用哪個器官咀嚼食物？",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27912,6 +28011,33 @@
    "text": "我們再試一次吧！",
    "sources": [
     "ui:result"
+   ]
+  },
+  {
+   "key": "zh-TW|我拿到三顆星！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "我拿到三顆星！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|我拿到新獎章了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "我拿到新獎章了！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
+   "key": "zh-TW|我答對了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "我答對了！",
+   "sources": [
+    "ui:chat"
    ]
   },
   {
@@ -31461,6 +31587,15 @@
    ]
   },
   {
+   "key": "zh-TW|掰掰！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "掰掰！",
+   "sources": [
+    "ui:chat"
+   ]
+  },
+  {
    "key": "zh-TW|描一描這個注音符號，一筆一畫慢慢寫。",
    "lang": "zh-TW",
    "voice": "zh",
@@ -33181,6 +33316,15 @@
    "sources": [
     "life.emotion",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|謝謝你！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "謝謝你！",
+   "sources": [
+    "ui:chat"
    ]
   },
   {

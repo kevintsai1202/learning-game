@@ -9,6 +9,8 @@ import type { z } from 'zod';
 import type { Db, Queryable } from './db';
 import { LoginLimiter, RateLimiter, checkNickname, hashSecret, newAccountId, newRoomCode, newToken, tokenHash, verifySecret } from './auth';
 import { maskEmail, type GoogleConfig, type GoogleIdentity } from './google';
+import { lookupToken } from './tokens';
+import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
   createRoomRequest,
@@ -41,8 +43,12 @@ export interface AppOptions {
   floodLimit?: number;
   /** 某個帳號目前是否在線上（P2 的即時連線提供；沒有時一律 false） */
   isOnline?: (accountId: string) => boolean;
-  /** 某個帳號的存檔在伺服器端改變了（P2 用來通知該帳號的其他裝置） */
-  onProfileChanged?: (accountId: string, rev: number) => void;
+  /** 某個帳號的存檔在伺服器端改變了：即時中樞更新別人看到的外觀，並通知他自己的裝置同步（帶上新的存檔，中樞不必再查資料庫） */
+  onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
+  /** 老師改了房間的聊天、送禮開關 */
+  onRoomChanged?: (roomCode: string, flags: RoomFlags) => void;
+  /** 某位孩子要被踢下線（老師移除成員或重設密碼），reason 會顯示給孩子 */
+  onKick?: (accountId: string, reason: string) => void;
   /** Google 快速登入（備選）；沒有時 Google 相關 API 回 404 */
   google?: GoogleConfig | null;
 }
@@ -149,14 +155,9 @@ export function createApp(opts: AppOptions) {
   const authenticate = async (c: Context, kind: 'kid' | 'teacher'): Promise<Identity> => {
     const m = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '');
     if (!m) throw new ApiError(401, 'unauthorized', '請重新登入');
-    const hash = tokenHash(m[1]);
-    const rows = await db.query<{ kind: string; room_code: string; account_id: string | null }>(
-      'SELECT kind, room_code, account_id FROM tokens WHERE token_hash = $1 AND expires_at > $2::timestamptz',
-      [hash, now().toISOString()],
-    );
-    const row = rows[0];
-    if (!row || row.kind !== kind) throw new ApiError(401, 'unauthorized', '請重新登入');
-    return { roomCode: row.room_code, accountId: row.account_id, hash };
+    const found = await lookupToken(db, m[1], now());
+    if (!found || found.kind !== kind) throw new ApiError(401, 'unauthorized', '請重新登入');
+    return { roomCode: found.roomCode, accountId: found.accountId, hash: found.hash };
   };
 
   /** 讀房間；不存在回 404 */
@@ -288,6 +289,7 @@ export function createApp(opts: AppOptions) {
        WHERE code = $1 RETURNING *`,
       [who.roomCode, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null],
     );
+    opts.onRoomChanged?.(who.roomCode, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open });
     return c.json({ room: roomSettings(rows[0]) });
   });
 
@@ -304,6 +306,7 @@ export function createApp(opts: AppOptions) {
     // 舊密碼可能被別人知道了：那位孩子其他裝置的登入一併失效
     await db.query('DELETE FROM tokens WHERE account_id = $1', [c.req.param('id')]);
     limiter.reset(`kid:${who.roomCode}:${rows[0].nickname_key}`);
+    opts.onKick?.(c.req.param('id'), '老師重設了你的密碼，請用新密碼重新登入');
     return c.json({ ok: true });
   });
 
@@ -311,6 +314,7 @@ export function createApp(opts: AppOptions) {
     const who = await authenticate(c, 'teacher');
     const rows = await db.query('DELETE FROM accounts WHERE id = $1 AND room_code = $2 RETURNING id', [c.req.param('id'), who.roomCode]);
     if (!rows.length) throw new ApiError(404, 'no_member', '找不到這位成員');
+    opts.onKick?.(c.req.param('id'), '老師把你移出房間了');
     return c.json({ ok: true });
   });
 
@@ -507,7 +511,7 @@ export function createApp(opts: AppOptions) {
         : await tx.query<{ rev: number }>('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1 RETURNING rev', [row.id, t.toISOString()]);
       return { profile, rev: updated[0].rev, rejected, changed };
     });
-    if (result.changed) opts.onProfileChanged?.(who.accountId!, result.rev);
+    if (result.changed) opts.onProfileChanged?.(who.accountId!, result.rev, result.profile);
     const { changed: _changed, ...response } = result;
     return c.json(response);
   });

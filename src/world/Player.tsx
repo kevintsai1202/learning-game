@@ -14,6 +14,9 @@ import type { AvatarConfig } from '../store/save';
 import { sfx } from '../audio/sfx';
 import { Trail } from './Trail';
 import { PetFollower } from './Pets';
+import { Html } from '@react-three/drei';
+import { usePresence } from '../online/usePresence';
+import { LABEL_DISTANCE_FACTOR } from './RemotePlayers';
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -36,6 +39,8 @@ export function Player({ avatar, obstacles, active }: PlayerProps) {
   const lookAt = useRef(new THREE.Vector3(player.pos.x, 1, player.pos.z - 3));
   const { camera, size } = useThree();
   const shadowTex = useMemo(() => blobShadowTexture(), []);
+  /** 自己在公頻說的話：頭上的對話氣泡（和其他玩家同樣的樣式） */
+  const bubble = usePresence((s) => (s.selfId ? (s.bubbles[s.selfId]?.text ?? null) : null));
 
   useFrame((_, rawDt) => {
     const dt = Math.min(rawDt, 0.05);
@@ -108,6 +113,15 @@ export function Player({ avatar, obstacles, active }: PlayerProps) {
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
         </mesh>
+        {bubble && (
+          <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]}>
+            <div className="remote-label">
+              <div className="chat-bubble" data-testid="self-bubble">
+                {bubble}
+              </div>
+            </div>
+          </Html>
+        )}
       </group>
       {avatar.trail && <Trail kind={avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
       {avatar.pet && <PetFollower pet={avatar.pet} getPos={getPos} getHeading={() => player.heading} getSpeed={getSpeed} />}

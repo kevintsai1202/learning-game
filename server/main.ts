@@ -1,5 +1,5 @@
 /**
- * 班級伺服器進入點：讀環境變數、開資料庫、啟動 HTTP。
+ * 班級伺服器進入點：讀環境變數、開資料庫、啟動 HTTP 與即時連線（WebSocket /ws）。
  *
  * 環境變數：
  * - PORT：監聽埠（預設 8787）
@@ -12,6 +12,8 @@ import { serve } from '@hono/node-server';
 import { createApp } from './app';
 import { migrate, openDb, pruneAppliedOps } from './db';
 import { googleFromEnv } from './google';
+import { Hub } from './hub';
+import { attachRealtime } from './ws';
 
 /** 預設允許的前端網址：vite dev 與 vite preview */
 const DEFAULT_ORIGINS = 'http://localhost:5173,http://localhost:4183';
@@ -32,16 +34,29 @@ async function main(): Promise<void> {
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
-  const app = createApp({ db, allowedOrigins, google });
+  // 即時中樞：誰在線上、位置、公頻；HTTP 路由在存檔改變、老師管理時通知它
+  const hub = new Hub();
+  const app = createApp({
+    db,
+    allowedOrigins,
+    google,
+    isOnline: (id) => hub.isOnline(id),
+    onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
+    onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
+    onKick: (id, reason) => hub.kick(id, reason),
+  });
   const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
     console.log(
       `班級伺服器啟動：port ${info.port}，資料庫 ${process.env.DATABASE_URL ? 'PostgreSQL' : 'PGlite'}，Google 登入 ${google ? (google.testMode ? '測試模式' : '開啟') : '關閉'}，允許 ${allowedOrigins.join(', ')}`,
     );
   });
 
-  /** 收到停止訊號：停止接受連線、關閉資料庫 */
+  const realtime = attachRealtime(server, { db, hub, allowedOrigins });
+
+  /** 收到停止訊號：關閉即時連線、停止接受連線、關閉資料庫 */
   const shutdown = () => {
     clearInterval(pruneTimer);
+    realtime.close();
     server.close(() => void db.close().finally(() => process.exit(0)));
   };
   process.on('SIGTERM', shutdown);

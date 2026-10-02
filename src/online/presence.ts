@@ -21,6 +21,8 @@ export interface RemoteMember {
   heading: number;
   /** 在哪棟建築裡；null 表示在島上 */
   zone: ZoneId | null;
+  /** 顯示的稱號（名牌上方；沒有時為 null 或省略） */
+  title?: string | null;
 }
 
 /** 公頻的一則訊息 */
@@ -40,13 +42,15 @@ export interface PresenceState {
   chat: ChatLine[];
   /** 頭上的對話氣泡：成員 id → 文字與消失時間 */
   bubbles: Record<string, { text: string; until: number }>;
-  /** 下一則訊息的 id */
+  /** 下一則訊息的 id（模擬用；真的連線時用伺服器給的 id） */
   nextId: number;
+  /** 自己的帳號 id：自己也放在成員裡（說話才有氣泡），但不畫在島上 */
+  selfId: string | null;
 }
 
 /** 空狀態 */
 export function emptyPresence(): PresenceState {
-  return { members: {}, chat: [], bubbles: {}, nextId: 1 };
+  return { members: {}, chat: [], bubbles: {}, nextId: 1, selfId: null };
 }
 
 /** 成員加入或更新（外觀、暱稱、位置） */
@@ -103,7 +107,13 @@ export function expireBubbles(s: PresenceState, now: number): PresenceState {
   return { ...s, bubbles };
 }
 
-/** 在島上（不在建築裡）的成員 */
-export function onIsland(s: PresenceState): RemoteMember[] {
-  return Object.values(s.members).filter((m) => m.zone === null);
+/** 收下伺服器送來的一則公頻（沿用伺服器的 id 與時間）；說話的人在成員裡時頭上出現氣泡 */
+export function receiveChat(s: PresenceState, line: ChatLine, now: number): PresenceState {
+  const bubbles = s.members[line.from] ? { ...s.bubbles, [line.from]: { text: line.text, until: now + BUBBLE_MS } } : s.bubbles;
+  return { ...s, chat: [...s.chat, line].slice(-CHAT_KEEP), bubbles };
+}
+
+/** 在島上（不在建築裡）的成員；exclude（預設是自己）不列入，自己的角色由 Player 畫 */
+export function onIsland(s: PresenceState, exclude: string | null = s.selfId): RemoteMember[] {
+  return Object.values(s.members).filter((m) => m.zone === null && m.id !== exclude);
 }

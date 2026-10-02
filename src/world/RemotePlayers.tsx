@@ -12,6 +12,7 @@ import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { lerpAngle, stepToward, type Vec2 } from './movement';
 import { usePresence } from '../online/usePresence';
+import { onIsland } from '../online/presence';
 import { Trail } from './Trail';
 import { PetFollower } from './Pets';
 
@@ -23,11 +24,11 @@ const SNAP_DIST = 8;
  * 名牌與氣泡隨距離縮放的係數（drei Html 的 distanceFactor）：
  * 縮放＝係數 ÷（2·tan(視角/2)·距離）；跟拍鏡頭離角色約 25 公尺時接近原尺寸，遠處的名牌自然變小，不會疊成一團。
  */
-const LABEL_DISTANCE_FACTOR = 20;
+export const LABEL_DISTANCE_FACTOR = 20;
 
-/** 所有在島上的其他玩家（只訂閱 id 清單，位置變化不會重畫這一層） */
+/** 所有在島上的其他玩家（只訂閱 id 清單，位置變化不會重畫這一層；自己由 Player 畫） */
 export function RemotePlayers() {
-  const ids = usePresence(useShallow((s) => Object.values(s.members).filter((m) => m.zone === null).map((m) => m.id)));
+  const ids = usePresence(useShallow((s) => onIsland(s).map((m) => m.id)));
   const shadowTex = useMemo(() => blobShadowTexture(), []);
   return (
     <>
@@ -41,7 +42,7 @@ export function RemotePlayers() {
 /** 一位其他玩家 */
 function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture }) {
   // 只在外觀、暱稱改變時重畫（移動時外觀物件沿用同一個，見 presence.ts 的 moveMember）
-  const look = usePresence(useShallow((s) => ({ nickname: s.members[id]?.nickname ?? '', avatar: s.members[id]?.avatar })));
+  const look = usePresence(useShallow((s) => ({ nickname: s.members[id]?.nickname ?? '', avatar: s.members[id]?.avatar, title: s.members[id]?.title ?? null })));
   const bubble = usePresence((s) => s.bubbles[id]?.text ?? null);
   const group = useRef<THREE.Group>(null);
   const motion = useRef<MotionState>({ speed: 0 });
@@ -93,6 +94,7 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
               </div>
             )}
             <div className="name-tag" data-testid="name-tag">
+              {look.title && <small className="name-title">{look.title}</small>}
               {look.nickname}
             </div>
           </div>

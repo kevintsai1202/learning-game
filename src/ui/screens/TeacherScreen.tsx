@@ -277,6 +277,10 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
             <input type="checkbox" checked={room.joinOpen} onChange={(e) => void act(() => call('PATCH', '/api/teacher/room', { joinOpen: e.target.checked }), e.target.checked ? '已開放加入' : '已停止加入')} data-testid="toggle-join" />
             允許新的孩子加入（全班都加入後可以關掉，避免代碼外流後有陌生人加入）
           </label>
+          <label className="plain" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
+            <input type="checkbox" checked={room.chatOpen} onChange={(e) => void act(() => call('PATCH', '/api/teacher/room', { chatOpen: e.target.checked }), e.target.checked ? '已開放聊天' : '已關閉聊天')} data-testid="toggle-chat" />
+            允許公頻聊天（孩子只能選預設短句，不能自由打字）
+          </label>
         </>
       )}
       {clientId && (
@@ -317,6 +321,7 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
             <thead>
               <tr>
                 <th>暱稱</th>
+                <th>線上</th>
                 <th>最後上線</th>
                 <th>⭐</th>
                 <th>錯題</th>
@@ -329,11 +334,12 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
               {members.map((m) => (
                 <tr key={m.id} data-testid={`member-${m.nickname}`}>
                   <td>{m.nickname}</td>
+                  <td data-testid={`online-${m.nickname}`}>{m.online ? '🟢' : ''}</td>
                   <td>{ago(m.lastSeen)}</td>
                   <td>{m.stars}</td>
                   <td>{m.wrongCount}</td>
                   <td>{m.coins}</td>
-                  <td>{m.sessions}</td>
+                  <td data-testid={`sessions-${m.nickname}`}>{m.sessions}</td>
                   <td>
                     <MemberActions
                       member={m}

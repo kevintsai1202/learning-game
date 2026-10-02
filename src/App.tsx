@@ -23,6 +23,7 @@ import { TeacherScreen } from './ui/screens/TeacherScreen';
 import { BadgesScreen } from './ui/screens/BadgesScreen';
 import { RestGuard } from './ui/RestGuard';
 import { startCloudSync } from './online/useCloud';
+import { startRealtime } from './online/realtimeClient';
 
 /** 各畫面的配樂 */
 const SCREEN_MUSIC: Record<Screen, Track> = {
@@ -51,8 +52,9 @@ export function App() {
     document.body.classList.toggle('no-zhuyin', !settings.zhuyin);
   }, [settings]);
 
-  // 雲端角色的同步排程（沒有雲端角色時什麼都不做）
+  // 雲端角色的同步排程與即時連線（沒有雲端角色時什麼都不做）
   useEffect(() => startCloudSync(), []);
+  useEffect(() => startRealtime(), []);
 
   // 換畫面就換配樂
   useEffect(() => playMusic(SCREEN_MUSIC[screen]), [screen]);

@@ -8,9 +8,11 @@ import {
   expireBubbles,
   moveMember,
   onIsland,
+  receiveChat,
   removeMember,
   setZone,
   upsertMember,
+  type PresenceState,
   type RemoteMember,
 } from '../../src/online/presence';
 
@@ -91,5 +93,21 @@ describe('公頻與對話氣泡', () => {
     expect(s.bubbles).toEqual({});
     // 公頻紀錄保留（離開前說的話還看得到）
     expect(s.chat).toHaveLength(1);
+  });
+});
+
+describe('真的連線：自己與伺服器的公頻', () => {
+  it('自己在成員裡但不列入島上的人；伺服器的公頻沿用它的 id 並讓說話的人有氣泡', () => {
+    let s: PresenceState = { ...emptyPresence(), selfId: 'me' };
+    s = upsertMember(s, member('me', '小安'));
+    s = upsertMember(s, member('a', '阿寶'));
+    expect(onIsland(s).map((m) => m.id)).toEqual(['a']);
+    s = receiveChat(s, { id: 42, from: 'me', nickname: '小安', text: '你好！', at: 5 }, 1000);
+    expect(s.chat).toEqual([{ id: 42, from: 'me', nickname: '小安', text: '你好！', at: 5 }]);
+    expect(activeBubble(s, 'me', 1000)).toBe('你好！');
+    // 已經離開的人說的話照樣進公頻，只是沒有氣泡
+    s = receiveChat(s, { id: 43, from: 'gone', nickname: '走了', text: '掰掰！', at: 6 }, 1001);
+    expect(s.chat).toHaveLength(2);
+    expect(s.bubbles.gone).toBeUndefined();
   });
 });

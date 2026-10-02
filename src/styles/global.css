@@ -1277,6 +1277,51 @@ button {
   color: var(--ink-soft);
 }
 
+/* 名牌上方的稱號 */
+.name-title {
+  display: block;
+  font-size: 11px;
+  font-family: var(--font-plain);
+  color: #b07800;
+  line-height: 1.1;
+}
+/* 公頻：提示、說話按鈕、短句盤 */
+.chat-notice {
+  margin-top: 4px;
+  font-family: var(--font-plain);
+  font-size: 12px;
+  color: #c0392b;
+}
+.chat-say {
+  margin-top: 6px;
+  width: 100%;
+}
+.phrase-picker {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.phrase-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.phrase-btn {
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  background: #fff;
+  padding: 4px 10px 6px;
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+  color: var(--ink);
+}
+.phrase-btn:active {
+  background: var(--sun);
+}
+
 /* ===== 獎章與稱號 ===== */
 /* 島上名牌：名字下面一行小字的稱號 */
 .hud-name {

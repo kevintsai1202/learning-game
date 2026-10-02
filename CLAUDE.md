@@ -48,5 +48,5 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - 文字一律放 DOM，不要用 three 的文字渲染（注音字型需要 IVS）。
 - 要朗讀的固定句子放 `src/ui/lines.ts`，題目的朗讀文字一律經過 `src/quiz/spoken.ts`；預錄語音的盤點腳本靠這兩處收集句子。
 - 每題要有 `indicators`（108 課綱代碼）與 `source`。
-- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud）讀狀態與自動作答。
+- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud、presence、realtime、presenceDemo）讀狀態與自動作答。多台裝置的測試用 `e2e/onlineDevice.ts` 開啟（3D 畫質設成低，否則軟體 WebGL 會把 CPU 吃滿）。
 - 雲端角色的存檔只能透過「操作」改變（`src/online/ops.ts`），伺服器用同一份規則套用；`src/` 裡給伺服器 import 的模組不能 import 畫面、音訊、3D 的程式。
