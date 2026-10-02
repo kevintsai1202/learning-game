@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moveByInput, nearestDoor, resolveCollisions, stepToward } from '../../src/world/movement';
+import { moveByInput, nearestDoor, resolveCollisions, stepToward, lerpAngle } from '../../src/world/movement';
 import { ZONES, doorOf, WALK_RADIUS } from '../../src/world/layout';
 
 describe('stepToward 走向目標點', () => {
@@ -51,5 +51,18 @@ describe('nearestDoor 靠近門口', () => {
         expect(Math.hypot(d.x - other.x, d.z - other.z), `${z.id} 門口與 ${other.id}`).toBeGreaterThan(other.radius + 0.4);
       }
     }
+  });
+});
+
+describe('lerpAngle 轉身', () => {
+  it('t=1 直接轉到目標；t=0.5 轉一半', () => {
+    expect(lerpAngle(0, Math.PI / 2, 1)).toBeCloseTo(Math.PI / 2);
+    expect(lerpAngle(0, Math.PI / 2, 0.5)).toBeCloseTo(Math.PI / 4);
+  });
+
+  it('走最短的方向：從 170° 轉到 −170° 只轉 20°，不會繞一大圈', () => {
+    const a = (170 * Math.PI) / 180;
+    const b = (-170 * Math.PI) / 180;
+    expect(lerpAngle(a, b, 1) - a).toBeCloseTo((20 * Math.PI) / 180);
   });
 });

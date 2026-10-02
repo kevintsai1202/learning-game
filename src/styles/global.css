@@ -1182,6 +1182,101 @@ button {
   color: #2f8f6b;
 }
 
+/* ===== 同島其他玩家：名牌、對話氣泡、公頻 ===== */
+/* 名牌與氣泡掛在角色頭上（drei Html）；底部對齊錨點，往上長 */
+.remote-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: var(--font-kid);
+}
+.name-tag {
+  background: rgba(255, 255, 255, 0.9);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 10px 2px;
+  font-size: 15px;
+  font-weight: 700;
+}
+.chat-bubble {
+  position: relative;
+  background: #fff;
+  color: var(--ink);
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 3px 12px 5px;
+  font-size: 18px;
+  font-weight: 700;
+  box-shadow: 0 4px 0 rgba(43, 42, 76, 0.35);
+  animation: bubble-pop 0.25s ease-out;
+}
+/* 氣泡下方的小尾巴 */
+.chat-bubble::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  transform: translateX(-50%);
+  border: 8px solid transparent;
+  border-top-color: var(--ink);
+}
+@keyframes bubble-pop {
+  from {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+/* 公頻面板：島上畫面右下角 */
+.chat-panel {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  width: min(300px, 40vw);
+  padding: 8px 12px 10px;
+  border-radius: 18px;
+  box-shadow: 0 6px 0 rgba(43, 42, 76, 0.88);
+  font-size: 15px;
+}
+.chat-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.online-count {
+  font-family: var(--font-plain);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.chat-lines {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.chat-lines li {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.chat-inside {
+  margin-top: 4px;
+  font-family: var(--font-plain);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
 /* ===== 手機版面（放在檔案最後，才不會被前面的一般規則蓋掉） ===== */
 
 /* 手機寬度：面板標題列換行、卡片一列兩張、難度按鈕縮小、標題畫面的家長專區按鈕移到右上 */
@@ -1478,4 +1573,18 @@ button {
   width: 1em;
   height: 1em;
   margin: 0 auto;
+}
+
+/* 手機寬度的公頻：縮小、只顯示最近三則，放在底部提示文字上方 */
+@media (max-width: 600px) {
+  .chat-panel {
+    right: 8px;
+    bottom: 64px;
+    width: min(220px, 56vw);
+    padding: 6px 10px 8px;
+    font-size: 13px;
+  }
+  .chat-lines li:nth-last-child(n + 4) {
+    display: none;
+  }
 }

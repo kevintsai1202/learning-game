@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { WALK_RADIUS, ZONES, doorOf } from './layout';
-import { moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle } from './movement';
+import { lerpAngle, moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle } from './movement';
 import { inputDirection, player } from './input';
 import { useUi, type ZoneId } from '../store/useUi';
 import type { AvatarConfig } from '../store/save';
@@ -19,14 +19,6 @@ const SPEED = 5.2;
 const DOOR_RANGE = 1.9;
 
 const DOORS = ZONES.map((z) => ({ id: z.id, ...doorOf(z) }));
-
-/** 角度插值（走最短的方向轉身） */
-function lerpAngle(a: number, b: number, t: number): number {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return a + d * t;
-}
 
 interface PlayerProps {
   avatar: AvatarConfig;

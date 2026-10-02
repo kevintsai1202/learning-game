@@ -72,3 +72,11 @@ export function nearestDoor<T extends string>(pos: Vec2, doors: { id: T; x: numb
   }
   return best;
 }
+
+/** 角度插值（走最短的方向轉身）；t=1 直接轉到 b。玩家與其他玩家的角色共用 */
+export function lerpAngle(a: number, b: number, t: number): number {
+  let d = b - a;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return a + d * t;
+}

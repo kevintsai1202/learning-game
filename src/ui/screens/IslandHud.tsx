@@ -1,5 +1,5 @@
 /**
- * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、門口提示泡泡、熊熊老師的話、觸控搖桿。
+ * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、門口提示泡泡、熊熊老師的話、觸控搖桿、公頻。
  */
 import { useEffect, useRef } from 'react';
 import { useGame } from '../../store/useGame';
@@ -11,6 +11,7 @@ import { sfx } from '../../audio/sfx';
 import { AnimalIcon } from '../AnimalIcon';
 import { teacherTalk } from '../teacherTips';
 import { useCloud, type CloudStatus } from '../../online/useCloud';
+import { ChatPanel } from '../ChatPanel';
 
 /** 同步狀態的圖示與文字 */
 const CLOUD_LABEL: Record<CloudStatus, string> = {
@@ -180,6 +181,7 @@ export function IslandHud() {
         <div className="hud-hint">{touch ? '點地面走過去・點建築就會進去' : '點地面或用方向鍵走路・點建築就會進去'}</div>
       )}
       {touch && <Joystick />}
+      <ChatPanel />
     </>
   );
 }

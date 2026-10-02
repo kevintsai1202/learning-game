@@ -1,5 +1,5 @@
 /**
- * 島嶼場景：天空、海、地面、建築、熊熊老師、玩家角色。
+ * 島嶼場景：天空、海、地面、建築、熊熊老師、玩家角色、同房間的其他玩家。
  * mode：play 可操作；menu 背景顯示（選單打開時）；attract 標題畫面鏡頭環繞。
  */
 import { useMemo, useRef } from 'react';
@@ -9,6 +9,7 @@ import { BUILDINGS } from './Buildings';
 import { StaticMerge } from './StaticMerge';
 import { Clouds, Dock, Flowers, Fountain, Ground, Sea, Trees } from './Nature';
 import { Player, TargetMarker } from './Player';
+import { RemotePlayers } from './RemotePlayers';
 import { Teacher } from './Teacher';
 import { TEACHER_POS, ZONES, doorOf } from './layout';
 import { placeFlowers, placeTrees, worldObstacles } from './scenery';
@@ -137,6 +138,8 @@ export function IslandScene({ mode, avatar, shadows }: { mode: 'play' | 'menu' |
         <>
           <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} />
           <TargetMarker />
+          {/* 同房間的其他玩家（沒有人在線上時什麼都不畫） */}
+          <RemotePlayers />
         </>
       )}
     </>

@@ -11,6 +11,8 @@ import { quizDebug } from './quiz/debug';
 import { usePacks } from './store/usePacks';
 import { speechDebug } from './audio/speech';
 import { useCloud } from './online/useCloud';
+import { usePresence } from './online/usePresence';
+import { startPresenceDemo } from './online/presenceDemo';
 import './styles/global.css';
 
 declare global {
@@ -26,11 +28,26 @@ declare global {
       speech: typeof speechDebug;
       /** 雲端同步狀態 */
       cloud: typeof useCloud;
+      /** 同島其他玩家與公頻 */
+      presence: typeof usePresence;
+      /** 多人上線模擬（放一群假同學到島上）；回傳停止的函式 */
+      presenceDemo: typeof startPresenceDemo;
     };
   }
 }
 
-window.__game = { ui: useUi, game: useGame, player, teleport, quiz: quizDebug, packs: usePacks, speech: speechDebug, cloud: useCloud };
+window.__game = {
+  ui: useUi,
+  game: useGame,
+  player,
+  teleport,
+  quiz: quizDebug,
+  packs: usePacks,
+  speech: speechDebug,
+  cloud: useCloud,
+  presence: usePresence,
+  presenceDemo: startPresenceDemo,
+};
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
