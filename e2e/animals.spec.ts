@@ -155,4 +155,43 @@ test.describe('動物角色', () => {
     }
     expect(errors).toEqual([]);
   });
+
+  test('卡皮巴拉：正面、側面、背面，以及戴帽子（帽子取代橘子）', async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (e) => errors.push(e.message));
+
+    await freshStart(page);
+    await createKid(page);
+    await page.waitForTimeout(2500);
+    await zoomCameraOnPlayer(page);
+    await enterZone(page, 'shop');
+
+    await page.getByRole('button', { name: '卡皮巴拉', exact: true }).click();
+    await expect.poll(() => savedAnimal(page)).toBe('capybara');
+    await page.waitForTimeout(900);
+    // 鏡頭在角色背後偏上方，孩子平常看到的是背面（heading 為 PI 時背對鏡頭）
+    await shoot(page, 'capybara-front', 0);
+    await shoot(page, 'capybara-side', 1.57);
+    await shoot(page, 'capybara-back', Math.PI);
+    await shoot(page, 'capybara-back34', Math.PI - 0.7);
+
+    // 換成橘色身體再看正面與背面
+    await page.evaluate(() => {
+      const game = (window as any).__game.game.getState();
+      game.updateAvatar({ ...game.profile().avatar, color: '#f2b36b' });
+    });
+    await page.waitForTimeout(600);
+    await shoot(page, 'c-capybara-front', 0);
+    await shoot(page, 'c-capybara-back', Math.PI);
+
+    // 戴帽子：帽子取代橘子
+    await page.evaluate(() => {
+      const game = (window as any).__game.game.getState();
+      game.updateAvatar({ ...game.profile().avatar, hat: 'hat.party' });
+    });
+    await page.waitForTimeout(600);
+    await shoot(page, 'hat-capybara-front', 0);
+    await shoot(page, 'hat-capybara-back', Math.PI);
+    expect(errors).toEqual([]);
+  });
 });

@@ -39,6 +39,38 @@ function mix(color: string, to: string, amount: number): string {
   return `#${c.getHexString()}`;
 }
 
+/** 圓角方塊幾何體的快取（依尺寸共用，避免每次渲染重新擠出） */
+const roundedBoxCache = new Map<string, THREE.ExtrudeGeometry>();
+
+/**
+ * 圓角方塊：先畫圓角矩形（寬 w、高 h、轉角半徑 r）再沿 z 擠出深度 d，前後邊緣加倒角，
+ * 中心在原點。卡皮巴拉方方的吐司頭與長口鼻用它做。
+ */
+function roundedBox(w: number, h: number, d: number, r: number): THREE.ExtrudeGeometry {
+  const key = [w, h, d, r].join(',');
+  let g = roundedBoxCache.get(key);
+  if (!g) {
+    const bev = Math.min(r * 0.6, d * 0.25);
+    const iw = w - 2 * bev;
+    const ih = h - 2 * bev;
+    const ir = Math.max(r - bev, 0.01);
+    const sh = new THREE.Shape();
+    sh.moveTo(-iw / 2 + ir, -ih / 2);
+    sh.lineTo(iw / 2 - ir, -ih / 2);
+    sh.quadraticCurveTo(iw / 2, -ih / 2, iw / 2, -ih / 2 + ir);
+    sh.lineTo(iw / 2, ih / 2 - ir);
+    sh.quadraticCurveTo(iw / 2, ih / 2, iw / 2 - ir, ih / 2);
+    sh.lineTo(-iw / 2 + ir, ih / 2);
+    sh.quadraticCurveTo(-iw / 2, ih / 2, -iw / 2, ih / 2 - ir);
+    sh.lineTo(-iw / 2, -ih / 2 + ir);
+    sh.quadraticCurveTo(-iw / 2, -ih / 2, -iw / 2 + ir, -ih / 2);
+    g = new THREE.ExtrudeGeometry(sh, { depth: d - 2 * bev, bevelEnabled: true, bevelThickness: bev, bevelSize: bev, bevelSegments: 3, curveSegments: 6 });
+    g.translate(0, 0, -(d - 2 * bev) / 2);
+    roundedBoxCache.set(key, g);
+  }
+  return g;
+}
+
 /** 一隻角色會用到的材質組 */
 interface Palette {
   /** 孩子選的身體顏色 */
@@ -53,7 +85,10 @@ interface Palette {
 }
 
 /** 各動物戴帽子時，帽子相對於預設位置的上下位移（頭比較扁的動物要壓低一點） */
-const HAT_LIFT: Partial<Record<Animal, number>> = { capybara: -0.06, penguin: 0.02 };
+const HAT_LIFT: Partial<Record<Animal, number>> = { capybara: -0.2, penguin: 0.02 };
+
+/** 帽子前後位移：卡皮巴拉的頭是往前長的方塊，頭中心比球形頭靠前 */
+const HAT_SHIFT_Z: Partial<Record<Animal, number>> = { capybara: 0 };
 
 /** 走路時以「翅膀」取代手的動物 */
 const WINGED: Animal[] = ['penguin', 'eagle'];
@@ -122,8 +157,8 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
   /** 肚子的材質（企鵝、熊貓、狐狸的肚子／胸口是白色） */
   const bellyMat = animal === 'penguin' || animal === 'panda' || animal === 'fox' ? white : animal === 'elephant' || animal === 'capybara' ? pal.fur : pal.pale;
   /** 身體、頭的縮放：卡皮巴拉身體圓桶、無尾熊頭寬扁 */
-  const bodyScale: [number, number, number] = animal === 'capybara' ? [1.2, 0.9, 1.2] : animal === 'penguin' ? [1.12, 1.06, 1.12] : [1, 1, 1];
-  const headScale: [number, number, number] = animal === 'capybara' ? [1.1, 0.84, 1] : animal === 'koala' ? [1.12, 1, 1.02] : animal === 'elephant' ? [1.1, 1.04, 1] : [1, 1, 1];
+  const bodyScale: [number, number, number] = animal === 'capybara' ? [1.15, 0.9, 1.3] : animal === 'penguin' ? [1.12, 1.06, 1.12] : [1, 1, 1];
+  const headScale: [number, number, number] = animal === 'koala' ? [1.12, 1, 1.02] : animal === 'elephant' ? [1.1, 1.04, 1] : [1, 1, 1];
   const winged = WINGED.includes(animal);
 
   return (
@@ -142,15 +177,22 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
         </mesh>
         {/* 頭 */}
         <group position={[0, 1.55, 0]}>
-          <mesh material={headMat} scale={headScale} castShadow>
-            <sphereGeometry args={[0.5, 24, 18]} />
-          </mesh>
+          {animal === 'capybara' ? (
+            // 卡皮巴拉：方方的吐司頭（前後比左右長）
+            <mesh key="capy-head" material={headMat} geometry={roundedBox(1.0, 0.64, 0.66, 0.18)} position={[0, -0.02, 0]} castShadow />
+          ) : (
+            <mesh key="round-head" material={headMat} scale={headScale} castShadow>
+              <sphereGeometry args={[0.5, 24, 18]} />
+            </mesh>
+          )}
           <Face animal={animal} pal={pal} color={config.color} />
           <Ears animal={animal} pal={pal} color={config.color} />
-          {config.hat && (
-            <group position={[0, HAT_LIFT[animal] ?? 0, 0]}>
+          {config.hat ? (
+            <group position={[0, HAT_LIFT[animal] ?? 0, HAT_SHIFT_Z[animal] ?? 0]}>
               <Hat id={config.hat} />
             </group>
+          ) : (
+            animal === 'capybara' && <OrangeOnHead />
           )}
         </group>
         {/* 手（企鵝、老鷹是翅膀） */}
@@ -285,27 +327,36 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
         </>
       );
     case 'capybara': {
-      const snout = toon(mix(color, '#3a2418', 0.12));
+      const snout = toon(lighter(color, 0.28));
+      const padMat = toon(mix(color, '#24150c', 0.7));
       return (
         <>
-          {/* 方鈍的大口鼻：橫放的膠囊，往前突出 */}
-          <mesh material={snout} position={[0, -0.1, 0.38]} rotation={[0, 0, Math.PI / 2]} scale={[0.95, 1, 1.1]}>
-            <capsuleGeometry args={[0.26, 0.14, 6, 14]} />
-          </mesh>
-          {/* 鼻頭是一塊寬扁的深色鼻墊，下面一條嘴 */}
-          <mesh material={toon(mix(color, '#24150c', 0.65))} position={[0, 0.0, 0.64]} scale={[2.1, 1.0, 0.55]}>
-            <sphereGeometry args={[0.11, 12, 10]} />
+          {/* 又長又寬、前端平鈍的方口鼻（圓角長方形，正面看是跑道形） */}
+          <mesh material={snout} geometry={roundedBox(0.8, 0.4, 0.44, 0.17)} position={[0, -0.13, 0.46]} />
+          {/* 鼻墊：口鼻前端上緣一條寬寬的深色橫條，上面兩個鼻孔 */}
+          <mesh material={padMat} position={[0, 0.03, 0.66]} scale={[2.8, 0.8, 0.6]}>
+            <sphereGeometry args={[0.1, 14, 10]} />
           </mesh>
           {[-1, 1].map((s) => (
-            <mesh key={s} material={dark} position={[s * 0.1, 0.0, 0.7]} scale={[0.7, 1.1, 0.5]}>
-              <sphereGeometry args={[0.032, 8, 6]} />
+            <mesh key={s} material={dark} position={[s * 0.13, 0.035, 0.71]} scale={[0.9, 1.2, 0.5]}>
+              <sphereGeometry args={[0.03, 8, 6]} />
             </mesh>
           ))}
-          <mesh material={dark} position={[0, -0.25, 0.6]} scale={[1, 0.25, 0.4]}>
-            <boxGeometry args={[0.28, 0.06, 0.06]} />
+          {/* 嘴巴：下面一條短線 */}
+          <mesh material={dark} position={[0, -0.24, 0.685]}>
+            <boxGeometry args={[0.2, 0.025, 0.03]} />
           </mesh>
-          {/* 小小的眼睛，位置偏高 */}
-          <Eyes pal={pal} x={0.3} y={0.2} z={0.33} r={0.05} />
+          {/* 小眼睛，位置高，上半部被毛色眼皮蓋住（放空的半閉眼） */}
+          {[-1, 1].map((s) => (
+            <group key={s} position={[s * 0.3, 0.19, 0.335]}>
+              <mesh material={dark}>
+                <sphereGeometry args={[0.058, 10, 8]} />
+              </mesh>
+              <mesh material={pal.fur} position={[0, 0.03, 0.016]} scale={[1, 0.62, 1]}>
+                <sphereGeometry args={[0.072, 10, 8]} />
+              </mesh>
+            </group>
+          ))}
         </>
       );
     }
@@ -372,6 +423,20 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
         </>
       );
   }
+}
+
+/** 卡皮巴拉頭頂的橘子（橘色球加一片綠色小葉子）；戴帽子時由帽子取代 */
+function OrangeOnHead() {
+  return (
+    <group position={[0, 0.45, -0.02]}>
+      <mesh material={toon('#ff8c1a')} scale={[1, 0.92, 1]}>
+        <sphereGeometry args={[0.2, 16, 12]} />
+      </mesh>
+      <mesh material={toon('#3fae4a')} position={[0.05, 0.19, 0]} rotation={[0, 0.5, -0.45]} scale={[1.3, 0.25, 0.7]}>
+        <sphereGeometry args={[0.07, 8, 6]} />
+      </mesh>
+    </group>
+  );
 }
 
 /** 大象的長鼻子：四段圓柱逐段變細、往前微微彎曲 */
@@ -464,10 +529,12 @@ function Legs({ animal, pal, legL, legR }: { animal: Animal; pal: Palette; legL:
   }
   const mat = animal === 'panda' ? pal.accent : pal.fur;
   const thick = animal === 'elephant' ? 1.12 : 1;
+  /** 卡皮巴拉腿短 */
+  const legY = animal === 'capybara' ? 0.8 : 1;
   return (
     <>
       {([-1, 1] as const).map((s) => (
-        <mesh key={s} ref={s === -1 ? legL : legR} material={mat} position={[s * 0.18, 0.18, 0.02]} scale={[thick, 1, thick]} castShadow>
+        <mesh key={s} ref={s === -1 ? legL : legR} material={mat} position={[s * 0.18, animal === 'capybara' ? 0.15 : 0.18, 0.02]} scale={[thick, legY, thick]} castShadow>
           <capsuleGeometry args={[0.13, 0.16, 4, 8]} />
           {animal === 'fox' && (
             <mesh material={pal.dark} position={[0, -0.13, 0.01]} scale={[1, 0.7, 1.1]}>
@@ -598,16 +665,16 @@ function Ears({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
     );
   }
   if (animal === 'capybara') {
-    // 卡皮巴拉：小小的圓耳朵
+    // 卡皮巴拉：很小的圓耳朵，貼在頭頂後方的兩角
     return (
       <>
         {[-1, 1].map((s) => (
-          <group key={s} position={[s * 0.34, 0.33, -0.1]}>
+          <group key={s} position={[s * 0.38, 0.27, -0.2]}>
             <mesh material={fur}>
-              <sphereGeometry args={[0.11, 12, 10]} />
+              <sphereGeometry args={[0.1, 12, 10]} />
             </mesh>
-            <mesh material={toon(mix(color, '#3a2418', 0.35))} position={[0, 0, 0.05]} scale={[0.6, 0.6, 0.4]}>
-              <sphereGeometry args={[0.11, 8, 6]} />
+            <mesh material={toon(mix(color, '#3a2418', 0.35))} position={[0, 0.01, 0.05]} scale={[0.6, 0.6, 0.4]}>
+              <sphereGeometry args={[0.1, 8, 6]} />
             </mesh>
           </group>
         ))}
