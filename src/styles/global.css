@@ -1471,3 +1471,11 @@ button {
     max-height: 72px;
   }
 }
+
+/* 動物圖示的 SVG（卡皮巴拉）：大小跟著外層 font-size，和 emoji 一致 */
+.animal-svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+  margin: 0 auto;
+}

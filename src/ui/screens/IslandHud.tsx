@@ -8,7 +8,7 @@ import { zoneById } from '../../world/layout';
 import { input, player } from '../../world/input';
 import { speak } from '../../audio/speech';
 import { sfx } from '../../audio/sfx';
-import { animalEmoji } from './ProfilesScreen';
+import { AnimalIcon } from '../AnimalIcon';
 import { teacherTalk } from '../teacherTips';
 import { useCloud, type CloudStatus } from '../../online/useCloud';
 
@@ -137,7 +137,7 @@ export function IslandHud() {
           {profile && (
             <button className="hud-chip" onClick={() => goto('profiles')} aria-label="換角色" data-testid="hud-profile">
               <span className="avatar-dot" style={{ background: profile.avatar.color }}>
-                {animalEmoji(profile.avatar.animal)}
+                <AnimalIcon animal={profile.avatar.animal} />
               </span>
               {profile.name}
             </button>

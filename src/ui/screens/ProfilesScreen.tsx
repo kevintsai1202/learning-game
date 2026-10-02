@@ -12,19 +12,26 @@ import { enterIslandLine } from '../lines';
 import { teleport } from '../../world/input';
 import { SPAWN } from '../../world/layout';
 import { onlineEnabled } from '../../online/config';
+import { AnimalIcon } from '../AnimalIcon';
 
 /** 動物選項 */
-export const ANIMALS: { id: Animal; emoji: string; name: string }[] = [
+export const ANIMALS: { id: Animal; /** 沒有對應 emoji 的動物（卡皮巴拉）為 null，由 AnimalIcon 改畫 SVG */ emoji: string | null; name: string }[] = [
   { id: 'bear', emoji: '🐻', name: '小熊' },
   { id: 'rabbit', emoji: '🐰', name: '小兔' },
   { id: 'cat', emoji: '🐱', name: '小貓' },
   { id: 'dog', emoji: '🐶', name: '小狗' },
+  { id: 'capybara', emoji: null, name: '卡皮巴拉' },
+  { id: 'panda', emoji: '🐼', name: '熊貓' },
+  { id: 'penguin', emoji: '🐧', name: '企鵝' },
+  { id: 'fox', emoji: '🦊', name: '狐狸' },
+  { id: 'koala', emoji: '🐨', name: '無尾熊' },
+  { id: 'pig', emoji: '🐷', name: '小豬' },
+  { id: 'eagle', emoji: '🦅', name: '老鷹' },
+  { id: 'elephant', emoji: '🐘', name: '大象' },
 ];
 
 /** 身體顏色選項 */
 export const COLORS = ['#8b5a2b', '#f2b36b', '#ffffff', '#ff9db0', '#7fd6e0', '#9be38a', '#c9a7ff', '#5b5b6b'];
-
-export const animalEmoji = (a: Animal) => ANIMALS.find((x) => x.id === a)?.emoji ?? '🐻';
 
 export function ProfilesScreen() {
   const profiles = useGame((s) => s.save.profiles);
@@ -74,7 +81,7 @@ export function ProfilesScreen() {
                   aria-label={a.name}
                   aria-pressed={avatar.animal === a.id}
                 >
-                  {a.emoji}
+                  <AnimalIcon animal={a.id} />
                 </button>
               ))}
             </div>
@@ -130,7 +137,9 @@ export function ProfilesScreen() {
                 }}
                 data-testid="profile-card"
               >
-                <span className="face">{animalEmoji(p.avatar.animal)}</span>
+                <span className="face">
+                  <AnimalIcon animal={p.avatar.animal} />
+                </span>
                 {p.name}
                 <span className="meta">
                   🪙 {p.coins}　⭐ {Object.values(p.bestStars).reduce((s, v) => s + v, 0)}

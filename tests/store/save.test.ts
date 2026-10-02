@@ -15,6 +15,7 @@ import {
   setCurriculum,
   replaceProfile,
   profileSchema,
+  ANIMAL_IDS,
 } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
 
@@ -176,6 +177,32 @@ describe('存檔：載入與相容', () => {
   it('正常存檔可以完整讀回', () => {
     const s = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, NOW);
     expect(loadSave(JSON.stringify(s))).toEqual(s);
+  });
+
+  it.each(['bear', 'rabbit', 'cat', 'dog'] as const)('舊存檔只有原本 4 種動物（%s）照常讀得進來', (animal) => {
+    const s = addProfile(createEmptySave(), { name: '小安', avatar: { animal, color: '#ffffff', hat: null } }, NOW);
+    const loaded = loadSave(JSON.stringify(s));
+    expect(loaded.profiles).toHaveLength(1);
+    expect(loaded.profiles[0].avatar.animal).toBe(animal);
+  });
+
+  it.each(['capybara', 'panda', 'penguin', 'fox', 'koala', 'pig', 'eagle', 'elephant'] as const)('新動物 %s 的存檔可以讀回', (animal) => {
+    expect(ANIMAL_IDS).toContain(animal);
+    const s = addProfile(createEmptySave(), { name: '小安', avatar: { animal, color: '#ffffff', hat: null } }, NOW);
+    const loaded = loadSave(JSON.stringify(s));
+    expect(loaded.profiles).toHaveLength(1);
+    expect(loaded.profiles[0].avatar.animal).toBe(animal);
+  });
+
+  it('共 12 種動物', () => {
+    expect(ANIMAL_IDS).toHaveLength(12);
+  });
+
+  it('不存在的動物 id 讀檔失敗，回傳新存檔', () => {
+    const s = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'bear', color: '#ffffff', hat: null } }, NOW);
+    const bad = JSON.parse(JSON.stringify(s));
+    bad.profiles[0].avatar.animal = 'dragon';
+    expect(loadSave(JSON.stringify(bad)).profiles).toEqual([]);
   });
 
   it('新存檔預設「優先使用預錄語音」；舊存檔沒有這個欄位時補成開啟，其他設定不變', () => {

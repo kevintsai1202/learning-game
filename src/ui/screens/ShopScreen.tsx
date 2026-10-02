@@ -5,6 +5,7 @@ import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
 import { HATS } from '../../world/Hats';
 import { ANIMALS, COLORS } from './ProfilesScreen';
+import { AnimalIcon } from '../AnimalIcon';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
 import { boughtLine } from '../lines';
@@ -89,7 +90,7 @@ export function ShopScreen() {
           <div className="choice-row">
             {ANIMALS.map((a) => (
               <button key={a.id} className={`animal-btn ${profile.avatar.animal === a.id ? 'on' : ''}`} onClick={() => updateAvatar({ ...profile.avatar, animal: a.id })} aria-label={a.name}>
-                {a.emoji}
+                <AnimalIcon animal={a.id} />
               </button>
             ))}
           </div>
