@@ -73,6 +73,8 @@ async function shootBothAngles(page: Page, name: string): Promise<void> {
 }
 
 test.describe('動物角色', () => {
+  // 每個測試要截 16～24 張放大的 3D 截圖，軟體 WebGL 每張 5～14 秒，3 分鐘的預設上限不夠
+  test.describe.configure({ timeout: 360_000 });
   test('百寶屋逐一換 12 種動物：存檔會改、3D 會更新、沒有頁面錯誤', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
