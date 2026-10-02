@@ -38,3 +38,6 @@ export const boughtLine = (name: string): string => `買到${name}了！`;
 
 /** 選好角色、進入島嶼（含孩子的名字，無法預錄，會用裝置語音） */
 export const enterIslandLine = (who: string): string => `${who}，出發囉！點地面就可以走過去。`;
+
+/** 結算畫面：得到新獎章（每個獎章名稱一句，盤點腳本會列出全部獎章，可以預錄） */
+export const newBadgeLine = (name: string): string => `得到新獎章：${name}！`;

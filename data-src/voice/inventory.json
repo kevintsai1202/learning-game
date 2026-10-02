@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 250,
-  "全部": 3333,
-  "zh": 1712,
+  "介面": 286,
+  "全部": 3369,
+  "zh": 1748,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34008,
+ "chars": 34324,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -16517,6 +16517,15 @@
    ]
   },
   {
+   "key": "zh-TW|一週不間斷",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "一週不間斷",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|一層一層穿，熱了就脫",
    "lang": "zh-TW",
    "voice": "zh",
@@ -16871,6 +16880,15 @@
    "sources": [
     "life.emotion",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|小小書法家",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "小小書法家",
+   "sources": [
+    "ui:badge"
    ]
   },
   {
@@ -26559,6 +26577,15 @@
    ]
   },
   {
+   "key": "zh-TW|生活小達人",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "生活小達人",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|生活村！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -26826,6 +26853,15 @@
    "sources": [
     "life.environment",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|全科探險家",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "全科探險家",
+   "sources": [
+    "ui:badge"
    ]
   },
   {
@@ -27714,6 +27750,15 @@
    ]
   },
   {
+   "key": "zh-TW|初次冒險",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "初次冒險",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|別人在說話的時候，要看著他、耐心聽完。",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27880,6 +27925,15 @@
    ]
   },
   {
+   "key": "zh-TW|技能大師",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "技能大師",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|把一天的時間照順序排好。",
    "lang": "zh-TW",
    "voice": "zh",
@@ -28017,6 +28071,15 @@
    "sources": [
     "life.safety",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|每天都學習",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "每天都學習",
+   "sources": [
+    "ui:badge"
    ]
   },
   {
@@ -28924,6 +28987,15 @@
    ]
   },
   {
+   "key": "zh-TW|段考勇士",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "段考勇士",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|洗手步驟裡的「捧」，是要做什麼？",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29121,6 +29193,15 @@
    ]
   },
   {
+   "key": "zh-TW|英語小達人",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "英語小達人",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|英語總複習",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29273,6 +29354,15 @@
    "sources": [
     "life.safety",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|書法大師",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "書法大師",
+   "sources": [
+    "ui:badge"
    ]
   },
   {
@@ -29534,6 +29624,15 @@
    ]
   },
   {
+   "key": "zh-TW|國語小達人",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "國語小達人",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|國語段考模擬",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29588,6 +29687,168 @@
    "sources": [
     "life.season",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：一週不間斷！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：一週不間斷！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：小小書法家！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：小小書法家！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：生活小達人！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：生活小達人！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：全科探險家！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：全科探險家！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：初次冒險！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：初次冒險！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：技能大師！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：技能大師！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：每天都學習！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：每天都學習！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：段考勇士！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：段考勇士！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：英語小達人！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：英語小達人！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：書法大師！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：書法大師！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：國語小達人！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：國語小達人！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：答對 100 題！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：答對 100 題！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：答對 1000 題！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：答對 1000 題！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：答對 500 題！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：答對 500 題！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：數學小達人！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：數學小達人！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：錯題剋星！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：錯題剋星！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：錯題清道夫！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：錯題清道夫！",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|得到新獎章：錯題終結者！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "得到新獎章：錯題終結者！",
+   "sources": [
+    "ui:badge"
    ]
   },
   {
@@ -31366,6 +31627,33 @@
    ]
   },
   {
+   "key": "zh-TW|答對 100 題",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "答對 100 題",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|答對 1000 題",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "答對 1000 題",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|答對 500 題",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "答對 500 題",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|答對了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32227,6 +32515,15 @@
    ]
   },
   {
+   "key": "zh-TW|數學小達人",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "數學小達人",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
    "key": "zh-TW|數學城堡！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32617,6 +32914,33 @@
     "life.season",
     "life.nature",
     "life.community"
+   ]
+  },
+  {
+   "key": "zh-TW|錯題剋星",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "錯題剋星",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|錯題清道夫",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "錯題清道夫",
+   "sources": [
+    "ui:badge"
+   ]
+  },
+  {
+   "key": "zh-TW|錯題終結者",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "錯題終結者",
+   "sources": [
+    "ui:badge"
    ]
   },
   {

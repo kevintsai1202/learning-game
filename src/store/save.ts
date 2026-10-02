@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { hashString } from '../core/rng';
 import type { Question, SessionResult, SubjectId } from '../core/types';
 import { subjectSchema } from '../content/schema';
+import { awardBadges, badgeById } from './badges';
 
 /** 存檔格式版本；欄位有不相容變更時加一，並在 loadSave 補上轉換（v2：加入 recent、curriculum） */
 export const SAVE_SCHEMA_VERSION = 2;
@@ -98,6 +99,14 @@ export interface CloudLink {
   accountId: string;
 }
 
+/** 學習統計（獎章條件用；2026-10 新增，從這一版開始計數，以前的不補算） */
+export interface LearningStats {
+  /** 從錯題本清掉的題數（連續答對兩次、移出錯題本時加一） */
+  wrongCleared: number;
+  /** 描寫題完成的字數 */
+  written: number;
+}
+
 /** 一位小朋友的資料 */
 export interface Profile {
   id: string;
@@ -122,6 +131,12 @@ export interface Profile {
   curriculum: CurriculumChoice;
   /** 雲端角色才有：連到哪個班級（2026-10 新增，舊存檔沒有這個欄位） */
   cloud?: CloudLink;
+  /** 學習統計（2026-10 新增；舊存檔沒有時當作 0） */
+  stats?: LearningStats;
+  /** 得到的獎章：獎章 id → 得到的日期 YYYY-MM-DD（2026-10 新增） */
+  badges?: Record<string, string>;
+  /** 顯示的稱號（獎章 id）；null 或沒有表示不顯示（2026-10 新增） */
+  title?: string | null;
 }
 
 /** 全機設定 */
@@ -236,6 +251,7 @@ export function recordSession(save: SaveData, profileId: string, result: Session
     const skills = { ...p.skills };
     const indicators = { ...p.indicators };
     const wrongBook = { ...p.wrongBook };
+    const stats: LearningStats = { wrongCleared: p.stats?.wrongCleared ?? 0, written: p.stats?.written ?? 0 };
     for (const a of result.answers) {
       const q = a.question;
       const prev = skills[q.skill] ?? { box: 0, attempts: 0, firstTry: 0, lastSeen: today };
@@ -256,9 +272,15 @@ export function recordSession(save: SaveData, profileId: string, result: Session
         wrongBook[q.id] = { question: q, wrongCount: (w?.wrongCount ?? 0) + 1, lastWrong: today, streak: 0 };
       } else if (w) {
         const streak = w.streak + 1;
-        if (streak >= WRONG_BOOK_CLEAR_STREAK) delete wrongBook[q.id];
-        else wrongBook[q.id] = { ...w, streak };
+        if (streak >= WRONG_BOOK_CLEAR_STREAK) {
+          delete wrongBook[q.id];
+          stats.wrongCleared += 1;
+        } else {
+          wrongBook[q.id] = { ...w, streak };
+        }
       }
+      // 描寫題完成（最後寫完）才算寫完一個字
+      if (q.type === 'write' && a.correct) stats.written += 1;
     }
     const record: SessionRecord = {
       activityId: result.activityId,
@@ -274,7 +296,7 @@ export function recordSession(save: SaveData, profileId: string, result: Session
     const ids = result.answers.map((a) => a.question.id);
     const prevRecent = (p.recent[result.activityId] ?? []).filter((id) => !ids.includes(id));
     const recent = { ...p.recent, [result.activityId]: [...prevRecent, ...ids].slice(-RECENT_LIMIT) };
-    return {
+    const updated: Profile = {
       ...p,
       recent,
       coins: p.coins + result.coins,
@@ -283,7 +305,10 @@ export function recordSession(save: SaveData, profileId: string, result: Session
       indicators,
       wrongBook,
       history: [...p.history, record].slice(-HISTORY_LIMIT),
+      stats,
     };
+    // 最後一步才頒發獎章：條件要看這一回合算完之後的存檔（達成的那一回合當下就拿到）
+    return awardBadges(updated, today);
   });
 }
 
@@ -320,6 +345,16 @@ export function setAvatar(save: SaveData, profileId: string, avatar: AvatarConfi
 /** 設定某位小朋友的教材版本與學期 */
 export function setCurriculum(save: SaveData, profileId: string, curriculum: CurriculumChoice): SaveData {
   return updateProfile(save, profileId, (p) => ({ ...p, curriculum: { ...curriculum } }));
+}
+
+/**
+ * 設定顯示的稱號：只能選已得到、而且有稱號的獎章；null 表示不顯示。不符合時丟出錯誤。
+ */
+export function setTitle(save: SaveData, profileId: string, badgeId: string | null): SaveData {
+  return updateProfile(save, profileId, (p) => {
+    if (badgeId !== null && (!p.badges?.[badgeId] || !badgeById(badgeId)?.title)) throw new Error('還沒有這個稱號');
+    return { ...p, title: badgeId };
+  });
 }
 
 /** 刪除角色 */
@@ -368,6 +403,9 @@ export const profileSchema = z.object({
   curriculum: z.object({ zh: z.string(), math: z.string(), term: z.enum(['上', '下', 'auto']) }),
   // 2026-10 新增：可省略，舊存檔不必升級版本
   cloud: z.object({ server: z.string(), room: z.string(), roomName: z.string(), accountId: z.string() }).optional(),
+  stats: z.object({ wrongCleared: int.min(0), written: int.min(0) }).optional(),
+  badges: z.record(z.string(), z.string()).optional(),
+  title: z.string().nullable().optional(),
 });
 const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),

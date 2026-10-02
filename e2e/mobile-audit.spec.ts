@@ -206,6 +206,10 @@ for (const d of DEVICES) {
       await page.getByTestId('teacher-tab-login').click();
       await check('25-teacher-login');
 
+      // 獎章簿（前面玩過幾回合，已經有獎章與稱號可以選）
+      await page.evaluate(() => (window as any).__game.ui.getState().goto('badges'));
+      await check('26-badges');
+
       writeFileSync(`${OUT}/${d.name}-report.json`, JSON.stringify({ unreachable, report }, null, 1));
       const problems = Object.entries(report).filter(([, r]) => r.pageScrollX || r.offenders.length);
       console.log(`${d.name}：${problems.length}／${Object.keys(report).length} 個畫面有超出`);

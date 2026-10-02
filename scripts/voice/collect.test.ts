@@ -27,6 +27,7 @@ import * as LINES from '../../src/ui/lines';
 import { ZONES } from '../../src/world/layout';
 import { HATS } from '../../src/world/Hats';
 import { ANIMALS } from '../../src/ui/screens/ProfilesScreen';
+import { BADGES } from '../../src/store/badges';
 
 /** 連續幾個種子沒有新句子就停 */
 const QUIET = 40;
@@ -107,6 +108,11 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
   LINES.TEACHER_TIPS.forEach((t) => addSpoken(t, 'zh-TW', 'ui:teacher'));
   HATS.forEach((h) => addSpoken(LINES.boughtLine(h.name), 'zh-TW', 'ui:shop'));
   ANIMALS.forEach((a) => addSpoken(a.name, 'zh-TW', 'ui:animal'));
+  // 獎章簿點獎章唸名稱；結算畫面唸「得到新獎章：○○！」
+  BADGES.forEach((b) => {
+    addSpoken(b.name, 'zh-TW', 'ui:badge');
+    addSpoken(LINES.newBadgeLine(b.name), 'zh-TW', 'ui:badge');
+  });
   ZONES.forEach((z) => addSpoken(z.intro, 'zh-TW', 'ui:zone'));
   // 選單上的活動名稱（含三家版本的課本單元與期中期末模擬）
   const menu: ActivityDef[] = [...ALL_ACTIVITIES];

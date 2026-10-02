@@ -20,6 +20,7 @@ import { ShopScreen } from './ui/screens/ShopScreen';
 import { ParentScreen } from './ui/screens/ParentScreen';
 import { ClassScreen } from './ui/screens/ClassScreen';
 import { TeacherScreen } from './ui/screens/TeacherScreen';
+import { BadgesScreen } from './ui/screens/BadgesScreen';
 import { RestGuard } from './ui/RestGuard';
 import { startCloudSync } from './online/useCloud';
 
@@ -35,6 +36,7 @@ const SCREEN_MUSIC: Record<Screen, Track> = {
   parent: 'shop',
   class: 'island',
   teacher: 'shop',
+  badges: 'shop',
 };
 
 export function App() {
@@ -83,6 +85,7 @@ export function App() {
         {screen === 'parent' && <ParentScreen />}
         {screen === 'class' && <ClassScreen />}
         {screen === 'teacher' && <TeacherScreen />}
+        {screen === 'badges' && <BadgesScreen />}
         <RestGuard />
       </div>
     </>

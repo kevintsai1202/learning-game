@@ -18,6 +18,7 @@ import { CurriculumTab } from './CurriculumTab';
 import { useCloud } from '../../online/useCloud';
 import { onlineEnabled } from '../../online/config';
 import { getToken } from '../../online/storage';
+import { BADGES } from '../../store/badges';
 import { GoogleButton } from '../GoogleButton';
 
 const SUBJECT_NAME: Record<SubjectId, string> = { zh: '國語', math: '數學', en: '英語', life: '生活與健康' };
@@ -109,6 +110,14 @@ function ReportTab({ profile }: { profile: Profile }) {
     <div className="plain">
       <p>
         金幣 {profile.coins}・完成 {profile.history.length} 回合・錯題 {Object.keys(profile.wrongBook).length} 題
+      </p>
+      <p data-testid="report-badges">
+        獎章 {BADGES.filter((b) => profile.badges?.[b.id]).length}／{BADGES.length}：
+        {BADGES.filter((b) => profile.badges?.[b.id])
+          .map((b) => `${b.icon}${b.name}`)
+          .join('、') || '還沒有'}
+        {/* 這一版才開始計數的統計（以前的不補算） */}
+        （清掉錯題 {profile.stats?.wrongCleared ?? 0} 題・描寫完成 {profile.stats?.written ?? 0} 個字）
       </p>
       <h3>最近 7 天遊玩時間（分鐘）</h3>
       <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end', height: 110 }}>

@@ -16,6 +16,7 @@ import {
   replaceProfile,
   profileSchema,
   ANIMAL_IDS,
+  setTitle,
 } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
 
@@ -307,5 +308,60 @@ describe('存檔：雲端角色', () => {
     const other = { ...base.profiles[0], id: 'p_other', name: '小華' };
     const s = replaceProfile(base, other);
     expect(s.profiles.map((p) => p.id)).toEqual([base.profiles[0].id, 'p_other']);
+  });
+});
+
+describe('存檔：學習統計與獎章（R1）', () => {
+  const base = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'bear', color: '#8B5A2B', hat: null } }, NOW);
+  const pid = base.profiles[0].id;
+  const write = (id: string): Question => ({ id, subject: 'zh', skill: 'zh.write', indicators: ['4-I-1'], prompt: id, type: 'write', char: '人' } as unknown as Question);
+
+  it('玩完第一回合就得到「初次冒險」（同一回合當下，不是下一回合）', () => {
+    const s = recordSession(base, pid, session([{ question: q('a'), correct: true, firstTry: true }]), NOW);
+    expect(s.profiles[0].badges).toEqual({ 'first-adventure': '2026-10-01' });
+  });
+
+  it('描寫題完成才算寫完一個字；沒寫完不算', () => {
+    const s = recordSession(
+      base,
+      pid,
+      session([
+        { question: write('w1'), correct: true, firstTry: true },
+        { question: write('w2'), correct: true, firstTry: false },
+        { question: write('w3'), correct: false, firstTry: false },
+        { question: q('n1'), correct: true, firstTry: true },
+      ]),
+      NOW,
+    );
+    expect(s.profiles[0].stats).toEqual({ wrongCleared: 0, written: 2 });
+  });
+
+  it('錯題移出錯題本時加一；清掉第 5 題的那一回合就得到「錯題清道夫」', () => {
+    const ids = ['e1', 'e2', 'e3', 'e4', 'e5'];
+    // 先全部答錯進錯題本，再連續兩回合一次答對
+    let s = recordSession(base, pid, session(ids.map((id) => ({ question: q(id), correct: false, firstTry: false }))), NOW);
+    s = recordSession(s, pid, session(ids.map((id) => ({ question: q(id), correct: true, firstTry: true }))), NOW);
+    expect(s.profiles[0].stats?.wrongCleared ?? 0).toBe(0);
+    expect(s.profiles[0].badges?.['wrong-5']).toBeUndefined();
+    s = recordSession(s, pid, session(ids.map((id) => ({ question: q(id), correct: true, firstTry: true }))), NOW);
+    expect(s.profiles[0].stats?.wrongCleared).toBe(5);
+    expect(s.profiles[0].badges?.['wrong-5']).toBe('2026-10-01');
+  });
+
+  it('統計、獎章、稱號可以存回來；舊存檔沒有這些欄位也讀得進來', () => {
+    let s = recordSession(base, pid, session([{ question: q('a'), correct: true, firstTry: true }]), NOW);
+    s = setTitle(s, pid, 'first-adventure');
+    const loaded = loadSave(JSON.stringify(s)).profiles[0];
+    expect(loaded.badges).toEqual({ 'first-adventure': '2026-10-01' });
+    expect(loaded.title).toBe('first-adventure');
+    expect(loaded.stats).toEqual({ wrongCleared: 0, written: 0 });
+    expect(loadSave(JSON.stringify(base)).profiles[0].badges).toBeUndefined();
+  });
+
+  it('稱號：只能選已得到、而且有稱號的獎章；null 表示不顯示', () => {
+    const s = recordSession(base, pid, session([{ question: q('a'), correct: true, firstTry: true }]), NOW);
+    expect(setTitle(s, pid, 'first-adventure').profiles[0].title).toBe('first-adventure');
+    expect(() => setTitle(s, pid, 'wrong-20')).toThrow();
+    expect(setTitle(setTitle(s, pid, 'first-adventure'), pid, null).profiles[0].title).toBeNull();
   });
 });

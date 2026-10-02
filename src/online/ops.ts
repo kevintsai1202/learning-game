@@ -8,6 +8,7 @@ import type { SessionResult } from '../core/types';
 import { subjectSchema } from '../content/schema';
 import { scoreSession } from '../engine/check';
 import { findItem } from '../store/catalog';
+import { badgeById } from '../store/badges';
 import {
   ANIMAL_IDS,
   addPlayTime,
@@ -16,6 +17,7 @@ import {
   recordSession,
   setAvatar,
   setCurriculum,
+  setTitle,
   storedQuestion,
   type AvatarConfig,
   type CurriculumChoice,
@@ -42,7 +44,8 @@ export type Op =
   | (OpBase & { kind: 'playTime'; seconds: number })
   | (OpBase & { kind: 'buy'; itemId: string })
   | (OpBase & { kind: 'avatar'; avatar: AvatarConfig })
-  | (OpBase & { kind: 'curriculum'; curriculum: CurriculumChoice });
+  | (OpBase & { kind: 'curriculum'; curriculum: CurriculumChoice })
+  | (OpBase & { kind: 'title'; badge: string | null });
 
 /** 操作的內容（不含 id 與時間，產生操作時再補上） */
 export type OpBody = Op extends infer T ? (T extends Op ? Omit<T, 'id' | 'at'> : never) : never;
@@ -86,6 +89,7 @@ export const opSchema = z.discriminatedUnion('kind', [
     kind: z.literal('curriculum'),
     curriculum: z.object({ zh: z.string().max(60), math: z.string().max(60), term: z.enum(['上', '下', 'auto']) }),
   }),
+  z.object({ ...base, kind: z.literal('title'), badge: z.string().max(40).nullable() }),
 ]);
 
 /** 驗證並轉成 Op；格式不符回傳 null。題目只做寬鬆檢查，型別上視為 Question（與錯題本相同的做法） */
@@ -146,6 +150,9 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
     }
     case 'curriculum':
       return { ok: true, profile: onProfile(profile, (s, id) => setCurriculum(s, id, op.curriculum)) };
+    case 'title':
+      if (op.badge !== null && (!profile.badges?.[op.badge] || !badgeById(op.badge)?.title)) return { ok: false, reason: '還沒有這個稱號' };
+      return { ok: true, profile: onProfile(profile, (s, id) => setTitle(s, id, op.badge)) };
   }
 }
 

@@ -4,8 +4,8 @@
 import { create } from 'zustand';
 import type { SessionResult } from '../core/types';
 
-/** 畫面（class：孩子加入／登入班級；teacher：老師的班級管理） */
-export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'teacher';
+/** 畫面（class：孩子加入／登入班級；teacher：老師的班級管理；badges：獎章簿） */
+export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'teacher' | 'badges';
 
 /** 島上的區域（建築） */
 export type ZoneId = 'math' | 'zh' | 'en' | 'life' | 'tower' | 'shop';
@@ -31,6 +31,8 @@ interface UiStore {
   nearZone: ZoneId | null;
   run: ActivityRun | null;
   lastResult: SessionResult | null;
+  /** 上一回合新得到的獎章 id（結算畫面慶祝） */
+  lastNewBadges: string[];
   mood: StageMood;
   /** mood 變更的序號，讓相同情緒連續觸發也能重播動畫 */
   moodTick: number;
@@ -43,7 +45,7 @@ interface UiStore {
   enterZone: (zone: ZoneId) => void;
   setNearZone: (zone: ZoneId | null) => void;
   startActivity: (run: ActivityRun) => void;
-  showResult: (result: SessionResult) => void;
+  showResult: (result: SessionResult, newBadges?: string[]) => void;
   setMood: (mood: StageMood) => void;
 }
 
@@ -53,6 +55,7 @@ export const useUi = create<UiStore>((set) => ({
   nearZone: null,
   run: null,
   lastResult: null,
+  lastNewBadges: [],
   mood: 'idle',
   moodTick: 0,
   bubble: null,
@@ -62,6 +65,6 @@ export const useUi = create<UiStore>((set) => ({
   enterZone: (zone) => set({ zone, screen: zone === 'shop' ? 'shop' : 'zone' }),
   setNearZone: (nearZone) => set({ nearZone }),
   startActivity: (run) => set({ run, screen: 'activity', mood: 'idle' }),
-  showResult: (lastResult) => set({ lastResult, screen: 'result', mood: 'cheer' }),
+  showResult: (lastResult, newBadges = []) => set({ lastResult, lastNewBadges: newBadges, screen: 'result', mood: 'cheer' }),
   setMood: (mood) => set((s) => ({ mood, moodTick: s.moodTick + 1 })),
 }));

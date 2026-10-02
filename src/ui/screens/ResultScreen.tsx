@@ -1,12 +1,14 @@
 /**
- * 結算畫面：星星依序跳出、獲得金幣、段考模擬顯示分數，並列出要再練習的題目。
+ * 結算畫面：星星依序跳出、獲得金幣、段考模擬顯示分數，並列出要再練習的題目；
+ * 這一回合得到新獎章時，跳出獎章卡片並唸出「得到新獎章：○○！」。
  */
 import { useEffect } from 'react';
 import { useUi } from '../../store/useUi';
 import { findActivity } from '../../activities/resolve';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
-import { RESULT_DONE, RESULT_MESSAGES } from '../lines';
+import { RESULT_DONE, RESULT_MESSAGES, newBadgeLine } from '../lines';
+import { badgeById } from '../../store/badges';
 import { teleport } from '../../world/input';
 import { doorOf, zoneById } from '../../world/layout';
 
@@ -14,6 +16,7 @@ const MESSAGES = RESULT_MESSAGES;
 
 export function ResultScreen() {
   const result = useUi((s) => s.lastResult);
+  const newBadges = useUi((s) => s.lastNewBadges);
   const run = useUi((s) => s.run);
   const zone = useUi((s) => s.zone);
   const startActivity = useUi((s) => s.startActivity);
@@ -27,8 +30,18 @@ export function ResultScreen() {
     const timers = Array.from({ length: result.stars }, (_, i) => setTimeout(() => sfx.star(i), 500 + i * 350));
     timers.push(setTimeout(() => sfx.coin(), 600 + result.stars * 350));
     speak(MESSAGES[result.stars] ?? RESULT_DONE);
+    // 新獎章：等星星與鼓勵的話唸完，再放一次號角、唸出獎章名稱（只唸第一個，多個時畫面都列出來）
+    const first = newBadges.length ? badgeById(newBadges[0]) : undefined;
+    if (first) {
+      timers.push(
+        setTimeout(() => {
+          sfx.fanfare();
+          speak(newBadgeLine(first.name));
+        }, 2600),
+      );
+    }
     return () => timers.forEach(clearTimeout);
-  }, [result]);
+  }, [result, newBadges]);
 
   if (!result) return null;
   const missed = result.answers.filter((a) => !a.firstTry);
@@ -53,6 +66,23 @@ export function ResultScreen() {
           🪙 +{result.coins}
         </p>
         <p>{MESSAGES[result.stars]}</p>
+        {newBadges.length > 0 && (
+          <div className="new-badges" data-testid="new-badges">
+            {newBadges.map((id) => {
+              const b = badgeById(id);
+              if (!b) return null;
+              return (
+                <div key={id} className="new-badge" data-testid={`new-badge-${id}`}>
+                  <span className="new-badge-icon">{b.icon}</span>
+                  <span>
+                    新獎章：<b>{b.name}</b>
+                    {b.title && <span className="new-badge-reward">可以在獎章簿選稱號「{b.title}」</span>}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
         {missed.length > 0 && (
           <div className="explain" style={{ textAlign: 'left', margin: '8px auto' }}>
             📕 已放進錯題本，可以再練習：

@@ -8,6 +8,7 @@ import type { SessionResult } from '../core/types';
 import { applyOp, newOpId, type Op, type OpBody } from '../online/ops';
 import { recordOp } from '../online/storage';
 import { findItem } from './catalog';
+import { newlyEarned } from './badges';
 import {
   addPlayTime,
   addProfile,
@@ -21,6 +22,7 @@ import {
   setAvatar,
   setCurriculum,
   setPin,
+  setTitle,
   verifyPin,
   type AvatarConfig,
   type CurriculumChoice,
@@ -67,7 +69,10 @@ interface GameStore {
   updateAvatar: (avatar: AvatarConfig) => void;
   /** 設定某位小朋友的教材版本 */
   updateCurriculum: (profileId: string, curriculum: CurriculumChoice) => void;
-  finishSession: (result: SessionResult) => void;
+  /** 紀錄一回合；回傳這一回合新得到的獎章 id（結算畫面慶祝用） */
+  finishSession: (result: SessionResult) => string[];
+  /** 選擇顯示的稱號（獎章 id；null 表示不顯示）；不能選時回傳 false */
+  chooseTitle: (badgeId: string | null) => boolean;
   tickPlayTime: (seconds: number) => void;
   purchase: (itemId: string, price: number) => boolean;
   updateSettings: (patch: Partial<Settings>) => void;
@@ -121,7 +126,19 @@ export const useGame = create<GameStore>((set, get) => {
       if (cloudAct(profileId, { kind: 'curriculum', curriculum }) === null) commit(setCurriculum(get().save, profileId, curriculum));
     },
     finishSession: (result) => {
+      const before = get().profile()!;
       if (cloudAct(activeId(), { kind: 'session', result }) === null) commit(recordSession(get().save, activeId(), result, new Date()));
+      return newlyEarned(before, get().profile()!);
+    },
+    chooseTitle: (badgeId) => {
+      const cloud = cloudAct(activeId(), { kind: 'title', badge: badgeId });
+      if (cloud !== null) return cloud;
+      try {
+        commit(setTitle(get().save, activeId(), badgeId));
+        return true;
+      } catch {
+        return false;
+      }
     },
     tickPlayTime: (seconds) => {
       if (!get().save.activeProfileId) return;

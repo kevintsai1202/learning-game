@@ -1277,6 +1277,112 @@ button {
   color: var(--ink-soft);
 }
 
+/* ===== 獎章與稱號 ===== */
+/* 島上名牌：名字下面一行小字的稱號 */
+.hud-name {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+.hud-title {
+  font-size: 12px;
+  font-family: var(--font-plain);
+  color: #b07800;
+  font-weight: 700;
+}
+/* 獎章簿的稱號選擇：選中的用黃色 */
+.title-row .btn.small.on {
+  background: var(--sun);
+}
+.badge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+.badge-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 10px 8px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+  text-align: center;
+}
+.badge-card.got {
+  background: #fff6d6;
+  box-shadow: 0 4px 0 rgba(43, 42, 76, 0.5);
+}
+/* 還沒得到：灰色圖示 */
+.badge-card.locked .badge-icon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+.badge-icon {
+  font-size: 40px;
+  line-height: 1.1;
+}
+.badge-name {
+  font-weight: 800;
+  font-size: 17px;
+}
+.badge-goal,
+.badge-note,
+.badge-reward {
+  font-family: var(--font-plain);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.badge-reward {
+  color: #b07800;
+  font-weight: 700;
+}
+.badge-bar {
+  width: 80%;
+  height: 8px;
+  border-radius: 4px;
+  background: #ece6d6;
+  overflow: hidden;
+  margin-top: 4px;
+}
+.badge-bar > i {
+  display: block;
+  height: 100%;
+  background: var(--leaf);
+}
+/* 結算畫面的新獎章卡片 */
+.new-badges {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0;
+}
+.new-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fff6d6;
+  text-align: left;
+  animation: pop-in 0.4s 1.8s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+.new-badge-icon {
+  font-size: 34px;
+}
+.new-badge-reward {
+  display: block;
+  font-family: var(--font-plain);
+  font-size: 13px;
+  color: #b07800;
+}
+
 /* ===== 手機版面（放在檔案最後，才不會被前面的一般規則蓋掉） ===== */
 
 /* 手機寬度：面板標題列換行、卡片一列兩張、難度按鈕縮小、標題畫面的家長專區按鈕移到右上 */
@@ -1588,3 +1694,34 @@ button {
     display: none;
   }
 }
+
+/* 手機寬度的動物選單：12 種動物一列放 4 個（92px 時一列只放得下 2 個，要捲 6 列） */
+@media (max-width: 600px) {
+  .animal-btn {
+    width: 64px;
+    height: 64px;
+    font-size: 34px;
+    border-radius: 18px;
+  }
+  .choice-row {
+    gap: 10px;
+  }
+}
+
+/* 手機寬度的獎章簿：兩欄（150px 最小寬度時只排得下一欄，18 張要捲很長） */
+@media (max-width: 600px) {
+  .badge-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .badge-card {
+    padding: 8px 6px 10px;
+  }
+  .badge-icon {
+    font-size: 30px;
+  }
+  .badge-name {
+    font-size: 15px;
+  }
+}
+

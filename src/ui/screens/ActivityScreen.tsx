@@ -101,8 +101,8 @@ export function ActivityScreen() {
         mode={prepared.mode}
         onExit={() => setConfirmExit(true)}
         onFinish={(result) => {
-          finishSession(result);
-          showResult(result);
+          const newBadges = finishSession(result);
+          showResult(result, newBadges);
         }}
       />
       {confirmExit && (

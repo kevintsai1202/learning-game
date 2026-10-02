@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyOp, normalizeOpTime, opSchema, PLAYTIME_OP_MAX, type Op } from '../../src/online/ops';
-import { addPlayTime, addProfile, buyItem, createEmptySave, recordSession, setAvatar, setCurriculum, type Profile, type SaveData } from '../../src/store/save';
+import { addPlayTime, addProfile, buyItem, createEmptySave, recordSession, setAvatar, setCurriculum, setTitle, type Profile, type SaveData } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
 
 const q = (id: string): Question => ({ id, subject: 'math', skill: 'math.add', indicators: ['N-2-2'], prompt: id, type: 'number', answer: 1 });
@@ -123,6 +123,25 @@ describe('操作套用：遊玩時間、購買、外觀', () => {
     const before = JSON.stringify(p);
     applyOp(p, { id: 'o1', at: AT, kind: 'session', result: session(answers) }, NOW);
     expect(JSON.stringify(p)).toBe(before);
+  });
+});
+
+describe('操作套用：稱號（R1）', () => {
+  it('只能選已得到、而且有稱號的獎章；沒得到的拒絕', () => {
+    const fresh = kid();
+    expect(applyOp(fresh, { id: 't1', at: AT, kind: 'title', badge: 'first-adventure' }, NOW)).toEqual({ ok: false, reason: '還沒有這個稱號' });
+    const played = applyAll(fresh, [{ id: 's1', at: AT, kind: 'session', result: session(answers) }]);
+    const r = applyOp(played, { id: 't2', at: AT, kind: 'title', badge: 'first-adventure' }, NOW);
+    expect(r.ok && r.profile.title).toBe('first-adventure');
+    const cleared = applyOp(played, { id: 't3', at: AT, kind: 'title', badge: null }, NOW);
+    expect(cleared.ok && cleared.profile.title).toBeNull();
+  });
+
+  it('稱號操作和本機的 setTitle 結果相同', () => {
+    const played = applyAll(kid(), [{ id: 's1', at: AT, kind: 'session', result: session(answers) }]);
+    const viaOp = applyAll(played, [{ id: 't1', at: AT, kind: 'title', badge: 'first-adventure' }]);
+    const local = setTitle({ ...createEmptySave(), profiles: [played], activeProfileId: played.id }, played.id, 'first-adventure').profiles[0];
+    expect(viaOp).toEqual(local);
   });
 });
 

@@ -12,6 +12,7 @@ import { AnimalIcon } from '../AnimalIcon';
 import { teacherTalk } from '../teacherTips';
 import { useCloud, type CloudStatus } from '../../online/useCloud';
 import { ChatPanel } from '../ChatPanel';
+import { shownTitle } from '../../store/badges';
 
 /** 同步狀態的圖示與文字 */
 const CLOUD_LABEL: Record<CloudStatus, string> = {
@@ -140,7 +141,14 @@ export function IslandHud() {
               <span className="avatar-dot" style={{ background: profile.avatar.color }}>
                 <AnimalIcon animal={profile.avatar.animal} />
               </span>
-              {profile.name}
+              <span className="hud-name">
+                {profile.name}
+                {shownTitle(profile) && (
+                  <small className="hud-title" data-testid="hud-title">
+                    {shownTitle(profile)}
+                  </small>
+                )}
+              </span>
             </button>
           )}
           <span className="hud-chip" data-testid="hud-coins" style={{ paddingLeft: 14 }}>
@@ -152,6 +160,9 @@ export function IslandHud() {
           {profile?.cloud && <CloudChip />}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          <button className="btn round white" onClick={() => goto('badges')} aria-label="獎章簿" data-testid="hud-badges">
+            🏅
+          </button>
           <button className="btn round white" onClick={teacherTalk} aria-label="問熊熊老師">
             🐻
           </button>
