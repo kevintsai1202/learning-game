@@ -18,7 +18,10 @@ export const MAX_BOX = 5;
 /** 錯題連續一次答對幾次後移出錯題本 */
 export const WRONG_BOOK_CLEAR_STREAK = 2;
 
-export type Animal = 'bear' | 'rabbit' | 'cat' | 'dog';
+/** 可選的動物角色 id（存檔驗證、型別、選單共用這一份；新增動物只要加在這裡） */
+export const ANIMAL_IDS = ['bear', 'rabbit', 'cat', 'dog', 'capybara', 'panda', 'penguin', 'fox', 'koala', 'pig', 'eagle', 'elephant'] as const;
+
+export type Animal = (typeof ANIMAL_IDS)[number];
 
 /** 教材版本設定：國語、數學各用哪一個版本，以及學期（auto 依日期判斷） */
 export interface CurriculumChoice {
@@ -324,7 +327,7 @@ const storedQuestion = z.looseObject({ id: z.string(), type: z.string(), prompt:
 const profileSchema = z.object({
   id: z.string(),
   name: z.string(),
-  avatar: z.object({ animal: z.enum(['bear', 'rabbit', 'cat', 'dog']), color: z.string(), hat: z.string().nullable() }),
+  avatar: z.object({ animal: z.enum(ANIMAL_IDS), color: z.string(), hat: z.string().nullable() }),
   createdAt: z.string(),
   coins: int.min(0),
   bestStars: z.record(z.string(), int.min(0).max(3)),
