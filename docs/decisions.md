@@ -125,6 +125,15 @@
 - **測試**：單元與 e2e 用 PGlite（WASM 版 PostgreSQL，不需要 Docker）；另外用 Docker 的 PostgreSQL 跑同一套伺服器測試。PGlite 是單一連線，測不出搶鎖：曾發現「兩個請求同時花錢」的測試拿掉列鎖仍會通過，改成「10 個請求同時送進度」後，拿掉列鎖在真正的 PostgreSQL 上會掉資料（只剩 2～3 筆），確認測試有效。
 - e2e（`e2e/online.spec.ts`）用三個瀏覽器環境模擬老師與兩台平板：建房間、帶進度加入、換裝置登入看到進度與錯題本、離線玩完恢復連線自動上傳、老師重設密碼後重新登入。
 
+### Google 快速登入（備選，2026-10-02 使用者追加）
+
+- 使用者先說「登入要請家長用 Gmail」，接著補充「Gmail 作為備選登入，只是方便登入」，並決定老師也可以用。所以**原本的代碼登入全部保留**，Google 是綁定之後的快速登入；學校共用平板照樣用代碼。
+- 家長在家長專區把 Google 綁到孩子（一個 Google 可綁兄弟姊妹、一個孩子可綁爸媽兩個 Google）；之後任何裝置用 Google 一次登入綁定的孩子。老師在管理頁把 Google 綁到房間，綁多個房間時先選房間。
+- 每位用 Google 登入的孩子都和代碼登入走同一條路（伺服器版本＋這台裝置還沒上傳的進度），不會蓋掉離線玩的進度。
+- 伺服器用 `jose` 驗證 Google ID token（簽章、`aud`、`iss`、到期）；只存 Google 的 `sub` 與 email，回給前端的 email 一律遮罩，老師看不到家長的 email。前端用 Google 的官方按鈕（Google Identity Services），點開畫面才載入 Google 的程式；Client ID 只設在伺服器（`GOOGLE_CLIENT_ID`），前端從 `/api/config` 取得。
+- **需要使用者自己在 Google Cloud Console 建 OAuth 用戶端 ID**（`docs/google-login-setup.md`）；沒設定時不顯示 Google 按鈕。
+- **測試模式的防線**：e2e 用測試金鑰（`e2e/fixtures/google-test-key.json`）簽 token。伺服器要同時設 `GOOGLE_TEST_JWKS` 與 `ALLOW_TEST_GOOGLE=1` 才接受測試金鑰，只設一個就拒絕啟動（不依賴正式環境記得設 `NODE_ENV`）。前端的測試按鈕即使被打開也沒用，伺服器只認 Google 簽的 token。
+
 ## 效能
 
 - 島上建築、椰子樹、碼頭、噴水池、雲朵用 `StaticMerge` 依材質合併靜態網格：draw call 從 425 降到 264。會動的零件加 `userData={{ dynamic: true }}` 就不會被合併。
