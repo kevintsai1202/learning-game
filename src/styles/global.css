@@ -309,7 +309,7 @@ button {
   animation: slide-up 0.6s ease both;
 }
 .logo {
-  font-size: clamp(44px, 9vw, 92px);
+  font-size: clamp(34px, 9vw, 92px);
   font-weight: 900;
   line-height: 1.15;
   color: #fff;
@@ -360,6 +360,8 @@ button {
   position: absolute;
   inset: 0;
   display: grid;
+  /* 欄寬上限是畫面寬：否則長選項的下拉選單等內容的最小寬度會把面板撐得比畫面寬，右側被切掉 */
+  grid-template-columns: minmax(0, 1fr);
   place-items: center;
   padding: 16px;
   background: rgba(43, 42, 76, 0.28);
@@ -382,7 +384,22 @@ button {
   font-size: 30px;
   flex: 1;
 }
+/* 面板與彈出卡片（例如選難度）不能比畫面寬 */
+.panel,
+.panel-screen > .card {
+  min-width: 0;
+  max-width: 100%;
+}
+.panel select,
+.panel input,
+.panel textarea {
+  min-width: 0;
+  max-width: 100%;
+}
 .panel-body {
+  /* min-height: 0 才會在面板裡捲動；否則內容太長時把面板撐出畫面 */
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   padding: 6px 20px 22px;
   -webkit-overflow-scrolling: touch;
@@ -642,7 +659,7 @@ button {
 }
 .level-pick {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
   margin-top: 10px;
 }
@@ -875,11 +892,24 @@ button {
 .answer-box .slot.empty {
   color: #bbb;
 }
+.number-input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+.clock-input-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 .keypad {
   display: grid;
   grid-template-columns: repeat(3, 76px);
   gap: 10px;
 }
+
 .keypad .btn {
   height: 64px;
   font-size: 30px;
@@ -1124,4 +1154,294 @@ button {
   font-size: 15px;
   color: var(--ink-soft);
   line-height: 1.6;
+}
+
+/* ===== 手機版面（放在檔案最後，才不會被前面的一般規則蓋掉） ===== */
+
+/* 手機寬度：面板標題列換行、卡片一列兩張、難度按鈕縮小、標題畫面的家長專區按鈕移到右上 */
+@media (max-width: 600px) {
+  .panel-screen {
+    padding: 8px;
+  }
+  .panel {
+    max-height: calc(100dvh - 16px);
+  }
+  .panel-head {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 12px 12px 8px;
+  }
+  .panel-head .ribbon {
+    font-size: 22px;
+    padding: 2px 12px 4px;
+  }
+  /* 返回按鈕留在第一行最右邊，標題（介紹文字）換到第二行占滿 */
+  .panel-head > .btn {
+    order: 2;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .panel-head h2 {
+    order: 3;
+    flex-basis: 100%;
+    min-width: 0;
+    font-size: 22px;
+  }
+  .panel-head h2:empty {
+    display: none;
+  }
+  .panel-body {
+    padding: 4px 12px 16px;
+  }
+  .tabs {
+    gap: 6px;
+    padding: 0 12px 8px;
+  }
+  .tabs .btn.small {
+    font-size: 16px;
+    padding: 4px 10px 6px;
+  }
+  .activity-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .activity-card {
+    min-height: 108px;
+    padding: 10px 10px 8px;
+  }
+  .activity-card .icon {
+    font-size: 32px;
+  }
+  .activity-card .name {
+    font-size: 19px;
+  }
+  .level-pick {
+    gap: 8px;
+  }
+  .level-pick .btn {
+    min-width: 0;
+    padding: 8px 6px 10px;
+    font-size: 20px;
+  }
+  .panel-screen > .card {
+    padding: 14px !important;
+  }
+  .tagline {
+    max-width: calc(100vw - 24px);
+    font-size: 17px;
+    padding: 4px 14px 6px;
+  }
+  .corner-link {
+    top: 12px;
+    bottom: auto;
+  }
+  .credit-line {
+    right: 12px;
+    left: 12px;
+    bottom: 10px;
+    text-align: center;
+  }
+  /* 表格（學習報告、資料來源）：長網址與長說明可以在任何地方換行 */
+  .report-table {
+    font-size: 15px;
+  }
+  .report-table th,
+  .report-table td {
+    overflow-wrap: anywhere;
+    padding: 5px 6px;
+  }
+  /* 答題畫面的手機尺寸：檔案前面「直式或 760 以下」區塊的同樣設定被後面的一般規則蓋掉了，這裡補上（只限手機寬度，平板不變） */
+  .prompt {
+    font-size: 21px;
+  }
+  .visual svg {
+    max-height: 16vh;
+    width: auto;
+  }
+  .keypad {
+    grid-template-columns: repeat(3, 68px);
+    gap: 7px;
+  }
+  .keypad .btn {
+    height: 48px;
+    font-size: 26px;
+  }
+  .answer-box .slot {
+    min-height: 46px;
+    font-size: 30px;
+  }
+  .choice {
+    min-height: 60px;
+    font-size: 22px;
+  }
+  .btn.round {
+    width: 46px;
+    height: 46px;
+    font-size: 22px;
+  }
+  /* 進度圓點縮小，十題在 360 寬也排得下一行 */
+  .progress {
+    gap: 4px;
+  }
+  .progress i {
+    width: 12px;
+    height: 12px;
+  }
+}
+
+/* 矮的直式手機（例如 iPhone SE）：縮小 3D 舞台與鍵盤，數字鍵盤不用捲動就按得到 */
+@media (orientation: portrait) and (max-height: 700px) {
+  .quiz {
+    top: 17%;
+  }
+  .quiz-body {
+    gap: 6px;
+  }
+  .prompt {
+    font-size: 19px;
+  }
+  .visual svg {
+    max-height: 13vh;
+  }
+  .number-input {
+    gap: 8px;
+  }
+  .keypad {
+    grid-template-columns: repeat(3, 64px);
+    gap: 6px;
+  }
+  .keypad .btn {
+    height: 42px;
+    font-size: 22px;
+  }
+  .answer-box .slot {
+    min-height: 40px;
+    font-size: 26px;
+  }
+}
+
+/* 手機橫放（高度不到 500px）：答題卡放大、元素縮小；數字題的答案格與鍵盤放在題目右邊 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .quiz {
+    top: 6px;
+    bottom: 6px;
+    right: 6px;
+    left: 32%;
+    padding: 6px 12px 8px;
+  }
+  .quiz-head .btn.round {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+  }
+  .quiz-body {
+    gap: 6px;
+  }
+  .prompt {
+    font-size: 19px;
+  }
+  .visual svg {
+    max-height: 34vh;
+    width: auto;
+  }
+  .quiz-body:has(.number-input) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    justify-items: center;
+    column-gap: 14px;
+  }
+  .quiz-body:has(.number-input) > * {
+    grid-column: 1;
+  }
+  .quiz-body:has(.number-input) > .number-input {
+    grid-column: 2;
+    grid-row: 1 / span 8;
+  }
+  .number-input {
+    gap: 6px;
+  }
+  .keypad {
+    grid-template-columns: repeat(3, 56px);
+    gap: 6px;
+  }
+  .keypad .btn {
+    height: 42px;
+    font-size: 22px;
+  }
+  .answer-box .slot {
+    min-width: 110px;
+    min-height: 42px;
+    font-size: 26px;
+  }
+  .choice {
+    min-height: 50px;
+    font-size: 20px;
+  }
+  .panel-screen > .card {
+    max-height: calc(100dvh - 12px);
+    overflow-y: auto;
+  }
+  .level-pick {
+    gap: 8px;
+    margin-top: 6px;
+  }
+  .level-pick .btn {
+    padding: 6px 8px 8px;
+    font-size: 20px;
+  }
+  .result {
+    padding: 10px 16px 12px;
+  }
+  .result-stars {
+    font-size: 44px;
+    margin: 2px 0;
+  }
+  .result p {
+    font-size: 18px;
+    margin: 4px 0;
+  }
+  .result-actions {
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .result-actions .btn {
+    font-size: 20px;
+    padding: 6px 14px 8px;
+  }
+  /* 撥時鐘：時鐘在左（縮小）、調整按鈕與「撥好了」在右 */
+  .clock-input-wrap {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    justify-items: center;
+    column-gap: 16px;
+    row-gap: 8px;
+  }
+  .clock-input-wrap > [data-testid='clock-input'] {
+    grid-row: 1 / span 2;
+  }
+  .clock-input-wrap svg {
+    width: auto;
+    height: min(52vh, 240px);
+  }
+  .clock-input-wrap > div:nth-child(2) {
+    max-width: 230px;
+  }
+  /* 射擊模式：上方題目卡放寬，題目與附圖左右並排（原本 34% 高放不下標題列、題目和直式算式） */
+  .quiz.shooter {
+    max-height: 42%;
+    padding: 6px 12px 8px;
+  }
+  .quiz.shooter .quiz-body {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    column-gap: 18px;
+  }
+  .quiz.shooter .visual svg,
+  .quiz.shooter .visual .bigtext {
+    max-height: 72px;
+  }
 }

@@ -112,7 +112,8 @@ export function NumberInput({ unit, disabled, onSubmit }: { unit?: string; disab
   }, []);
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '⌫', '0', '✓'];
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+    // 排列方式放在 CSS 的 .number-input：手機橫放時改成和題目並排
+    <div className="number-input">
       <div className="answer-box">
         <span className={`slot ${digits ? '' : 'empty'}`} data-testid="answer-slot">
           {digits || '?'}
@@ -206,7 +207,8 @@ export function ClockInput({ step, disabled, onSubmit }: { step: number; disable
   }, [minute]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+    // 排列方式放在 CSS 的 .clock-input-wrap：手機橫放時時鐘在左、按鈕在右
+    <div className="clock-input-wrap">
       <div
         ref={svgRef}
         style={{ touchAction: 'none', cursor: 'grab' }}
