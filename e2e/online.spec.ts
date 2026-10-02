@@ -11,18 +11,45 @@ import { prepareGoogleAccount, signTestIdToken } from './googleStub';
 const SERVER = 'http://localhost:8787';
 const SHOTS = 'e2e/screenshots/online';
 
-/** 開一個新的瀏覽器環境（模擬另一台平板），把伺服器網址寫進 localStorage，清空存檔後打開首頁 */
+/** 各台裝置的 console 錯誤、WebGL 警告與頁面崩潰（測試失敗時印出來，方便判斷原因） */
+const deviceLogs: string[] = [];
+
+test.afterEach(async ({}, testInfo) => {
+  if (testInfo.status !== testInfo.expectedStatus && deviceLogs.length) console.log(['裝置紀錄：', ...deviceLogs].join('\n'));
+  deviceLogs.length = 0;
+});
+
+/**
+ * 開一個新的瀏覽器環境（模擬另一台平板），把伺服器網址寫進 localStorage，清空存檔後打開首頁。
+ * 3D 畫質設成「低」（產品既有的設定）：headless 用軟體 WebGL，三台裝置同時畫有陰影的 3D 會把 CPU 吃滿，
+ * 第三台載入時會卡住（2026-10-03 實測：第三台的 reload 超過 30 秒沒觸發 load）。
+ */
 async function openDevice(browser: Browser, baseURL: string): Promise<{ context: BrowserContext; page: Page }> {
   const context = await browser.newContext({ baseURL, viewport: { width: 1280, height: 800 } });
-  await context.addInitScript((url) => localStorage.setItem('learning-island-server-url', url), SERVER);
+  // 伺服器網址＋Google 測試按鈕（伺服器是 Google 測試模式，不能讓頁面去載入真正的 Google 程式）
+  await context.addInitScript((url) => {
+    localStorage.setItem('learning-island-server-url', url);
+    localStorage.setItem('learning-island-google-stub', '1');
+  }, SERVER);
   const page = await context.newPage();
-  // 單一步驟最多等 30 秒，卡住時馬上失敗
+  // 單一步驟最多等 30 秒，卡住時馬上失敗；頁面載入（軟體 WebGL 初始化）給 60 秒
   page.setDefaultTimeout(30_000);
+  page.setDefaultNavigationTimeout(60_000);
   const errors: string[] = [];
+  const name = `裝置 ${deviceLogs.filter((l) => l.startsWith('開啟')).length + 1}`;
+  deviceLogs.push(`開啟 ${name}`);
   page.on('pageerror', (e) => errors.push(e.message));
+  page.on('crash', () => deviceLogs.push(`${name}：頁面崩潰（renderer crash）`));
+  page.on('console', (m) => {
+    if (m.type() === 'error' || /webgl|context lost/i.test(m.text())) deviceLogs.push(`${name} [${m.type()}] ${m.text().slice(0, 200)}`);
+  });
   (page as Page & { errors?: string[] }).errors = errors;
   await page.goto('./');
-  await page.evaluate(() => localStorage.clear());
+  await page.evaluate(() => {
+    localStorage.clear();
+    // 寫進存檔：3D 畫質設成低（之後重新整理也維持）
+    (window as any).__game.game.getState().updateSettings({ quality: 'low' });
+  });
   await page.reload();
   await expect(page.getByTestId('start')).toBeVisible();
   return { context, page };
