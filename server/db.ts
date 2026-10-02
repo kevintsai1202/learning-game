@@ -150,6 +150,30 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS teacher_google_links_room ON teacher_google_links (room_code)`,
     ],
   },
+  {
+    // 送禮物（P3）：送出時扣送禮人的金幣，收下才放進收禮人的收藏。帳號刪除時禮物紀錄保留（id 欄位改成空的，暱稱另外存），
+    // 送禮人才看得到退款通知、收禮人仍然可以收下被移出的同學送的禮物
+    version: 3,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS gifts (
+        id text PRIMARY KEY,
+        room_code text NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        from_id text REFERENCES accounts(id) ON DELETE SET NULL,
+        to_id text REFERENCES accounts(id) ON DELETE SET NULL,
+        from_nickname text NOT NULL,
+        to_nickname text NOT NULL,
+        item_id text NOT NULL,
+        price integer NOT NULL,
+        status text NOT NULL,
+        sender_seen boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL,
+        resolved_at timestamptz
+      )`,
+      `CREATE INDEX IF NOT EXISTS gifts_to_status ON gifts (to_id, status)`,
+      `CREATE INDEX IF NOT EXISTS gifts_from_created ON gifts (from_id, created_at)`,
+      `CREATE INDEX IF NOT EXISTS gifts_status_created ON gifts (status, created_at)`,
+    ],
+  },
 ];
 
 /** 建表與升級（可以重複執行） */
@@ -167,7 +191,7 @@ export async function migrate(db: Db): Promise<void> {
 
 /** 清空所有資料（測試用；資料表結構保留） */
 export async function resetDb(db: Db): Promise<void> {
-  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links CASCADE');
+  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links, gifts CASCADE');
 }
 
 /** 刪掉 30 天前的操作去重紀錄（伺服器啟動時與每天執行一次） */

@@ -124,14 +124,26 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 ## 7. 送禮物
 
-- 點島上其他角色（或公頻名單上的名字）→「送禮物」→ 選禮物。
-- **禮物目錄**（`src/store/catalog.ts`，前後端共用；帽子的資料從 `Hats.tsx` 搬到這裡）：
-  - 貼紙：約 8 種（🌷 鬱金香、🍪 餅乾、⭐ 星星、🐳 鯨魚、🌈 彩虹、🍎 蘋果、🚀 火箭、🦄 獨角獸），每張 3～10 金幣，可以重複收，百寶屋多一頁「貼紙簿」顯示收集到幾張、誰送的。
-  - 帽子：照百寶屋的價格；對方已經有這頂帽子就不能送。
-- 流程：送出時伺服器先扣送禮人的金幣，禮物變成「待收下」→ 收禮人看到通知卡片「🎁 小安送你一張 🌷 鬱金香貼紙！［收下］［不用了］」→ 收下才放進對方的收藏；按「不用了」或 7 天沒收，金幣退回送禮人。
-- 每人每天最多送 5 份；收禮不限。送禮人離線時對方也可以收，通知在下次上線時出現。
-- 老師可以關閉房間的送禮。
+使用者 2026-10-03 確認：禮物包含貼紙與**所有用金幣買的外觀**；可以送給**全班同學（含沒上線的）**；對方收下時告訴送禮人，「不用了」或過期**只說金幣退回來了、不說是誰**（避免孩子難過）。
+
+- 從哪裡送：公頻面板的「🎁 送禮」（和「💬 說話」同一列）→ 選同學（全班名單，線上的排前面）→ 選禮物 → 確認。點島上同學頭上的名牌也可以直接送他（只有真的連上班級時；多人上線模擬的假同學不行）。
+- **禮物目錄**（`src/store/gifts.ts`，前後端共用的純模組）：
+  - 貼紙 8 種：🍪 餅乾、🍎 蘋果（3 金幣）、🌷 鬱金香、⭐ 星星（5）、🌈 彩虹、🐳 鯨魚（8）、🚀 火箭、🦄 獨角獸（10）。可以重複收；百寶屋多一頁「📒 貼紙簿」顯示每種收集到幾張、最近是誰送的。
+  - 外觀道具：所有有金幣價格的帽子、眼鏡、背後、手持、寵物、走路特效，價格照百寶屋。獎章專屬道具不能送；對方已經有的不能送（選禮物時標「已經有了」）；對方還有一份一樣的外觀沒收下時也不能再送。
+- 流程：送出時伺服器先扣送禮人的金幣，禮物變成「待收下」→ 收禮人在島上看到卡片「🎁 小安送你一張 🌷 鬱金香貼紙！［收下］［不用了］」→ 收下才放進收藏；按「不用了」或 7 天沒收，金幣退回送禮人（退送出當時的價格，不查現在的目錄）。
+  - 收下時對方已經自己買了同一個外觀：自動退回，告訴收禮人「你已經有了，禮物退回給朋友」。
+  - 送禮人的回饋：對方收下時看到「🎉 小美收下了你送的 🌷 鬱金香貼紙！」；「不用了」、過期、自動退回、對方被老師移出房間時，只說「有一份禮物沒送出，5 金幣退回來了」。送禮人不在線上時，下次上線看到。
+- 每人每天最多送 5 份（當天送出的都算，包括後來被退回的，避免一直送一直退）；收禮不限。日期和存檔一樣用 `dateKey`（伺服器設 `TZ=Asia/Taipei`）。
+- 卡片只在島上出現，不打斷答題；送禮人離線時對方也可以收。
+- 老師可以關閉房間的送禮：**只擋新的禮物**，已經送出的仍然可以收下或按「不用了」（不然金幣要等 7 天才退）。
 - 「交換」以互送的方式達成；不做「你給我 A、我給你 B 同時成立」的交易畫面（太複雜，也容易吵架）。
+- **禮物不走「操作」佇列**：送、收是伺服器端的動作，回應帶最新存檔，裝置用 `rebase`（伺服器版本＋還沒送出的操作）更新本機。送禮前先把佇列送完（直接呼叫 `syncProfile`，不用 `syncNow`：同步進行中時它會馬上返回），伺服器才看得到最新的金幣。
+- 伺服器規則（每條都有測試）：
+  - 送、收、不用了、過期退款都在交易裡。送禮一次鎖住送禮人與收禮人兩列（`WHERE id IN (…) ORDER BY id FOR UPDATE`，固定順序避免死結）；收下先鎖禮物再鎖收禮人；不用了與過期先鎖禮物再鎖送禮人。
+  - 禮物 id 由裝置產生：同一個送禮人重送同一個 id，回傳原本那份，不會扣兩次錢（學校網路不穩，送出後沒收到回應會重試）。收下或不用了回 `409 gift_done` 時，裝置當作已處理、重新讀取。
+  - 過期：伺服器每小時掃一次 7 天前還沒收的禮物，退款走 `onProfileChanged`（送禮人的裝置同步）與 `onGift`（通知）；收下時發現已超過 7 天也當作過期。
+  - 老師移出成員：在同一個交易裡先把別人送給他、還沒收的禮物退款，再刪帳號。禮物紀錄保留（送禮人、收禮人欄位改成空的，暱稱另外存），送禮人才看得到退款通知；他送出還沒被收的禮物，對方仍然可以收下。
+  - 跨房間的對象回 404、送給自己 400、獎章道具或不存在的 id 400。
 
 ## 8. 老師管理頁
 
@@ -164,9 +176,12 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/login` | `{ code, nickname, pin }` → 同上 |
 | `GET /api/me` | 目前存檔與版本號 |
 | `POST /api/ops` | `{ ops: Op[] }` → `{ profile, rev, rejected: [{ id, reason }] }` |
-| `POST /api/gifts` | `{ to, itemId }` → `{ gift, profile, rev }` |
-| `GET /api/gifts/pending` | 我待收下的禮物 |
-| `POST /api/gifts/:id/accept`、`/decline` | 收下／不用了 |
+| `GET /api/classmates` | 全班同學（不含自己）`[{ id, nickname, avatar, online, inventory }]`，選送禮對象用；外觀經過 `equippedOf` |
+| `POST /api/gifts` | `{ id, to, itemId }` → `{ gift, profile, rev }`（id 由裝置產生，重送不重複扣款） |
+| `GET /api/gifts` | `{ incoming, notices, sentToday, dailyLimit }`：待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份 |
+| `POST /api/gifts/:id/accept` | 收下 → `{ status: 'accepted' \| 'returned', profile, rev }`（`returned`：已經有了，自動退回） |
+| `POST /api/gifts/:id/decline` | 不用了（退款給送禮人） |
+| `POST /api/gifts/notices/ack` | `{ ids }` 送禮結果看過了 |
 | `GET /api/config` | `{ googleClientId }`（沒開 Google 登入是 null） |
 | `POST /api/google/link`、`DELETE /api/google/link` | 家長把 Google 綁到孩子（孩子權杖）`{ idToken }` → `{ google: [遮罩後的 email] }` |
 | `POST /api/google/login` | `{ idToken }` → `{ kids: SessionResponse[] }`；沒綁定回 404 `google_not_linked` |
@@ -177,7 +192,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 ### WebSocket（`/ws`，連上後第一則訊息送權杖）
 
 - 裝置 → 伺服器：`hello { token }`、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
-- 伺服器 → 裝置：`welcome { self, room, members, chat }`、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（收到禮物）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`kicked { reason }`
+- 伺服器 → 裝置：`welcome { self, room, members, chat }`、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`kicked { reason }`
 
 ## 11. 資料表（PostgreSQL）
 
@@ -185,7 +200,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 - `accounts(id, room_code, nickname, pin_hash, profile_json, rev, created_at, last_seen)`，`(room_code, nickname)` 唯一
 - `applied_ops(account_id, op_id, applied_at)`
 - `tokens(token_hash, kind, account_id, room_code, expires_at)`
-- `gifts(id, room_code, from_id, to_id, item_id, price, status, created_at, resolved_at)`
+- `gifts(id, room_code, from_id, to_id, from_nickname, to_nickname, item_id, price, status, sender_seen, created_at, resolved_at)`：`status` 是 `pending`／`accepted`／`declined`／`expired`／`returned`（已經有了自動退回）／`cancelled`（收禮人被移出）；`from_id`、`to_id` 在帳號刪除時設成空的；`sender_seen` 表示送禮人看過結果了
 
 ## 12. 前端改動
 
@@ -214,7 +229,7 @@ Zeabur 服務（Dockerfile、volume、網域、環境變數）、GitHub Pages �
 | --- | --- | --- |
 | P1 | 伺服器骨架、房間、老師管理頁、孩子加入／登入、雲端存檔同步（含錯題本）；Google 快速登入（家長、老師，備選）；新增 8 種動物（使用者追加） | ① 代碼登入：換新 context 登入，進度與錯題本都在；離線玩完連上後同步（已通過，存檔點 72ca27a）② Google：綁定後換裝置用 Google 登入，含一個 Google 綁多個孩子、老師多個房間；同裝置有待送進度時不遺失 ③ 12 種動物在選角、百寶屋、島上 3D 都正確，二年級孩子不看名字也認得出來；新動物名字有預錄語音 ④ 手機版面稽核（含班級畫面、12 種動物的選單）0 問題 |
 | P2 | WebSocket、多人同島、公頻短句、頭上氣泡 | 兩個 context 互相看到走動與對話 |
-| P3 | 禮物目錄、送禮／收下／不用了、貼紙簿 | 兩個 context 送收禮物，金幣與收藏正確 |
+| P3 | 禮物目錄（貼紙＋金幣外觀）、全班同學名單、送禮／收下／不用了／過期退款、送禮結果通知、貼紙簿、老師的送禮開關 | 兩個 context 送收禮物，金幣與收藏正確；沒上線的同學下次上線收得到；按「不用了」金幣退回 |
 | P4 | 部署 Zeabur、GitHub Pages 帶伺服器網址、線上 e2e | 公開網址上兩台裝置互通 |
 
 ### P1 實作順序（每步先寫會失敗的測試）
@@ -248,5 +263,16 @@ Zeabur 服務（Dockerfile、volume、網域、環境變數）、GitHub Pages �
 5. **畫面**：公頻面板加「💬 說話」短句盤（點了先唸再送出）、自己頭上的對話氣泡、線上人數含自己；老師成員列表顯示誰在線上；老師可以開關聊天。
 6. **預錄語音**：短句盤的句子跑盤點與產生。
 7. **驗證**：hub 單元測試、ws 整合測試、e2e 兩個裝置同房間（互相看到走動、說話出現氣泡與公頻、進建築從島上消失、老師看到在線上）、手機稽核（短句盤）、Docker PostgreSQL。
+
+### P3 實作順序（2026-10-03 規劃；使用者的決定見第 7 節開頭）
+
+1. **規格**：第 7、10、11 節與本節。
+2. **共用純模組** `src/store/gifts.ts`（給伺服器 import：只 type import `save.ts`、import `catalog.ts`，不碰畫面、音訊、3D）：貼紙目錄、`giftPrice`（貼紙與有金幣價格的外觀；獎章道具與不存在的 id 回 null）、`canReceive`、`receiveGift`（貼紙加一、外觀放進收藏、`giftLog` 只留最新 50 筆）、每日上限 5 與過期 7 天的常數。`save.ts` 的 `Profile` 加可省略的 `stickers`、`giftLog`，`profileSchema` 同步，不升存檔版本。
+3. **資料表 v3** `gifts` ＋ **路由** `server/gifts.ts`（`createApp` 掛上）：同學名單、送禮、讀取、收下、不用了、通知已讀、過期掃描 `expireGifts`；老師移出成員改成交易並退款。PGlite 單元測試涵蓋第 7 節「伺服器規則」每一條。
+4. **即時通知**：`AppOptions.onGift(accountId)` → 中樞 `notify` 送 `{ t: 'gift' }`；`main.ts` 啟動時與每小時跑 `expireGifts`，關機時清掉計時器。
+5. **前端同步**：`cloudSync.ts` 加 `fetchClassmates`、`fetchGifts`、`sendGift`（先 `syncProfile` 把佇列送完）、`acceptGift`、`declineGift`、`ackGiftNotices`，回應的存檔一律 `rebase`；接真的伺服器 app 做單元測試。`useGifts` store 管待收禮物、送禮結果、送禮視窗；即時連線 `welcome` 與 `gift` 時重新讀取。
+6. **畫面**：公頻面板「🎁 送禮」（和「說話」同一列，不加高面板）、名牌點了送禮（`stopPropagation`，不然也會走過去）、送禮視窗（選同學 → 選禮物 → 確認）、島上的禮物卡片（只在島上；z-index 高於「進去玩」泡泡的 1、低於休息提醒的 50）、百寶屋「📒 貼紙簿」、老師頁「送禮」開關。
+7. **預錄語音**：固定的提示句放 `lines.ts` 跑盤點與產生；卡片上有暱稱的句子用裝置語音。
+8. **驗證**：單元 → Docker PostgreSQL（同時送禮的金幣鎖定只有這一輪驗得到）→ build → `e2e/gifts.spec.ts`（兩台裝置：送貼紙收下、送外觀按不用了退款、送給沒上線的同學下次上線收到、老師在管理頁關閉送禮；手機上送禮視窗與卡片在畫面內）→ 5 種螢幕的公頻測試 → 完整 e2e → 文件 → commit。
 
 每期完成就跑單元測試、build、相關 e2e，再 commit。每一期都是一個完整的 T3 任務：P1 做完驗收後，再跟使用者確認是否進 P2，不是一次簽核四期全開。

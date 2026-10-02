@@ -185,3 +185,14 @@ describe('存檔改變與老師管理', () => {
     expect(hub.isOnline('b')).toBe(false);
   });
 });
+
+describe('禮物通知（P3）', () => {
+  it('notify 只送給那位孩子（在線上時）；不在線上不會出錯', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.notify('b', { t: 'gift' });
+    expect(b.of('gift')).toEqual([{ t: 'gift' }]);
+    expect(a.of('gift')).toEqual([]);
+    expect(() => hub.notify('nobody', { t: 'gift' })).not.toThrow();
+  });
+});

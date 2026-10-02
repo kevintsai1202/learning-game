@@ -58,8 +58,8 @@ export type ServerMessage =
   | { t: 'room'; room: RoomFlags }
   /** 被踢下線（另一台裝置登入、老師移除或重設密碼） */
   | { t: 'kicked'; reason: string }
-  /** 收到禮物（P3） */
-  | { t: 'gift'; giftId: string }
+  /** 禮物狀態有變（收到新禮物，或送出的禮物有結果）：裝置重新讀 GET /api/gifts */
+  | { t: 'gift' }
   | { t: 'error'; message: string };
 
 /** 解析裝置送來的訊息；格式不符回傳 null（呼叫端斷線） */

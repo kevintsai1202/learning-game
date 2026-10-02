@@ -200,6 +200,11 @@ export class Hub {
     }
   }
 
+  /** 送一則訊息給某位孩子的裝置（他在線上時；例如禮物狀態有變，要他重新讀取） */
+  notify(accountId: string, msg: ServerMessage): void {
+    for (const room of this.rooms.values()) room.members.get(accountId)?.conn.send(msg);
+  }
+
   /** 某個帳號是否在線上（老師的成員列表用） */
   isOnline(accountId: string): boolean {
     for (const room of this.rooms.values()) if (room.members.has(accountId)) return true;

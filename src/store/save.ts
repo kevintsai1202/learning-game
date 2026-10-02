@@ -124,6 +124,16 @@ export interface CloudLink {
   accountId: string;
 }
 
+/** 收禮紀錄的一筆（雲端角色才有；只有伺服器會寫入） */
+export interface GiftLogEntry {
+  /** 送禮人的暱稱 */
+  from: string;
+  /** 禮物 id（貼紙或外觀道具） */
+  itemId: string;
+  /** 收下的日期 YYYY-MM-DD */
+  date: string;
+}
+
 /** 學習統計（獎章條件用；2026-10 新增，從這一版開始計數，以前的不補算） */
 export interface LearningStats {
   /** 從錯題本清掉的題數（連續答對兩次、移出錯題本時加一） */
@@ -162,6 +172,10 @@ export interface Profile {
   badges?: Record<string, string>;
   /** 顯示的稱號（獎章 id）；null 或沒有表示不顯示（2026-10 新增） */
   title?: string | null;
+  /** 收到的貼紙：貼紙 id → 張數（雲端角色收禮物才有；2026-10 新增） */
+  stickers?: Record<string, number>;
+  /** 最近收到的禮物，最新的在前面，最多 50 筆（2026-10 新增） */
+  giftLog?: GiftLogEntry[];
 }
 
 /** 全機設定 */
@@ -441,6 +455,8 @@ export const profileSchema = z.object({
   stats: z.object({ wrongCleared: int.min(0), written: int.min(0) }).optional(),
   badges: z.record(z.string(), z.string()).optional(),
   title: z.string().nullable().optional(),
+  stickers: z.record(z.string(), int.min(0)).optional(),
+  giftLog: z.array(z.object({ from: z.string(), itemId: z.string(), date: z.string() })).optional(),
 });
 const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),

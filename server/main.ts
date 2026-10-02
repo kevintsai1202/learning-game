@@ -11,6 +11,7 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
 import { migrate, openDb, pruneAppliedOps } from './db';
+import { expireGifts } from './gifts';
 import { googleFromEnv } from './google';
 import { Hub } from './hub';
 import { attachRealtime } from './ws';
@@ -18,6 +19,8 @@ import { attachRealtime } from './ws';
 /** 預設允許的前端網址：vite dev 與 vite preview */
 const DEFAULT_ORIGINS = 'http://localhost:5173,http://localhost:4183';
 const DAY_MS = 24 * 3600 * 1000;
+/** 多久掃一次過期的禮物（7 天沒收下就退款） */
+const GIFT_SWEEP_MS = 3600 * 1000;
 
 /** 啟動伺服器 */
 async function main(): Promise<void> {
@@ -44,7 +47,13 @@ async function main(): Promise<void> {
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
     onKick: (id, reason) => hub.kick(id, reason),
+    onGift: (id) => hub.notify(id, { t: 'gift' }),
   });
+  // 過期的禮物：啟動時與每小時退款給送禮人（退款一樣通知送禮人的裝置）
+  const sweepGifts = () =>
+    void expireGifts({ db, onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile), onGift: (id) => hub.notify(id, { t: 'gift' }) }).catch(console.error);
+  sweepGifts();
+  const giftTimer = setInterval(sweepGifts, GIFT_SWEEP_MS);
   const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
     console.log(
       `班級伺服器啟動：port ${info.port}，資料庫 ${process.env.DATABASE_URL ? 'PostgreSQL' : 'PGlite'}，Google 登入 ${google ? (google.testMode ? '測試模式' : '開啟') : '關閉'}，允許 ${allowedOrigins.join(', ')}`,
@@ -56,6 +65,7 @@ async function main(): Promise<void> {
   /** 收到停止訊號：關閉即時連線、停止接受連線、關閉資料庫 */
   const shutdown = () => {
     clearInterval(pruneTimer);
+    clearInterval(giftTimer);
     realtime.close();
     server.close(() => void db.close().finally(() => process.exit(0)));
   };

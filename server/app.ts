@@ -5,11 +5,12 @@
 import { Hono, type Context } from 'hono';
 import { cors } from 'hono/cors';
 import { bodyLimit } from 'hono/body-limit';
-import type { z } from 'zod';
 import type { Db, Queryable } from './db';
+import { ApiError, readBody, type Identity } from './http';
 import { LoginLimiter, RateLimiter, checkNickname, hashSecret, newAccountId, newRoomCode, newToken, tokenHash, verifySecret } from './auth';
 import { maskEmail, type GoogleConfig, type GoogleIdentity } from './google';
 import { lookupToken } from './tokens';
+import { emitGiftEvents, registerGiftRoutes, removeMemberWithRefunds } from './gifts';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
@@ -49,6 +50,8 @@ export interface AppOptions {
   onRoomChanged?: (roomCode: string, flags: RoomFlags) => void;
   /** 某位孩子要被踢下線（老師移除成員或重設密碼），reason 會顯示給孩子 */
   onKick?: (accountId: string, reason: string) => void;
+  /** 某位孩子的禮物狀態有變（收到新禮物，或送出的禮物有結果）：即時中樞通知他的裝置重新讀取 */
+  onGift?: (accountId: string) => void;
   /** Google 快速登入（備選）；沒有時 Google 相關 API 回 404 */
   google?: GoogleConfig | null;
 }
@@ -57,18 +60,6 @@ export interface AppOptions {
 const TOKEN_DAYS = 180;
 /** 房間名稱最多幾個字 */
 const ROOM_NAME_MAX = 20;
-
-/** 會回給前端的錯誤（訊息是給大人看的中文） */
-class ApiError extends Error {
-  constructor(
-    readonly status: 400 | 401 | 403 | 404 | 409 | 413 | 423 | 429,
-    readonly code: string,
-    message: string,
-    readonly retryAfter?: number,
-  ) {
-    super(message);
-  }
-}
 
 /** 資料表 accounts 的一列 */
 interface AccountRow {
@@ -90,26 +81,6 @@ interface RoomRow {
   join_open: boolean;
   chat_open: boolean;
   gifts_open: boolean;
-}
-
-/** 權杖驗證後的身分 */
-interface Identity {
-  roomCode: string;
-  accountId: string | null;
-  hash: string;
-}
-
-/** 讀取並驗證 JSON 請求內容 */
-async function readBody<T extends z.ZodType>(c: Context, schema: T): Promise<z.infer<T>> {
-  let raw: unknown;
-  try {
-    raw = await c.req.json();
-  } catch {
-    throw new ApiError(400, 'bad_json', '資料格式不符');
-  }
-  const r = schema.safeParse(raw);
-  if (!r.success) throw new ApiError(400, 'bad_request', '資料格式不符');
-  return r.data;
 }
 
 /**
@@ -312,8 +283,10 @@ export function createApp(opts: AppOptions) {
 
   app.delete('/api/teacher/members/:id', async (c) => {
     const who = await authenticate(c, 'teacher');
-    const rows = await db.query('DELETE FROM accounts WHERE id = $1 AND room_code = $2 RETURNING id', [c.req.param('id'), who.roomCode]);
-    if (!rows.length) throw new ApiError(404, 'no_member', '找不到這位成員');
+    // 別人送給他、還沒收的禮物要先退款，和刪帳號在同一個交易裡
+    const events = await removeMemberWithRefunds(db, c.req.param('id'), who.roomCode, now());
+    if (!events) throw new ApiError(404, 'no_member', '找不到這位成員');
+    emitGiftEvents(opts, events);
     opts.onKick?.(c.req.param('id'), '老師把你移出房間了');
     return c.json({ ok: true });
   });
@@ -515,6 +488,9 @@ export function createApp(opts: AppOptions) {
     const { changed: _changed, ...response } = result;
     return c.json(response);
   });
+
+  // ---------- 送禮物（P3） ----------
+  registerGiftRoutes(app, { db, now, authenticate, isOnline, onProfileChanged: opts.onProfileChanged, onGift: opts.onGift });
 
   return app;
 }
