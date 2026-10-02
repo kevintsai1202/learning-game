@@ -11,6 +11,7 @@ import { toon } from './materials';
 import type { Animal, AvatarConfig } from '../store/save';
 import type { StageMood } from '../store/useUi';
 import { Hat } from './Hats';
+import { BackItem, Glasses, HandItem } from './Accessories';
 
 /** 角色的即時移動狀態（由控制器每幀寫入，避免 React 重新渲染） */
 export interface MotionState {
@@ -86,6 +87,17 @@ interface Palette {
 
 /** 各動物戴帽子時，帽子相對於預設位置的上下位移（頭比較扁的動物要壓低一點） */
 const HAT_LIFT: Partial<Record<Animal, number>> = { capybara: -0.2, penguin: 0.02 };
+
+/**
+ * 個別帽子的上下位移（優先於 HAT_LIFT）：卡皮巴拉的頭頂比球形頭低，
+ * 圓頂的帽子（恐龍帽、勇者頭盔）要抬到頭頂才不會蓋住眼睛，寬帽沿的帽子（探險家帽、海盜帽）只壓低一點。
+ */
+const HAT_LIFT_BY_HAT: Record<string, Partial<Record<Animal, number>>> = {
+  'hat.dino': { capybara: 0.28 },
+  'hat.hero-helmet': { capybara: 0.16 },
+  'hat.explorer': { capybara: -0.05 },
+  'hat.pirate': { capybara: -0.06 },
+};
 
 /** 帽子前後位移：卡皮巴拉的頭是往前長的方塊，頭中心比球形頭靠前 */
 const HAT_SHIFT_Z: Partial<Record<Animal, number>> = { capybara: 0 };
@@ -188,15 +200,19 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
           <Face animal={animal} pal={pal} color={config.color} />
           <Ears animal={animal} pal={pal} color={config.color} />
           {config.hat ? (
-            <group position={[0, HAT_LIFT[animal] ?? 0, HAT_SHIFT_Z[animal] ?? 0]}>
+            <group position={[0, HAT_LIFT_BY_HAT[config.hat]?.[animal] ?? HAT_LIFT[animal] ?? 0, HAT_SHIFT_Z[animal] ?? 0]}>
               <Hat id={config.hat} />
             </group>
           ) : (
             animal === 'capybara' && <OrangeOnHead />
           )}
+          {config.face && <Glasses id={config.face} animal={animal} />}
         </group>
         {/* 手（企鵝、老鷹是翅膀） */}
         {winged ? <Wings animal={animal} pal={pal} armL={armL} armR={armR} /> : <Arms animal={animal} pal={pal} armL={armL} armR={armR} />}
+        {/* 背後與手持道具 */}
+        {config.back && <BackItem id={config.back} animal={animal} motion={motion} anim={anim} />}
+        {config.hand && <HandItem id={config.hand} animal={animal} motion={motion} anim={anim} />}
         {/* 尾巴 */}
         <group ref={tail} position={[0, 0.55, -0.38]}>
           <Tail animal={animal} pal={pal} />
