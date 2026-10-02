@@ -12,6 +12,8 @@ import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { lerpAngle, stepToward, type Vec2 } from './movement';
 import { usePresence } from '../online/usePresence';
+import { Trail } from './Trail';
+import { PetFollower } from './Pets';
 
 /** 內插的走路速度（公尺／秒），比自己的角色稍慢，看起來比較從容 */
 const WALK_SPEED = 4.2;
@@ -69,26 +71,33 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
   });
 
   if (!look.avatar) return null;
+  const getPos = () => group.current?.position;
+  const getSpeed = () => motion.current.speed;
   return (
-    <group ref={group}>
-      <Avatar config={look.avatar} motion={motion} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
-        <planeGeometry args={[1.6, 1.6]} />
-        <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
-      </mesh>
-      {/* 名牌與氣泡：不攔截點擊（才能點地面走路），z-index 低於畫面上的面板 */}
-      <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]}>
-        <div className="remote-label">
-          {bubble && (
-            <div className="chat-bubble" data-testid="chat-bubble">
-              {bubble}
+    <>
+      {/* 走路特效與寵物在世界座標（不跟著角色的群組旋轉） */}
+      {look.avatar.trail && <Trail kind={look.avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
+      {look.avatar.pet && <PetFollower pet={look.avatar.pet} getPos={getPos} getHeading={() => heading.current} getSpeed={getSpeed} />}
+      <group ref={group}>
+        <Avatar config={look.avatar} motion={motion} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+          <planeGeometry args={[1.6, 1.6]} />
+          <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
+        </mesh>
+        {/* 名牌與氣泡：不攔截點擊（才能點地面走路），z-index 低於畫面上的面板 */}
+        <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]}>
+          <div className="remote-label">
+            {bubble && (
+              <div className="chat-bubble" data-testid="chat-bubble">
+                {bubble}
+              </div>
+            )}
+            <div className="name-tag" data-testid="name-tag">
+              {look.nickname}
             </div>
-          )}
-          <div className="name-tag" data-testid="name-tag">
-            {look.nickname}
           </div>
-        </div>
-      </Html>
-    </group>
+        </Html>
+      </group>
+    </>
   );
 }

@@ -136,7 +136,7 @@ describe('操作套用：外觀道具（R2）', () => {
     const wear = (avatar: object) =>
       applyOp(rich, { id: 'w', at: AT, kind: 'avatar', avatar: { animal: 'bear', color: '#8b5a2b', hat: null, ...avatar } } as Op, NOW);
     const r = wear({ face: 'face.round', back: 'back.bag', hand: 'hand.balloon' });
-    expect(r.ok && r.profile.avatar).toEqual({ animal: 'bear', color: '#8b5a2b', hat: null, face: 'face.round', back: 'back.bag', hand: 'hand.balloon' });
+    expect(r.ok && r.profile.avatar).toEqual({ animal: 'bear', color: '#8b5a2b', hat: null, face: 'face.round', back: 'back.bag', hand: 'hand.balloon', pet: null, trail: null });
     expect(wear({ face: 'face.sun' })).toEqual({ ok: false, reason: '還沒有這個道具' });
     expect(wear({ face: 'back.bag' })).toEqual({ ok: false, reason: '還沒有這個道具' });
   });
@@ -149,7 +149,9 @@ describe('操作套用：外觀道具（R2）', () => {
 
   it('沒戴的格子一律存成 null（本機與伺服器的存檔 JSON 才會一樣）', () => {
     const r = applyOp(kid(), { id: 'w', at: AT, kind: 'avatar', avatar: { animal: 'dog', color: '#ffffff', hat: null } }, NOW);
-    expect(r.ok && JSON.stringify(r.profile.avatar)).toBe(JSON.stringify({ animal: 'dog', color: '#ffffff', hat: null, face: null, back: null, hand: null }));
+    expect(r.ok && JSON.stringify(r.profile.avatar)).toBe(
+      JSON.stringify({ animal: 'dog', color: '#ffffff', hat: null, face: null, back: null, hand: null, pet: null, trail: null }),
+    );
   });
 
   it('眼鏡的購買與裝備：applyOp 和本機路徑結果相同（含 JSON 序列化）', () => {
@@ -164,6 +166,19 @@ describe('操作套用：外觀道具（R2）', () => {
     s = setAvatar(s, start.id, { animal: 'bear', color: '#8b5a2b', hat: null, face: 'face.heart' });
     expect(viaOps).toEqual(s.profiles[0]);
     expect(JSON.stringify(viaOps)).toBe(JSON.stringify(s.profiles[0]));
+  });
+});
+
+describe('操作套用：寵物與走路特效（R3）', () => {
+  it('擁有才能帶寵物、開特效；獎章寵物要有獎章', () => {
+    const kid0 = { ...kid(), inventory: ['pet.chick', 'trail.flowers'] };
+    const wear = (avatar: object, p = kid0) =>
+      applyOp(p, { id: 'w', at: AT, kind: 'avatar', avatar: { animal: 'bear', color: '#8b5a2b', hat: null, ...avatar } } as Op, NOW);
+    const r = wear({ pet: 'pet.chick', trail: 'trail.flowers' });
+    expect(r.ok && r.profile.avatar).toMatchObject({ pet: 'pet.chick', trail: 'trail.flowers' });
+    expect(wear({ pet: 'pet.owl' })).toEqual({ ok: false, reason: '還沒有這個道具' });
+    expect(wear({ pet: 'pet.owl' }, { ...kid0, badges: { 'skill-master': '2026-10-03' } }).ok).toBe(true);
+    expect(wear({ trail: 'pet.chick' })).toEqual({ ok: false, reason: '還沒有這個道具' });
   });
 });
 

@@ -1,5 +1,5 @@
 /**
- * 百寶屋：分頁列出帽子、眼鏡、背後、手持道具，以及換動物和顏色（換外觀免費）。
+ * 百寶屋：分頁列出帽子、眼鏡、背後、手持道具、寵物、走路特效，以及換動物和顏色（換外觀免費）。
  * 金幣道具買了就自動戴上；獎章專屬道具鎖起來並寫出需要的獎章，點一下帶孩子到獎章簿看怎麼拿。
  */
 import { useState } from 'react';
@@ -23,8 +23,20 @@ const TABS: { id: Tab; name: string }[] = [
   { id: 'face', name: '👓 眼鏡' },
   { id: 'back', name: '🎒 背後' },
   { id: 'hand', name: '🎈 手持' },
+  { id: 'pet', name: '🐥 寵物' },
+  { id: 'trail', name: '✨ 特效' },
   { id: 'look', name: '🐻 換造型' },
 ];
+
+/** 已擁有的道具按鈕文字：[還沒用時, 正在用時] */
+const USE_LABEL: Record<Slot, [string, string]> = {
+  hat: ['戴上', '脫下'],
+  face: ['戴上', '脫下'],
+  back: ['背上', '拿下'],
+  hand: ['拿著', '放下'],
+  pet: ['帶著走', '休息'],
+  trail: ['打開', '關掉'],
+};
 
 export function ShopScreen() {
   const profile = useGame((s) => s.profile());
@@ -66,7 +78,7 @@ export function ShopScreen() {
         <span className="name">{item.name}</span>
         {has ? (
           <button className={`btn small ${wearing ? 'white' : 'green'}`} onClick={() => toggleWear(item)} data-testid={`wear-${item.id}`}>
-            {wearing ? '脫下' : '戴上'}
+            {USE_LABEL[item.slot][wearing ? 1 : 0]}
           </button>
         ) : badge ? (
           <button

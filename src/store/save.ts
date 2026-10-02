@@ -56,11 +56,24 @@ export interface AvatarConfig {
   back?: string | null;
   /** 手持道具 */
   hand?: string | null;
+  /** 寵物（跟在角色後面走） */
+  pet?: string | null;
+  /** 走路特效 */
+  trail?: string | null;
 }
 
 /** 整理外觀：沒戴的格子一律寫成 null（不留 undefined，存檔轉成 JSON 時本機與伺服器才會一樣） */
 export function normalizeAvatar(a: AvatarConfig): AvatarConfig {
-  return { animal: a.animal, color: a.color, hat: a.hat ?? null, face: a.face ?? null, back: a.back ?? null, hand: a.hand ?? null };
+  return {
+    animal: a.animal,
+    color: a.color,
+    hat: a.hat ?? null,
+    face: a.face ?? null,
+    back: a.back ?? null,
+    hand: a.hand ?? null,
+    pet: a.pet ?? null,
+    trail: a.trail ?? null,
+  };
 }
 
 /** 某個技能的熟練度 */
@@ -407,6 +420,8 @@ export const profileSchema = z.object({
     face: z.string().nullable().optional(),
     back: z.string().nullable().optional(),
     hand: z.string().nullable().optional(),
+    pet: z.string().nullable().optional(),
+    trail: z.string().nullable().optional(),
   }),
   createdAt: z.string(),
   coins: int.min(0),

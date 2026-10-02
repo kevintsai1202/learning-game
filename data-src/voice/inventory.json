@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 298,
-  "全部": 3381,
-  "zh": 1760,
+  "介面": 304,
+  "全部": 3387,
+  "zh": 1766,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34410,
+ "chars": 34452,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -31711,6 +31711,24 @@
    ]
   },
   {
+   "key": "zh-TW|買到小花腳印了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到小花腳印了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到小恐龍了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到小恐龍了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到小書包了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -31720,10 +31738,28 @@
    ]
   },
   {
+   "key": "zh-TW|買到小魚缸了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到小魚缸了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到小旗子了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到小旗子了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到小雞了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到小雞了！",
    "sources": [
     "ui:shop"
    ]
@@ -31837,6 +31873,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到閃亮星星了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到閃亮星星了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到棒球帽了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -31868,6 +31913,15 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到廚師帽了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到蝴蝶了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到蝴蝶了！",
    "sources": [
     "ui:shop"
    ]

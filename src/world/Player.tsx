@@ -12,6 +12,8 @@ import { inputDirection, player } from './input';
 import { useUi, type ZoneId } from '../store/useUi';
 import type { AvatarConfig } from '../store/save';
 import { sfx } from '../audio/sfx';
+import { Trail } from './Trail';
+import { PetFollower } from './Pets';
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -95,14 +97,21 @@ export function Player({ avatar, obstacles, active }: PlayerProps) {
     camera.lookAt(lookAt.current);
   });
 
+  /** 寵物與走路特效每幀讀角色的位置、朝向、速度（它們在世界座標，不跟著角色的群組旋轉） */
+  const getPos = () => group.current?.position;
+  const getSpeed = () => motion.current.speed;
   return (
-    <group ref={group}>
-      <Avatar config={avatar} motion={motion} />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
-        <planeGeometry args={[1.6, 1.6]} />
-        <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
-      </mesh>
-    </group>
+    <>
+      <group ref={group}>
+        <Avatar config={avatar} motion={motion} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+          <planeGeometry args={[1.6, 1.6]} />
+          <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
+        </mesh>
+      </group>
+      {avatar.trail && <Trail kind={avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
+      {avatar.pet && <PetFollower pet={avatar.pet} getPos={getPos} getHeading={() => player.heading} getSpeed={getSpeed} />}
+    </>
   );
 }
 

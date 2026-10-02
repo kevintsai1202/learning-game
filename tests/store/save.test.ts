@@ -373,7 +373,7 @@ describe('存檔：外觀道具（R2）', () => {
 
   it('換外觀時沒戴的格子存成 null；有道具的外觀可以存回來', () => {
     const s = setAvatar(base, pid, { animal: 'cat', color: '#ffffff', hat: null, face: 'face.round' });
-    expect(s.profiles[0].avatar).toEqual({ animal: 'cat', color: '#ffffff', hat: null, face: 'face.round', back: null, hand: null });
+    expect(s.profiles[0].avatar).toEqual({ animal: 'cat', color: '#ffffff', hat: null, face: 'face.round', back: null, hand: null, pet: null, trail: null });
     expect(loadSave(JSON.stringify(s)).profiles[0].avatar.face).toBe('face.round');
   });
 

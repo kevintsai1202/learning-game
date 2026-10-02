@@ -36,8 +36,8 @@ describe('商品目錄：外觀道具（R2）', () => {
     expect(itemsOfSlot('face').map((i) => i.id)).toEqual(['face.round', 'face.sun', 'face.heart']);
   });
 
-  it('獎章專屬道具和獎章定義一致（R2 的帽子、眼鏡、背後、手持）', () => {
-    for (const b of BADGES.filter((x) => x.item && /^(hat|face|back|hand)\./.test(x.item))) {
+  it('獎章專屬道具和獎章定義一致（每個有道具的獎章，目錄裡都有對應的道具）', () => {
+    for (const b of BADGES.filter((x) => x.item)) {
       expect(findItem(b.item!), b.id).toMatchObject({ badge: b.id });
     }
     for (const i of ITEMS.filter((x) => x.badge)) expect(badgeById(i.badge!)?.item, i.id).toBe(i.id);
@@ -63,7 +63,27 @@ describe('擁有與裝備', () => {
       inventory: ['face.sun', 'hat.cap'],
       avatar: { animal: 'cat', color: '#ffffff', hat: 'hat.cap', face: 'face.sun', back: 'back.wings', hand: 'face.sun' },
     });
-    expect(equippedOf(kid)).toEqual({ animal: 'cat', color: '#ffffff', hat: 'hat.cap', face: 'face.sun', back: null, hand: null });
-    expect(equippedOf(p())).toEqual({ animal: 'bear', color: '#8b5a2b', hat: null, face: null, back: null, hand: null });
+    expect(equippedOf(kid)).toEqual({ animal: 'cat', color: '#ffffff', hat: 'hat.cap', face: 'face.sun', back: null, hand: null, pet: null, trail: null });
+    expect(equippedOf(p())).toEqual({ animal: 'bear', color: '#8b5a2b', hat: null, face: null, back: null, hand: null, pet: null, trail: null });
+  });
+});
+
+describe('商品目錄：寵物與走路特效（R3）', () => {
+  it('寵物 4 種金幣＋2 種獎章專屬；走路特效 2 種', () => {
+    expect(itemsOfSlot('pet').map((i) => [i.id, i.price ?? i.badge])).toEqual([
+      ['pet.chick', 60],
+      ['pet.butterfly', 80],
+      ['pet.fishbowl', 100],
+      ['pet.dino', 150],
+      ['pet.dragon', 'streak-7'],
+      ['pet.owl', 'skill-master'],
+    ]);
+    expect(itemsOfSlot('trail').map((i) => i.id)).toEqual(['trail.flowers', 'trail.stars']);
+  });
+
+  it('寵物與特效也走 equippedOf 的擁有檢查', () => {
+    const base = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'bear', color: '#8b5a2b', hat: null } }, new Date()).profiles[0];
+    const kid: Profile = { ...base, inventory: ['pet.chick'], badges: { 'skill-master': '2026-10-03' }, avatar: { ...base.avatar, pet: 'pet.owl', trail: 'trail.stars' } };
+    expect(equippedOf(kid)).toMatchObject({ pet: 'pet.owl', trail: null });
   });
 });

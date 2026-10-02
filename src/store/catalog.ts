@@ -5,8 +5,8 @@
  */
 import type { AvatarConfig, Profile } from './save';
 
-/** 道具戴在哪一格：帽子、眼鏡、背後、手持（R3 會加寵物與走路特效） */
-export type Slot = 'hat' | 'face' | 'back' | 'hand';
+/** 道具戴在哪一格：帽子、眼鏡、背後、手持、寵物、走路特效 */
+export type Slot = 'hat' | 'face' | 'back' | 'hand' | 'pet' | 'trail';
 
 /** 一項商品 */
 export interface CatalogItem {
@@ -56,8 +56,20 @@ const ACCESSORIES: readonly CatalogItem[] = [
   { id: 'hand.brush', name: '毛筆', slot: 'hand', emoji: '🖌️', badge: 'write-100' },
 ];
 
+/** 寵物（跟在角色後面走；外觀在 src/world/Pets.tsx）與走路特效（走路時腳下冒出來；src/world/Trail.tsx） */
+const PETS_AND_TRAILS: readonly CatalogItem[] = [
+  { id: 'pet.chick', name: '小雞', slot: 'pet', emoji: '🐥', price: 60 },
+  { id: 'pet.butterfly', name: '蝴蝶', slot: 'pet', emoji: '🦋', price: 80 },
+  { id: 'pet.fishbowl', name: '小魚缸', slot: 'pet', emoji: '🐠', price: 100 },
+  { id: 'pet.dino', name: '小恐龍', slot: 'pet', emoji: '🦕', price: 150 },
+  { id: 'pet.dragon', name: '小龍', slot: 'pet', emoji: '🐲', badge: 'streak-7' },
+  { id: 'pet.owl', name: '貓頭鷹', slot: 'pet', emoji: '🦉', badge: 'skill-master' },
+  { id: 'trail.flowers', name: '小花腳印', slot: 'trail', emoji: '🌸', price: 80 },
+  { id: 'trail.stars', name: '閃亮星星', slot: 'trail', emoji: '✨', price: 120 },
+];
+
 /** 全部商品 */
-export const ITEMS: readonly CatalogItem[] = [...HATS, ...ACCESSORIES];
+export const ITEMS: readonly CatalogItem[] = [...HATS, ...ACCESSORIES, ...PETS_AND_TRAILS];
 
 /** 用 id 查商品；查不到回傳 undefined */
 export function findItem(id: string): CatalogItem | undefined {
@@ -81,7 +93,7 @@ export function owns(p: Profile, itemId: string): boolean {
 }
 
 /** 外觀的道具格子 */
-const SLOTS: readonly Slot[] = ['hat', 'face', 'back', 'hand'];
+export const SLOTS: readonly Slot[] = ['hat', 'face', 'back', 'hand', 'pet', 'trail'];
 
 /**
  * 畫角色用的外觀：只留下真的擁有、而且格子相符的道具，其他當作沒戴；沒有的格子補 null。
@@ -93,6 +105,6 @@ export function equippedOf(p: Profile): AvatarConfig {
     const id = a[slot];
     return id && findItem(id)?.slot === slot && owns(p, id) ? id : null;
   };
-  const [hat, face, back, hand] = SLOTS.map(pick);
-  return { animal: a.animal, color: a.color, hat, face, back, hand };
+  const [hat, face, back, hand, pet, trail] = SLOTS.map(pick);
+  return { animal: a.animal, color: a.color, hat, face, back, hand, pet, trail };
 }

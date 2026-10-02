@@ -7,7 +7,7 @@ import { z } from 'zod';
 import type { SessionResult } from '../core/types';
 import { subjectSchema } from '../content/schema';
 import { scoreSession } from '../engine/check';
-import { findItem, owns, type Slot } from '../store/catalog';
+import { SLOTS, findItem, owns } from '../store/catalog';
 import { badgeById } from '../store/badges';
 import {
   ANIMAL_IDS,
@@ -66,6 +66,8 @@ export const avatarSchema = z.object({
   face: z.string().max(40).nullable().optional(),
   back: z.string().max(40).nullable().optional(),
   hand: z.string().max(40).nullable().optional(),
+  pet: z.string().max(40).nullable().optional(),
+  trail: z.string().max(40).nullable().optional(),
 });
 
 /** 操作的格式（伺服器逐筆驗證） */
@@ -150,8 +152,7 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
     }
     case 'avatar': {
       // 每一格戴的東西都要已擁有（含靠獎章擁有），而且格子相符
-      const slots: Slot[] = ['hat', 'face', 'back', 'hand'];
-      for (const slot of slots) {
+      for (const slot of SLOTS) {
         const itemId = op.avatar[slot];
         if (itemId == null) continue;
         if (findItem(itemId)?.slot !== slot || !owns(profile, itemId)) return { ok: false, reason: slot === 'hat' ? '還沒有這頂帽子' : '還沒有這個道具' };
