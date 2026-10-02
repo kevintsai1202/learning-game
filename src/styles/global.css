@@ -540,8 +540,10 @@ button {
   white-space: nowrap;
   pointer-events: none;
 }
+/* 門口的「進去玩」：畫在公頻面板上面，連上班級時也一定點得到（休息提醒的 z-index 是 50，仍蓋在它上面） */
 .door-bubble {
   position: absolute;
+  z-index: 1;
   left: 50%;
   bottom: 84px;
   transform: translateX(-50%);
@@ -1235,12 +1237,18 @@ button {
     opacity: 1;
   }
 }
-/* 公頻面板：島上畫面右側，底部留給提示文字（bottom 18px）與門口的「進去玩」泡泡（bottom 84px、高約 70px），各種寬度都不重疊 */
+/*
+ * 公頻面板：島上畫面右側。底部留給提示文字（bottom 18px）與門口的「進去玩」泡泡（bottom 84px、實測高約 95px，上緣離底部 179px）；
+ * 最高長到右上角按鈕下面（按鈕下緣約 68px，留 84px）。打開短句盤時由短句盤縮小、在裡面捲動，矮螢幕也不會超出畫面。
+ */
 .chat-panel {
   position: absolute;
   right: 16px;
-  bottom: 168px;
+  bottom: 186px;
   width: min(300px, 40vw);
+  max-height: calc(100dvh - 186px - 84px);
+  display: flex;
+  flex-direction: column;
   padding: 8px 12px 10px;
   border-radius: 18px;
   box-shadow: 0 6px 0 rgba(43, 42, 76, 0.88);
@@ -1302,6 +1310,9 @@ button {
   margin-top: 6px;
   max-height: 46vh;
   overflow-y: auto;
+  /* 面板高度不夠時只縮短句盤（min-height: 0 才縮得比內容矮），其他部分維持原高 */
+  flex: 0 1 auto;
+  min-height: 0;
 }
 .phrase-group {
   display: flex;
@@ -1732,17 +1743,50 @@ button {
   margin: 0 auto;
 }
 
-/* 手機寬度的公頻：縮小、只顯示最近三則 */
+/*
+ * 手機寬度的公頻：縮小、只顯示最近三則。上方的角色、金幣、存檔狀態會換行成三列
+ * （實測存檔狀態下緣約 204px，名牌下有稱號時會再低一些，留到 232px）；打開短句盤時先藏起對話，讓短句盤有位置。
+ */
 @media (max-width: 600px) {
   .chat-panel {
     right: 8px;
     bottom: 168px;
     width: min(220px, 56vw);
+    max-height: calc(100dvh - 168px - 232px);
     padding: 6px 10px 8px;
     font-size: 13px;
   }
   .chat-lines li:nth-last-child(n + 4) {
     display: none;
+  }
+  .chat-panel:has(.phrase-picker) .chat-lines,
+  .chat-panel:has(.phrase-picker) .chat-inside {
+    display: none;
+  }
+}
+
+/*
+ * 手機橫放（高度不到 500px）的公頻：縮小、只顯示最近三則，打開短句盤時先藏起對話。
+ * 底部貼在提示文字上方（提示 bottom 18px、高約 46px），最高到右上角按鈕下面（按鈕下緣約 68px）。
+ */
+@media (orientation: landscape) and (max-height: 500px) {
+  .chat-panel {
+    right: 8px;
+    bottom: 74px;
+    width: min(200px, 22vw);
+    max-height: calc(100dvh - 74px - 76px);
+    padding: 6px 10px 8px;
+    font-size: 13px;
+  }
+  .chat-lines li:nth-last-child(n + 4) {
+    display: none;
+  }
+  .chat-panel:has(.phrase-picker) .chat-lines,
+  .chat-panel:has(.phrase-picker) .chat-inside {
+    display: none;
+  }
+  .phrase-btn {
+    font-size: 13px;
   }
 }
 

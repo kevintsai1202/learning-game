@@ -4,7 +4,7 @@
  * 截圖在 e2e/screenshots/realtime/（不進版控）。
  */
 import { expect, test, type Page } from '@playwright/test';
-import { enterZone } from './helpers';
+import { enterZone, standAtDoor } from './helpers';
 import { SERVER, flushDeviceLogs, openDevice, pageErrors } from './onlineDevice';
 
 const SHOTS = 'e2e/screenshots/realtime';
@@ -86,8 +86,23 @@ test('兩台裝置同島：看得到彼此、走動同步、說話有公頻與�
   await Promise.all([a.context.close(), b.context.close()]);
 });
 
-test('手機直式：短句盤打開後完整在畫面內，點了就送出', async ({ browser, baseURL, request }) => {
-  test.setTimeout(240_000);
+/** 畫面上的方框 */
+type Box = { x: number; y: number; width: number; height: number };
+
+/** 兩個方框有沒有重疊 */
+const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+/** 檢查短句盤的螢幕：手機直式（兩種）、手機橫放、Chromebook（扣掉瀏覽器工具列）、平板橫放 */
+const PICKER_VIEWPORTS: [number, number][] = [
+  [390, 844],
+  [375, 667],
+  [844, 390],
+  [1366, 650],
+  [1280, 800],
+];
+
+test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「進去玩」與最後一句都點得到', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
   const post = async (path: string, data: unknown) => {
     const res = await request.post(`${SERVER}${path}`, { data });
     expect(res.ok(), `${path} ${res.status()}`).toBe(true);
@@ -95,20 +110,82 @@ test('手機直式：短句盤打開後完整在畫面內，點了就送出', as
   };
   const room = await post('/api/rooms', { name: '二年二班', password: 'teach123' });
   await post('/api/join', { code: room.code, nickname: '皮皮', pin: '3333', avatar: { animal: 'penguin', color: '#5b5b6b', hat: null } });
-  const phone = await openDevice(browser, baseURL!);
-  await phone.page.setViewportSize({ width: 390, height: 844 });
-  await loginAndEnter(phone.page, room.code, '皮皮', '3333');
-  await phone.page.getByTestId('chat-say').click();
-  const picker = phone.page.getByTestId('phrase-picker');
-  await expect(picker).toBeVisible();
-  const box = (await phone.page.getByTestId('chat-panel').boundingBox())!;
-  expect(box.x).toBeGreaterThanOrEqual(0);
-  expect(box.y).toBeGreaterThanOrEqual(0);
-  expect(box.x + box.width).toBeLessThanOrEqual(390);
-  expect(box.y + box.height).toBeLessThanOrEqual(844);
-  await phone.page.screenshot({ path: `${SHOTS}/02-phone-picker.png` });
-  await phone.page.getByTestId('phrase-great').click();
-  await expect(phone.page.getByTestId('chat-line').last()).toContainText('皮皮：好厲害！');
-  expect(pageErrors(phone.page)).toEqual([]);
-  await phone.context.close();
+  const { context, page } = await openDevice(browser, baseURL!);
+  await loginAndEnter(page, room.code, '皮皮', '3333');
+
+  // 公頻放滿 5 則對話（面板最高的情況）
+  await page.evaluate(() => {
+    const texts = ['你好！', '一起玩吧！', '好厲害！👍', '加油！💪', '我答對了！🎉'];
+    const lines = texts.map((text, i) => ({ id: 900_000 + i, from: 'demo', nickname: '小美', text, at: Date.now() }));
+    (window as any).__game.presence.setState((s: any) => ({ chat: [...s.chat, ...lines] }));
+  });
+  /** 數學城堡門口（算法同 src/world/layout.ts 的 doorOf） */
+  const DOOR = { x: -11 + Math.sin(0.45) * 5.4, z: -10 + Math.cos(0.45) * 5.4 };
+  /** 站到門口（畫面下方出現「進去玩」泡泡）或回到出生點（泡泡消失） */
+  const goDoor = async (atDoor: boolean) => {
+    await standAtDoor(page, atDoor ? DOOR : { x: 0, z: 13 });
+    await expect(page.getByTestId('door-bubble')).toHaveCount(atDoor ? 1 : 0);
+  };
+  const say = page.getByTestId('chat-say');
+  /** 打開或收起短句盤 */
+  const setPicker = async (open: boolean) => {
+    if ((await say.getAttribute('aria-expanded')) !== String(open)) await say.click();
+    await expect(page.getByTestId('phrase-picker')).toHaveCount(open ? 1 : 0);
+    await page.waitForTimeout(300);
+  };
+  /** 公頻面板沒有超出畫面，也沒有擋住右上角的按鈕、左上角的金幣與存檔狀態 */
+  const checkPanel = async (where: string, w: number, h: number) => {
+    const panel = (await page.getByTestId('chat-panel').boundingBox())!;
+    expect.soft(panel.x, `${where} 左邊超出`).toBeGreaterThanOrEqual(0);
+    expect.soft(panel.y, `${where} 上面超出`).toBeGreaterThanOrEqual(0);
+    expect.soft(panel.x + panel.width, `${where} 右邊超出`).toBeLessThanOrEqual(w);
+    expect.soft(panel.y + panel.height, `${where} 下面超出`).toBeLessThanOrEqual(h);
+    for (const id of ['hud-badges', 'hud-parent', 'hud-coins', 'hud-cloud']) {
+      const box = (await page.getByTestId(id).boundingBox())!;
+      expect.soft(overlaps(panel, box), `${where} 公頻擋到 ${id}：${JSON.stringify({ panel, box })}`).toBe(false);
+    }
+  };
+  /**
+   * 「進去玩」一定點得到（泡泡畫在公頻上面）。泡泡與公頻仍可能重疊：泡泡沒有置中——pop-in 動畫結束時的
+   * transform: scale(1) 蓋掉了 translateX(-50%)，從畫面中線往右長、窄螢幕被擠成兩三行；泡泡位置改好後再加嚴格的不重疊檢查。
+   */
+  const checkEnter = async (where: string) => {
+    const covered = await page.getByTestId('enter-zone').evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !(hit && el.contains(hit));
+    });
+    expect.soft(covered, `${where} 公頻蓋住「進去玩」`).toBe(false);
+  };
+
+  // 每種螢幕都檢查完再一起報告（soft），一次看到所有問題
+  for (const [w, h] of PICKER_VIEWPORTS) {
+    const where = `${w}x${h}`;
+    await page.setViewportSize({ width: w, height: h });
+    // 離開門口打開短句盤（手機上站在門口時，「進去玩」泡泡會蓋在「說話」上面）：
+    // 面板不超出、不擋按鈕，「收起」和最後一句（捲動後）都看得到
+    await goDoor(false);
+    await setPicker(true);
+    await checkPanel(`${where} 短句盤`, w, h);
+    await expect.soft(say, where).toBeInViewport();
+    await page.getByTestId('phrase-sad').scrollIntoViewIfNeeded();
+    await expect.soft(page.getByTestId('phrase-sad'), where).toBeInViewport();
+    await page.screenshot({ path: `${SHOTS}/02-picker-${where}.png` });
+    // 走到門口：短句盤開著或收起，「進去玩」都點得到
+    await goDoor(true);
+    await checkEnter(`${where} 短句盤`);
+    await setPicker(false);
+    await checkPanel(`${where} 收起`, w, h);
+    await checkEnter(`${where} 收起`);
+    await page.screenshot({ path: `${SHOTS}/03-door-${where}.png` });
+  }
+
+  // 回到出生點點最後一句：公頻出現、短句盤收起來
+  await goDoor(false);
+  await setPicker(true);
+  await page.getByTestId('phrase-sad').click();
+  await expect(page.getByTestId('chat-line').last()).toContainText('皮皮：😢');
+  await expect(page.getByTestId('phrase-picker')).toHaveCount(0);
+  expect(pageErrors(page)).toEqual([]);
+  await context.close();
 });
