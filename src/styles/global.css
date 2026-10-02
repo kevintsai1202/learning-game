@@ -1235,11 +1235,11 @@ button {
     opacity: 1;
   }
 }
-/* 公頻面板：島上畫面右下角 */
+/* 公頻面板：島上畫面右側，底部留給提示文字（bottom 18px）與門口的「進去玩」泡泡（bottom 84px、高約 70px），各種寬度都不重疊 */
 .chat-panel {
   position: absolute;
   right: 16px;
-  bottom: 16px;
+  bottom: 168px;
   width: min(300px, 40vw);
   padding: 8px 12px 10px;
   border-radius: 18px;
@@ -1575,11 +1575,11 @@ button {
   margin: 0 auto;
 }
 
-/* 手機寬度的公頻：縮小、只顯示最近三則，放在底部提示文字上方 */
+/* 手機寬度的公頻：縮小、只顯示最近三則 */
 @media (max-width: 600px) {
   .chat-panel {
     right: 8px;
-    bottom: 64px;
+    bottom: 168px;
     width: min(220px, 56vw);
     padding: 6px 10px 8px;
     font-size: 13px;

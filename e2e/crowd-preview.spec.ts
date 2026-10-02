@@ -38,6 +38,9 @@ test('多人上線模擬：同島的同學、名牌、對話氣泡、公頻（�
   await expect(page.getByTestId('online-count')).toContainText(`${counts.total + 1} 人在線上`);
   await expect(page.getByTestId('chat-inside')).toContainText('毛毛在數學城堡');
   expect(await page.getByTestId('chat-bubble').count()).toBeGreaterThan(0);
+  const panel = (await page.getByTestId('chat-panel').boundingBox())!;
+  const hint = (await page.locator('.hud-hint').boundingBox())!;
+  expect(panel.y + panel.height, '公頻不能蓋住底部提示').toBeLessThanOrEqual(hint.y);
   await page.screenshot({ path: `${OUT}/01-follow-cam.png` });
 
   // 廣角：只把鏡頭視角放大（跟拍邏輯不動），一張圖放進全部同學與公頻
@@ -72,11 +75,13 @@ test.describe('手機直式', () => {
     await expect(page.getByTestId('name-tag')).toHaveCount(counts.island);
     // 手機只顯示最近 3 則（其餘用 CSS 隱藏）
     await expect(page.locator('[data-testid="chat-line"]:visible')).toHaveCount(Math.min(3, counts.chat));
-    // 公頻面板完整在畫面內
+    // 公頻面板完整在畫面內，而且不蓋住底部的提示文字
     const box = (await page.getByTestId('chat-panel').boundingBox())!;
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(390);
     expect(box.y + box.height).toBeLessThanOrEqual(844);
+    const hint = (await page.locator('.hud-hint').boundingBox())!;
+    expect(box.y + box.height, '公頻不能蓋住底部提示').toBeLessThanOrEqual(hint.y);
     await page.screenshot({ path: `${OUT}/03-phone.png` });
     await page.evaluate(() => (window as any).__stopDemo());
     expect(errors).toEqual([]);
