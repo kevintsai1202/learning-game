@@ -1,0 +1,176 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { createLocalJWKSet } from 'jose';
+import { createRoom, joinRoom, makeClient, openTestDb, resetDb } from './helpers';
+import { makeGoogleKeys, TEST_CLIENT_ID } from './googleKeys';
+import { createGoogleVerifier, type GoogleConfig } from '../../server/google';
+import type { Db } from '../../server/db';
+
+let db: Db;
+let keys: Awaited<ReturnType<typeof makeGoogleKeys>>;
+let google: GoogleConfig;
+beforeAll(async () => {
+  db = await openTestDb();
+  keys = await makeGoogleKeys();
+  google = { clientId: TEST_CLIENT_ID, verify: createGoogleVerifier({ clientId: TEST_CLIENT_ID, keys: createLocalJWKSet(keys.jwks) }), testMode: true };
+});
+afterAll(async () => {
+  await db.close();
+});
+beforeEach(async () => {
+  await resetDb(db);
+});
+
+/** 開好 Google 登入的 app */
+const client = () => makeClient(db, { google });
+
+describe('伺服器設定', () => {
+  it('有開 Google 登入時回傳 Client ID；沒開回傳 null', async () => {
+    expect((await client().call('GET', '/api/config')).body).toEqual({ googleClientId: TEST_CLIENT_ID });
+    expect((await makeClient(db).call('GET', '/api/config')).body).toEqual({ googleClientId: null });
+  });
+});
+
+describe('家長綁定 Google 與快速登入', () => {
+  it('孩子登入後綁定 Google；之後用 Google 登入拿到那位孩子的權杖與存檔', async () => {
+    const { call } = client();
+    const { code } = await createRoom(call);
+    const kid = await joinRoom(call, code, '小安', '1234');
+    const link = await call('POST', '/api/google/link', { idToken: await keys.sign('mom', 'mom.chen@gmail.com') }, kid.token);
+    expect(link.status).toBe(200);
+    expect(link.body).toEqual({ google: ['mo***@gmail.com'] });
+    expect((await call('GET', '/api/me', undefined, kid.token)).body.google).toEqual(['mo***@gmail.com']);
+
+    const login = await call('POST', '/api/google/login', { idToken: await keys.sign('mom', 'mom.chen@gmail.com') });
+    expect(login.status).toBe(200);
+    expect(login.body.kids).toHaveLength(1);
+    expect(login.body.kids[0]).toMatchObject({ account: { id: kid.account.id, nickname: '小安' }, room: { code, name: '二年一班' }, rev: 1 });
+    const me = await call('GET', '/api/me', undefined, login.body.kids[0].token);
+    expect(me.body.profile.name).toBe('小安');
+  });
+
+  it('一個 Google 綁兩個孩子（兄弟姊妹，可以在不同房間）：一次登入兩位', async () => {
+    const { call } = client();
+    const a = await createRoom(call);
+    const b = await createRoom(call, '二年二班');
+    const kid1 = await joinRoom(call, a.code, '哥哥', '1111');
+    const kid2 = await joinRoom(call, b.code, '妹妹', '2222');
+    for (const k of [kid1, kid2]) await call('POST', '/api/google/link', { idToken: await keys.sign('mom', 'mom@gmail.com') }, k.token);
+    const login = await call('POST', '/api/google/login', { idToken: await keys.sign('mom', 'mom@gmail.com') });
+    expect(login.body.kids.map((k: { account: { nickname: string } }) => k.account.nickname).sort()).toEqual(['哥哥', '妹妹']);
+  });
+
+  it('一個孩子可以綁爸爸和媽媽兩個 Google；重複綁同一個不會變兩筆', async () => {
+    const { call } = client();
+    const { code } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    await call('POST', '/api/google/link', { idToken: await keys.sign('mom', 'mom@gmail.com') }, kid.token);
+    await call('POST', '/api/google/link', { idToken: await keys.sign('mom', 'mom@gmail.com') }, kid.token);
+    const both = await call('POST', '/api/google/link', { idToken: await keys.sign('dad', 'dad@gmail.com') }, kid.token);
+    expect(both.body.google.sort()).toEqual(['da***@gmail.com', 'mo***@gmail.com']);
+    for (const who of ['mom', 'dad']) {
+      expect((await call('POST', '/api/google/login', { idToken: await keys.sign(who, `${who}@gmail.com`) })).body.kids).toHaveLength(1);
+    }
+  });
+
+  it('沒有綁定的 Google 帳號：回 404 並說明要先用代碼登入再綁定', async () => {
+    const { call } = client();
+    const r = await call('POST', '/api/google/login', { idToken: await keys.sign('stranger', 'x@gmail.com') });
+    expect(r.status).toBe(404);
+    expect(r.body).toMatchObject({ code: 'google_not_linked', error: expect.stringContaining('綁定') });
+  });
+
+  it('無效的 token 回 401；綁定也一樣', async () => {
+    const { call } = client();
+    const { code } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    expect((await call('POST', '/api/google/login', { idToken: 'forged' })).status).toBe(401);
+    expect((await call('POST', '/api/google/link', { idToken: 'forged' }, kid.token)).status).toBe(401);
+  });
+
+  it('綁定要用孩子的權杖（老師的不行）', async () => {
+    const { call } = client();
+    const { token } = await createRoom(call);
+    expect((await call('POST', '/api/google/link', { idToken: await keys.sign('mom', 'mom@gmail.com') }, token)).status).toBe(401);
+  });
+
+  it('解除綁定後就不能用 Google 登入', async () => {
+    const { call } = client();
+    const { code } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    await call('POST', '/api/google/link', { idToken: await keys.sign('mom', 'mom@gmail.com') }, kid.token);
+    expect((await call('DELETE', '/api/google/link', undefined, kid.token)).body).toEqual({ google: [] });
+    expect((await call('POST', '/api/google/login', { idToken: await keys.sign('mom', 'mom@gmail.com') })).status).toBe(404);
+  });
+
+  it('老師移除成員：綁定一併刪除；老師重設密碼：綁定保留', async () => {
+    const { call } = client();
+    const { code, token } = await createRoom(call);
+    const kid1 = await joinRoom(call, code, '小安', '1234');
+    const kid2 = await joinRoom(call, code, '小美', '5678');
+    await call('POST', '/api/google/link', { idToken: await keys.sign('mom1', 'a@gmail.com') }, kid1.token);
+    await call('POST', '/api/google/link', { idToken: await keys.sign('mom2', 'b@gmail.com') }, kid2.token);
+    await call('DELETE', `/api/teacher/members/${kid1.account.id}`, undefined, token);
+    await call('POST', `/api/teacher/members/${kid2.account.id}/pin`, { pin: '0000' }, token);
+    expect((await call('POST', '/api/google/login', { idToken: await keys.sign('mom1', 'a@gmail.com') })).status).toBe(404);
+    expect((await call('POST', '/api/google/login', { idToken: await keys.sign('mom2', 'b@gmail.com') })).status).toBe(200);
+  });
+
+  it('伺服器沒開 Google 登入：相關 API 回 404', async () => {
+    const { call } = makeClient(db);
+    const { code } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    expect((await call('POST', '/api/google/link', { idToken: 'x' }, kid.token)).body.code).toBe('google_disabled');
+    expect((await call('POST', '/api/google/login', { idToken: 'x' })).body.code).toBe('google_disabled');
+  });
+
+  it('同一個 IP 大量 Google 登入請求會被擋', async () => {
+    const { call } = makeClient(db, { google, floodLimit: 2 });
+    const ip = { 'x-forwarded-for': '203.0.113.20' };
+    const statuses = [];
+    for (let i = 0; i < 3; i++) statuses.push((await call('POST', '/api/google/login', { idToken: 'x' }, undefined, ip)).status);
+    expect(statuses).toEqual([401, 401, 429]);
+  });
+});
+
+describe('老師綁定 Google 與快速登入', () => {
+  it('老師登入後綁定 Google；之後用 Google 登入拿到管理頁權杖', async () => {
+    const { call } = client();
+    const { code, token } = await createRoom(call);
+    const link = await call('POST', '/api/teacher/google/link', { idToken: await keys.sign('teacher', 'teacher.lin@school.edu.tw') }, token);
+    expect(link.body).toEqual({ google: ['te***@school.edu.tw'] });
+    expect((await call('GET', '/api/teacher/room', undefined, token)).body.google).toEqual(['te***@school.edu.tw']);
+    const login = await call('POST', '/api/teacher/google/login', { idToken: await keys.sign('teacher', 'teacher.lin@school.edu.tw') });
+    expect(login.status).toBe(200);
+    expect(login.body.rooms).toEqual([{ code, name: '二年一班', token: expect.any(String) }]);
+    expect((await call('GET', '/api/teacher/room', undefined, login.body.rooms[0].token)).body.room.code).toBe(code);
+  });
+
+  it('一個 Google 綁兩個房間：登入時兩個房間都列出', async () => {
+    const { call } = client();
+    const a = await createRoom(call, '二年一班');
+    const b = await createRoom(call, '二年二班');
+    for (const r of [a, b]) await call('POST', '/api/teacher/google/link', { idToken: await keys.sign('teacher', 't@gmail.com') }, r.token);
+    const login = await call('POST', '/api/teacher/google/login', { idToken: await keys.sign('teacher', 't@gmail.com') });
+    expect(login.body.rooms.map((r: { name: string }) => r.name).sort()).toEqual(['二年一班', '二年二班']);
+  });
+
+  it('老師和家長的綁定分開：家長的 Google 不能登入管理頁，反之亦然', async () => {
+    const { call } = client();
+    const { code, token } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    await call('POST', '/api/google/link', { idToken: await keys.sign('mom', 'mom@gmail.com') }, kid.token);
+    await call('POST', '/api/teacher/google/link', { idToken: await keys.sign('teacher', 't@gmail.com') }, token);
+    expect((await call('POST', '/api/teacher/google/login', { idToken: await keys.sign('mom', 'mom@gmail.com') })).status).toBe(404);
+    expect((await call('POST', '/api/google/login', { idToken: await keys.sign('teacher', 't@gmail.com') })).status).toBe(404);
+  });
+
+  it('老師解除綁定後不能用 Google 登入；綁定要用老師權杖', async () => {
+    const { call } = client();
+    const { code, token } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    expect((await call('POST', '/api/teacher/google/link', { idToken: await keys.sign('teacher', 't@gmail.com') }, kid.token)).status).toBe(401);
+    await call('POST', '/api/teacher/google/link', { idToken: await keys.sign('teacher', 't@gmail.com') }, token);
+    expect((await call('DELETE', '/api/teacher/google/link', undefined, token)).body).toEqual({ google: [] });
+    expect((await call('POST', '/api/teacher/google/login', { idToken: await keys.sign('teacher', 't@gmail.com') })).status).toBe(404);
+  });
+});

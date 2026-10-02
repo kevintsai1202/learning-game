@@ -45,6 +45,30 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 - **密碼與暴力破解**：4 位數密碼只有一萬種，所以**以「房間＋暱稱」計次**：連續錯 5 次鎖 5 分鐘。不用 IP 計次：同一間電腦教室 30 個孩子共用一個對外 IP，上課開頭一起登入就會被誤鎖；IP 層級只擋明顯的洪水（每分鐘 300 次以上）。密碼與管理密碼用 scrypt 加鹽雜湊。
 - **權杖**：隨機 32 bytes，資料庫只存雜湊，180 天到期，到期要重新輸入密碼。
 
+### 3.1 Google 快速登入（備選，使用者 2026-10-02 追加）
+
+使用者先說「登入要請家長用 Gmail」，接著補充「Gmail 作為備選登入，只是方便登入」，並決定老師也可以用。所以**原本的登入方式全部保留**（孩子：代碼＋暱稱＋密碼；老師：代碼＋管理密碼），Google 只是綁定之後的快速登入。學校共用平板照樣用代碼登入，不受影響。
+
+- **家長**：孩子先用代碼加入班級 → 家長在家長專區「班級帳號」分頁按「綁定 Google 帳號」→ 之後任何裝置在班級畫面按「用 Google 登入」，這個 Google 帳號綁定的所有孩子（例如兄弟姊妹）一次登入到這台裝置。只有一個孩子就直接進島；多個就回選角畫面挑。
+  - 每一位孩子都和代碼登入走同一條路：本機存檔＝「伺服器版本＋這台裝置還沒送出的進度」（rebase），不能直接用伺服器版本覆蓋（這台裝置可能有那位孩子離線玩、還沒上傳的進度）。`googleLogin` 回傳 `Profile[]`，由呼叫端決定目前角色。
+  - 回應格式：`{ kids: SessionResponse[] }`（每位孩子一張權杖）。
+- **老師**：用代碼＋管理密碼登入管理頁後按「綁定 Google 帳號」→ 之後在管理頁按「用 Google 登入」。綁了多個房間就先選房間。
+  - 回應格式：`{ rooms: [{ code, name, token }] }`。只有一個房間就直接進管理頁；多個時管理頁多一個「選房間」步驟，選定後才存進老師的登入狀態。
+- 一個 Google 帳號可以綁多個孩子、多個房間；一個孩子也可以綁爸爸和媽媽兩個 Google 帳號。可以解除綁定。
+- 老師移除成員時，那位孩子的綁定一併刪除；老師重設孩子密碼時，Google 綁定保留（家長仍可以用 Google 登入）。
+- **個資**：伺服器只存 Google 帳號的識別碼（`sub`）與 email，用途只有快速登入；老師看不到家長的 email。畫面上顯示 email 時遮掉中間（`ke***@gmail.com`）。綁定按鈕旁說明用途。
+- **技術**：
+  - 前端用 Google Identity Services（`accounts.google.com/gsi/client`）的官方按鈕取得 ID token（不需要 client secret，靜態網站可用）；點了「用 Google 登入」才載入 Google 的程式。
+  - 伺服器用 `jose` 依 Google 的公開金鑰（JWKS）驗證 ID token 的簽章、`aud`（OAuth Client ID）、`iss`、到期時間。
+  - Client ID 只設定在伺服器（`GOOGLE_CLIENT_ID`），前端從 `GET /api/config` 取得；沒設定時 Google 按鈕不顯示。
+  - **需要使用者在 Google Cloud Console 建立 OAuth 用戶端 ID**（網頁應用程式；授權的 JavaScript 來源填 GitHub Pages 網址與本機測試網址），步驟寫在 `docs/google-login-setup.md`。
+- **測試模式**（真實 Google 登入無法自動化）：
+  - 單元測試在程式裡產生金鑰、簽測試用 ID token，走完整的驗證邏輯。
+  - e2e：伺服器設 `GOOGLE_TEST_JWKS`（測試公鑰）時改用這把公鑰驗證；前端設 localStorage `learning-island-google-stub` 時，Google 按鈕換成測試按鈕，按下去送出 e2e 事先簽好的 token，之後的流程與正式環境相同。
+  - **測試模式不能出現在正式環境**：沒有 `GOOGLE_TEST_JWKS` 時一律用 Google 的公開金鑰；設了 `GOOGLE_TEST_JWKS` 但沒有同時設 `ALLOW_TEST_GOOGLE=1` 就拒絕啟動（兩個變數都要故意設才會開，不依賴正式環境記得設 `NODE_ENV`）；開啟時啟動訊息印警告。前端的測試按鈕即使被打開也沒有用（伺服器只認 Google 簽的 token）。
+- 新增 API（第 10 節）：`GET /api/config`、`POST|DELETE /api/google/link`（孩子權杖）、`POST /api/google/login`、`POST|DELETE /api/teacher/google/link`（老師權杖）、`POST /api/teacher/google/login`；`GET /api/me` 與 `GET /api/teacher/room` 多回傳已綁定的 email（遮罩後）。
+- 新增資料表：`google_links(google_sub, account_id, email, linked_at)`、`teacher_google_links(google_sub, room_code, email, linked_at)`。
+
 ## 4. 雲端存檔與同步
 
 ### 為什麼用「操作紀錄」而不是整份上傳
@@ -141,6 +165,11 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/gifts` | `{ to, itemId }` → `{ gift, profile, rev }` |
 | `GET /api/gifts/pending` | 我待收下的禮物 |
 | `POST /api/gifts/:id/accept`、`/decline` | 收下／不用了 |
+| `GET /api/config` | `{ googleClientId }`（沒開 Google 登入是 null） |
+| `POST /api/google/link`、`DELETE /api/google/link` | 家長把 Google 綁到孩子（孩子權杖）`{ idToken }` → `{ google: [遮罩後的 email] }` |
+| `POST /api/google/login` | `{ idToken }` → `{ kids: SessionResponse[] }`；沒綁定回 404 `google_not_linked` |
+| `POST /api/teacher/google/link`、`DELETE /api/teacher/google/link` | 老師把 Google 綁到房間（老師權杖） |
+| `POST /api/teacher/google/login` | `{ idToken }` → `{ rooms: [{ code, name, token }] }` |
 | `GET /healthz` | Zeabur 健康檢查 |
 
 ### WebSocket（`/ws`，連上後第一則訊息送權杖）
@@ -181,7 +210,7 @@ Zeabur 服務（Dockerfile、volume、網域、環境變數）、GitHub Pages �
 
 | 期 | 內容 | 驗收 |
 | --- | --- | --- |
-| P1 | 伺服器骨架、房間、老師管理頁、孩子加入／登入、雲端存檔同步（含錯題本） | 換新 context 登入，進度與錯題本都在；離線玩完連上後同步 |
+| P1 | 伺服器骨架、房間、老師管理頁、孩子加入／登入、雲端存檔同步（含錯題本）；Google 快速登入（家長、老師，備選）；新增 8 種動物（使用者追加） | ① 代碼登入：換新 context 登入，進度與錯題本都在；離線玩完連上後同步（已通過，存檔點 72ca27a）② Google：綁定後換裝置用 Google 登入，含一個 Google 綁多個孩子、老師多個房間；同裝置有待送進度時不遺失 ③ 12 種動物在選角、百寶屋、島上 3D 都正確，二年級孩子不看名字也認得出來；新動物名字有預錄語音 ④ 手機版面稽核（含班級畫面、12 種動物的選單）0 問題 |
 | P2 | WebSocket、多人同島、公頻短句、頭上氣泡 | 兩個 context 互相看到走動與對話 |
 | P3 | 禮物目錄、送禮／收下／不用了、貼紙簿 | 兩個 context 送收禮物，金幣與收藏正確 |
 | P4 | 部署 Zeabur、GitHub Pages 帶伺服器網址、線上 e2e | 公開網址上兩台裝置互通 |

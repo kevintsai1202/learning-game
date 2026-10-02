@@ -29,10 +29,12 @@ docker rm -f li-pg-test
 | `DATABASE_URL` | PostgreSQL 連線字串；沒有時用 PGlite |
 | `PGLITE_DIR` | 沒有 `DATABASE_URL` 時，PGlite 存檔案的目錄；沒有就存記憶體（重啟清空） |
 | `ALLOWED_ORIGINS` | 允許跨網域呼叫的前端網址，逗號分隔；預設 `http://localhost:5173,http://localhost:4183` |
+| `GOOGLE_CLIENT_ID` | Google 快速登入（備選）的 OAuth 用戶端 ID；沒有就不開 Google 登入。建立方式見 `docs/google-login-setup.md` |
+| `GOOGLE_TEST_JWKS`＋`ALLOW_TEST_GOOGLE=1` | **只給 e2e 用**的測試模式：用測試公鑰驗證 Google token。只設其中一個會拒絕啟動；正式環境絕不能設 |
 
 ## 規則
 
-- **給伺服器 import 的 `src/` 模組必須是純邏輯**：不能 import 畫面、音訊、3D（three、react）的程式。改了之後看 `npm run server:build` 的產物，import 清單只能有 hono、pg、zod、node 內建模組與動態載入的 PGlite。
+- **給伺服器 import 的 `src/` 模組必須是純邏輯**：不能 import 畫面、音訊、3D（three、react）的程式。改了之後看 `npm run server:build` 的產物，import 清單只能有 hono、pg、zod、jose、node 內建模組與動態載入的 PGlite。
 - **改 `src/store/save.ts` 的規則等於同時改伺服器**：`tests/online/ops.test.ts` 的對照測試確認「本機原本的路徑」與 `applyOp` 結果相同。
 - 存檔只靠「操作」改變（`/api/ops`、之後的送禮），不要新增「整份上傳存檔」的 API：會蓋掉伺服器端的變更（例如收到的禮物）。
 - 會讀後改的帳號資料一律在交易裡 `SELECT … FOR UPDATE`。PGlite 是單一連線測不出搶鎖，要用 Docker 的 PostgreSQL 驗證（`tests/server/sync.test.ts` 的並行測試拿掉列鎖就會失敗）。
@@ -40,3 +42,5 @@ docker rm -f li-pg-test
 - 資料表結構只往後加版本（`server/db.ts` 的 `MIGRATIONS`），不修改已發布的版本。
 - 登入鎖定以「房間＋暱稱」計次（5 次鎖 5 分鐘），不用 IP：同一間教室共用對外 IP。IP 只擋大量請求（每分鐘 300 次）。
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
+- Google 帳號只存 `sub` 與 email；回給前端的 email 一律遮罩（`maskEmail`），老師的 API 不回傳家長的 email。
+- Google 登入的測試一律用程式產生的金鑰（`tests/server/googleKeys.ts`）或 `e2e/fixtures/google-test-key.json`，不要連到真正的 Google。

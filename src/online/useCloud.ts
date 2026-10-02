@@ -10,7 +10,21 @@
 import { create } from 'zustand';
 import { api } from './api';
 import { serverUrl } from './config';
-import { joinClass, loginClass, logoutClass, syncProfile, type CloudDeps, type JoinInput, type LoginInput, type SyncOutcome } from './cloudSync';
+import {
+  fetchGoogleLinks,
+  googleLogin,
+  joinClass,
+  linkGoogle,
+  loginClass,
+  logoutClass,
+  syncProfile,
+  unlinkGoogle,
+  type CloudDeps,
+  type JoinInput,
+  type LoginInput,
+  type SyncOutcome,
+} from './cloudSync';
+import type { ServerConfig } from './protocol';
 import { getToken, loadOutbox, onRecorded, saveOutbox, setToken } from './storage';
 import { outboxSize } from './sync';
 import { useGame } from '../store/useGame';
@@ -38,6 +52,21 @@ interface CloudStore {
   syncNow: () => Promise<void>;
   /** 重新計算目前角色的待送筆數 */
   refresh: () => void;
+  /** 伺服器的 Google 登入 Client ID（沒開 Google 登入或還沒讀到時是 null） */
+  googleClientId: string | null;
+  /** 向伺服器讀設定（決定要不要顯示 Google 按鈕）；讀不到就當作沒開 */
+  loadConfig: () => Promise<void>;
+  /**
+   * 用 Google 快速登入：綁定的孩子全部登入到這台裝置。只有一位時直接成為目前角色；
+   * 多位時不切換（由畫面帶孩子回選角畫面挑）。回傳登入的角色。
+   */
+  googleLogin: (idToken: string) => Promise<Profile[]>;
+  /** 把 Google 帳號綁到這位孩子；回傳已綁定的帳號（email 已遮罩） */
+  linkGoogle: (profileId: string, idToken: string) => Promise<string[]>;
+  /** 解除這位孩子的 Google 綁定 */
+  unlinkGoogle: (profileId: string) => Promise<string[]>;
+  /** 讀出這位孩子已綁定的 Google 帳號 */
+  fetchGoogleLinks: (profileId: string) => Promise<string[]>;
 }
 
 /** 正式環境的依賴 */
@@ -113,6 +142,32 @@ export const useCloud = create<CloudStore>((set, get) => ({
     const p = activeCloudProfile();
     set({ pending: p ? outboxSize(loadOutbox(p.cloud!.accountId)) : 0, ...(p ? {} : { status: 'idle' as const }) });
   },
+
+  googleClientId: null,
+
+  loadConfig: async () => {
+    if (!serverUrl()) return set({ googleClientId: null });
+    try {
+      const config = await api<ServerConfig>('GET', '/api/config');
+      set({ googleClientId: config.googleClientId });
+    } catch {
+      set({ googleClientId: null });
+    }
+  },
+
+  googleLogin: async (idToken) => {
+    const server = serverUrl();
+    if (!server) throw new Error('還沒有設定班級伺服器');
+    const kids = await googleLogin(deps, server, idToken);
+    if (kids.length === 1) useGame.getState().selectProfile(kids[0].id);
+    timer.failures = 0;
+    void get().syncNow();
+    return kids;
+  },
+
+  linkGoogle: (profileId, idToken) => linkGoogle(deps, profileId, idToken),
+  unlinkGoogle: (profileId) => unlinkGoogle(deps, profileId),
+  fetchGoogleLinks: (profileId) => fetchGoogleLinks(deps, profileId),
 }));
 
 /** 同步目前角色，以及其他還有待送進度的雲端角色；依結果決定下次什麼時候再試 */

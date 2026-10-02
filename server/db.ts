@@ -128,6 +128,28 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       )`,
     ],
   },
+  {
+    // Google 快速登入（備選）：家長綁孩子帳號、老師綁房間；一個 Google 可以綁多個，一個孩子／房間也可以綁多個 Google
+    version: 2,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS google_links (
+        google_sub text NOT NULL,
+        account_id text NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        email text,
+        linked_at timestamptz NOT NULL,
+        PRIMARY KEY (google_sub, account_id)
+      )`,
+      `CREATE INDEX IF NOT EXISTS google_links_account ON google_links (account_id)`,
+      `CREATE TABLE IF NOT EXISTS teacher_google_links (
+        google_sub text NOT NULL,
+        room_code text NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        email text,
+        linked_at timestamptz NOT NULL,
+        PRIMARY KEY (google_sub, room_code)
+      )`,
+      `CREATE INDEX IF NOT EXISTS teacher_google_links_room ON teacher_google_links (room_code)`,
+    ],
+  },
 ];
 
 /** 建表與升級（可以重複執行） */
@@ -145,7 +167,7 @@ export async function migrate(db: Db): Promise<void> {
 
 /** 清空所有資料（測試用；資料表結構保留） */
 export async function resetDb(db: Db): Promise<void> {
-  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens CASCADE');
+  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links CASCADE');
 }
 
 /** 刪掉 30 天前的操作去重紀錄（伺服器啟動時與每天執行一次） */

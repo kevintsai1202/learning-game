@@ -21,6 +21,7 @@
     "@react-three/fiber": "^9.8.1",
     "hanzi-writer": "^3.7.3",
     "hono": "^4.13.12",
+    "jose": "^6.2.12",
     "pg": "^8.23.1",
     "react": "~19.3.0",
     "react-dom": "~19.3.0",

@@ -1,4 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { defineConfig } from '@playwright/test';
+
+/** e2e 專用的假 Google 金鑰（伺服器用公鑰驗證，測試用私鑰簽 ID token；正式環境不接受） */
+const googleTest = JSON.parse(readFileSync(new URL('./e2e/fixtures/google-test-key.json', import.meta.url), 'utf8')) as { clientId: string; publicJwks: unknown };
 
 // e2e 設定：對 build 後的產物（vite preview）跑，不用 dev server
 export default defineConfig({
@@ -33,7 +37,14 @@ export default defineConfig({
           url: 'http://localhost:8787/healthz',
           reuseExistingServer: true,
           timeout: 120_000,
-          env: { PORT: '8787', ALLOWED_ORIGINS: 'http://localhost:4183' },
+          // Google 登入用測試模式（兩個變數都要設才會開）；正式環境絕不能設
+          env: {
+            PORT: '8787',
+            ALLOWED_ORIGINS: 'http://localhost:4183',
+            GOOGLE_CLIENT_ID: googleTest.clientId,
+            GOOGLE_TEST_JWKS: JSON.stringify(googleTest.publicJwks),
+            ALLOW_TEST_GOOGLE: '1',
+          },
         },
       ],
 });

@@ -1,0 +1,29 @@
+{
+  "_說明": "e2e 專用的假 Google 金鑰：伺服器設 GOOGLE_TEST_JWKS＋ALLOW_TEST_GOOGLE=1 時用 publicJwks 驗證，測試用 privateJwk 簽 ID token。正式環境不接受這把金鑰（沒有 ALLOW_TEST_GOOGLE=1 會拒絕啟動），所以放進版控沒有安全疑慮。",
+  "clientId": "e2e-test-client.apps.googleusercontent.com",
+  "publicJwks": {
+    "keys": [
+      {
+        "kty": "RSA",
+        "n": "nz1jBa9OGBBlTETR8POcRCmLZp-ivoBtKiYuCGFCYUkRdx77WZdmG86UMbTCnIUyxQxELga-P_iqY7jRWbrj_BainULW_C9x4FkPasHNcPLZ-AE_gJNOFuhzrDx0enbKihLmHHjvFtttx5UgXwfwJb6dRbQSBdMnhg8gP1G-60c1NGOilBfsMT9-z8mRPLb5LzC-vYXC6hHOuXDsx-J1IOWbvOV1vm-POL0Lt-yScJ238y5IM3u0ALN9wuXw3JxRly2FXsGRvKlPmqkRNhxtYn3YaUJ-W25YoBoRzvRWme-s5Uv93nLF3wjcYqC1kVVtNFR9YNIBTC6zMEv0Rdjrvw",
+        "e": "AQAB",
+        "kid": "e2e-test-key",
+        "alg": "RS256",
+        "use": "sig"
+      }
+    ]
+  },
+  "privateJwk": {
+    "kty": "RSA",
+    "n": "nz1jBa9OGBBlTETR8POcRCmLZp-ivoBtKiYuCGFCYUkRdx77WZdmG86UMbTCnIUyxQxELga-P_iqY7jRWbrj_BainULW_C9x4FkPasHNcPLZ-AE_gJNOFuhzrDx0enbKihLmHHjvFtttx5UgXwfwJb6dRbQSBdMnhg8gP1G-60c1NGOilBfsMT9-z8mRPLb5LzC-vYXC6hHOuXDsx-J1IOWbvOV1vm-POL0Lt-yScJ238y5IM3u0ALN9wuXw3JxRly2FXsGRvKlPmqkRNhxtYn3YaUJ-W25YoBoRzvRWme-s5Uv93nLF3wjcYqC1kVVtNFR9YNIBTC6zMEv0Rdjrvw",
+    "e": "AQAB",
+    "d": "Qy3yNyVApI1SNw13ppgXznfabDafwY_LvjLyS63Ag-uAF0m2T5M8TDHoOlogmkjlZNUqdGJ64-Ej_UMs6xaZ9TGVdBQNP8JCYBwikW7mnaaOx367TCKZGLgDiN_OYhX4l6ymcM-iSnnTRBaJXB4stbfHgO8ZhWSSMY_zElOJ4Jb0UWznPnBsWUj62bTIMc6EKJkw_Kmim0FoDMZG_v3G9N30IBrIPDJP2D27yN2glXrr4HWVeSy06yirq2XREgk1aXJ0nntzWE8VeIrBZ9rc4tsP0rshGvb4ul8B6BDfwCNx4MmZ5wgOdjFKZfp-LxGA6415elP-Er7tMz5FD4yQyQ",
+    "p": "3qwAxMSOxrfA9vlejYubQJAE4d1awhp1RTRMTCfH1vpWJDpzpmWtbl8bv4cnAYWFYbv5kMoMj7gcqrV1WcmSSL3W3Lh1omLPw5wsBNFe8DctJzrpwAIgcTcxFeRwdU4QZ6tExg9XMWeQlIAwRG0Yo9HskWT_hC5qHc91PjAb4Fk",
+    "q": "txLkEiUADuiDKd2F7Ui0l_8M9bSMGcwzCnhD6VIX9f2EBJ4ZAxnBH5JmLsYBh0dUV3ZMOKXaSX4Rn-2Du81K4Y-rdlKHar6W4PkOUJXwxdd_bPwwysYPlqYZ65_AAXP9b7bpDzO41091f2K6xb71szjkzuOJMKcJ39oqXnVjadc",
+    "dp": "DmR3uEAsKlP-OPhtUCDR7B5i8mZoU1t6cPqsY8--bvrHTpgomXzA9P1YwcxujP6gXGzV-LHWlgOEdtQ7vY310pXSqXmSwOg6HZ6eicEurcAjPwHj0fFRP4AdwBh_3FUrYkgDrfmX3S2gfri6ZfHXQd9ztwIcMeL-IOcj4N0jMCE",
+    "dq": "f2ljV4lut_F0T6-_pLvEDEDSmTI1i0LFhxTaVsjuqiHtPnV1fOXwtXNjMExYBflLpq9LLuWmvR1DUOWxmAOxiLg_odKgMldAlIRhRQ6FinuHUKdXodgkQzmIsqb0r041ZQmMvCrICvlfEe_5guR7BWekPqS29yhZw_SHJkRWkvM",
+    "qi": "XZ7Nw15nIciEz3Hik5KydAHpwWuCk0AtIwl6aLjD7qlwGnyB1wGnPpar-rwjquAVIcyLS5bcUaroT50_fDnymwj6F2JzdSVYPpsmH4XrON8i5f51pxh6BNN49MH6B8ZChRUyhcw52gr2XzEoO9jpAGFAjsY9seN5qVXsxPTB-Zs",
+    "kid": "e2e-test-key",
+    "alg": "RS256"
+  }
+}

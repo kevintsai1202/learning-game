@@ -21,6 +21,8 @@ export const joinRequest = z
   .object({ code: roomCodeSchema, nickname: z.string().max(40), pin: pinSchema, avatar: avatarSchema.optional(), profile: z.unknown().optional() })
   .refine((v) => v.avatar !== undefined || v.profile !== undefined, { message: '要選外觀或帶入角色' });
 export const loginRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40), pin: z.string().max(10) });
+/** Google 快速登入與綁定：前端從 Google Identity Services 拿到的 ID token */
+export const googleTokenRequest = z.object({ idToken: z.string().min(1).max(4096) });
 /** 同步：每筆操作在伺服器端逐筆驗證，所以這裡只限制數量 */
 export const opsRequest = z.object({ ops: z.array(z.unknown()).max(20) });
 
@@ -59,6 +61,26 @@ export interface SessionResponse {
   profile: Profile;
   rev: number;
   room: RoomInfo;
+}
+
+/** 家長用 Google 登入的回應：綁定的每位孩子各一張權杖 */
+export interface GoogleKidsResponse {
+  kids: SessionResponse[];
+}
+
+/** 老師用 Google 登入的回應：綁定的每個房間各一張管理頁權杖 */
+export interface GoogleRoomsResponse {
+  rooms: { code: string; name: string; token: string }[];
+}
+
+/** 已綁定的 Google 帳號（email 已遮罩） */
+export interface GoogleLinksResponse {
+  google: string[];
+}
+
+/** 伺服器設定（前端決定要不要顯示 Google 按鈕） */
+export interface ServerConfig {
+  googleClientId: string | null;
 }
 
 /** 同步的回應 */

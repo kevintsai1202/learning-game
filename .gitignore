@@ -11,3 +11,5 @@ data-src/raw/
 # 子代理各自的建置輸出
 dist-*/
 server-dist/
+# 子代理的 git worktree（Claude Code 自動建立）
+.claude/worktrees/
