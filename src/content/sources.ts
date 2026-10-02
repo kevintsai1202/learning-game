@@ -119,6 +119,20 @@ export const SOURCES: SourceEntry[] = [
     note: 'Music by Cleyton Kauffman - https://soundcloud.com/cleytonkauffman（作者自願附的署名，CC0 不要求）。',
   },
   {
+    use: '預錄語音（介面句子、生活與健康、英語）：AI 語音合成',
+    name: 'Fish Audio 公開聲音「詩涵 Shihan（台灣）」（作者 Fish Official），模型 s2.1-pro-free',
+    url: 'https://fish.audio/',
+    license: 'Fish Audio 服務條款（免費方案；條款寫明免費使用者限個人、非商業使用，由專案維護者評估後採用）',
+    note: '這些聲音是 AI 合成語音，不是真人錄音。中文語速 0.9、英文 0.85；去頭尾靜音並調整音量。句子清單見 data-src/voice/inventory.json，產生方式見 docs/plans/voice-clips.md，條款說明見 public/licenses/AI-VOICES.txt。',
+  },
+  {
+    use: '預錄語音（37 個注音符號）：AI 語音合成',
+    name: 'Microsoft Azure AI Speech 神經語音「曉臻 zh-TW-HsiaoChenNeural」',
+    url: 'https://learn.microsoft.com/azure/ai-services/speech-service/',
+    license: 'Microsoft 產品條款（F0 免費方案；條款的產出使用權只列付費方案，由專案維護者評估後採用）',
+    note: '這些聲音是 AI 合成語音，不是真人錄音。直接唸注音符號，語速 0.7，結尾補 0.25 秒停頓；去頭尾靜音並調整音量。條款說明見 public/licenses/AI-VOICES.txt。',
+  },
+  {
     use: '3D 引擎',
     name: 'three.js／React Three Fiber／drei',
     url: 'https://threejs.org/',

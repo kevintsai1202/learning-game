@@ -5,13 +5,35 @@
  *
  * 聲音挑選（src/audio/voices.ts）：自然語音優先（Edge 的「Online (Natural)」、Chrome 的 Google 國語），
  * 連網語音失敗或離線時改用本機聲音；家長可以在設定裡指定聲音，選擇只存在這台裝置。
+ *
+ * 預錄語音（src/audio/clips.ts、clipPlayer.ts）：一段話的每一句都有音檔時播音檔，缺任何一句就整段用裝置語音，
+ * 避免同一段話中途換聲音。家長可以在設定關掉「優先使用預錄語音」。
  */
 import type { SpeakLang } from '../core/types';
 import { duckMusic } from './music';
 import { isBasicVoice, isFallbackError, orderVoices, pickVoice, splitSentences } from './voices';
+import { clipsFor, ttsParts } from './clips';
+import { loadManifest, playClips, prefetchClips, stopClips } from './clipPlayer';
 
-/** 朗讀設定（由 App 依存檔設定同步） */
-const config = { enabled: true, rate: 0.9 };
+/** 朗讀設定（由 App 依存檔設定同步）；clips＝優先使用預錄語音 */
+const config = { enabled: true, rate: 0.9, clips: true };
+
+/** 一次朗讀的紀錄（e2e 透過 window.__game.speech 讀取，確認用的是預錄語音還是裝置語音） */
+export interface SpeechRecord {
+  mode: 'clip' | 'tts';
+  text: string;
+  lang: SpeakLang;
+  files?: string[];
+}
+
+/** 除錯用：最近的朗讀紀錄（最多 30 筆） */
+export const speechDebug: { log: SpeechRecord[] } = { log: [] };
+
+/** 記錄這次朗讀的方式 */
+function record(r: SpeechRecord): void {
+  speechDebug.log.push(r);
+  if (speechDebug.log.length > 30) speechDebug.log.shift();
+}
 
 /** 最近一次朗讀的內容（給「再聽一次」按鈕） */
 let lastSpoken: { text: string; lang: SpeakLang } | null = null;
@@ -67,15 +89,23 @@ function chooseVoice(lang: SpeakLang, preferred: string | null): SpeechSynthesis
 }
 
 /** 套用朗讀設定 */
-export function configureSpeech(opts: { enabled: boolean; rate: number }): void {
+export function configureSpeech(opts: { enabled: boolean; rate: number; clips?: boolean }): void {
   config.enabled = opts.enabled;
   config.rate = opts.rate;
+  config.clips = opts.clips ?? true;
   if (!opts.enabled) stopSpeaking();
 }
 
-/** 去掉 emoji 與不該唸出來的符號（例如「○」「?」） */
+/**
+ * 去掉 emoji 與不該唸出來的符號（例如「○」「?」）。
+ * 數字鍵帽（1️⃣）要先轉成數字本身：組合字元 U+20E3 留著的話，語音合成會亂唸（實測產生 50 秒以上的音檔）。
+ * 破折號（A – a）改成頓號，唸成短暫停頓。
+ */
 export function cleanForSpeech(text: string): string {
   return text
+    .replace(/([0-9#*])️?⃣/g, '$1')
+    .replace(/⃣/g, '')
+    .replace(/\s*[–—]\s*/g, '、')
     .replace(/\p{Extended_Pictographic}/gu, '')
     .replace(/[️‍]/g, '')
     .replace(/[○□]/g, '空格')
@@ -87,27 +117,48 @@ export function cleanForSpeech(text: string): string {
 export function speak(text: string, lang: SpeakLang = 'zh-TW'): void {
   lastSpoken = { text, lang };
   if (!config.enabled) return;
-  say(text, lang, prefs[lang] ?? null);
+  say(text, lang, prefs[lang] ?? null, config.clips);
 }
 
 /**
- * 所有朗讀的共同入口（之後若加入預錄語音檔，在這一層判斷：有檔案就播檔案，沒有才用 TTS）。
- * 長文字依句子切開，一句一個 utterance。
+ * 所有朗讀的共同入口：先依句子切開，每一句都有預錄音檔就播音檔；
+ * 沒有對照表、缺任何一句、音訊還沒解鎖或下載失敗時，整段改用裝置語音（一句一個 utterance）。
+ * 對照表還在下載時會等它載完（標題畫面的歡迎詞是第一句），等待期間有新的朗讀就放棄這一次。
  */
-function say(text: string, lang: SpeakLang, preferred: string | null): void {
-  if (typeof speechSynthesis === 'undefined') return;
+function say(text: string, lang: SpeakLang, preferred: string | null, useClips: boolean): void {
   const parts = splitSentences(cleanForSpeech(text));
   if (!parts.length) return;
   restart();
-  speakParts(parts, 0, lang, preferred, generation);
+  const gen = generation;
+  const isCurrent = () => gen === generation;
+  if (!useClips) return speakTts(parts, lang, preferred, gen, text);
+  void loadManifest().then(async (manifest) => {
+    if (!isCurrent()) return;
+    const files = manifest ? clipsFor(manifest, parts, lang) : null;
+    if (files) {
+      record({ mode: 'clip', text, lang, files });
+      const result = await playClips(files, isCurrent, { onStart: () => duckMusic(true), onEnd: () => duckMusic(false) });
+      if (result === 'played' || !isCurrent()) return;
+    }
+    speakTts(parts, lang, preferred, gen, text);
+  });
 }
 
-/** 停掉正在唸的內容並開始新的一次朗讀序號 */
+/** 用裝置語音唸（略過只有注音符號的句子，裝置語音唸不準單獨的注音） */
+function speakTts(parts: string[], lang: SpeakLang, preferred: string | null, gen: number, text: string): void {
+  record({ mode: 'tts', text, lang });
+  if (typeof speechSynthesis === 'undefined') return;
+  const tts = ttsParts(parts);
+  if (tts.length) speakParts(tts, 0, lang, preferred, gen);
+}
+
+/** 停掉正在唸的內容（預錄語音與裝置語音）並開始新的一次朗讀序號 */
 function restart(): void {
   generation++;
   clearTimeout(startTimer);
   live = [];
-  speechSynthesis.cancel();
+  stopClips();
+  if (typeof speechSynthesis !== 'undefined') speechSynthesis.cancel();
 }
 
 /** 從第 from 句開始排入朗讀佇列；連網語音失敗時改用本機聲音，從失敗的那一句重唸 */
@@ -160,9 +211,20 @@ export function repeatSpeech(): void {
 
 /** 停止朗讀 */
 export function stopSpeaking(): void {
-  if (typeof speechSynthesis === 'undefined') return;
   restart();
   duckMusic(false);
+}
+
+/** 預先下載並解碼一批朗讀內容的預錄音檔（題目出現時先載選項的音檔，點 🔊 才不會延遲） */
+export function prefetchSpeech(items: readonly { text: string; lang: SpeakLang }[]): void {
+  if (!config.enabled || !config.clips) return;
+  void loadManifest().then((manifest) => {
+    if (!manifest) return;
+    for (const it of items) {
+      const files = clipsFor(manifest, splitSentences(cleanForSpeech(it.text)), it.lang);
+      if (files) prefetchClips(files);
+    }
+  });
 }
 
 /** 瀏覽器有沒有指定語言的聲音（設定頁提示用） */
@@ -206,7 +268,8 @@ export function setVoicePref(lang: SpeakLang, id: string | null): void {
 
 /** 試聽：用指定的聲音（null＝自動）唸一句範例；家長按的，所以朗讀關閉時也會唸 */
 export function previewVoice(lang: SpeakLang, id: string | null): void {
-  say(SAMPLES[lang], lang, id);
+  // 試聽是為了挑裝置語音，所以不用預錄語音
+  say(SAMPLES[lang], lang, id, false);
 }
 
 /** 聲音清單變動時通知（Chrome 系列是非同步載入）；回傳取消訂閱的函式 */
@@ -221,5 +284,8 @@ if (typeof speechSynthesis !== 'undefined') {
   speechSynthesis.getVoices();
   speechSynthesis.addEventListener?.('voiceschanged', () => speechSynthesis.getVoices());
 }
-// 網路恢復時，連網語音可以再試
-if (typeof window !== 'undefined') window.addEventListener('online', () => (remoteFailedAt = 0));
+// 網路恢復時，連網語音可以再試；瀏覽器裡一載入就開始下載預錄語音對照表
+if (typeof window !== 'undefined') {
+  window.addEventListener('online', () => (remoteFailedAt = 0));
+  void loadManifest();
+}

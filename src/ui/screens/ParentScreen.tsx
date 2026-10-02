@@ -281,12 +281,19 @@ function SettingsTab() {
     </label>
   );
   const toggle = (key: keyof Settings) => (
-    <input type="checkbox" checked={settings[key] as boolean} onChange={(e) => update({ [key]: e.target.checked } as Partial<Settings>)} style={{ width: 26, height: 26 }} />
+    <input
+      type="checkbox"
+      checked={settings[key] as boolean}
+      onChange={(e) => update({ [key]: e.target.checked } as Partial<Settings>)}
+      style={{ width: 26, height: 26 }}
+      data-testid={`setting-${key}`}
+    />
   );
   return (
     <div className="plain">
       {row('畫面文字顯示注音', toggle('zhuyin'))}
       {row('語音朗讀', toggle('voice'))}
+      {row('優先使用預錄語音', toggle('voiceClips'))}
       {row(
         '朗讀速度',
         <input type="range" min={0.6} max={1.3} step={0.1} value={settings.voiceRate} onChange={(e) => update({ voiceRate: Number(e.target.value) })} />,
@@ -319,7 +326,9 @@ function SettingsTab() {
           {!currentVoice('zh-TW') && '另外，這台裝置沒有中文語音，朗讀會沒有聲音，可在系統設定加裝「中文（台灣）」語音。'}
         </p>
       )}
-      <p className="notice">聲音的選擇只記在這台裝置；換裝置或還原備份後要重新選。</p>
+      <p className="notice">
+        預錄語音是事先用 AI 語音合成做好的音檔（生活與健康、英語、介面句子與注音符號），比裝置語音自然；沒有預錄的句子（例如數學題、國語題）用上面選的裝置語音。朗讀速度只影響裝置語音。聲音的選擇只記在這台裝置；換裝置或還原備份後要重新選。
+      </p>
     </div>
   );
 }

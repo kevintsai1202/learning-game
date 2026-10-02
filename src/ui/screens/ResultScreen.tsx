@@ -6,10 +6,11 @@ import { useUi } from '../../store/useUi';
 import { findActivity } from '../../activities/resolve';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
+import { RESULT_DONE, RESULT_MESSAGES } from '../lines';
 import { teleport } from '../../world/input';
 import { doorOf, zoneById } from '../../world/layout';
 
-const MESSAGES = ['', '有進步喔！我們再試一次吧！', '很棒！再練一次就更厲害了！', '太厲害了！全部都難不倒你！'];
+const MESSAGES = RESULT_MESSAGES;
 
 export function ResultScreen() {
   const result = useUi((s) => s.lastResult);
@@ -25,7 +26,7 @@ export function ResultScreen() {
     sfx.fanfare();
     const timers = Array.from({ length: result.stars }, (_, i) => setTimeout(() => sfx.star(i), 500 + i * 350));
     timers.push(setTimeout(() => sfx.coin(), 600 + result.stars * 350));
-    speak(MESSAGES[result.stars] ?? '完成了！');
+    speak(MESSAGES[result.stars] ?? RESULT_DONE);
     return () => timers.forEach(clearTimeout);
   }, [result]);
 

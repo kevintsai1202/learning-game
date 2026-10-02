@@ -1,0 +1,18 @@
+預錄語音（AI 語音合成）使用條款說明
+
+public/audio/voice/ 裡的 mp3 都是 AI 語音合成，不是真人錄音。
+兩家服務都沒有可轉載的授權全文，以下列出產生時適用的條款與出處；聲音、模型、語速等細節見 public/audio/voice/CREDITS.md。
+
+1. Fish Audio（介面句子、生活與健康、英語）
+   聲音：詩涵 Shihan（台灣），作者 Fish Official；模型 s2.1-pro-free（免費方案）
+   條款：Fish Audio Terms of Use（2024-08-18 版） https://fish.audio/terms
+   摘要：免費使用者限 internal, personal, non-commercial 使用，且不得為第三方或第三方的利益使用；付費使用者可商業使用。
+         官方部落格（2026-06-23）說明 s2.1-pro-free 為實驗與原型開發用途。
+
+2. Microsoft Azure AI Speech（37 個注音符號）
+   聲音：zh-TW-HsiaoChenNeural（曉臻）；F0 免費方案
+   條款：Microsoft 產品條款（Microsoft Product Terms） https://www.microsoft.com/licensing/terms/
+   摘要：Microsoft Q&A 引用的產品條款寫明，預建神經語音的產出使用權（含商業用途）適用於付費方案客戶；免費方案供評估測試。
+
+是否沿用免費方案由專案維護者評估後決定（2026-10-02），詳見 docs/plans/voice-clips.md 第 8 節與 docs/decisions.md「預錄語音」一節。
+改用付費方案時，只需更新 scripts/voice/generate.mjs 的 VOICES 並重新產生。

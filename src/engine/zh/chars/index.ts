@@ -148,21 +148,23 @@ const buildZhuyinWrite: Builder = (rng, level) => {
   const sym = rng.pick(ZHUYIN_SYMBOLS);
   const common = { ...base(ZH_CHARS_IDS.zhuyinWrite, level, INDICATORS.zhuyinWrite), type: 'write' as const, target: sym, script: 'zhuyin' as const };
   const exs = ALL_CHARS.filter((c) => baseOf(info(c).reading).includes(sym));
+  // 朗讀先唸出符號本身（預錄的注音音檔；裝置語音唸不準單獨的注音，會略過這一句），再唸指示
+  const say = (text: string) => `${sym}。${text}`;
   if (level === 3) {
     // 默寫：沒有淡字形可描；題幹可帶一個例字當線索
     if (exs.length && rng.chance(0.7)) {
       const ex = rng.pick(exs);
-      return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L3:${ex}`, prompt: `「${ex}」讀作 ${info(ex).reading}，默寫其中的「${sym}」。`, speak: `${ex}，默寫這個字裡面的注音符號。` };
+      return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L3:${ex}`, prompt: `「${ex}」讀作 ${info(ex).reading}，默寫其中的「${sym}」。`, speak: say(`${ex}，默寫這個字裡面的注音符號。`) };
     }
-    return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L3`, prompt: `默寫注音符號「${sym}」。`, speak: '默寫這個注音符號。' };
+    return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L3`, prompt: `默寫注音符號「${sym}」。`, speak: say('默寫這個注音符號。') };
   }
   const v = exs.length ? rng.int(0, 2) : rng.int(0, 1);
   if (v === 2) {
     const ex = rng.pick(exs);
-    return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L${level}:${ex}`, prompt: `「${ex}」讀作 ${info(ex).reading}，把裡面的「${sym}」描一描。`, speak: `${ex}，把這個字裡面的注音符號描一描。` };
+    return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L${level}:${ex}`, prompt: `「${ex}」讀作 ${info(ex).reading}，把裡面的「${sym}」描一描。`, speak: say(`${ex}，把這個字裡面的注音符號描一描。`) };
   }
-  if (v === 1) return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L${level}:s`, prompt: `描一描「${sym}」，一筆一畫慢慢寫。`, speak: '描一描這個注音符號，一筆一畫慢慢寫。' };
-  return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L${level}`, prompt: `照著筆順，描寫注音符號「${sym}」。`, speak: '照著筆順，描寫這個注音符號。' };
+  if (v === 1) return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L${level}:s`, prompt: `描一描「${sym}」，一筆一畫慢慢寫。`, speak: say('描一描這個注音符號，一筆一畫慢慢寫。') };
+  return { ...common, id: `${ZH_CHARS_IDS.zhuyinWrite}:${sym}:L${level}`, prompt: `照著筆順，描寫注音符號「${sym}」。`, speak: say('照著筆順，描寫這個注音符號。') };
 };
 
 // ───────────────────────── 3. 認字讀音 ─────────────────────────

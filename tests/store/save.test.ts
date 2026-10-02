@@ -175,6 +175,22 @@ describe('存檔：載入與相容', () => {
     const s = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, NOW);
     expect(loadSave(JSON.stringify(s))).toEqual(s);
   });
+
+  it('新存檔預設「優先使用預錄語音」；舊存檔沒有這個欄位時補成開啟，其他設定不變', () => {
+    expect(createEmptySave().settings.voiceClips).toBe(true);
+    const s = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, NOW);
+    const { voiceClips: _omit, ...oldSettings } = { ...s.settings, voiceRate: 1.2 };
+    const loaded = loadSave(JSON.stringify({ ...s, settings: oldSettings }));
+    expect(loaded.profiles).toHaveLength(1);
+    expect(loaded.settings.voiceClips).toBe(true);
+    expect(loaded.settings.voiceRate).toBe(1.2);
+  });
+
+  it('關掉預錄語音的設定可以存回來', () => {
+    const s = createEmptySave();
+    const off = { ...s, settings: { ...s.settings, voiceClips: false } };
+    expect(loadSave(JSON.stringify(off)).settings.voiceClips).toBe(false);
+  });
 });
 
 describe('存檔：版本遷移與最近做過的題', () => {

@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChoiceOption, ChoiceQuestion } from '../core/types';
 import { ClockFace, MoneyPiece, ShapeIcon, handAngles } from './visuals';
 import { speak } from '../audio/speech';
+import { optionSpeech } from './spoken';
 import { sfx } from '../audio/sfx';
 import { KidText } from '../ui/KidText';
 
@@ -43,7 +44,10 @@ export function ChoiceInput({
   /** 小籤樣式（射擊模式的替代操作） */
   compact?: boolean;
 }) {
-  const say = (o: ChoiceOption) => speak(o.speak ?? o.text ?? '', o.speakLang ?? q.speakLang ?? 'zh-TW');
+  const say = (o: ChoiceOption) => {
+    const s = optionSpeech(q, o);
+    speak(s.text, s.lang);
+  };
   const three = q.options.length === 3;
   return (
     <div className={`choices ${three ? 'three' : ''} ${compact ? 'chips' : ''}`} role="group" aria-label="選項">

@@ -6,6 +6,7 @@ import { useUi } from '../../store/useUi';
 import { useGame } from '../../store/useGame';
 import { unlockAudio, sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
+import { WELCOME_LINE } from '../lines';
 
 export function TitleScreen() {
   const goto = useUi((s) => s.goto);
@@ -13,7 +14,7 @@ export function TitleScreen() {
   const start = () => {
     unlockAudio();
     sfx.fanfare();
-    speak('歡迎來到知識島大冒險！');
+    speak(WELCOME_LINE);
     goto('profiles');
   };
   return (

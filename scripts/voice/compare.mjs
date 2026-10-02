@@ -13,10 +13,9 @@
  *
  * 教育部注音發音檔要先下載解壓到 data-src/raw/moe-juyin/materials/（見 docs/plans/voice-clips.md 第 7 節）。
  */
-import { createHash } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { azureTts as azure, esc, finish, fishTts as fish, hash, seconds } from './lib.mjs';
 
 const OUT = path.resolve('data-src/raw/voice-compare');
 /** 引擎回傳的原始音檔 */
@@ -36,81 +35,9 @@ const env = {
 mkdirSync(RAW, { recursive: true });
 mkdirSync(CLIPS, { recursive: true });
 
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const hash = (s) => createHash('sha1').update(s).digest('hex').slice(0, 12);
-/** XML／HTML 跳脫 */
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-/** Azure 神經語音（REST）：回傳 mp3 bytes；speed 0.9 換成 prosody rate -10% */
-async function azureTts(voice, lang, inner, speed) {
-  const xmlLang = lang === 'zh' ? 'zh-TW' : 'en-US';
-  const rate = `${Math.round((speed - 1) * 100)}%`;
-  const ssml = `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${xmlLang}"><voice name="${voice}"><prosody rate="${rate}">${inner}</prosody></voice></speak>`;
-  const res = await fetch(`https://${env.azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1`, {
-    method: 'POST',
-    headers: {
-      'Ocp-Apim-Subscription-Key': env.azureKey,
-      'Content-Type': 'application/ssml+xml',
-      'X-Microsoft-OutputFormat': 'audio-24khz-48kbitrate-mono-mp3',
-      'User-Agent': 'learning-island-voice-compare',
-    },
-    body: ssml,
-  });
-  if (!res.ok) throw new Error(`Azure HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-  return Buffer.from(await res.arrayBuffer());
-}
-
-/** Fish Audio（公開聲音用 reference_id）：回傳 mp3 bytes；429 時依序等 2、5、10 秒重試 */
-async function fishTts(referenceId, text, speed) {
-  for (const wait of [0, 2000, 5000, 10000]) {
-    if (wait) await sleep(wait);
-    const res = await fetch('https://api.fish.audio/v1/tts', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${env.fish}`, 'Content-Type': 'application/json', model: 's2.1-pro-free' },
-      body: JSON.stringify({ text, reference_id: referenceId, format: 'mp3', normalize: true, prosody: { speed } }),
-    });
-    if (res.status === 429) continue;
-    if (!res.ok) throw new Error(`Fish HTTP ${res.status} ${(await res.text()).slice(0, 200)}`);
-    return Buffer.from(await res.arrayBuffer());
-  }
-  throw new Error('Fish 一直回 429（請求太頻繁），稍後再跑一次');
-}
-
-/** 執行 ffmpeg，失敗時丟出 stderr 尾段 */
-function ffmpeg(args) {
-  const r = spawnSync('ffmpeg', ['-hide_banner', '-y', ...args], { encoding: 'utf8' });
-  if (r.status !== 0) throw new Error(`ffmpeg 失敗：${r.stderr.slice(-400)}`);
-  return r.stderr;
-}
-
-/** 去頭尾靜音的濾鏡（−50 dB 以下視為靜音） */
-const TRIM = 'silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.02,areverse,silenceremove=start_periods=1:start_threshold=-50dB:start_silence=0.02,areverse';
-
-/**
- * 量測前在尾端補靜音到 1.5 秒：loudnorm 以 0.4 秒為一個區塊量響度，去靜音後只剩 0.3 秒的短音（例如單一個注音）
- * 會量成 -inf 而失敗。補的是靜音，不會被算進響度；處理完再用 TRIM 去掉。
- */
-const PAD = 'apad=whole_dur=1.5';
-
-/**
- * 整理音檔：轉單聲道、去頭尾靜音，先量整段響度，再直接調整音量到 −16 LUFS，最後用限幅器壓住超過 −1.5 dBFS 的峰值，輸出 24 kHz mp3。
- * 不用 loudnorm 的 linear 模式：句子的響度範圍太大或調整後峰值超標時，它會自動改成動態模式，短句因此偏小聲（實測 −19～−22 LUFS）。
- */
-function finish(input, output) {
-  const pre = `aformat=channel_layouts=mono,${TRIM},${PAD}`;
-  const measure = ffmpeg(['-i', input, '-af', `${pre},loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json`, '-f', 'null', '-']);
-  const m = JSON.parse(measure.slice(measure.lastIndexOf('{'), measure.lastIndexOf('}') + 1));
-  const loudness = Number(m.input_i);
-  if (!Number.isFinite(loudness)) throw new Error('音檔幾乎沒有聲音（量不到響度）');
-  const gain = (-16 - loudness).toFixed(2);
-  ffmpeg(['-i', input, '-af', `${pre},volume=${gain}dB,alimiter=limit=0.84:level=false,${TRIM}`, '-ar', '24000', '-ac', '1', '-c:a', 'libmp3lame', '-b:a', '48k', output]);
-}
-
-/** 音檔長度（秒） */
-function seconds(file) {
-  const r = spawnSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', file], { encoding: 'utf8' });
-  return Number(r.stdout.trim()) || 0;
-}
+/** 試聽用的合成函式（共用 lib.mjs，金鑰從環境變數帶入；Fish 用免費模型） */
+const azureTts = (voice, lang, inner, speed) => azure({ key: env.azureKey, region: env.azureRegion }, voice, lang === 'zh' ? 'zh-TW' : 'en-US', inner, speed);
+const fishTts = (referenceId, text, speed) => fish(env.fish, 's2.1-pro-free', referenceId, text, speed);
 
 /** 產生一個試聽音檔；回傳試聽頁需要的資料（檔名或錯誤、略過原因） */
 async function makeClip(line, voice) {

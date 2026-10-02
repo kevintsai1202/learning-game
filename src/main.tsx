@@ -9,6 +9,7 @@ import { useGame } from './store/useGame';
 import { player, teleport } from './world/input';
 import { quizDebug } from './quiz/debug';
 import { usePacks } from './store/usePacks';
+import { speechDebug } from './audio/speech';
 import './styles/global.css';
 
 declare global {
@@ -20,11 +21,13 @@ declare global {
       teleport: typeof teleport;
       quiz: typeof quizDebug;
       packs: typeof usePacks;
+      /** 最近的朗讀紀錄（預錄語音或裝置語音） */
+      speech: typeof speechDebug;
     };
   }
 }
 
-window.__game = { ui: useUi, game: useGame, player, teleport, quiz: quizDebug, packs: usePacks };
+window.__game = { ui: useUi, game: useGame, player, teleport, quiz: quizDebug, packs: usePacks, speech: speechDebug };
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

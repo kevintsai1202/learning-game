@@ -1,6 +1,6 @@
 # 預錄語音檔規劃（朗讀改善第 2 步）
 
-狀態：規劃中；試聽比較進行中（2026-10-01）。第 1 步「挑選自然語音」已完成，見 `docs/decisions.md` 的「朗讀聲音」一節。
+狀態：A 期已實作（2026-10-02），見第 9 節；B 期（國語）待決定。第 1 步「挑選自然語音」已完成，見 `docs/decisions.md` 的「朗讀聲音」一節。
 
 ## 1. 目標與理由
 
@@ -155,6 +155,41 @@ A 期要用的聲音總結：
 
 免費額度：Fish 免費模型不計費（免費帳戶並行 5 個請求）；Azure F0 每月 50 萬字、每 60 秒最多 20 次請求，37 個注音遠低於限制。
 
+授權查證（2026-10-02，產生前查的）與決定：
+
+- Fish Audio 服務條款（2024-08-18 版）：「You will only use the Services for your own internal, personal, non-commercial use, and not on behalf of or for the benefit of any third party」；付費使用者才「licensed to use the Services for commercial uses」。官方部落格（2026-06-23）說 `s2.1-pro-free` 是「built for experimentation and prototyping」，並寫「Some commercial scenarios may have restrictions. Products generating more than $1M ARR should contact us」。
+- Microsoft：多篇 Microsoft Q&A 引用產品條款「For Customers of the paid tier TTS Service only, Customer may use the audio output of prebuilt neural voices」，免費方案只供評估測試（產品條款頁是動態網頁，沒能直接讀到原文）。
+- 改用付費的成本：Fish `s2.1-pro` 每百萬 UTF-8 位元組 15 美元（官方說和免費版是同一個模型），A 期估計 1～2 美元；Azure 資源從 F0 改 S0，37 個注音不到 0.01 美元。
+- **使用者決定照免費方案做（2026-10-02）**，條款風險由使用者評估承擔。資料來源頁與 `public/audio/voice/CREDITS.md` 註明是 AI 合成語音與採用的方案。
+
 待決定：
 
 1. B 期（國語）：A 期上線、在 iPad 上聽過之後再決定。
+2. 之後是否改成付費方案（重跑 `generate.mjs` 即可，模型名稱改在腳本的 VOICES）。
+
+## 9. A 期實作紀錄（2026-10-02）
+
+- 盤點：`scripts/voice/collect.test.ts`（`npx vitest run --config vitest.voice.config.ts`）→ `data-src/voice/inventory.json`，共 3,491 句：中文 1,870、英文 1,584、注音 37，約 3.6 萬字。每個活動一直換種子出題，直到連續 40 個種子沒有新句子（英語單字圖卡要到第 713 個種子才收斂，固定跑幾十個種子會漏句）。
+- 注音描寫題的指示句：只收出現在至少 10 個不同符號題目的句子（3 個固定句型）。含例字的句子（例如「介，默寫這個字裡面的注音符號。」）最多只出現在例字含有的幾個符號，門檻設 3 會誤收 205 句。
+- 產生：`scripts/voice/generate.mjs`（共用 `scripts/voice/lib.mjs`）→ `public/audio/voice/<雜湊>.mp3` 與 `manifest.json`。`--limit N` 或 `--match <正規式>` 只做一部分（驗證用，不刪舊檔）。
+- 抽查：`scripts/voice/check.mjs`，介面句子全部加題目抽 15%，Groq Whisper 聽寫，相似度低於 0.85 的列在 `data-src/raw/voice-check/index.html` 試聽。
+- 執行端：`src/audio/clips.ts`（查詢規則，純函式、有單元測試）、`src/audio/clipPlayer.ts`（Web Audio 播放與快取）、`src/audio/speech.ts` 的 `say()`（整段一致規則、退回裝置語音）；e2e 在 `e2e/voice-clips.spec.ts`。
+- 盤點時發現的既有問題（未修改）：英語題沒有指定朗讀語言時預設 en-US，所以 1,054 句中文題目（例如「「一」用英文怎麼說？」）用裝置語音時會被英文聲音唸。預錄語音已依內容用中文語速產生，不受影響；裝置語音的部分待使用者決定是否修正。
+
+## 10. 暫停檢查點（2026-10-02，使用者要關機）
+
+已完成（都還沒 commit）：
+
+- 執行端：`src/quiz/spoken.ts`、`src/ui/lines.ts`、`src/audio/clips.ts`、`src/audio/clipPlayer.ts`、`speech.ts` 接上預錄語音、設定「優先使用預錄語音」、注音描寫題先唸符號；單元測試 685 個（筆順檔那 1 個在高負載時偶爾逾時，單獨跑會過）。
+- 盤點與產生：3,377 句、40 MB、總長約 6,422 秒，0 失敗；長度檢查 0 異常（`scripts/voice/check-durations.mjs`）。
+- 修正：數字鍵帽 U+20E3 造成亂唸（`cleanForSpeech` 轉成數字）、破折號改頓號、公布答案只唸文字、「第 N」改國字（Whisper 抽查發現「第 2 課」被唸成「第兩課」）、電話號碼逐字唸。
+- e2e：`voice-clips.spec` 5 個、`voice.spec` 4 個、回歸 15 個都通過（是在上述修正與重產之前跑的）。
+
+2026-10-02 恢復後已完成：步驟 1（Whisper 抽查 701 句、100 句低於 0.85，已確認沒有「第兩」；快取改成以音檔檔名為鍵）、步驟 2（建置與 e2e 24 個通過）。剩步驟 3、4。
+
+接續步驟：
+
+1. `node --env-file-if-exists=.env scripts/voice/check.mjs 2>&1 | Tee-Object -FilePath logs\voice-check.log`：重跑 Whisper 抽查（已聽寫過的句子有快取，只會送出改過的句子），整理試聽清單給使用者。
+2. `npm run build` 後重跑 `e2e/voice-clips.spec.ts`、`e2e/voice.spec.ts` 與回歸組（smoke、english、life、chinese、mobile、shooter、curriculum、recycle、writing）。
+3. 回報前呼叫 advisor；回報後詢問是否 commit 與推上 GitHub。
+4. 待使用者決定：英語題的中文題目用裝置語音時被英文聲音唸（既有問題）、筆順檔測試的逾時是否調高、之後是否改付費方案。

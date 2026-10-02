@@ -8,7 +8,7 @@ import { correctResponse } from '../engine/check';
 import { answer, nextQuestion, startQuiz, summarize, type QuizState } from './session';
 import { ChoiceInput, ClockInput, MoneyInput, NumberInput, OrderInput } from './inputs';
 import { MoneyRow, VisualView } from './visuals';
-import { repeatSpeech, speak } from '../audio/speech';
+import { prefetchSpeech, repeatSpeech, speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
 import { useUi } from '../store/useUi';
 import type { ActivityDef } from '../activities/types';
@@ -18,12 +18,11 @@ import { useStageQuiz } from './stageBus';
 import { KidText } from '../ui/KidText';
 import { hitPoints } from './arcade';
 import { needsPlainText } from './annotation';
+import { answerLine, answerText, optionSpeech, questionSpeech } from './spoken';
+import { PRAISE, RETRY_LINE } from '../ui/lines';
 
 /** 描寫元件（含 Hanzi Writer）較大，用到時才載入 */
 const WriteInput = lazy(() => import('../writing/WriteInput'));
-
-/** 答對時隨機的稱讚 */
-const PRAISE = ['答對了！', '好棒！', '太厲害了！', '你真聰明！', '完全正確！', '讚喔！'];
 
 type Action = { type: 'answer'; r: Response } | { type: 'next' } | { type: 'reset'; questions: Question[] };
 
@@ -35,27 +34,6 @@ function reducer(s: QuizState, a: Action): QuizState {
       return nextQuestion(s);
     case 'reset':
       return startQuiz(a.questions);
-  }
-}
-
-/** 把標準答案轉成文字（公布答案時顯示） */
-function answerText(q: Question): string {
-  const r = correctResponse(q);
-  switch (r.type) {
-    case 'choice': {
-      const o = q.type === 'choice' ? q.options[r.index] : undefined;
-      return [o?.emoji, o?.text].filter(Boolean).join(' ');
-    }
-    case 'number':
-      return `${r.value}${q.type === 'number' && q.unit ? ` ${q.unit}` : ''}`;
-    case 'order':
-      return r.tokens.join(q.subject === 'en' ? ' ' : '');
-    case 'clock':
-      return r.minute === 0 ? `${r.hour} 點` : `${r.hour} 點 ${r.minute} 分`;
-    case 'money':
-      return `${r.items.join(' + ')} 元`;
-    case 'write':
-      return q.type === 'write' ? q.target : '';
   }
 }
 
@@ -86,7 +64,10 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
     if (s.phase === 'answering') quizDebug.strokes = null;
     if (!q || s.phase !== 'answering') return;
     wrongPicks.current = {};
-    speak(q.speak ?? q.prompt, q.speakLang ?? (q.subject === 'en' ? 'en-US' : 'zh-TW'));
+    const spoken = questionSpeech(q);
+    speak(spoken.text, spoken.lang);
+    // 先載入選項與公布答案的預錄音檔，孩子點 🔊 時才不會延遲
+    prefetchSpeech([...(q.type === 'choice' ? q.options.map((o) => optionSpeech(q, o)) : []), answerLine(q)]);
   }, [q, s.index, s.phase]);
 
   // 讓 3D 舞台可以直接作答（例如點垃圾桶）；離開答題畫面時清掉
@@ -121,13 +102,14 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
     if (s.phase === 'retry') {
       sfx.oops();
       setMood('oops');
-      speak('再想想看！');
+      speak(RETRY_LINE);
     }
     if (s.phase === 'reveal') {
       setScore((sc) => ({ ...sc, combo: 0 }));
       sfx.oops();
       setMood('oops');
-      speak(`正確答案是：${answerText(q)}`);
+      const a = answerLine(q);
+      speak(a.text, a.lang);
     }
     if (s.phase === 'done') {
       const seconds = (performance.now() - startedAt.current) / 1000;

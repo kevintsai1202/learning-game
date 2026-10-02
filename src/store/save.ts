@@ -110,8 +110,10 @@ export interface Settings {
   zhuyin: boolean;
   /** 語音朗讀 */
   voice: boolean;
-  /** 朗讀速度（0.5～1.5） */
+  /** 朗讀速度（0.5～1.5）；只影響裝置語音，預錄語音的速度固定 */
   voiceRate: number;
+  /** 優先使用預錄語音（有音檔的句子播音檔，其他用裝置語音） */
+  voiceClips: boolean;
   /** 音效 */
   sfx: boolean;
   /** 背景音樂 */
@@ -135,6 +137,7 @@ export const DEFAULT_SETTINGS: Settings = {
   zhuyin: true,
   voice: true,
   voiceRate: 0.9,
+  voiceClips: true,
   sfx: true,
   music: true,
   dailyLimitMin: 30,
@@ -345,6 +348,8 @@ const saveSchema = z.object({
     zhuyin: z.boolean(),
     voice: z.boolean(),
     voiceRate: z.number().min(0.5).max(1.5),
+    // 2026-10 新增：舊存檔沒有這個欄位時補成開啟，不必升級存檔版本
+    voiceClips: z.boolean().default(true),
     sfx: z.boolean(),
     music: z.boolean(),
     dailyLimitMin: int.min(0).max(240),

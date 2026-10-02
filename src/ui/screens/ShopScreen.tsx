@@ -7,6 +7,7 @@ import { HATS } from '../../world/Hats';
 import { ANIMALS, COLORS } from './ProfilesScreen';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
+import { boughtLine } from '../lines';
 import { teleport } from '../../world/input';
 import { doorOf, zoneById } from '../../world/layout';
 
@@ -71,7 +72,7 @@ export function ShopScreen() {
                       onClick={() => {
                         if (purchase(h.id, h.price)) {
                           sfx.coin();
-                          speak(`買到${h.name}了！`);
+                          speak(boughtLine(h.name));
                           updateAvatar({ ...useGame.getState().profile()!.avatar, hat: h.id });
                         }
                       }}

@@ -43,6 +43,7 @@ npx playwright test 2>&1 | Tee-Object -FilePath logs\e2e.log
 ```powershell
 python scripts/build-hanzi-data.py   # 國字筆順資料（台灣筆順驗證），輸出到 public/data/strokes/hanzi/
 # 國語三版本生字重抓：見 scripts/editions-zh/README.md
+# 預錄語音（AI 合成）：盤點 → 產生 → 抽查，見 docs/plans/voice-clips.md 與 CLAUDE.md 的指令
 ```
 
 ### 注音字型

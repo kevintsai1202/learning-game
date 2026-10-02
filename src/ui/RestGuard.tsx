@@ -6,6 +6,7 @@ import { useGame } from '../store/useGame';
 import { useUi } from '../store/useUi';
 import { secondsPlayedOn } from '../store/save';
 import { speak } from '../audio/speech';
+import { REST_LINE } from './lines';
 
 const TICK_SECONDS = 30;
 
@@ -31,7 +32,7 @@ export function RestGuard() {
 
   const over = !!profile && limitMin > 0 && !unlocked && screen !== 'parent' && secondsPlayedOn(profile, new Date()) >= limitMin * 60;
   useEffect(() => {
-    if (over) speak('今天玩很久囉！讓眼睛休息一下，看看遠方吧。');
+    if (over) speak(REST_LINE);
   }, [over]);
   if (!over) return null;
   return (

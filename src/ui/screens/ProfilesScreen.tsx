@@ -7,6 +7,7 @@ import { useUi } from '../../store/useUi';
 import type { Animal, AvatarConfig } from '../../store/save';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
+import { enterIslandLine } from '../lines';
 import { teleport } from '../../world/input';
 import { SPAWN } from '../../world/layout';
 
@@ -35,7 +36,7 @@ export function ProfilesScreen() {
   /** 進入島嶼（角色回到出生點） */
   const enterIsland = (who: string) => {
     teleport(SPAWN);
-    speak(`${who}，出發囉！點地面就可以走過去。`);
+    speak(enterIslandLine(who));
     goto('island');
   };
 

@@ -12,7 +12,7 @@ import kanghsuan from '../../src/content/editions/zh/kanghsuan.json';
 import nani from '../../src/content/editions/zh/nani.json';
 import hanlin from '../../src/content/editions/zh/hanlin.json';
 import { checkAnswer, correctResponse } from '../../src/engine/check';
-import { ZH_CHARS_IDS, unitQuestions } from '../../src/engine/zh/chars';
+import { ZH_CHARS_IDS, makeZhuyinWrite, unitQuestions } from '../../src/engine/zh/chars';
 import { charUnitGenerator } from '../../src/engine/zh/charsBridge';
 import { ZHUYIN_STROKES } from '../../src/writing/zhuyinStrokes';
 
@@ -338,6 +338,19 @@ describe('國語生字：課本單元出題器', { timeout: 120_000 }, () => {
       const ids = new Set<string>();
       for (const seed of THREE_SEEDS) unitQuestions({ chars: u.chars, words: u.words, unitId: '1' }, { seed, count: 8, level: 1 }).forEach((q) => ids.add(q.id));
       expect(ids.size, u.label).toBeGreaterThanOrEqual(18);
+    }
+  });
+});
+
+describe('國語生字：注音符號描寫先唸出符號', () => {
+  it('每一題的朗讀都以「符號。」開頭（預錄的注音音檔會唸出符號，裝置語音則略過這一句）', () => {
+    for (const level of [1, 2, 3] as const) {
+      for (const seed of [1, 2, 3, 4, 5]) {
+        for (const q of makeZhuyinWrite({ seed, count: 5, level })) {
+          if (q.type !== 'write') throw new Error('注音描寫應為描寫題');
+          expect(q.speak, q.id).toMatch(new RegExp(`^${q.target}。`));
+        }
+      }
     }
   });
 });

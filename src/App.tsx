@@ -38,7 +38,7 @@ export function App() {
 
   // 套用設定：語音、音效、注音字型
   useEffect(() => {
-    configureSpeech({ enabled: settings.voice, rate: settings.voiceRate });
+    configureSpeech({ enabled: settings.voice, rate: settings.voiceRate, clips: settings.voiceClips });
     setSfxEnabled(settings.sfx);
     setMusicEnabled(settings.music);
     document.body.classList.toggle('no-zhuyin', !settings.zhuyin);

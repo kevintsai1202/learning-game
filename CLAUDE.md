@@ -16,6 +16,10 @@ npm test             # 單元測試
 npm run build        # 型別檢查 + 建置到 dist/
 npx playwright test  # e2e（需先 build）
 .\.venv\Scripts\python scripts\build-font.py   # 內容新增字之後重產注音字型子集
+# 預錄語音（改了題目文字或 src/ui/lines.ts 之後；金鑰在 .env）
+npx vitest run --config vitest.voice.config.ts                                  # 盤點要預錄的句子 → data-src/voice/inventory.json
+node --env-file-if-exists=.env scripts/voice/generate.mjs 2>&1 | Tee-Object -FilePath logs\voice-generate.log   # 產生 public/audio/voice/
+node --env-file-if-exists=.env scripts/voice/check.mjs 2>&1 | Tee-Object -FilePath logs\voice-check.log         # Whisper 聽寫抽查
 ```
 
 長時指令的輸出 tee 到 `logs/`（不進版控）。
@@ -36,5 +40,6 @@ npx playwright test  # e2e（需先 build）
 - 內容一律原創或使用已確認授權的開放資料；新增外部資料要登記 `src/content/sources.ts` 並放授權檔。
 - 國字筆順只用台灣教育部標準的資料；缺字不得用中國大陸筆順資料替代。
 - 文字一律放 DOM，不要用 three 的文字渲染（注音字型需要 IVS）。
+- 要朗讀的固定句子放 `src/ui/lines.ts`，題目的朗讀文字一律經過 `src/quiz/spoken.ts`；預錄語音的盤點腳本靠這兩處收集句子。
 - 每題要有 `indicators`（108 課綱代碼）與 `source`。
 - e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz）讀狀態與自動作答。
