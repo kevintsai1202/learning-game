@@ -65,6 +65,7 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     );
     const kids: KidSummary[] = rows.map((a) => ({
       id: a.id,
+      profileId: a.profile.id,
       name: a.profile.name,
       avatar: a.profile.avatar,
       room: a.room_code ? { code: a.room_code, name: a.room_name ?? '' } : null,

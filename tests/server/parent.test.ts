@@ -61,15 +61,16 @@ describe('上傳與列出', () => {
     expect((await call('POST', '/api/parent/kids', { profile: { id: 'p1', coins: -5 } }, mom.token)).status).toBe(400);
   });
 
-  it('列出名下的孩子：名字、外觀、班級、金幣、星星、最後上線', async () => {
+  it('列出名下的孩子：名字、外觀、班級、金幣、星星、最後上線，以及角色 id（裝置用來認出本機的同一個角色）', async () => {
     const { call } = makeClient(db);
     const mom = await parentOf(call);
-    await call('POST', '/api/parent/kids', { profile: { ...localKid('哥哥', 10), bestStars: { a: 3, b: 1 } } }, mom.token);
+    const big = { ...localKid('哥哥', 10), bestStars: { a: 3, b: 1 } };
+    await call('POST', '/api/parent/kids', { profile: big }, mom.token);
     await call('POST', '/api/parent/kids', { profile: localKid('妹妹', 5) }, mom.token);
     const r = await call('GET', '/api/parent/kids', undefined, mom.token);
     expect(r.status).toBe(200);
     expect(r.body.kids).toEqual([
-      expect.objectContaining({ id: expect.any(String), name: '哥哥', avatar: expect.objectContaining(AVATAR), room: null, coins: 10, stars: 4, lastSeen: expect.any(String) }),
+      expect.objectContaining({ id: expect.any(String), profileId: big.id, name: '哥哥', avatar: expect.objectContaining(AVATAR), room: null, coins: 10, stars: 4, lastSeen: expect.any(String) }),
       expect.objectContaining({ name: '妹妹', coins: 5, stars: 0 }),
     ]);
   });

@@ -86,20 +86,30 @@ export async function uploadToCloud(deps: CloudDeps, server: string, userToken: 
   return profile;
 }
 
+/** 這台裝置已經有同一個角色、但不是這個雲端角色（例如以前用備份匯入的）：要家長確認才用雲端的進度取代 */
+export class LocalConflictError extends Error {
+  constructor(readonly localName: string) {
+    super(`這台裝置上已經有「${localName}」，而且不是這個雲端角色（可能是之前用備份匯入的）。換成雲端的進度會蓋掉這台裝置上的進度，要換的話請按「用雲端的進度取代」。`);
+  }
+}
+
 /**
  * 家長在這台裝置登入後選孩子「在這台裝置玩」：拿一張這個角色的權杖，本機存檔＝伺服器版本＋這台裝置還沒送出的進度
  * （和代碼登入同一條路）。kidId 是伺服器上的帳號 id。
  */
-export async function playOnThisDevice(deps: CloudDeps, server: string, userToken: string, kidId: string): Promise<Profile> {
+export async function playOnThisDevice(deps: CloudDeps, server: string, userToken: string, kidId: string, opts: { replaceLocal?: boolean } = {}): Promise<Profile> {
   const res = await deps.call<SessionResponse>('POST', `/api/parent/kids/${encodeURIComponent(kidId)}/device`, { base: server, token: userToken, body: {} });
   const cloud = cloudOf(server, res);
   // 這台裝置已經有同一個角色（同一個角色 id）、但不是這個雲端角色（例如之前用備份匯入的本機角色）：
-  // 換成雲端版會默默蓋掉這台裝置上的進度，先擋下來，讓家長自己決定（同一個雲端角色只是權杖不見了，照常拿新權杖）
+  // 換成雲端版會蓋掉這台裝置上的進度，家長確認（replaceLocal）才取代（同一個雲端角色只是權杖不見了，照常拿新權杖）
   const existing = deps.getProfile(res.profile.id);
   if (existing && existing.cloud?.accountId !== cloud.accountId) {
-    throw new Error(
-      `這台裝置上已經有「${existing.name}」，而且不是這個雲端角色（可能是之前用備份匯入的）。為了不蓋掉這台裝置上的進度，請先在家長專區下載備份、刪掉這台裝置上的「${existing.name}」，再按一次「在這台裝置玩」。`,
-    );
+    if (!opts.replaceLocal) throw new LocalConflictError(existing.name);
+    // 被取代的是另一個雲端帳號：它在這台裝置的權杖與待送佇列也清掉（伺服器上的那個帳號不受影響）
+    if (existing.cloud) {
+      deps.setToken(existing.cloud.accountId, null);
+      deps.saveOutbox(existing.cloud.accountId, emptyOutbox());
+    }
   }
   deps.setToken(cloud.accountId, res.token);
   const profile = rebase(res.profile, deps.loadOutbox(cloud.accountId), cloud, deps.now());

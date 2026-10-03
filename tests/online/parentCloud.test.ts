@@ -7,7 +7,7 @@ import { createApp } from '../../server/app';
 import type { Db } from '../../server/db';
 import { openTestDb, resetDb } from '../server/helpers';
 import { api, type ApiOptions } from '../../src/online/api';
-import { attachToClass, playOnThisDevice, syncProfile, uploadToCloud, type CloudDeps } from '../../src/online/cloudSync';
+import { attachToClass, LocalConflictError, playOnThisDevice, syncProfile, uploadToCloud, type CloudDeps } from '../../src/online/cloudSync';
 import { applyOp, type Op } from '../../src/online/ops';
 import { emptyOutbox, enqueue, type Outbox } from '../../src/online/sync';
 import { addProfile, createEmptySave, parseProfile, type Profile } from '../../src/store/save';
@@ -118,10 +118,44 @@ describe('家長的雲端角色（前端）', () => {
     // 另一台裝置之前匯入了同一份備份（同一個角色 id、沒有雲端標記），之後自己又玩出進度
     const tablet = device(app);
     tablet.profiles.set(local.id, { ...local, coins: 50 });
-    await expect(playOnThisDevice(tablet.deps, SERVER, mom, up.cloud!.accountId)).rejects.toThrow('下載備份');
+    await expect(playOnThisDevice(tablet.deps, SERVER, mom, up.cloud!.accountId)).rejects.toBeInstanceOf(LocalConflictError);
     expect(tablet.profiles.get(local.id)).toMatchObject({ coins: 50 });
     expect(tablet.profiles.get(local.id)!.cloud).toBeUndefined();
     expect(tablet.tokens.size).toBe(0);
+  });
+
+  it('在這台裝置玩，家長確認取代（replaceLocal）：這台裝置上的同一個角色換成雲端的進度', async () => {
+    const app = createApp({ db });
+    const mom = await register(app, { parent: true, teacher: false });
+    const home = device(app);
+    const local = localKid('安安', 33);
+    home.profiles.set(local.id, local);
+    const up = await uploadToCloud(home.deps, SERVER, mom, local.id);
+    const tablet = device(app);
+    tablet.profiles.set(local.id, { ...local, coins: 50 });
+    const p = await playOnThisDevice(tablet.deps, SERVER, mom, up.cloud!.accountId, { replaceLocal: true });
+    expect(p).toMatchObject({ id: local.id, coins: 33, cloud: { accountId: up.cloud!.accountId } });
+    expect(tablet.profiles.get(local.id)).toEqual(p);
+    expect(tablet.tokens.get(up.cloud!.accountId)).toBeTruthy();
+    expect((await syncProfile(tablet.deps, p.id)).status).toBe('synced');
+  });
+
+  it('確認取代時，這台裝置上的同一個角色是另一個雲端帳號：那個帳號在這台的權杖與待送佇列一併清掉', async () => {
+    const app = createApp({ db });
+    const mom = await register(app, { parent: true, teacher: false });
+    const home = device(app);
+    const local = localKid('安安', 33);
+    home.profiles.set(local.id, local);
+    const up = await uploadToCloud(home.deps, SERVER, mom, local.id);
+    const tablet = device(app);
+    tablet.profiles.set(local.id, { ...local, cloud: { server: SERVER, accountId: 'a_other', room: '123456', roomName: '舊班級' } });
+    tablet.tokens.set('a_other', 'old-token');
+    tablet.deps.saveOutbox('a_other', enqueue(emptyOutbox(), playOp()));
+    await expect(playOnThisDevice(tablet.deps, SERVER, mom, up.cloud!.accountId)).rejects.toBeInstanceOf(LocalConflictError);
+    await playOnThisDevice(tablet.deps, SERVER, mom, up.cloud!.accountId, { replaceLocal: true });
+    expect(tablet.profiles.get(local.id)!.cloud!.accountId).toBe(up.cloud!.accountId);
+    expect(tablet.tokens.has('a_other')).toBe(false);
+    expect(tablet.deps.loadOutbox('a_other').pending).toHaveLength(0);
   });
 
   it('權杖不見了（過期、被撤銷）：同一台裝置再按「在這台裝置玩」拿到新權杖，這台還沒送出的進度照樣送出', async () => {

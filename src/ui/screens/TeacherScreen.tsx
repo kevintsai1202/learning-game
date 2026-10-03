@@ -313,6 +313,8 @@ function ParentHome() {
   const [note, setNote] = useState<string | null>(null);
   /** 等待第二次確認刪除的孩子 */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** 等待確認「用雲端的進度取代這台裝置上的同一個角色」的孩子 */
+  const [confirmReplace, setConfirmReplace] = useState<string | null>(null);
   /** 動作進行中：按鈕停用，避免連按兩下送出兩次（例如存到雲端變成兩個分身） */
   const [busy, setBusy] = useState(false);
 
@@ -351,7 +353,13 @@ function ParentHome() {
    * 算沒有，照樣顯示「在這台裝置玩」：拿新權杖，這台還沒送出的進度會疊回去。
    */
   const onThisDevice = (kidId: string) => profiles.some((p) => p.cloud?.accountId === kidId) && !!getToken(kidId);
+  /** 這台裝置上同一個角色（同一個角色 id）、但不是這個雲端角色的那份（例如以前用備份匯入的）：換成雲端版要先確認 */
+  const sameLocalOf = (k: KidSummary) => profiles.find((p) => p.id === k.profileId && p.cloud?.accountId !== k.id);
+  /** 雲端已經有這個角色（在別台裝置存的）：不能再存到雲端，要用雲端的進度就按名單上的「在這台裝置玩」 */
+  const inCloud = (profileId: string) => !!kids?.some((k) => k.profileId === profileId);
   const localOnly = profiles.filter((p) => !p.cloud);
+  /** 「在這台裝置玩」完成時的提示 */
+  const playedNote = (k: KidSummary) => `「${k.name}」已經在這台裝置上了，回到選角畫面就能玩`;
 
   return (
     <div className="panel-body plain" data-testid="parent-home">
@@ -370,11 +378,33 @@ function ParentHome() {
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                 {onThisDevice(k.id) ? (
                   <span data-testid={`kid-here-${k.name}`}>✅ 這台裝置上有</span>
+                ) : confirmReplace === k.id && sameLocalOf(k) ? (
+                  <>
+                    <span style={{ flexBasis: '100%' }} data-testid={`kid-replace-warning-${k.name}`}>
+                      這台裝置上已經有「{sameLocalOf(k)!.name}」（同一個角色，可能是以前用備份匯入的），進度和雲端的不一樣。換成雲端的進度後，這台裝置上的進度會不見；要留著的話，先到家長專區下載備份。
+                    </span>
+                    <button
+                      className="btn small red"
+                      disabled={busy}
+                      onClick={() =>
+                        void act(async () => {
+                          await useCloud.getState().playOnThisDevice(k.id, session.server, session.token, { replaceLocal: true });
+                          setConfirmReplace(null);
+                        }, playedNote(k))
+                      }
+                      data-testid={`kid-replace-confirm-${k.name}`}
+                    >
+                      用雲端的進度取代
+                    </button>
+                    <button className="btn small white" onClick={() => setConfirmReplace(null)}>
+                      取消
+                    </button>
+                  </>
                 ) : (
                   <button
                     className="btn small green"
                     disabled={busy}
-                    onClick={() => void act(() => useCloud.getState().playOnThisDevice(k.id, session.server, session.token), `「${k.name}」已經在這台裝置上了，回到選角畫面就能玩`)}
+                    onClick={() => (sameLocalOf(k) ? setConfirmReplace(k.id) : void act(() => useCloud.getState().playOnThisDevice(k.id, session.server, session.token), playedNote(k)))}
                     data-testid={`kid-device-${k.name}`}
                   >
                     在這台裝置玩
@@ -428,14 +458,18 @@ function ParentHome() {
             {localOnly.map((p) => (
               <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }} data-testid={`local-${p.name}`}>
                 <strong>{p.name}</strong>
-                <button
-                  className="btn small green"
-                  disabled={busy}
-                  onClick={() => void act(() => useCloud.getState().uploadToCloud(p.id, session.server, session.token), `「${p.name}」已經存到雲端`)}
-                  data-testid={`upload-${p.name}`}
-                >
-                  存到雲端
-                </button>
+                {inCloud(p.id) ? (
+                  <span data-testid={`local-in-cloud-${p.name}`}>雲端已經有這個角色（在別台裝置存的）：要用雲端的進度，按上面的「在這台裝置玩」。</span>
+                ) : (
+                  <button
+                    className="btn small green"
+                    disabled={busy}
+                    onClick={() => void act(() => useCloud.getState().uploadToCloud(p.id, session.server, session.token), `「${p.name}」已經存到雲端`)}
+                    data-testid={`upload-${p.name}`}
+                  >
+                    存到雲端
+                  </button>
+                )}
               </div>
             ))}
           </div>

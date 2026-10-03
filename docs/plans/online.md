@@ -174,7 +174,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `GET /api/users/me`、`PATCH /api/users/me` | 讀取或修改自己的身分、email `{ parent?, teacher?, email? }` |
 | `POST /api/users/me/password` | `{ current, next }` 改密碼（其他裝置的登入失效） |
 | `DELETE /api/users/me` | `{ password }` 刪除自己的帳號：名下的雲端角色一併刪除（在班級裡的先結清禮物）；密碼錯回 401 `bad_password`，還有班級回 409 `has_classes`（刪掉老師帳號會連帶刪掉班上所有角色） |
-| `GET /api/parent/kids` | 家長名下的雲端角色 `{ kids: [{ id, name, avatar, room, coins, stars, lastSeen }] }`（`room` 沒有班級時是 null）；大人權杖＋家長身分，只有老師身分回 403 `not_parent` |
+| `GET /api/parent/kids` | 家長名下的雲端角色 `{ kids: [{ id, profileId, name, avatar, room, coins, stars, lastSeen }] }`（`room` 沒有班級時是 null；`profileId` 讓裝置認出本機的同一個角色）；大人權杖＋家長身分，只有老師身分回 403 `not_parent` |
 | `POST /api/parent/kids` | 把這台裝置上的角色存到雲端 `{ profile }` → `{ token, account, profile, rev, room: null }`（孩子權杖，來源 `parent`）；同一個角色重複上傳回 409 `already_uploaded` |
 | `POST /api/parent/kids/:id/device` | 在這台裝置玩：發一張孩子權杖（來源 `parent`）並回傳存檔，格式同上；別人的角色和不存在的一樣回 404 `no_kid` |
 | `DELETE /api/parent/kids/:id` | 刪除角色（在班級裡的先結清禮物） |
@@ -182,7 +182,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
 | `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`；別人的班級和不存在的代碼一樣回 404 |
 | `POST /api/teacher/rooms/:code/members/:id/pin` | `{ pin }` 重設孩子密碼：只撤銷 `class` 來源的權杖、只踢 `class` 來源的即時連線，家長裝置上的不受影響 |
-| `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 → `{ ok, left }`：家長名下的角色改成退出班級（`left: true`，進度留在家長名下），純班級角色照舊刪除 |
+| `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 → `{ ok, left }`：家長名下的角色改成退出班級（`left: true`，進度留在家長名下），純班級角色照舊刪除。鎖到帳號之後再確認班級，已經換到別班就整個撤銷、回 404（老師只能移出自己班上的學生） |
 | `POST /api/join` | `{ code, nickname, pin, profile? }` → `{ token, account, profile, rev, room }`。帶孩子權杖時是「雲端角色加入班級」：同一個帳號掛進班級、沿用原本的權杖，回 `{ account, profile, rev, room }`；已經在班級裡回 409 `already_in_class` |
 | `POST /api/login` | `{ code, nickname, pin }` → `{ token, account, profile, rev, room }` |
 | `GET /api/me` | 目前存檔與版本號、班級（沒有班級是 null）、有沒有家長帳號（`owned`） |

@@ -5,7 +5,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AVATAR, createRoom, createUser, joinRoom, makeClient, openTestDb, resetDb } from './helpers';
-import type { Db } from '../../server/db';
+import type { Db, Queryable } from '../../server/db';
+import { removeMemberWithRefunds } from '../../server/gifts';
 import { addProfile, createEmptySave, type Profile } from '../../src/store/save';
 
 let db: Db;
@@ -151,6 +152,32 @@ describe('退出班級', () => {
     expect(notified).toContain(s.mei.account.id);
     expect(notified).not.toContain(s.up.account.id);
     expect(hooks.onKick).toHaveBeenCalledWith(s.up.account.id, '這個角色已經被家長刪除');
+  });
+});
+
+describe('老師只能移出自己班上的學生', () => {
+  it('移出的交易鎖到帳號時，他已經換到別的班級（交易開頭讀到的班級過期）：整個撤銷，回傳不是成員', async () => {
+    const { call } = makeClient(db);
+    const s = await classWithGifts(call);
+    const other = await createRoom(call, '二年二班');
+    // 模擬真正的 PostgreSQL 的時間窗：交易讀完班級、鎖到帳號之前，家長讓他退出、又加入了別的班級
+    const racingTx = (tx: Queryable) =>
+      ({
+        query: async (sql: string, params?: unknown[]) => {
+          if (sql.includes('FROM accounts WHERE id = ANY') && sql.includes('FOR UPDATE')) {
+            await tx.query('UPDATE accounts SET room_code = $2 WHERE id = $1', [s.up.account.id, other.code]);
+          }
+          return tx.query(sql, params);
+        },
+      }) as Queryable;
+    const racing: Db = { query: db.query.bind(db), close: db.close.bind(db), transaction: (fn) => db.transaction((tx) => fn(racingTx(tx))) };
+    expect(await removeMemberWithRefunds(racing, s.up.account.id, s.room.code, new Date())).toBeNull();
+    // 整個交易撤銷：兩份禮物還是 pending，帳號的班級與孩子密碼都還在
+    const gifts = await db.query<{ status: string }>("SELECT status FROM gifts WHERE id IN ('gift-an-to-mei', 'gift-mei-to-an')");
+    expect(gifts.map((g) => g.status)).toEqual(['pending', 'pending']);
+    const acc = (await db.query<{ room_code: string; pin_hash: string | null }>('SELECT room_code, pin_hash FROM accounts WHERE id = $1', [s.up.account.id]))[0];
+    expect(acc.room_code).toBe(s.room.code);
+    expect(acc.pin_hash).not.toBeNull();
   });
 });
 

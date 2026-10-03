@@ -120,6 +120,40 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   await Promise.all([home.context.close(), tablet.context.close()]);
 });
 
+test('平板上已經有同一個角色（以前用備份匯入的）：在這台裝置玩要先確認，確定後換成雲端的進度', async ({ browser, baseURL }) => {
+  test.setTimeout(300_000);
+  // ---------- 家裡的電腦：本機玩一回合，存到雲端 ----------
+  const home = await openDevice(browser, baseURL!);
+  await playLocalRound(home.page, '安安');
+  // 還沒有雲端標記的這份，等同當時匯出的備份
+  const local = await profileOf(home.page);
+  const username = await registerParent(home.page);
+  await home.page.getByTestId('upload-安安').click();
+  await expect(home.page.getByTestId('kid-here-安安')).toBeVisible();
+  const cloudAccount = (await profileOf(home.page)).cloud.accountId;
+
+  // ---------- 平板：以前匯入過同一份備份，之後自己又玩出別的進度（金幣不同） ----------
+  const tablet = await openDevice(browser, baseURL!);
+  await tablet.page.evaluate((p) => (window as any).__game.game.getState().putProfile({ ...p, coins: p.coins + 7 }), local);
+  await loginTeacher(tablet.page, username);
+  // 本機那份不能再存到雲端（雲端已經有了）；名單上的「在這台裝置玩」要先確認
+  await expect(tablet.page.getByTestId('local-in-cloud-安安')).toBeVisible();
+  await expect(tablet.page.getByTestId('upload-安安')).toHaveCount(0);
+  await tablet.page.getByTestId('kid-device-安安').click();
+  await expect(tablet.page.getByTestId('kid-replace-warning-安安')).toContainText('這台裝置上的進度會不見');
+  await tablet.page.screenshot({ path: `${SHOTS}/04-tablet-replace-confirm.png` });
+  await tablet.page.getByTestId('kid-replace-confirm-安安').click();
+  await expect(tablet.page.getByTestId('parent-note')).toContainText('已經在這台裝置上了');
+  await expect(tablet.page.getByTestId('kid-here-安安')).toBeVisible();
+  await expect(tablet.page.getByTestId('local-in-cloud-安安')).toHaveCount(0);
+  // 同一個角色換成雲端的進度（金幣是雲端的），沒有多出第二個角色
+  const saved = await tablet.page.evaluate(() => JSON.parse(JSON.stringify((window as any).__game.game.getState().save.profiles)));
+  expect(saved).toHaveLength(1);
+  expect(saved[0]).toMatchObject({ id: local.id, coins: local.coins, cloud: { accountId: cloudAccount } });
+  for (const d of [home, tablet]) expect(pageErrors(d.page)).toEqual([]);
+  await Promise.all([home.context.close(), tablet.context.close()]);
+});
+
 test('家長刪除帳號：名下的雲端角色一併刪除，這台裝置上的也拿掉，帳號頁回到登入', async ({ browser, baseURL }) => {
   test.setTimeout(300_000);
   const d = await openDevice(browser, baseURL!);

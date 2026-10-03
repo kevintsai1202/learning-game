@@ -54,6 +54,8 @@ export const attachClassRequest = z.object({ code: roomCodeSchema, nickname: z.s
 /** 家長名下的一個雲端角色 */
 export interface KidSummary {
   id: string;
+  /** 角色 id（Profile.id）：裝置用來認出本機有沒有同一個角色（例如以前用備份匯入的） */
+  profileId: string;
   name: string;
   avatar: AvatarConfig;
   /** 目前的班級；沒有班級是 null */

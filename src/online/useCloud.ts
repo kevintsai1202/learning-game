@@ -72,8 +72,11 @@ interface CloudStore {
   fetchGoogleLinks: (profileId: string) => Promise<string[]>;
   /** 家長把這台裝置上的角色存到雲端（server、userToken 是家長帳號的登入狀態；docs/plans/accounts.md 第 6 節） */
   uploadToCloud: (profileId: string, server: string, userToken: string) => Promise<Profile>;
-  /** 家長選孩子「在這台裝置玩」：角色下載到這台裝置，並切換成目前的角色 */
-  playOnThisDevice: (kidId: string, server: string, userToken: string) => Promise<Profile>;
+  /**
+   * 家長選孩子「在這台裝置玩」：角色下載到這台裝置，並切換成目前的角色。
+   * 這台裝置已經有同一個角色、但不是這個雲端角色時丟出 LocalConflictError；家長確認後帶 replaceLocal 再呼叫一次
+   */
+  playOnThisDevice: (kidId: string, server: string, userToken: string, opts?: { replaceLocal?: boolean }) => Promise<Profile>;
   /** 家長名下、還沒加入班級的雲端角色加入班級（同一個角色，不另開新角色） */
   attachToClass: (profileId: string, input: LoginInput) => Promise<Profile>;
   /** 把一個雲端角色從這台裝置拿掉（伺服器上已經刪除，或家長刪除帳號後）：本機角色、權杖、佇列都清掉 */
@@ -187,8 +190,8 @@ export const useCloud = create<CloudStore>((set, get) => ({
     return p;
   },
 
-  playOnThisDevice: async (kidId, server, userToken) => {
-    const p = await playOnThisDevice(cloudDeps, server, userToken, kidId);
+  playOnThisDevice: async (kidId, server, userToken, opts) => {
+    const p = await playOnThisDevice(cloudDeps, server, userToken, kidId, opts);
     useGame.getState().selectProfile(p.id);
     timer.failures = 0;
     void get().syncNow();

@@ -322,25 +322,38 @@ export async function detachFromClass(tx: Queryable, accountId: string): Promise
   await tx.query('DELETE FROM google_links WHERE account_id = $1', [accountId]);
 }
 
+/** 交易裡發現已經不是這個班的成員：丟出它撤銷整個交易（removeMemberWithRefunds 接住後回傳 null） */
+class NotMemberAnymore extends Error {}
+
 /**
  * 老師移出成員：在交易裡結清禮物，再依有沒有家長帳號決定——
  * 有家長的退出班級（禮物兩邊都結清、進度留在家長名下）；沒有家長的純班級角色照舊刪除（只退別人送他的）。
- * 不是這個班的成員回傳 null。
+ * 不是這個班的成員回傳 null。老師只能移出自己班上的學生：交易開頭讀到的班級可能已經過期（還沒鎖到帳號之前，
+ * 家長可能讓他退出、又加入了別的班級），所以鎖住帳號之後再確認一次，不是這個班的就整個撤銷（連已經做的退款）。
+ * 回傳 null 時 events 裡可能留著撤銷前的退款事件，呼叫的一方不能送出（app.ts 的移出成員在 null 時直接回 404）。
  */
 export async function removeMemberWithRefunds(db: Db, accountId: string, roomCode: string, now: Date): Promise<{ events: Events; left: boolean } | null> {
   const events: Events = { profiles: [], gifts: [] };
-  const result = await db.transaction(async (tx) => {
-    const member = (await tx.query<{ id: string; parent_id: string | null }>('SELECT id, parent_id FROM accounts WHERE id = $1 AND room_code = $2', [accountId, roomCode]))[0];
-    if (!member) return null;
-    if (member.parent_id) {
-      await settlePendingGifts(tx, [accountId], now, events, { includeOutgoing: true });
-      await detachFromClass(tx, accountId);
-      return 'left' as const;
-    }
-    await settlePendingGifts(tx, [accountId], now, events, { includeOutgoing: false });
-    await tx.query('DELETE FROM accounts WHERE id = $1', [accountId]);
-    return 'deleted' as const;
-  });
+  let result: 'left' | 'deleted' | null;
+  try {
+    result = await db.transaction(async (tx) => {
+      const member = (await tx.query<{ id: string; parent_id: string | null }>('SELECT id, parent_id FROM accounts WHERE id = $1 AND room_code = $2', [accountId, roomCode]))[0];
+      if (!member) return null;
+      // 結清禮物時會依鎖定順序鎖住這個帳號（先禮物、再帳號）
+      await settlePendingGifts(tx, [accountId], now, events, { includeOutgoing: !!member.parent_id });
+      const still = (await tx.query<{ room_code: string | null }>('SELECT room_code FROM accounts WHERE id = $1', [accountId]))[0];
+      if (still?.room_code !== roomCode) throw new NotMemberAnymore();
+      if (member.parent_id) {
+        await detachFromClass(tx, accountId);
+        return 'left' as const;
+      }
+      await tx.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+      return 'deleted' as const;
+    });
+  } catch (err) {
+    if (err instanceof NotMemberAnymore) return null;
+    throw err;
+  }
   return result ? { events, left: result === 'left' } : null;
 }
 
