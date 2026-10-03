@@ -14,6 +14,9 @@ RUN npm run server:build
 
 # ---------- 執行：只裝 dependencies（hono、pg、jose、ws、zod 等），不含開發工具 ----------
 FROM node:24-slim
+# Zeabur 後台顯示用的標籤
+LABEL "language"="nodejs"
+LABEL "framework"="hono"
 WORKDIR /app
 # 每日送禮上限、收禮日期依台灣時間計算
 ENV NODE_ENV=production PORT=8080 TZ=Asia/Taipei
