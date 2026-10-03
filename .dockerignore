@@ -1,0 +1,23 @@
+# 班級伺服器映像檔只需要 package.json、server/、src/、設定檔；其他都不要送進建置環境
+
+# 金鑰：語音與 Whisper 的 API 金鑰（.env）、e2e 的 Google 測試金鑰（e2e/fixtures）
+.env
+.env.*
+e2e/
+
+# 前端資源與資料（伺服器打包設定 publicDir: false，用不到）
+public/
+data-src/
+docs/
+
+# 產物、紀錄、本機工具
+node_modules/
+dist/
+server-dist/
+logs/
+test-results/
+playwright-report/
+.git/
+.claude/
+.venv/
+.vscode/

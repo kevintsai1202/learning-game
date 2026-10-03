@@ -4,8 +4,8 @@
  */
 import { expect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 
-/** 班級伺服器網址 */
-export const SERVER = 'http://localhost:8787';
+/** 班級伺服器網址：預設是 playwright.config.ts 啟動的本機伺服器；E2E_SERVER_URL 可以改測外部伺服器（playwright.remote.config.ts） */
+export const SERVER = (process.env.E2E_SERVER_URL ?? 'http://localhost:8787').replace(/\/+$/, '');
 
 /** 各台裝置的 console 錯誤、WebGL 警告與頁面崩潰（測試失敗時印出來，方便判斷原因） */
 export const deviceLogs: string[] = [];
