@@ -108,6 +108,7 @@ export function ResultScreen() {
               if (zone) teleport(doorOf(zoneById(zone)));
               goto('island');
             }}
+            data-testid="back-to-island"
           >
             回島上
           </button>
