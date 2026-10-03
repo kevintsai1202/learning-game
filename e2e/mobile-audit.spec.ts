@@ -201,10 +201,11 @@ for (const d of DEVICES) {
       await check('22-class-login');
       await page.getByTestId('class-tab-join').click();
       await check('23-class-join');
+      // 老師／家長帳號頁：登入與註冊表單（docs/plans/accounts.md 的 A1）
       await page.evaluate(() => (window as any).__game.ui.getState().goto('teacher'));
-      await check('24-teacher-create');
-      await page.getByTestId('teacher-tab-login').click();
-      await check('25-teacher-login');
+      await check('24-account-login');
+      await page.getByTestId('account-tab-register').click();
+      await check('25-account-register');
 
       // 獎章簿（前面玩過幾回合，已經有獎章與稱號可以選）
       await page.evaluate(() => (window as any).__game.ui.getState().goto('badges'));

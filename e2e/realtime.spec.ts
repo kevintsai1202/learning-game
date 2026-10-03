@@ -5,7 +5,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { enterZone, standAtDoor } from './helpers';
-import { SERVER, flushDeviceLogs, loginAndEnter, openDevice, pageErrors } from './onlineDevice';
+import { SERVER, createClassViaApi, flushDeviceLogs, loginAndEnter, openDevice, pageErrors } from './onlineDevice';
 
 const SHOTS = 'e2e/screenshots/realtime';
 
@@ -27,7 +27,7 @@ test('兩台裝置同島：看得到彼此、走動同步、說話有公頻與�
     expect(res.ok(), `${path} ${res.status()}`).toBe(true);
     return res.json();
   };
-  const room = await api('POST', '/api/rooms', { name: '二年一班', password: 'teach123' });
+  const room = await createClassViaApi(request, '二年一班');
   await api('POST', '/api/join', { code: room.code, nickname: '阿寶', pin: '1111', avatar: { animal: 'capybara', color: '#8b5a2b', hat: null } });
   await api('POST', '/api/join', { code: room.code, nickname: '小美', pin: '2222', avatar: { animal: 'panda', color: '#5b5b6b', hat: null } });
 
@@ -57,8 +57,7 @@ test('兩台裝置同島：看得到彼此、走動同步、說話有公頻與�
   await b.page.screenshot({ path: `${SHOTS}/01-b-sees-a-talking.png` });
 
   // 老師看到兩人都在線上
-  const teacher = await api('POST', '/api/teacher/login', { code: room.code, password: 'teach123' });
-  const roster = await api('GET', '/api/teacher/room', undefined, teacher.token);
+  const roster = await api('GET', `/api/teacher/rooms/${room.code}`, undefined, room.token);
   expect(roster.members.map((m: { nickname: string; online: boolean }) => [m.nickname, m.online])).toEqual([
     ['阿寶', true],
     ['小美', true],
@@ -71,7 +70,7 @@ test('兩台裝置同島：看得到彼此、走動同步、說話有公頻與�
   await expect(b.page.getByTestId('chat-inside')).toContainText('阿寶在數學城堡');
 
   // 老師關掉聊天：小美的短句盤收起來
-  await api('PATCH', '/api/teacher/room', { chatOpen: false }, teacher.token);
+  await api('PATCH', `/api/teacher/rooms/${room.code}`, { chatOpen: false }, room.token);
   await expect(b.page.getByTestId('chat-panel')).toContainText('老師把聊天關起來了');
   await expect(b.page.getByTestId('chat-say')).toHaveCount(0);
 
@@ -102,7 +101,7 @@ test('各種螢幕（觸控）：公頻與短句盤完整在畫面內、不擋�
     expect(res.ok(), `${path} ${res.status()}`).toBe(true);
     return res.json();
   };
-  const room = await post('/api/rooms', { name: '二年二班', password: 'teach123' });
+  const room = await createClassViaApi(request, '二年二班');
   await post('/api/join', { code: room.code, nickname: '皮皮', pin: '3333', avatar: { animal: 'penguin', color: '#5b5b6b', hat: null } });
   // 觸控裝置：島上有搖桿（左下角），「進去玩」泡泡不能壓到它
   const { context, page } = await openDevice(browser, baseURL!, { touch: true });

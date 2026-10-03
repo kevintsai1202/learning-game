@@ -7,7 +7,7 @@
  */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { enterZone, screen } from './helpers';
-import { SERVER, flushDeviceLogs, loginAndEnter, openDevice, pageErrors, profileOf } from './onlineDevice';
+import { SERVER, createClassViaApi, flushDeviceLogs, loginAndEnter, loginTeacher, openDevice, pageErrors, profileOf } from './onlineDevice';
 import { addProfile, createEmptySave, type Animal } from '../src/store/save';
 
 const SHOTS = 'e2e/screenshots/gifts';
@@ -45,7 +45,7 @@ async function pickAndSend(page: Page, tab: string, itemId: string, confirmText:
 test('送禮物：送貼紙收下、點名牌送外觀按不用了、沒上線的同學下次上線收到、老師關閉送禮', async ({ browser, baseURL, request }) => {
   test.setTimeout(600_000);
   const api = apiOf(request);
-  const room = await api('POST', '/api/rooms', { name: '二年三班', password: 'teach123' });
+  const room = await createClassViaApi(request, '二年三班');
   await api('POST', '/api/join', { code: room.code, nickname: '阿寶', pin: '1111', profile: withCoins(200) });
   await api('POST', '/api/join', { code: room.code, nickname: '小美', pin: '2222', avatar: { animal: 'panda', color: '#5b5b6b', hat: null } });
   await api('POST', '/api/join', { code: room.code, nickname: '皮皮', pin: '3333', avatar: { animal: 'penguin', color: '#5b5b6b', hat: null } });
@@ -128,11 +128,8 @@ test('送禮物：送貼紙收下、點名牌送外觀按不用了、沒上線�
 
   // ④ 老師在管理頁關閉送禮：阿寶公頻面板上的「🎁 送禮」消失
   const t = await openDevice(browser, baseURL!);
-  await t.page.getByTestId('teacher-link').click();
-  await t.page.getByTestId('teacher-tab-login').click();
-  await t.page.getByTestId('room-code').fill(room.code);
-  await t.page.getByTestId('room-password').fill('teach123');
-  await t.page.getByTestId('teacher-submit').click();
+  await loginTeacher(t.page, room.username);
+  await t.page.getByTestId(`class-${room.code}`).click();
   // 開關是受控元件，伺服器回應後才會改變勾選狀態（uncheck() 點完馬上檢查會判定沒變），所以點一下再等
   await expect(t.page.getByTestId('toggle-gifts')).toBeChecked();
   await t.page.getByTestId('toggle-gifts').click();
@@ -165,7 +162,7 @@ async function checkPlacement(page: Page, testId: string, where: string, w: numb
 test('手機：禮物卡片與送禮視窗在畫面內，不擋右上角按鈕（直式與橫放）', async ({ browser, baseURL, request }) => {
   test.setTimeout(300_000);
   const api = apiOf(request);
-  const room = await api('POST', '/api/rooms', { name: '二年四班', password: 'teach123' });
+  const room = await createClassViaApi(request, '二年四班');
   const mei = await api('POST', '/api/join', { code: room.code, nickname: '小美', pin: '2222', profile: withCoins(100, 'panda') });
   const bao = await api('POST', '/api/join', { code: room.code, nickname: '阿寶', pin: '1111', profile: withCoins(100) });
   // 小美（沒有開裝置）先送阿寶一張獨角獸貼紙；禮物 id 每次不同（對正式伺服器重跑時，資料庫裡已經有上一次的 id）

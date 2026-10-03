@@ -2,7 +2,8 @@
  * 檢查兩個正式網址的「用 Google 登入」按鈕能不能載入，也就是網址有沒有加進 Google OAuth 用戶端的「已授權的 JavaScript 來源」。
  * Google 對沒授權的網址：按鈕 iframe（accounts.google.com/gsi/button）回 403，主控台出現
  * "The given origin is not allowed for the given client ID"。
- * 只打開標題畫面 → 班級管理的「登入已有的房間」（會顯示 Google 按鈕），不登入、不寫入任何資料。
+ * 只打開標題畫面 →「開始」→ 班級登入畫面（家長的 Google 快速登入按鈕；老師帳號頁改版後沒有 Google 按鈕，A4 才加回），
+ * 不登入、不寫入任何資料。
  *
  * 執行（PowerShell 7，專案根目錄）：
  *   node scripts/deploy/check-google-origins.mjs
@@ -38,10 +39,10 @@ async function checkSite(browser, site) {
   });
   try {
     await page.goto(site, { waitUntil: 'domcontentloaded', timeout: WAIT_MS });
-    // 標題畫面的「班級管理」→「登入已有的房間」分頁（伺服器有設 GOOGLE_CLIENT_ID 時，這個分頁才有 Google 按鈕）
-    await page.getByTestId('teacher-link').click({ timeout: WAIT_MS });
-    await page.getByTestId('teacher-tab-login').click({ timeout: WAIT_MS });
-    await page.getByTestId('teacher-google-login').waitFor({ state: 'attached', timeout: WAIT_MS });
+    // 標題畫面「開始」→ 建立角色畫面的「班級」→ 班級登入畫面（伺服器有設 GOOGLE_CLIENT_ID 時才有 Google 按鈕）
+    await page.getByTestId('start').click({ timeout: WAIT_MS });
+    await page.getByTestId('create-open-class').click({ timeout: WAIT_MS });
+    await page.getByTestId('class-google-login').waitFor({ state: 'attached', timeout: WAIT_MS });
     // 等到按鈕有回應（200 或 403）或主控台出現來源錯誤
     const deadline = Date.now() + WAIT_MS;
     while (Date.now() < deadline && buttonStatuses.length === 0 && originErrors.length === 0) await page.waitForTimeout(500);

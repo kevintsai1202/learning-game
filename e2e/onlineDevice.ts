@@ -2,7 +2,7 @@
  * 線上版 e2e 共用：開一台模擬的平板（獨立的瀏覽器環境）、讀存檔與同步狀態、收集裝置紀錄。
  * 伺服器由 playwright.config.ts 的 webServer 啟動（http://localhost:8787，PGlite 記憶體資料庫，Google 測試模式）。
  */
-import { expect, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
+import { expect, type APIRequestContext, type Browser, type BrowserContext, type Page, type TestInfo } from '@playwright/test';
 
 /** 班級伺服器網址：預設是 playwright.config.ts 啟動的本機伺服器；E2E_SERVER_URL 可以改測外部伺服器（playwright.remote.config.ts） */
 export const SERVER = (process.env.E2E_SERVER_URL ?? 'http://localhost:8787').replace(/\/+$/, '');
@@ -77,4 +77,51 @@ export async function loginAndEnter(page: Page, code: string, nickname: string, 
   await page.evaluate(({ code, nickname, pin }) => (window as any).__game.cloud.getState().login({ code, nickname, pin }), { code, nickname, pin });
   await page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
   await expect.poll(() => page.evaluate(() => (window as any).__game.realtime.getState().status)).toBe('online');
+}
+
+/** e2e 建的大人帳號都用這個密碼（scripts/deploy 的清理腳本靠帳號名稱開頭的 e2e_ 找測試資料） */
+export const TEST_PASSWORD = 'teach1234';
+
+/** 每次都不一樣的帳號名稱：e2e_＋時間＋亂數（對正式伺服器重跑時不會撞名；最多 20 字、只有小寫英數與底線） */
+export function uniqueUsername(): string {
+  return `e2e_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`.slice(0, 20);
+}
+
+/** 用 API 註冊一位老師並建立班級（準備資料用，畫面流程另外測），回傳班級代碼、老師權杖與帳號 */
+export async function createClassViaApi(request: APIRequestContext, name: string): Promise<{ code: string; token: string; username: string }> {
+  const username = uniqueUsername();
+  const reg = await request.post(`${SERVER}/api/users`, { data: { username, password: TEST_PASSWORD, email: `${username}@example.com`, parent: false, teacher: true } });
+  expect(reg.ok(), `註冊老師 ${reg.status()}`).toBe(true);
+  const { token } = (await reg.json()) as { token: string };
+  const room = await request.post(`${SERVER}/api/teacher/rooms`, { data: { name }, headers: { authorization: `Bearer ${token}` } });
+  expect(room.ok(), `建立班級 ${room.status()}`).toBe(true);
+  return { code: ((await room.json()) as { room: { code: string } }).room.code, token, username };
+}
+
+/** 在標題畫面打開帳號頁，用畫面註冊一位老師並建立班級，回傳班級代碼與帳號名稱（停在班級管理頁） */
+export async function registerTeacherAndCreateClass(page: Page, className: string): Promise<{ code: string; username: string }> {
+  const username = uniqueUsername();
+  await page.getByTestId('teacher-link').click();
+  await page.getByTestId('account-tab-register').click();
+  await page.getByTestId('account-username').fill(username);
+  await page.getByTestId('account-password').fill(TEST_PASSWORD);
+  await page.getByTestId('account-confirm').fill(TEST_PASSWORD);
+  await page.getByTestId('account-email').fill(`${username}@example.com`);
+  await page.getByTestId('role-teacher').click();
+  await expect(page.getByTestId('role-teacher')).toBeChecked();
+  await page.getByTestId('account-submit').click();
+  await page.getByTestId('class-name').fill(className);
+  await page.getByTestId('class-create').click();
+  const code = (await page.getByTestId('room-code-display').textContent())!.trim();
+  expect(code).toMatch(/^\d{6}$/);
+  return { code, username };
+}
+
+/** 在標題畫面打開帳號頁，用帳號密碼登入（沒勾保持登入），停在「我的班級」 */
+export async function loginTeacher(page: Page, username: string, password = TEST_PASSWORD): Promise<void> {
+  await page.getByTestId('teacher-link').click();
+  await page.getByTestId('account-username').fill(username);
+  await page.getByTestId('account-password').fill(password);
+  await page.getByTestId('account-submit').click();
+  await expect(page.getByTestId('account-name')).toContainText(username);
 }

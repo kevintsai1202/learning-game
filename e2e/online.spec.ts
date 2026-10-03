@@ -1,13 +1,14 @@
 /**
- * 線上版 P1：老師建立房間 → 孩子帶本機進度加入 → 換一台裝置登入看到進度與錯題本 →
+ * 線上版 P1：老師註冊帳號、建立班級 → 孩子帶本機進度加入 → 換一台裝置登入看到進度與錯題本 →
  * 離線玩完、恢復連線後自動上傳 → 老師重設密碼後要重新登入；
- * 另一段測 Google 快速登入（備選）：用 e2e/fixtures 的假金鑰簽 token，Google 按鈕換成測試按鈕。
+ * 另一段測家長的 Google 快速登入（備選）：用 e2e/fixtures 的假金鑰簽 token，Google 按鈕換成測試按鈕。
+ * 老師的 Google 綁定隨舊的管理密碼拿掉了，A4 改綁大人帳號時再補測試（docs/plans/accounts.md）。
  * 伺服器由 playwright.config.ts 的 webServer 啟動（http://localhost:8787，PGlite 記憶體資料庫）。
  */
 import { expect, test, type Page } from '@playwright/test';
 import { answerCurrent, createKid, enterZone, finishQuiz, screen } from './helpers';
 import { prepareGoogleAccount, signTestIdToken } from './googleStub';
-import { SERVER, cloudState, flushDeviceLogs, openDevice, pageErrors, profileOf } from './onlineDevice';
+import { SERVER, cloudState, createClassViaApi, flushDeviceLogs, openDevice, pageErrors, profileOf, registerTeacherAndCreateClass } from './onlineDevice';
 
 const SHOTS = 'e2e/screenshots/online';
 
@@ -36,15 +37,9 @@ async function waitSynced(page: Page): Promise<void> {
 test('班級：建立房間、帶進度加入、換裝置登入、離線同步、老師重設密碼', async ({ browser, baseURL }) => {
   test.setTimeout(600_000);
 
-  // ---------- 老師建立房間 ----------
+  // ---------- 老師註冊帳號、建立班級 ----------
   const teacher = await openDevice(browser, baseURL!);
-  await teacher.page.getByTestId('teacher-link').click();
-  await teacher.page.getByTestId('room-name').fill('二年一班');
-  await teacher.page.getByTestId('room-password').fill('teach123');
-  await teacher.page.getByTestId('room-confirm').fill('teach123');
-  await teacher.page.getByTestId('teacher-submit').click();
-  const codeText = (await teacher.page.getByTestId('room-code-display').textContent())!.trim();
-  expect(codeText).toMatch(/^\d{6}$/);
+  const { code: codeText } = await registerTeacherAndCreateClass(teacher.page, '二年一班');
   await teacher.page.screenshot({ path: `${SHOTS}/01-teacher-room.png` });
 
   // ---------- 孩子 A：先在本機玩一回合，再帶著進度加入班級 ----------
@@ -138,7 +133,7 @@ test('班級：建立房間、帶進度加入、換裝置登入、離線同步�
   await Promise.all([teacher.context.close(), a.context.close(), b.context.close()]);
 });
 
-test('Google 快速登入（備選）：老師綁定後用 Google 登入並選房間；家長綁定後換裝置一次登入兩個孩子', async ({ browser, baseURL, request }) => {
+test('Google 快速登入（備選）：家長綁定後換裝置一次登入兩個孩子', async ({ browser, baseURL, request }) => {
   test.setTimeout(600_000);
   /** 直接呼叫伺服器 API（準備資料用，畫面流程另外測） */
   const post = async (path: string, data: unknown, token?: string) => {
@@ -147,31 +142,8 @@ test('Google 快速登入（備選）：老師綁定後用 Google 登入並選�
     return res.json();
   };
 
-  // ---------- 老師：建立房間、在管理頁綁定 Google ----------
-  const teacher = await openDevice(browser, baseURL!);
-  await teacher.page.evaluate(() => localStorage.setItem('learning-island-google-stub', '1'));
-  await teacher.page.getByTestId('teacher-link').click();
-  await teacher.page.getByTestId('room-name').fill('二年一班');
-  await teacher.page.getByTestId('room-password').fill('teach123');
-  await teacher.page.getByTestId('room-confirm').fill('teach123');
-  await teacher.page.getByTestId('teacher-submit').click();
-  const codeA = (await teacher.page.getByTestId('room-code-display').textContent())!.trim();
-  await prepareGoogleAccount(teacher.page, 'teacher-sub', 'teacher.lin@school.edu.tw');
-  await teacher.page.getByTestId('teacher-google-link').click();
-  await expect(teacher.page.getByTestId('teacher-google-linked')).toContainText('te***@school.edu.tw');
-
-  // 同一個 Google 也綁到第二個房間（用 API 準備）
-  const roomB = await post('/api/rooms', { name: '安親班', password: 'teach456' });
-  await post('/api/teacher/google/link', { idToken: await signTestIdToken('teacher-sub', 'teacher.lin@school.edu.tw') }, roomB.token);
-
-  // 登出後改用 Google 登入：兩個房間要先選
-  await teacher.page.getByTestId('teacher-logout').click();
-  await teacher.page.getByTestId('teacher-tab-login').click();
-  await prepareGoogleAccount(teacher.page, 'teacher-sub', 'teacher.lin@school.edu.tw');
-  await teacher.page.getByTestId('teacher-google-login').click();
-  await teacher.page.getByTestId(`pick-room-${codeA}`).click();
-  await expect(teacher.page.getByTestId('room-code-display')).toHaveText(codeA);
-  await teacher.page.screenshot({ path: `${SHOTS}/11-teacher-google.png` });
+  // 班級用 API 準備（老師的畫面流程在上一個測試與 accounts.spec.ts）
+  const { code: codeA } = await createClassViaApi(request, '二年一班');
 
   // ---------- 家長：哥哥用代碼加入，在家長專區綁定 Google ----------
   const home = await openDevice(browser, baseURL!);
@@ -218,6 +190,6 @@ test('Google 快速登入（備選）：老師綁定後用 Google 登入並選�
   await waitSynced(tablet.page);
   expect((await profileOf(tablet.page)).name).toBe('哥哥');
 
-  for (const d of [teacher, home, tablet]) expect(pageErrors(d.page)).toEqual([]);
-  await Promise.all([teacher.context.close(), home.context.close(), tablet.context.close()]);
+  for (const d of [home, tablet]) expect(pageErrors(d.page)).toEqual([]);
+  await Promise.all([home.context.close(), tablet.context.close()]);
 });
