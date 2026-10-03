@@ -108,6 +108,41 @@ describe('家長的雲端角色（前端）', () => {
     expect((await syncProfile(tablet.deps, p.id)).status).toBe('synced');
   });
 
+  it('在這台裝置玩：這台裝置已經有同一個角色、但不是這個雲端角色（例如之前用備份匯入的）時不蓋掉，丟出說明', async () => {
+    const app = createApp({ db });
+    const mom = await register(app, { parent: true, teacher: false });
+    const home = device(app);
+    const local = localKid('安安', 33);
+    home.profiles.set(local.id, local);
+    const up = await uploadToCloud(home.deps, SERVER, mom, local.id);
+    // 另一台裝置之前匯入了同一份備份（同一個角色 id、沒有雲端標記），之後自己又玩出進度
+    const tablet = device(app);
+    tablet.profiles.set(local.id, { ...local, coins: 50 });
+    await expect(playOnThisDevice(tablet.deps, SERVER, mom, up.cloud!.accountId)).rejects.toThrow('下載備份');
+    expect(tablet.profiles.get(local.id)).toMatchObject({ coins: 50 });
+    expect(tablet.profiles.get(local.id)!.cloud).toBeUndefined();
+    expect(tablet.tokens.size).toBe(0);
+  });
+
+  it('權杖不見了（過期、被撤銷）：同一台裝置再按「在這台裝置玩」拿到新權杖，這台還沒送出的進度照樣送出', async () => {
+    const app = createApp({ db });
+    const mom = await register(app, { parent: true, teacher: false });
+    const d = device(app);
+    const local = localKid('安安', 12);
+    d.profiles.set(local.id, local);
+    const up = await uploadToCloud(d.deps, SERVER, mom, local.id);
+    const acc = up.cloud!.accountId;
+    d.act(up.id, playOp());
+    d.tokens.delete(acc);
+    expect((await syncProfile(d.deps, up.id)).status).toBe('needLogin');
+    const p = await playOnThisDevice(d.deps, SERVER, mom, acc);
+    expect(p).toMatchObject({ id: local.id, coins: 12, cloud: { accountId: acc } });
+    expect((await syncProfile(d.deps, p.id)).status).toBe('synced');
+    expect(d.deps.loadOutbox(acc).pending).toHaveLength(0);
+    const me = (await post(app, '/api/ops', { ops: [] }, d.tokens.get(acc)!)) as { rev: number };
+    expect(me.rev).toBe(2);
+  });
+
   it('雲端角色加入班級：本機的雲端標記多了班級；被老師移出後同步，班級清掉、進度還在', async () => {
     const app = createApp({ db });
     const mom = await register(app, { parent: true, teacher: false });

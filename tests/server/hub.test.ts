@@ -3,6 +3,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Hub, type HubConn } from '../../server/hub';
+import type { TokenVia } from '../../server/tokens';
 import type { ServerMessage } from '../../src/online/realtime';
 import { addProfile, createEmptySave, type Profile } from '../../src/store/save';
 import { SPAWN, WALK_RADIUS } from '../../src/world/layout';
@@ -37,10 +38,10 @@ function profileOf(name: string, patch: Partial<Profile> = {}): Profile {
 
 const FLAGS = { chatOpen: true, giftsOpen: true };
 
-/** 讓一位孩子加入房間 */
-function join(accountId: string, nickname: string, room = '123456', patch: Partial<Profile> = {}) {
+/** 讓一位孩子加入房間（via：權杖來源，預設用班級代碼登入） */
+function join(accountId: string, nickname: string, room = '123456', patch: Partial<Profile> = {}, via: TokenVia = 'class') {
   const conn = new FakeConn();
-  hub.join(conn, { accountId, roomCode: room, nickname, profile: profileOf(nickname, patch), flags: FLAGS });
+  hub.join(conn, { accountId, roomCode: room, nickname, profile: profileOf(nickname, patch), flags: FLAGS, via });
   return conn;
 }
 
@@ -182,6 +183,18 @@ describe('存檔改變與老師管理', () => {
     expect(b.of('kicked')[0].reason).toBe('老師把你移出房間了');
     expect(b.closed).not.toBeNull();
     expect(a.of('leave')).toEqual([{ t: 'leave', id: 'b' }]);
+    expect(hub.isOnline('b')).toBe(false);
+  });
+
+  it('只踢某種來源的連線（重設密碼只撤銷 class 權杖）：家長裝置（parent）的連線留著', () => {
+    const home = join('a', '阿寶', '123456', {}, 'parent');
+    const school = join('b', '小美', '123456', {}, 'class');
+    hub.kick('a', '老師重設了你的密碼，請用新密碼重新登入', 'class');
+    hub.kick('b', '老師重設了你的密碼，請用新密碼重新登入', 'class');
+    expect(home.of('kicked')).toHaveLength(0);
+    expect(home.closed).toBeNull();
+    expect(hub.isOnline('a')).toBe(true);
+    expect(school.of('kicked')).toHaveLength(1);
     expect(hub.isOnline('b')).toBe(false);
   });
 });

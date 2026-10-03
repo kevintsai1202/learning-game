@@ -127,6 +127,8 @@ test('班級：建立房間、帶進度加入、換裝置登入、離線同步�
   await b.page.getByTestId('class-submit').click();
   await expect.poll(() => screen(b.page)).toBe('island');
   await waitSynced(b.page);
+  // 即時連線也恢復：被踢之後的封鎖，在重新登入拿到新權杖時解除（同一個帳號、同一個班級）
+  await expect.poll(() => b.page.evaluate(() => (window as any).__game.realtime.getState().status), { timeout: 20_000 }).toBe('online');
 
   // 沒有頁面錯誤
   for (const d of [teacher, a, b]) expect(pageErrors(d.page)).toEqual([]);

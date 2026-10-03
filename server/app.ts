@@ -54,8 +54,8 @@ export interface AppOptions {
   onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
   /** 老師改了房間的聊天、送禮開關 */
   onRoomChanged?: (roomCode: string, flags: RoomFlags) => void;
-  /** 某位孩子要被踢下線（老師移除成員或重設密碼），reason 會顯示給孩子 */
-  onKick?: (accountId: string, reason: string) => void;
+  /** 某位孩子要被踢下線（老師移除成員或重設密碼），reason 會顯示給孩子；給了 via 就只踢那種權杖來源的連線 */
+  onKick?: (accountId: string, reason: string, via?: TokenVia) => void;
   /** 某位孩子的禮物狀態有變（收到新禮物，或送出的禮物有結果）：即時中樞通知他的裝置重新讀取 */
   onGift?: (accountId: string) => void;
   /** Google 快速登入（備選）；沒有時 Google 相關 API 回 404 */
@@ -367,7 +367,8 @@ export function createApp(opts: AppOptions) {
     // 舊密碼可能被別人知道了：用班級代碼登入的裝置一併失效；家長裝置上的不受影響（家長登入不靠孩子密碼）
     await db.query("DELETE FROM tokens WHERE account_id = $1 AND via = 'class'", [c.req.param('id')]);
     limiter.reset(`kid:${room.code}:${rows[0].nickname_key}`);
-    opts.onKick?.(c.req.param('id'), '老師重設了你的密碼，請用新密碼重新登入');
+    // 只踢用班級代碼登入的連線：家長裝置的權杖沒有撤銷，連線也留著
+    opts.onKick?.(c.req.param('id'), '老師重設了你的密碼，請用新密碼重新登入', 'class');
     return c.json({ ok: true });
   });
 

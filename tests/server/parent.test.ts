@@ -41,6 +41,15 @@ describe('上傳與列出', () => {
     expect(me.body).toMatchObject({ room: null, owned: true, profile: { id: kid.id, coins: 25 } });
   });
 
+  it('同一個角色同時上傳兩次（例如連按兩下、網路慢）：只有一個成功，另一個 409，不會變成兩個分身', async () => {
+    const { call } = makeClient(db);
+    const mom = await parentOf(call);
+    const kid = localKid('安安', 25);
+    const [a, b] = await Promise.all([call('POST', '/api/parent/kids', { profile: kid }, mom.token), call('POST', '/api/parent/kids', { profile: kid }, mom.token)]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids).toHaveLength(1);
+  });
+
   it('同一個角色上傳兩次回 409（不會變成兩個分身）；格式不符回 400', async () => {
     const { call } = makeClient(db);
     const mom = await parentOf(call);

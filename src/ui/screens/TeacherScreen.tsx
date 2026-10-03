@@ -8,6 +8,7 @@ import { useUi } from '../../store/useUi';
 import { useGame } from '../../store/useGame';
 import { useAccount } from '../../online/useAccount';
 import { useCloud } from '../../online/useCloud';
+import { getToken } from '../../online/storage';
 import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
 import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse } from '../../online/protocol';
 
@@ -312,6 +313,8 @@ function ParentHome() {
   const [note, setNote] = useState<string | null>(null);
   /** 等待第二次確認刪除的孩子 */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** 動作進行中：按鈕停用，避免連按兩下送出兩次（例如存到雲端變成兩個分身） */
+  const [busy, setBusy] = useState(false);
 
   const reload = useCallback(async () => {
     try {
@@ -328,6 +331,7 @@ function ParentHome() {
 
   /** 執行一個動作後重新整理清單 */
   const act = async (fn: () => Promise<unknown>, done: string) => {
+    setBusy(true);
     setError(null);
     setNote(null);
     try {
@@ -336,12 +340,17 @@ function ParentHome() {
       await reload();
     } catch (err) {
       setError(messageOf(err));
+    } finally {
+      setBusy(false);
     }
   };
 
   if (!session) return null;
-  /** 這台裝置上有沒有這個雲端角色 */
-  const onThisDevice = (kidId: string) => profiles.some((p) => p.cloud?.accountId === kidId);
+  /**
+   * 這台裝置上有沒有這個雲端角色、而且還能同步（有權杖）。權杖過期或被撤銷（例如用班級代碼登入的平板退出班級）時
+   * 算沒有，照樣顯示「在這台裝置玩」：拿新權杖，這台還沒送出的進度會疊回去。
+   */
+  const onThisDevice = (kidId: string) => profiles.some((p) => p.cloud?.accountId === kidId) && !!getToken(kidId);
   const localOnly = profiles.filter((p) => !p.cloud);
 
   return (
@@ -364,6 +373,7 @@ function ParentHome() {
                 ) : (
                   <button
                     className="btn small green"
+                    disabled={busy}
                     onClick={() => void act(() => useCloud.getState().playOnThisDevice(k.id, session.server, session.token), `「${k.name}」已經在這台裝置上了，回到選角畫面就能玩`)}
                     data-testid={`kid-device-${k.name}`}
                   >
@@ -371,7 +381,12 @@ function ParentHome() {
                   </button>
                 )}
                 {k.room && (
-                  <button className="btn small white" onClick={() => void act(() => call('POST', `/api/parent/kids/${k.id}/leave-class`, {}), `「${k.name}」已經退出班級，進度都還在`)} data-testid={`kid-leave-${k.name}`}>
+                  <button
+                    className="btn small white"
+                    disabled={busy}
+                    onClick={() => void act(() => call('POST', `/api/parent/kids/${k.id}/leave-class`, {}), `「${k.name}」已經退出班級，進度都還在`)}
+                    data-testid={`kid-leave-${k.name}`}
+                  >
                     退出班級
                   </button>
                 )}
@@ -379,6 +394,7 @@ function ParentHome() {
                   <>
                     <button
                       className="btn small red"
+                      disabled={busy}
                       onClick={() =>
                         void act(async () => {
                           await call('DELETE', `/api/parent/kids/${k.id}`);
@@ -414,6 +430,7 @@ function ParentHome() {
                 <strong>{p.name}</strong>
                 <button
                   className="btn small green"
+                  disabled={busy}
                   onClick={() => void act(() => useCloud.getState().uploadToCloud(p.id, session.server, session.token), `「${p.name}」已經存到雲端`)}
                   data-testid={`upload-${p.name}`}
                 >

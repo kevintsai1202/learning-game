@@ -4,7 +4,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createLocalJWKSet } from 'jose';
-import { createRoom, joinRoom, makeClient, openTestDb, resetDb } from './helpers';
+import { createRoom, createUser, joinRoom, makeClient, openTestDb, resetDb } from './helpers';
+import { addProfile, createEmptySave } from '../../src/store/save';
 import { makeGoogleKeys, TEST_CLIENT_ID } from './googleKeys';
 import { createGoogleVerifier, type GoogleConfig } from '../../server/google';
 import type { Db } from '../../server/db';
@@ -31,6 +32,25 @@ describe('伺服器設定', () => {
   it('有開 Google 登入時回傳 Client ID；沒開回傳 null', async () => {
     expect((await client().call('GET', '/api/config')).body).toEqual({ googleClientId: TEST_CLIENT_ID });
     expect((await makeClient(db).call('GET', '/api/config')).body).toEqual({ googleClientId: null });
+  });
+});
+
+describe('退出班級後的 Google 綁定（A2）', () => {
+  it('家長名下的角色退出班級：Google 綁定跟著拿掉（綁定靠班級權杖建立，和用班級代碼登入的權杖一起失效）', async () => {
+    const { call } = client();
+    const { code } = await createRoom(call);
+    const mom = await createUser(call, { parent: true, teacher: false });
+    const local = addProfile(createEmptySave(), { name: '安安', avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, new Date()).profiles[0];
+    const up = (await call('POST', '/api/parent/kids', { profile: local }, mom.token)).body;
+    expect((await call('POST', '/api/join', { code, nickname: '安安', pin: '1234' }, up.token)).status).toBe(200);
+    // 知道孩子密碼的人在自己的裝置用班級代碼登入，綁上自己的 Google
+    const other = (await call('POST', '/api/login', { code, nickname: '安安', pin: '1234' })).body;
+    expect((await call('POST', '/api/google/link', { idToken: await keys.sign('stranger', 'x.y@gmail.com') }, other.token)).status).toBe(200);
+    // 家長讓孩子退出班級 → 那個 Google 不能再拿到這個角色的權杖
+    expect((await call('POST', `/api/parent/kids/${up.account.id}/leave-class`, {}, mom.token)).status).toBe(200);
+    const login = await call('POST', '/api/google/login', { idToken: await keys.sign('stranger', 'x.y@gmail.com') });
+    expect(login.status).toBe(404);
+    expect(login.body.code).toBe('google_not_linked');
   });
 });
 

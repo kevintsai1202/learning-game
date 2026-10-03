@@ -154,6 +154,30 @@ describe('退出班級', () => {
   });
 });
 
+describe('退出前殘留的禮物（只算目前班級的）', () => {
+  it('退出班級後又加入別的班級：舊班級殘留的未收禮物與送禮結果都看不到，殘留的禮物也收不下（交給 7 天過期退款）', async () => {
+    const { call } = makeClient(db);
+    const s = await classWithGifts(call);
+    expect((await call('POST', `/api/parent/kids/${s.up.account.id}/leave-class`, {}, s.mom.token)).status).toBe(200);
+    // 模擬真正的 PostgreSQL 上的時間窗：退出的交易掃完禮物、還沒鎖帳號時，同學剛好送出一份（退款時漏掉、留在 pending）；
+    // 另一份是他送出的、對方之後才處理的結果
+    const t = new Date().toISOString();
+    await db.query(
+      `INSERT INTO gifts (id, room_code, from_id, to_id, from_nickname, to_nickname, item_id, price, status, sender_seen, created_at, resolved_at)
+       VALUES ('gift-late', $1, $2, $3, '小美', '安安', $4, $5, 'pending', false, $6::timestamptz, NULL),
+              ('gift-old-result', $1, $3, $2, '安安', '小美', $4, $5, 'declined', false, $6::timestamptz, $6::timestamptz)`,
+      [s.room.code, s.mei.account.id, s.up.account.id, STICKER, STICKER_PRICE, t],
+    );
+    const other = await createRoom(call, '二年二班');
+    expect((await call('POST', '/api/join', { code: other.code, nickname: '安安', pin: '1234' }, s.up.token)).status).toBe(200);
+    const inbox = (await call('GET', '/api/gifts', undefined, s.up.token)).body;
+    expect(inbox.incoming).toEqual([]);
+    expect(inbox.notices).toEqual([]);
+    expect((await call('POST', '/api/gifts/gift-late/accept', {}, s.up.token)).status).toBe(404);
+    expect((await call('POST', '/api/gifts/gift-late/decline', {}, s.up.token)).status).toBe(404);
+  });
+});
+
 describe('刪除自己的帳號', () => {
   it('還有班級回 409；密碼錯回 401；名下的角色一併刪除，班上的禮物先結清，通知只送給對方', async () => {
     const hooks = { onKick: vi.fn(), onProfileChanged: vi.fn(), onGift: vi.fn() };

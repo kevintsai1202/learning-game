@@ -100,6 +100,22 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   await expect(tablet.page.getByTestId('hud-cloud')).toHaveText('☁️ 已存到雲端');
   await tablet.page.screenshot({ path: `${SHOTS}/03-tablet-after-removed.png` });
 
+  // ---------- 權杖過期（模擬：這台裝置的權杖不見了）：點同步狀態到帳號頁，家長「在這台裝置玩」找回，進度不丟 ----------
+  await tablet.page.evaluate((id) => {
+    const all = JSON.parse(localStorage.getItem('learning-island-cloud') ?? '{}');
+    delete all[id];
+    localStorage.setItem('learning-island-cloud', JSON.stringify(all));
+    return (window as any).__game.cloud.getState().syncNow();
+  }, joined.cloud.accountId);
+  await expect.poll(() => cloudState(tablet.page)).toMatchObject({ status: 'needLogin' });
+  await tablet.page.getByTestId('hud-cloud').click();
+  await expect.poll(() => screen(tablet.page)).toBe('teacher');
+  // 本機有這個角色、但沒有權杖：照樣顯示「在這台裝置玩」（不是「這台裝置上有」）
+  await tablet.page.getByTestId('kid-device-小安').click();
+  await expect(tablet.page.getByTestId('parent-note')).toContainText('已經在這台裝置上了');
+  await expect.poll(() => cloudState(tablet.page), { timeout: 20_000 }).toMatchObject({ status: 'synced' });
+  expect(await profileOf(tablet.page)).toMatchObject({ id: local.id, coins: local.coins });
+
   for (const d of [home, tablet]) expect(pageErrors(d.page)).toEqual([]);
   await Promise.all([home.context.close(), tablet.context.close()]);
 });

@@ -36,7 +36,7 @@ beforeEach(async () => {
     isOnline: (id) => hub.isOnline(id),
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
-    onKick: (id, reason) => hub.kick(id, reason),
+    onKick: (id, reason, via) => hub.kick(id, reason, via),
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const s = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, () => resolve(s));
@@ -204,5 +204,22 @@ describe('家長名下的雲端角色', () => {
     await call('DELETE', `/api/teacher/rooms/${room.code}/members/${up.account.id}`, undefined, room.token);
     const kicked = await c.waitFor('kicked');
     expect(kicked.reason).toContain('進度都還在');
+  });
+
+  it('老師重設孩子密碼：用班級代碼登入的裝置被踢；家長裝置（parent 權杖）照常連線', async () => {
+    const { up } = await uploadKid();
+    const room = await createRoom(call);
+    expect((await call('POST', '/api/join', { code: room.code, nickname: '安安', pin: '1234' }, up.token)).status).toBe(200);
+    // 學校平板用班級代碼登入（class 權杖）→ 重設密碼時被踢
+    const school = (await call('POST', '/api/login', { code: room.code, nickname: '安安', pin: '1234' })).body;
+    const tablet = await connect(school.token);
+    expect((await call('POST', `/api/teacher/rooms/${room.code}/members/${up.account.id}/pin`, { pin: '5678' }, room.token)).status).toBe(200);
+    expect((await tablet.waitFor('kicked')).reason).toContain('重設');
+    // 家裡的裝置（parent 權杖，重設密碼後照樣有效）→ 再重設一次也不會被踢：之後老師改設定的廣播照常收到，前面沒有 kicked
+    const home = await connect(up.token);
+    expect((await call('POST', `/api/teacher/rooms/${room.code}/members/${up.account.id}/pin`, { pin: '5678' }, room.token)).status).toBe(200);
+    expect((await call('PATCH', `/api/teacher/rooms/${room.code}`, { chatOpen: false }, room.token)).status).toBe(200);
+    await home.waitFor('room');
+    expect(home.msgs.map((m) => m.t)).not.toContain('kicked');
   });
 });

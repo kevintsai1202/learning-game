@@ -87,7 +87,7 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
       )
     )[0];
     if (!row) return 'bad';
-    return { accountId: row.id, roomCode: row.room_code, nickname: row.nickname, profile: row.profile, flags: { chatOpen: row.chat_open, giftsOpen: row.gifts_open } };
+    return { accountId: row.id, roomCode: row.room_code, nickname: row.nickname, profile: row.profile, flags: { chatOpen: row.chat_open, giftsOpen: row.gifts_open }, via: who.via };
   }
 
   /** 一條新的連線 */

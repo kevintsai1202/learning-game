@@ -93,6 +93,14 @@ export async function uploadToCloud(deps: CloudDeps, server: string, userToken: 
 export async function playOnThisDevice(deps: CloudDeps, server: string, userToken: string, kidId: string): Promise<Profile> {
   const res = await deps.call<SessionResponse>('POST', `/api/parent/kids/${encodeURIComponent(kidId)}/device`, { base: server, token: userToken, body: {} });
   const cloud = cloudOf(server, res);
+  // 這台裝置已經有同一個角色（同一個角色 id）、但不是這個雲端角色（例如之前用備份匯入的本機角色）：
+  // 換成雲端版會默默蓋掉這台裝置上的進度，先擋下來，讓家長自己決定（同一個雲端角色只是權杖不見了，照常拿新權杖）
+  const existing = deps.getProfile(res.profile.id);
+  if (existing && existing.cloud?.accountId !== cloud.accountId) {
+    throw new Error(
+      `這台裝置上已經有「${existing.name}」，而且不是這個雲端角色（可能是之前用備份匯入的）。為了不蓋掉這台裝置上的進度，請先在家長專區下載備份、刪掉這台裝置上的「${existing.name}」，再按一次「在這台裝置玩」。`,
+    );
+  }
   deps.setToken(cloud.accountId, res.token);
   const profile = rebase(res.profile, deps.loadOutbox(cloud.accountId), cloud, deps.now());
   deps.putProfile(profile);

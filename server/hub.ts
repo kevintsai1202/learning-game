@@ -11,6 +11,7 @@ import { shownTitle } from '../src/store/badges';
 import type { Profile } from '../src/store/save';
 import type { ZoneId } from '../src/store/useUi';
 import { SPAWN, WALK_RADIUS } from '../src/world/layout';
+import type { TokenVia } from './tokens';
 
 /** 一條連線（WebSocket 包起來的介面） */
 export interface HubConn {
@@ -25,6 +26,8 @@ export interface JoinInfo {
   nickname: string;
   profile: Profile;
   flags: RoomFlags;
+  /** 這條連線的權杖來源：class（用班級代碼登入）或 parent（家長「在這台裝置玩」）；重設密碼只踢 class 的 */
+  via: TokenVia;
 }
 
 /** 公頻保留幾則 */
@@ -44,6 +47,8 @@ interface Member {
   /** 說話的額度（連發上限 SAY_BURST，每 SAY_REFILL_MS 恢復一則） */
   sayTokens: number;
   sayAt: number;
+  /** 權杖來源（見 JoinInfo.via） */
+  via: TokenVia;
 }
 
 /** 一個房間 */
@@ -100,7 +105,7 @@ export class Hub {
       old.conn.send({ t: 'kicked', reason: '你在另一台裝置登入了' });
       old.conn.close(CLOSE_KICKED, 'replaced');
     }
-    room.members.set(info.accountId, { conn, state, dirty: false, sayTokens: SAY_BURST, sayAt: this.now() });
+    room.members.set(info.accountId, { conn, state, dirty: false, sayTokens: SAY_BURST, sayAt: this.now(), via: info.via });
     const others = [...room.members.values()].filter((m) => m.state.id !== info.accountId).map((m) => m.state);
     conn.send({ t: 'welcome', self: info.accountId, room: { ...room.flags }, members: others, chat: [...room.chat] });
     this.broadcast(room, old ? { t: 'member', member: state } : { t: 'join', member: state }, info.accountId);
@@ -188,11 +193,14 @@ export class Hub {
     this.broadcast(room, { t: 'room', room: { ...flags } });
   }
 
-  /** 踢某位孩子下線（老師移除成員或重設密碼） */
-  kick(accountId: string, reason: string): void {
+  /**
+   * 踢某位孩子下線（老師移除成員或重設密碼、家長刪除角色或讓他退出班級）。
+   * 給了 via 就只踢那種來源的連線：重設密碼只撤銷 class 權杖，家長裝置（parent）的連線留著。
+   */
+  kick(accountId: string, reason: string, via?: TokenVia): void {
     for (const room of this.rooms.values()) {
       const m = room.members.get(accountId);
-      if (!m) continue;
+      if (!m || (via && m.via !== via)) continue;
       m.conn.send({ t: 'kicked', reason });
       m.conn.close(CLOSE_KICKED, 'kicked');
       room.members.delete(accountId);

@@ -178,10 +178,10 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/parent/kids` | 把這台裝置上的角色存到雲端 `{ profile }` → `{ token, account, profile, rev, room: null }`（孩子權杖，來源 `parent`）；同一個角色重複上傳回 409 `already_uploaded` |
 | `POST /api/parent/kids/:id/device` | 在這台裝置玩：發一張孩子權杖（來源 `parent`）並回傳存檔，格式同上；別人的角色和不存在的一樣回 404 `no_kid` |
 | `DELETE /api/parent/kids/:id` | 刪除角色（在班級裡的先結清禮物） |
-| `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖失效；不在班級回 409 `not_in_class` |
+| `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖與 Google 綁定失效；不在班級回 409 `not_in_class` |
 | `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
 | `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`；別人的班級和不存在的代碼一樣回 404 |
-| `POST /api/teacher/rooms/:code/members/:id/pin` | 重設孩子密碼（只撤銷 `class` 來源的權杖，家長裝置上的不受影響） |
+| `POST /api/teacher/rooms/:code/members/:id/pin` | `{ pin }` 重設孩子密碼：只撤銷 `class` 來源的權杖、只踢 `class` 來源的即時連線，家長裝置上的不受影響 |
 | `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 → `{ ok, left }`：家長名下的角色改成退出班級（`left: true`，進度留在家長名下），純班級角色照舊刪除 |
 | `POST /api/join` | `{ code, nickname, pin, profile? }` → `{ token, account, profile, rev, room }`。帶孩子權杖時是「雲端角色加入班級」：同一個帳號掛進班級、沿用原本的權杖，回 `{ account, profile, rev, room }`；已經在班級裡回 409 `already_in_class` |
 | `POST /api/login` | `{ code, nickname, pin }` → `{ token, account, profile, rev, room }` |
@@ -189,7 +189,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/ops` | `{ ops: Op[] }` → `{ profile, rev, rejected: [{ id, reason }], room }`（`room` 是目前的班級，沒有是 null：裝置靠它知道在別台裝置退出、或被老師移出班級） |
 | `GET /api/classmates` | 全班同學（不含自己）`[{ id, nickname, avatar, online, inventory }]`，選送禮對象用；外觀經過 `equippedOf` |
 | `POST /api/gifts` | `{ id, to, itemId }` → `{ gift, profile, rev }`（id 由裝置產生，重送不重複扣款） |
-| `GET /api/gifts` | `{ incoming, notices, sentToday, dailyLimit }`：待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份 |
+| `GET /api/gifts` | `{ incoming, notices, sentToday, dailyLimit }`：待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份。待收下與結果只算目前班級的（收下、不用了也是），退出班級前殘留的交給 7 天過期退款 |
 | `POST /api/gifts/:id/accept` | 收下 → `{ status: 'accepted' \| 'returned', profile, rev }`（`returned`：已經有了，自動退回） |
 | `POST /api/gifts/:id/decline` | 不用了（退款給送禮人） |
 | `POST /api/gifts/notices/ack` | `{ ids }` 送禮結果看過了 |

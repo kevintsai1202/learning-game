@@ -63,24 +63,33 @@ export function zoneOfScreen(screen: Screen, zone: ZoneId | null): ZoneId | null
   return screen === 'zone' || screen === 'activity' || screen === 'result' || screen === 'shop' ? zone : null;
 }
 
-/** 被踢線或伺服器說「沒有班級」之後記住的帳號與班級：同一個帳號、同一個班級不再自動重連 */
+/** 被踢線或伺服器說「沒有班級」之後記住的帳號、班級與權杖：三者都沒變就不再自動重連 */
 export interface RealtimeBlock {
   accountId: string;
   room: string | undefined;
+  /** 封鎖當下這台裝置的權杖：重新登入拿到新權杖就解除 */
+  token: string | null;
 }
 
 /**
- * 角色或班級變了之後，封鎖怎麼處理（純函式）：
- * - 帳號與班級都沒變：維持（例如在別台裝置登入被踢，不要兩台互踢）
+ * 角色、班級或權杖變了之後，封鎖怎麼處理（純函式；token 是這台裝置目前的權杖）：
+ * - 都沒變：維持（例如在別台裝置登入被踢，不要兩台互踢）
+ * - 同一個角色拿到新權杖（重新登入，例如老師重設密碼後用新密碼登入）：解除封鎖，提示清掉。
+ *   權杖被清成 null（同步回 401）不算，提示要留到重新登入
  * - 同一個角色退出了班級（被老師移出、家長讓他退出，同步後本機班級清空）：反正不會再連線，
  *   被踢的提示留著，讓孩子看到「進度都還在」；之後加入班級或換角色才清掉
  * - 換了角色、或加入了別的班級：解除封鎖，提示清掉
  */
-export function updateBlock(blocked: RealtimeBlock | null, current: { accountId: string; room?: string } | undefined): { blocked: RealtimeBlock | null; clearNotice: boolean } {
+export function updateBlock(
+  blocked: RealtimeBlock | null,
+  current: { accountId: string; room?: string } | undefined,
+  token: string | null,
+): { blocked: RealtimeBlock | null; clearNotice: boolean } {
   if (!blocked) return { blocked: null, clearNotice: false };
   const sameAccount = blocked.accountId === current?.accountId;
+  if (sameAccount && token !== null && token !== blocked.token) return { blocked: null, clearNotice: true };
   if (sameAccount && blocked.room === current?.room) return { blocked, clearNotice: false };
-  if (sameAccount && !current?.room) return { blocked: { accountId: blocked.accountId, room: undefined }, clearNotice: false };
+  if (sameAccount && !current?.room) return { blocked: { ...blocked, room: undefined }, clearNotice: false };
   return { blocked: null, clearNotice: true };
 }
 
@@ -116,6 +125,8 @@ export function startRealtime(): () => void {
    * （避免兩台裝置互踢、或一直連到已經退出的班級）。角色或班級變了之後怎麼處理見 updateBlock。
    */
   let blocked: RealtimeBlock | null = null;
+  /** 記住被踢或「沒有班級」當下的帳號、班級與權杖 */
+  const blockNow = (): RealtimeBlock | null => (accountId ? { accountId, room: useGame.getState().profile()?.cloud?.room, token: getToken(accountId) } : null);
   let last = { x: NaN, z: NaN, h: NaN, at: 0 };
   let lastZone: ZoneId | null | undefined;
 
@@ -189,7 +200,7 @@ export function startRealtime(): () => void {
           void useGifts.getState().load();
           break;
         case 'kicked':
-          blocked = accountId ? { accountId, room: useGame.getState().profile()?.cloud?.room } : null;
+          blocked = blockNow();
           useRealtime.setState({ status: 'kicked', notice: msg.reason });
           // 被移出班級時，家長名下的角色進度還在：同步一次，本機的班級跟著清掉（用班級代碼登入的裝置會變成要重新登入）
           void useCloud.getState().syncNow();
@@ -206,7 +217,7 @@ export function startRealtime(): () => void {
       if (useRealtime.getState().status === 'kicked') return;
       // 伺服器說這個角色沒有班級（剛退出班級、本機還沒同步到）：不重連，同步一次更新本機的班級
       if (ev.code === CLOSE_NO_CLASS) {
-        blocked = accountId ? { accountId, room: useGame.getState().profile()?.cloud?.room } : null;
+        blocked = blockNow();
         accountId = null;
         useRealtime.setState({ status: 'off' });
         void useCloud.getState().syncNow();
@@ -227,10 +238,13 @@ export function startRealtime(): () => void {
   const evaluate = () => {
     const target = wanted();
     const id = target?.profile.cloud?.accountId ?? null;
-    // 角色或班級變了：解除封鎖或保留被踢的提示（updateBlock）
-    const next = updateBlock(blocked, useGame.getState().profile()?.cloud);
-    blocked = next.blocked;
-    if (next.clearNotice && useRealtime.getState().status === 'kicked') useRealtime.setState({ status: 'off', notice: null });
+    // 角色、班級或權杖變了：解除封鎖或保留被踢的提示（updateBlock）。evaluate 每次狀態變動都會跑，沒有封鎖時不讀權杖
+    if (blocked) {
+      const cloud = useGame.getState().profile()?.cloud;
+      const next = updateBlock(blocked, cloud, cloud ? getToken(cloud.accountId) : null);
+      blocked = next.blocked;
+      if (next.clearNotice && useRealtime.getState().status === 'kicked') useRealtime.setState({ status: 'off', notice: null });
+    }
     const isBlocked = blocked !== null && blocked.accountId === id;
     if (!target || isBlocked) {
       if (socket || accountId) disconnect();

@@ -48,14 +48,16 @@ docker rm -f li-pg-test
   - `authenticate(c, 'kid')`：班級功能用，角色沒有班級時回 403 `no_class`（送禮、同學名單因此不用自己檢查）；`authenticateKidAny`：班級可以空，只給同步（`/api/ops`）、讀存檔（`/api/me`）與「帶權杖加入班級」用；`authenticateUser` 只收大人的。WebSocket 遇到沒有班級的角色用 4004（`CLOSE_NO_CLASS`）關閉，和權杖無效（4003）分開。
 - **家長的雲端角色與退出班級**（A2，`docs/plans/accounts.md` 第 6 節）：
   - 角色可以只有家長、沒有班級（`accounts` 的限制：班級與家長至少一個）；沒有班級就沒有孩子密碼。
-  - 退出班級（老師移出家長名下的角色、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts`（收到與送出的未收禮物都退款，送出的標成看過）＋`detachFromClass`（班級與孩子密碼清空、刪掉 `class` 來源的權杖，家長裝置上的留著）；沒有家長的純班級角色照舊刪除。
-  - 老師重設孩子密碼只撤銷 `class` 來源的權杖。
+  - 退出班級（老師移出家長名下的角色、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts`（收到與送出的未收禮物都退款，送出的標成看過）＋`detachFromClass`（班級與孩子密碼清空、刪掉 `class` 來源的權杖與 Google 綁定，家長裝置上的權杖留著）；沒有家長的純班級角色照舊刪除。Google 綁定是用班級權杖建立的（知道孩子密碼就能綁），和 `class` 權杖同生命週期。
+  - 老師重設孩子密碼只撤銷 `class` 來源的權杖，也只踢 `class` 來源的連線：中樞記每條連線的權杖來源（`JoinInfo.via`），`onKick(id, reason, 'class')`／`hub.kick(id, reason, via)`。移出、退出、刪除照舊全踢。
+  - 收禮清單、送禮結果、收下與不用了都只算目前班級的禮物（`gifts.room_code`）：退出班級的交易在掃完禮物、鎖到帳號之前，同學剛好送出的那份會漏掉（真正的 PostgreSQL 才會發生），這種殘留的在新班級看不到也收不下，7 天後由 `expireGifts` 退款。
+  - 存到雲端（`POST /api/parent/kids`）在交易裡先鎖家長的 `users` 列，再查重與新增：同時上傳同一個角色不會變成兩個分身。這個鎖只在這裡拿，期間只新增帳號、不鎖既有的帳號與禮物，和下面的鎖定順序不衝突。
   - 刪除角色、刪除自己的帳號：在交易裡結清禮物再刪，交易結束後才送通知，而且不送給被刪的角色（`parents.ts` 的 `emitExcept`）；還有班級的帳號不能刪（`has_classes`），因為刪掉老師帳號會連帶刪掉班上所有角色。
 - **老師的 API**（`/api/teacher/rooms…`）：大人權杖＋老師身分（只有家長身分回 403 `not_teacher`）＋這個班級是他的；別人的班級和不存在的代碼一樣回 404 `no_room`，不透露代碼存在。改版前用管理密碼建的房間沒有擁有者（`owner_id` 是 null），目前沒有登入方式，上線前要看正式環境有沒有這種房間（`docs/plans/accounts.md` 的 A5）。
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。
 - 伺服器只保證位置在島的圓形範圍內，不做障礙物碰撞（信任模型，見 `docs/plans/online.md` 第 5 節）。
-- HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onKick` 通知即時中樞（`main.ts` 串接）。
+- HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onKick` 通知即時中樞（`main.ts` 串接；`onKick` 的第三個參數是只踢哪種權杖來源的連線）。
 - **送禮物**（`gifts.ts`，規格見 `docs/plans/online.md` 第 7 節）：
   - 鎖定順序固定，避免真正的 PostgreSQL 互相等待：送禮只鎖帳號（送禮人與收禮人用一句 `WHERE id = ANY(…) ORDER BY id FOR UPDATE` 一起鎖）；收下、不用了、過期、移出成員先鎖禮物，再依 id 順序鎖帳號。新增會同時鎖禮物與帳號的路由也要照這個順序。
   - 交易裡不能丟 `ApiError` 卻期待前面的寫入保留（整個交易會撤銷）：例如收下過期的禮物，要先回傳結果讓退款提交，交易結束後再回 409。

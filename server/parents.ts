@@ -82,17 +82,24 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     if (!parsed) throw new ApiError(400, 'bad_profile', '角色資料格式不符');
     // 本機的雲端標記不存到伺服器
     const { cloud: _local, ...profile } = parsed;
-    // 同一個本機角色（同一個角色 id）只能上傳一次，按兩次不會變成兩個分身
-    const dup = await db.query("SELECT 1 FROM accounts WHERE parent_id = $1 AND profile->>'id' = $2", [parent, profile.id]);
-    if (dup.length) throw new ApiError(409, 'already_uploaded', '這個角色已經存到雲端了');
     const name = [...profile.name.trim()].slice(0, NAME_MAX).join('') || '孩子';
     const t = now().toISOString();
-    const rows = await db.query<AccountRow>(
-      `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
-       VALUES ($1, NULL, $2, $3, $4, NULL, $5::jsonb, 1, $6::timestamptz, $6::timestamptz) RETURNING *`,
-      [newAccountId(), parent, name, name.toLowerCase(), JSON.stringify({ ...profile, name }), t],
-    );
-    return c.json(await deps.session(rows[0], null));
+    const row = await db.transaction(async (tx) => {
+      // 同一位家長的上傳排隊（鎖住家長的帳號列），查重與新增之間不會被另一個請求插隊；
+      // 這個鎖只在這裡拿，期間只新增帳號、不鎖既有的帳號與禮物，和其他路由的鎖定順序不衝突
+      const me = await tx.query('SELECT id FROM users WHERE id = $1 FOR UPDATE', [parent]);
+      if (!me.length) throw new ApiError(401, 'unauthorized', '請重新登入');
+      // 同一個本機角色（同一個角色 id）只能上傳一次，同時按兩次也不會變成兩個分身
+      const dup = await tx.query("SELECT 1 FROM accounts WHERE parent_id = $1 AND profile->>'id' = $2", [parent, profile.id]);
+      if (dup.length) throw new ApiError(409, 'already_uploaded', '這個角色已經存到雲端了');
+      const rows = await tx.query<AccountRow>(
+        `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+         VALUES ($1, NULL, $2, $3, $4, NULL, $5::jsonb, 1, $6::timestamptz, $6::timestamptz) RETURNING *`,
+        [newAccountId(), parent, name, name.toLowerCase(), JSON.stringify({ ...profile, name }), t],
+      );
+      return rows[0];
+    });
+    return c.json(await deps.session(row, null));
   });
 
   app.post('/api/parent/kids/:id/device', async (c) => {

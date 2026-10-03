@@ -51,5 +51,5 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - 要朗讀的固定句子放 `src/ui/lines.ts`，題目的朗讀文字一律經過 `src/quiz/spoken.ts`；預錄語音的盤點腳本靠這兩處收集句子。
 - 每題要有 `indicators`（108 課綱代碼）與 `source`。
 - `public/google794a0ce8bfe02629.html` 是 Google Search Console 的網域驗證檔（OAuth 品牌驗證要用），不能刪也不能改；`kevintsai1202.github.io` 儲存庫根目錄的同名檔案也一樣。
-- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud、presence、realtime、presenceDemo、gifts）讀狀態與自動作答。多台裝置的測試用 `e2e/onlineDevice.ts` 開啟（3D 畫質設成低，否則軟體 WebGL 會把 CPU 吃滿）。
+- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud、presence、realtime、presenceDemo、gifts）讀狀態與自動作答。多台裝置的測試用 `e2e/onlineDevice.ts` 開啟（3D 畫質設成低，否則軟體 WebGL 會把 CPU 吃滿）。裝置紀錄出現 `net::ERR_NETWORK_CHANGED` 時，是開發機的網路變動（Wi-Fi 斷線、漫遊）讓 Chrome 中斷了請求，連 localhost 也一樣：先查 Windows 事件記錄（`Microsoft-Windows-NetworkProfile/Operational` 的 10000／10001、System 的 `Netwtw14`）對時間，單獨重跑該測試。
 - 雲端角色的存檔只能透過「操作」改變（`src/online/ops.ts`），伺服器用同一份規則套用；`src/` 裡給伺服器 import 的模組不能 import 畫面、音訊、3D 的程式。

@@ -137,15 +137,18 @@ export function registerGiftRoutes(app: Hono, deps: GiftDeps): void {
     return c.json<ClassmatesResponse>({ classmates });
   });
 
-  /** 待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份 */
+  /** 待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份（只算目前班級的：退出前殘留的見 settlePendingGifts） */
   app.get('/api/gifts', async (c) => {
     const who = await deps.authenticate(c, 'kid');
     const t = now();
-    const incoming = await db.query<GiftRow>("SELECT * FROM gifts WHERE to_id = $1 AND status = 'pending' AND created_at > $2::timestamptz ORDER BY created_at", [
+    const incoming = await db.query<GiftRow>(
+      "SELECT * FROM gifts WHERE to_id = $1 AND room_code = $3 AND status = 'pending' AND created_at > $2::timestamptz ORDER BY created_at",
+      [who.accountId, expireCutoff(t).toISOString(), who.roomCode],
+    );
+    const done = await db.query<GiftRow>("SELECT * FROM gifts WHERE from_id = $1 AND room_code = $2 AND status <> 'pending' AND NOT sender_seen ORDER BY resolved_at, id", [
       who.accountId,
-      expireCutoff(t).toISOString(),
+      who.roomCode,
     ]);
-    const done = await db.query<GiftRow>("SELECT * FROM gifts WHERE from_id = $1 AND status <> 'pending' AND NOT sender_seen ORDER BY resolved_at, id", [who.accountId]);
     const notices: GiftNotice[] = done.map((g) => (g.status === 'accepted' ? { id: g.id, kind: 'accepted', to: g.to_nickname, itemId: g.item_id } : { id: g.id, kind: 'refunded', price: g.price }));
     const sent = await db.query<{ n: number }>('SELECT count(*)::int AS n FROM gifts WHERE from_id = $1 AND created_at >= $2::timestamptz', [who.accountId, startOfDay(t).toISOString()]);
     return c.json<GiftsResponse>({
@@ -203,9 +206,9 @@ export function registerGiftRoutes(app: Hono, deps: GiftDeps): void {
     return c.json<SendGiftResponse>({ gift: { id: g.id, to: g.to_nickname, itemId: g.item_id, price: g.price }, profile: result.profile, rev: result.rev });
   });
 
-  /** 鎖住一份送給我的禮物；不存在回 404，已經處理過回 409 */
-  const lockMyPendingGift = async (tx: Queryable, giftId: string, me: string): Promise<GiftRow> => {
-    const gift = (await tx.query<GiftRow>('SELECT * FROM gifts WHERE id = $1 AND to_id = $2 FOR UPDATE', [giftId, me]))[0];
+  /** 鎖住一份送給我、在目前班級的禮物；不存在回 404（退出前殘留在舊班級的也是，交給 7 天過期退款），已經處理過回 409 */
+  const lockMyPendingGift = async (tx: Queryable, giftId: string, me: string, roomCode: string): Promise<GiftRow> => {
+    const gift = (await tx.query<GiftRow>('SELECT * FROM gifts WHERE id = $1 AND to_id = $2 AND room_code = $3 FOR UPDATE', [giftId, me, roomCode]))[0];
     if (!gift) throw new ApiError(404, 'no_gift', '找不到這份禮物');
     if (gift.status !== 'pending') throw new ApiError(409, 'gift_done', '這份禮物已經處理過了');
     return gift;
@@ -218,7 +221,7 @@ export function registerGiftRoutes(app: Hono, deps: GiftDeps): void {
     const t = now();
     const events: Events = { profiles: [], gifts: [] };
     const result = await db.transaction(async (tx) => {
-      const gift = await lockMyPendingGift(tx, c.req.param('id'), me);
+      const gift = await lockMyPendingGift(tx, c.req.param('id'), me, who.roomCode);
       const accounts = await lockAccounts(tx, gift.from_id ? [me, gift.from_id] : [me]);
       const mine = accounts.get(me);
       if (!mine) throw new ApiError(401, 'unauthorized', '請重新登入');
@@ -248,7 +251,7 @@ export function registerGiftRoutes(app: Hono, deps: GiftDeps): void {
     const t = now();
     const events: Events = { profiles: [], gifts: [] };
     await db.transaction(async (tx) => {
-      const gift = await lockMyPendingGift(tx, c.req.param('id'), who.accountId!);
+      const gift = await lockMyPendingGift(tx, c.req.param('id'), who.accountId!, who.roomCode);
       const expired = new Date(gift.created_at).getTime() <= expireCutoff(t).getTime();
       await refund(tx, gift, expired ? 'expired' : 'declined', t, events);
     });
@@ -294,6 +297,8 @@ export async function expireGifts(deps: Pick<GiftDeps, 'db' | 'onProfileChanged'
  * - 別人送他們、還沒收的：退給送禮人（和送禮人收到「退回」通知）。
  * - includeOutgoing 時，他們送出、對方還沒收的也退給他們自己，並標成看過了：退出班級後沒有畫面能顯示這則退款通知。
  * 鎖定順序和其他路由一樣：先依 id 鎖禮物，再依 id 鎖帳號（server/CLAUDE.md）。
+ * 已知的時間窗：掃完禮物、還沒鎖到帳號之間，同學可能剛好送出一份（送禮只鎖帳號），真正的 PostgreSQL 上這份會漏掉、
+ * 留在 pending。收禮清單、送禮結果與收下都只算目前班級的禮物，所以退出後這種殘留的看不到也收不下，7 天後由 expireGifts 退款給送禮人。
  */
 export async function settlePendingGifts(tx: Queryable, accountIds: string[], now: Date, events: Events, opts: { includeOutgoing: boolean }): Promise<void> {
   if (!accountIds.length) return;
@@ -307,10 +312,14 @@ export async function settlePendingGifts(tx: Queryable, accountIds: string[], no
   if (outgoing.length) await tx.query('UPDATE gifts SET sender_seen = true WHERE id = ANY($1)', [outgoing.map((g) => g.id)]);
 }
 
-/** 讓一個角色退出班級（只在交易裡呼叫，禮物要先結清）：班級與孩子密碼清掉，用班級代碼登入的權杖失效；家長裝置上的權杖留著 */
+/**
+ * 讓一個角色退出班級（只在交易裡呼叫，禮物要先結清）：班級與孩子密碼清掉，用班級代碼登入的權杖失效；家長裝置上的權杖留著。
+ * Google 綁定也拿掉：綁定是用班級權杖建立的（知道孩子密碼的人都能綁），留著的話退出班級後還能用 Google 拿到新權杖。
+ */
 export async function detachFromClass(tx: Queryable, accountId: string): Promise<void> {
   await tx.query('UPDATE accounts SET room_code = NULL, pin_hash = NULL WHERE id = $1', [accountId]);
   await tx.query("DELETE FROM tokens WHERE account_id = $1 AND via = 'class'", [accountId]);
+  await tx.query('DELETE FROM google_links WHERE account_id = $1', [accountId]);
 }
 
 /**

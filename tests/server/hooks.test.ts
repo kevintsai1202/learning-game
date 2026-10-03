@@ -53,7 +53,8 @@ describe('通知即時中樞', () => {
     const a = await joinRoom(call, code, '小安');
     const b = await joinRoom(call, code, '小美', '5678');
     await call('POST', `/api/teacher/rooms/${code}/members/${a.account.id}/pin`, { pin: '0000' }, token);
-    expect(hooks.onKick).toHaveBeenCalledWith(a.account.id, expect.stringContaining('密碼'));
+    // 重設密碼只踢用班級代碼登入的連線（家長裝置的權杖沒有撤銷）
+    expect(hooks.onKick).toHaveBeenCalledWith(a.account.id, expect.stringContaining('密碼'), 'class');
     await call('DELETE', `/api/teacher/rooms/${code}/members/${b.account.id}`, undefined, token);
     expect(hooks.onKick).toHaveBeenCalledWith(b.account.id, expect.stringContaining('移出'));
   });
