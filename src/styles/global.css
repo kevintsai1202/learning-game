@@ -540,13 +540,19 @@ button {
   white-space: nowrap;
   pointer-events: none;
 }
-/* 門口的「進去玩」：畫在公頻面板上面，連上班級時也一定點得到（休息提醒的 z-index 是 50，仍蓋在它上面） */
+/*
+ * 門口的「進去玩」：畫面下方置中。用 left／right＋width: fit-content＋margin: auto 置中，不用 transform：
+ * pop-in 動畫會改 transform，以前的 translateX(-50%) 被動畫蓋掉，泡泡從畫面中線往右長（2026-10-03 修正）。
+ * 畫在公頻面板上面（z-index 1），連上班級時也一定點得到；休息提醒（50）仍蓋在它上面。
+ */
 .door-bubble {
   position: absolute;
   z-index: 1;
-  left: 50%;
+  left: 12px;
+  right: 12px;
+  width: fit-content;
+  margin: 0 auto;
   bottom: 84px;
-  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 14px;
@@ -554,6 +560,16 @@ button {
   font-size: 28px;
   font-weight: 800;
   animation: pop-in 0.3s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+/* 觸控裝置（有搖桿）：左右各讓出 170px，不壓到左下角的搖桿（離左邊 22px、寬 132px），字小一點 */
+.door-bubble.touch {
+  left: 170px;
+  right: 170px;
+  font-size: 24px;
+}
+.door-bubble.touch .btn {
+  font-size: 22px;
+  padding: 8px 16px 10px;
 }
 .speech {
   position: absolute;
@@ -740,6 +756,44 @@ button {
     font-size: 16px;
     bottom: 30px;
     border-radius: 16px;
+  }
+  /* 「進去玩」放在提示文字的位置（兩者不會同時出現）：右下角、讓開搖桿，字小一點，放不下就換行 */
+  .door-bubble,
+  .door-bubble.touch {
+    left: auto;
+    right: 10px;
+    bottom: 30px;
+    margin: 0;
+    max-width: calc(100% - 175px);
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 8px 10px 10px;
+    font-size: 20px;
+  }
+  .door-bubble .btn,
+  .door-bubble.touch .btn {
+    font-size: 20px;
+    padding: 6px 14px 8px;
+  }
+}
+
+/* 手機橫放（高度不到 500px）：「進去玩」縮小、貼在底部中間（提示文字的位置），不碰到右側的公頻 */
+@media (orientation: landscape) and (max-height: 500px) {
+  .door-bubble,
+  .door-bubble.touch {
+    left: 12px;
+    right: 12px;
+    bottom: 14px;
+    margin: 0 auto;
+    gap: 10px;
+    padding: 6px 10px 6px 16px;
+    font-size: 20px;
+  }
+  .door-bubble .btn,
+  .door-bubble.touch .btn {
+    font-size: 20px;
+    padding: 6px 14px 8px;
   }
 }
 .quiz-head {
@@ -1935,7 +1989,7 @@ button {
 /*
  * 手機橫放（高度不到 500px）的公頻：縮小、只顯示最近三則，打開短句盤時先藏起對話。
  * 底部貼在提示文字上方（提示 bottom 18px、高約 46px），最高到右上角按鈕下面（按鈕下緣約 68px）。
- * 寬度要放得下並排的「說話」「送禮」；站在門口時「進去玩」泡泡畫在公頻上面。
+ * 寬度要放得下並排的「說話」「送禮」；「進去玩」泡泡在底部中間，碰不到面板（左緣約 596px）。
  */
 @media (orientation: landscape) and (max-height: 500px) {
   .chat-actions .btn {

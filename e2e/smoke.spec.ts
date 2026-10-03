@@ -103,6 +103,10 @@ test('走到建築門口會出現「進去玩」泡泡，點了就進入建築�
   });
   await standAtDoor(page, door);
   await expect(page.getByTestId('door-bubble')).toContainText('數學城堡');
+  // 泡泡在畫面正中間（出場動畫結束後也一樣）
+  await page.waitForTimeout(500);
+  const bubble = (await page.getByTestId('door-bubble').boundingBox())!;
+  expect(Math.abs(bubble.x + bubble.width / 2 - page.viewportSize()!.width / 2)).toBeLessThanOrEqual(2);
   await page.screenshot({ path: `${SHOTS}/10-door.png` });
   await page.getByTestId('enter-zone').click();
   await expect.poll(() => screen(page)).toBe('zone');

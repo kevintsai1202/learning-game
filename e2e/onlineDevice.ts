@@ -18,11 +18,13 @@ export function flushDeviceLogs(testInfo: TestInfo): void {
 
 /**
  * 開一個新的瀏覽器環境（模擬另一台平板），把伺服器網址寫進 localStorage，清空存檔後打開首頁。
+ * opts.touch：模擬觸控裝置（有搖桿）。
  * 3D 畫質設成「低」（產品既有的設定）：headless 用軟體 WebGL，三台裝置同時畫有陰影的 3D 會把 CPU 吃滿，
  * 第三台載入時會卡住（2026-10-03 實測：第三台的 reload 超過 30 秒沒觸發 load）。
  */
-export async function openDevice(browser: Browser, baseURL: string): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await browser.newContext({ baseURL, viewport: { width: 1280, height: 800 } });
+export async function openDevice(browser: Browser, baseURL: string, opts: { touch?: boolean } = {}): Promise<{ context: BrowserContext; page: Page }> {
+  // touch：模擬觸控裝置（島上會出現搖桿）；不設 isMobile，測試中途還要把畫面改成電腦尺寸
+  const context = await browser.newContext({ baseURL, viewport: { width: 1280, height: 800 }, hasTouch: opts.touch ?? false });
   // 伺服器網址＋Google 測試按鈕（伺服器是 Google 測試模式，不能讓頁面去載入真正的 Google 程式）
   await context.addInitScript((url) => {
     localStorage.setItem('learning-island-server-url', url);

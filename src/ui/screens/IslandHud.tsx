@@ -175,7 +175,7 @@ export function IslandHud() {
       </div>
       <SpeechBubble />
       {near ? (
-        <div className="door-bubble card" data-testid="door-bubble">
+        <div className={`door-bubble card ${touch ? 'touch' : ''}`} data-testid="door-bubble">
           <span>
             {near.icon} {near.name}
           </span>

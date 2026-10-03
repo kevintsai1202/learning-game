@@ -85,16 +85,17 @@ type Box = { x: number; y: number; width: number; height: number };
 /** 兩個方框有沒有重疊 */
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
-/** 檢查短句盤的螢幕：手機直式（兩種）、手機橫放、Chromebook（扣掉瀏覽器工具列）、平板橫放 */
+/** 檢查的螢幕：手機直式（兩種）、手機橫放、Chromebook（扣掉瀏覽器工具列）、平板橫放、平板直式（寬度超過 600，套不到手機的規則） */
 const PICKER_VIEWPORTS: [number, number][] = [
   [390, 844],
   [375, 667],
   [844, 390],
   [1366, 650],
   [1280, 800],
+  [768, 1024],
 ];
 
-test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「進去玩」與最後一句都點得到', async ({ browser, baseURL, request }) => {
+test('各種螢幕（觸控）：公頻與短句盤完整在畫面內、不擋按鈕；「進去玩」置中、不壓到搖桿與公頻；最後一句點得到', async ({ browser, baseURL, request }) => {
   test.setTimeout(300_000);
   const post = async (path: string, data: unknown) => {
     const res = await request.post(`${SERVER}${path}`, { data });
@@ -103,8 +104,10 @@ test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「�
   };
   const room = await post('/api/rooms', { name: '二年二班', password: 'teach123' });
   await post('/api/join', { code: room.code, nickname: '皮皮', pin: '3333', avatar: { animal: 'penguin', color: '#5b5b6b', hat: null } });
-  const { context, page } = await openDevice(browser, baseURL!);
+  // 觸控裝置：島上有搖桿（左下角），「進去玩」泡泡不能壓到它
+  const { context, page } = await openDevice(browser, baseURL!, { touch: true });
   await loginAndEnter(page, room.code, '皮皮', '3333');
+  await expect(page.locator('.joystick')).toBeVisible();
 
   // 公頻放滿 5 則對話（面板最高的情況）
   await page.evaluate(() => {
@@ -118,6 +121,8 @@ test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「�
   const goDoor = async (atDoor: boolean) => {
     await standAtDoor(page, atDoor ? DOOR : { x: 0, z: 13 });
     await expect(page.getByTestId('door-bubble')).toHaveCount(atDoor ? 1 : 0);
+    // 等泡泡的出場動畫（0.3 秒）播完再量大小
+    if (atDoor) await page.waitForTimeout(500);
   };
   const say = page.getByTestId('chat-say');
   /** 打開或收起短句盤 */
@@ -145,10 +150,7 @@ test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「�
       expect.soft(b.sw, `${where}「${b.text}」文字超出按鈕`).toBeLessThanOrEqual(b.cw);
     }
   };
-  /**
-   * 「進去玩」一定點得到（泡泡畫在公頻上面）。泡泡與公頻仍可能重疊：泡泡沒有置中——pop-in 動畫結束時的
-   * transform: scale(1) 蓋掉了 translateX(-50%)，從畫面中線往右長、窄螢幕被擠成兩三行；泡泡位置改好後再加嚴格的不重疊檢查。
-   */
+  /** 「進去玩」一定點得到（另外的保險：泡泡畫在公頻上面） */
   const checkEnter = async (where: string) => {
     const covered = await page.getByTestId('enter-zone').evaluate((el) => {
       const r = el.getBoundingClientRect();
@@ -156,6 +158,24 @@ test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「�
       return !(hit && el.contains(hit));
     });
     expect.soft(covered, `${where} 公頻蓋住「進去玩」`).toBe(false);
+  };
+  /** 「進去玩」泡泡：完整在畫面內；寬螢幕置中；不壓到公頻、搖桿、右上角按鈕 */
+  const checkBubble = async (where: string, w: number, h: number) => {
+    const bubble = (await page.getByTestId('door-bubble').boundingBox())!;
+    expect.soft(bubble.x, `${where} 泡泡左邊超出`).toBeGreaterThanOrEqual(0);
+    expect.soft(bubble.y, `${where} 泡泡上面超出`).toBeGreaterThanOrEqual(0);
+    expect.soft(bubble.x + bubble.width, `${where} 泡泡右邊超出`).toBeLessThanOrEqual(w);
+    expect.soft(bubble.y + bubble.height, `${where} 泡泡下面超出`).toBeLessThanOrEqual(h);
+    if (w > 600) expect.soft(Math.abs(bubble.x + bubble.width / 2 - w / 2), `${where} 泡泡沒有置中：${JSON.stringify(bubble)}`).toBeLessThanOrEqual(2);
+    const others: [string, Box | null][] = [
+      ['公頻', await page.getByTestId('chat-panel').boundingBox()],
+      ['搖桿', await page.locator('.joystick').boundingBox()],
+      ['hud-badges', await page.getByTestId('hud-badges').boundingBox()],
+      ['hud-parent', await page.getByTestId('hud-parent').boundingBox()],
+    ];
+    for (const [name, box] of others) {
+      if (box) expect.soft(overlaps(bubble, box), `${where} 泡泡壓到${name}：${JSON.stringify({ bubble, box })}`).toBe(false);
+    }
   };
 
   // 每種螢幕都檢查完再一起報告（soft），一次看到所有問題
@@ -171,12 +191,14 @@ test('各種螢幕：公頻與短句盤完整在畫面內、不擋按鈕，「�
     await page.getByTestId('phrase-sad').scrollIntoViewIfNeeded();
     await expect.soft(page.getByTestId('phrase-sad'), where).toBeInViewport();
     await page.screenshot({ path: `${SHOTS}/02-picker-${where}.png` });
-    // 走到門口：短句盤開著或收起，「進去玩」都點得到
+    // 走到門口：短句盤開著或收起，「進去玩」都點得到，泡泡位置正確
     await goDoor(true);
     await checkEnter(`${where} 短句盤`);
+    await checkBubble(`${where} 短句盤`, w, h);
     await setPicker(false);
     await checkPanel(`${where} 收起`, w, h);
     await checkEnter(`${where} 收起`);
+    await checkBubble(`${where} 收起`, w, h);
     await page.screenshot({ path: `${SHOTS}/03-door-${where}.png` });
   }
 
