@@ -106,10 +106,20 @@ function device(app: ReturnType<typeof createApp>) {
   return { deps, profiles, tokens, outboxes, state, act };
 }
 
-/** 建立房間，回傳代碼 */
+/** 每個班級的老師權杖（重設孩子密碼的測試要用） */
+const teacherTokens = new Map<string, string>();
+/** 測試老師帳號名稱的流水號 */
+let teacherSeq = 0;
+
+/** 註冊一位老師並建立班級，回傳班級代碼 */
 async function newRoom(app: ReturnType<typeof createApp>): Promise<string> {
-  const res = await app.request('/api/rooms', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: '二年一班', password: 'teach123' }) });
-  return ((await res.json()) as { code: string }).code;
+  const post = async (path: string, body: unknown, token?: string) =>
+    (await app.request(path, { method: 'POST', headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify(body) })).json();
+  const username = `sync_teacher_${++teacherSeq}`;
+  const { token } = (await post('/api/users', { username, password: 'teach1234', email: `${username}@example.com`, parent: false, teacher: true })) as { token: string };
+  const { room } = (await post('/api/teacher/rooms', { name: '二年一班' }, token)) as { room: { code: string } };
+  teacherTokens.set(room.code, token);
+  return room.code;
 }
 
 /** 去掉本機才有的雲端標記，方便和伺服器的存檔比較 */
@@ -227,8 +237,8 @@ describe('同步', () => {
 
   it('權杖失效（老師重設密碼）：要求重新登入，佇列保留；重新登入後送出', async () => {
     const { app, code, d, id, acc } = await joined();
-    const teacher = (await (await app.request('/api/teacher/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, password: 'teach123' }) })).json()) as { token: string };
-    await app.request(`/api/teacher/members/${acc}/pin`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${teacher.token}` }, body: JSON.stringify({ pin: '5555' }) });
+    const teacher = teacherTokens.get(code)!;
+    await app.request(`/api/teacher/rooms/${code}/members/${acc}/pin`, { method: 'POST', headers: { 'content-type': 'application/json', authorization: `Bearer ${teacher}` }, body: JSON.stringify({ pin: '5555' }) });
     d.act(id, sessionOp('a'));
     expect((await syncProfile(d.deps, id)).status).toBe('needLogin');
     expect(d.outboxes.get(acc)!.inflight).toHaveLength(1);

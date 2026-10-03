@@ -108,8 +108,9 @@ describe('國語生字：charinfo 與筆順檔', () => {
       expect(d.medians.length, c.char).toBe(c.strokeCount);
       if (c.strokeSource!.endsWith('+reorder')) expect(d._notice, c.char).toContain('重排');
     }
-    // 讀 852 個筆順檔；全套平行跑時（伺服器測試同時啟動 PGlite）會超過預設的 5 秒
-  }, 30_000);
+    // 讀 852 個筆順檔；全套平行跑時（伺服器測試同時啟動 PGlite）會超過預設的 5 秒。
+    // 2026-10-03 伺服器測試增加到 12 個檔案後，30 秒也偶爾不夠，放寬到 60 秒（和 vitest.config.ts 一致）
+  }, 60_000);
 
   it('e2e 描寫用的 10 個字都可描寫，筆畫 3～12', () => {
     expect(new Set(E2E_CHARS).size).toBe(10);

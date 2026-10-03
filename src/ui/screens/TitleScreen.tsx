@@ -41,7 +41,7 @@ export function TitleScreen() {
               }}
               data-testid="teacher-link"
             >
-              👩‍🏫 班級管理（老師／家長）
+              👩‍🏫 老師／家長登入
             </button>
           </div>
         )}

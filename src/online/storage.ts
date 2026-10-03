@@ -9,8 +9,8 @@ import type { Op } from './ops';
 const TOKENS_KEY = 'learning-island-cloud';
 /** 待送佇列的鍵前綴（後面接帳號 id） */
 const OUTBOX_PREFIX = 'learning-island-outbox-';
-/** 老師登入狀態（sessionStorage：教室共用電腦關掉分頁就登出） */
-const TEACHER_KEY = 'learning-island-teacher';
+/** 大人帳號（家長、老師）的登入狀態；預設存 sessionStorage（教室共用電腦關掉分頁就登出），勾「保持登入」才存 localStorage */
+const USER_KEY = 'learning-island-user';
 
 function readJson<T>(storage: Storage | undefined, key: string): T | null {
   try {
@@ -72,17 +72,23 @@ export function onRecorded(fn: (accountId: string, op: Op) => void): () => void 
   return () => listeners.delete(fn);
 }
 
-/** 老師的登入狀態 */
-export interface TeacherSession {
+/** 大人帳號（家長、老師）的登入狀態 */
+export interface UserSession {
+  /** 登入的班級伺服器網址 */
   server: string;
-  code: string;
   token: string;
+  /** 在這台裝置保持登入（存 localStorage）；沒勾時存 sessionStorage，關掉分頁就登出 */
+  remember: boolean;
 }
 
-export function getTeacherSession(): TeacherSession | null {
-  return readJson<TeacherSession>(session(), TEACHER_KEY);
+/** 讀大人帳號的登入狀態（這個分頁的優先，再看保持登入的） */
+export function getUserSession(): UserSession | null {
+  return readJson<UserSession>(session(), USER_KEY) ?? readJson<UserSession>(local(), USER_KEY);
 }
 
-export function setTeacherSession(s: TeacherSession | null): void {
-  writeJson(session(), TEACHER_KEY, s);
+/** 記住或清除大人帳號的登入狀態：兩邊先清掉，再依「保持登入」存到其中一邊 */
+export function setUserSession(s: UserSession | null): void {
+  writeJson(session(), USER_KEY, null);
+  writeJson(local(), USER_KEY, null);
+  if (s) writeJson(s.remember ? local() : session(), USER_KEY, s);
 }

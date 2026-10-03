@@ -1,16 +1,13 @@
 /**
- * 老師／家長的班級管理：建立房間或登入，之後看成員列表、重設孩子密碼、移除成員、開關「允許加入」。
- * 也可以綁定 Google，之後用 Google 快速登入（備選；綁了多個房間時先選房間）。
- * 登入狀態放 sessionStorage（教室共用電腦關掉分頁就登出）。
+ * 老師／家長的帳號頁（docs/plans/accounts.md 的 A1）：用自訂的帳號密碼登入或註冊，登入後依身分切換——
+ * 老師看到「我的班級」（建立班級；點進去看成員、重設孩子密碼、移出、開關加入／聊天／送禮），
+ * 家長的雲端角色在 A2 開放。沒勾「保持登入」時，登入狀態存 sessionStorage：教室共用電腦關掉分頁就登出。
  */
-import { useCallback, useEffect, useState, type SubmitEvent } from 'react';
+import { useCallback, useEffect, useState, type ReactNode, type SubmitEvent } from 'react';
 import { useUi } from '../../store/useUi';
-import { api, ApiFailure } from '../../online/api';
-import { serverUrl } from '../../online/config';
-import { getTeacherSession, setTeacherSession, type TeacherSession } from '../../online/storage';
-import type { GoogleRoomsResponse, MemberSummary, RoomSettings } from '../../online/protocol';
-import { useCloud } from '../../online/useCloud';
-import { GoogleButton } from '../GoogleButton';
+import { useAccount } from '../../online/useAccount';
+import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
+import type { MemberSummary, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse } from '../../online/protocol';
 
 /** 顯示「多久以前」 */
 function ago(iso: string): string {
@@ -25,65 +22,69 @@ function ago(iso: string): string {
 /** 錯誤訊息 */
 const messageOf = (err: unknown) => (err instanceof Error ? err.message : '發生錯誤，請再試一次');
 
-/** 還沒登入：建立房間或用代碼＋管理密碼登入 */
-function TeacherLogin({ onLogin }: { onLogin: (s: TeacherSession, created: boolean) => void }) {
-  const [mode, setMode] = useState<'create' | 'login'>('create');
-  const [name, setName] = useState('');
-  const [code, setCode] = useState('');
+/** 紅字的錯誤提示（沒有錯誤時不顯示） */
+function ErrorNote({ text, testId }: { text: string | null; testId: string }) {
+  if (!text) return null;
+  return (
+    <p className="notice" role="alert" style={{ color: '#c0392b' }} data-testid={testId}>
+      {text}
+    </p>
+  );
+}
+
+/** 一個勾選框（文字在右邊） */
+function Check({ checked, onChange, testId, children }: { checked: boolean; onChange: (v: boolean) => void; testId: string; children: ReactNode }) {
+  return (
+    <label className="plain" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '6px 0' }}>
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} data-testid={testId} />
+      {children}
+    </label>
+  );
+}
+
+/** 還沒登入：用帳號密碼登入，或註冊新的大人帳號 */
+function AccountGate() {
+  const login = useAccount((s) => s.login);
+  const register = useAccount((s) => s.register);
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [email, setEmail] = useState('');
+  const [parent, setParent] = useState(false);
+  const [teacher, setTeacher] = useState(false);
+  /** 在這台裝置保持登入（預設不勾：教室共用電腦） */
+  const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Google 登入後綁了多個房間：讓老師選一個 */
-  const [rooms, setRooms] = useState<GoogleRoomsResponse['rooms'] | null>(null);
-  const clientId = useCloud((s) => s.googleClientId);
-  const server = serverUrl();
 
-  /** 用 Google 登入：只有一個房間直接進管理頁，多個就先選房間 */
-  const googleLogin = async (idToken: string) => {
-    if (!server) return;
-    setError(null);
-    try {
-      const r = await api<GoogleRoomsResponse>('POST', '/api/teacher/google/login', { body: { idToken } });
-      if (r.rooms.length === 1) onLogin({ server, code: r.rooms[0].code, token: r.rooms[0].token }, false);
-      else setRooms(r.rooms);
-    } catch (err) {
-      setError(messageOf(err));
-    }
+  /** 註冊表單的第一個問題（前端先擋，伺服器也會再檢查一次） */
+  const registerProblem = (): string | null => {
+    const name = checkUsername(username);
+    if (!name.ok) return name.reason;
+    const pw = checkPassword(password);
+    if (pw) return pw;
+    if (password !== confirm) return '兩次輸入的密碼不一樣';
+    const mail = checkEmail(email);
+    if (!mail.ok) return mail.reason;
+    if (!parent && !teacher) return '請勾選「老師」或「家長」（可以兩個都勾）';
+    return null;
   };
-
-  if (rooms && server) {
-    return (
-      <div className="panel-body">
-        <p className="plain">這個 Google 帳號綁了 {rooms.length} 個房間，要管理哪一個？</p>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {rooms.map((r) => (
-            <button key={r.code} className="btn white" onClick={() => onLogin({ server, code: r.code, token: r.token }, false)} data-testid={`pick-room-${r.code}`}>
-              {r.name}（{r.code}）
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!server) return;
-    if (mode === 'create' && password !== confirm) {
-      setError('兩次輸入的管理密碼不一樣');
-      return;
+    if (mode === 'register') {
+      const problem = registerProblem();
+      if (problem) {
+        setError(problem);
+        return;
+      }
     }
     setBusy(true);
     setError(null);
     try {
-      if (mode === 'create') {
-        const r = await api<{ code: string; token: string }>('POST', '/api/rooms', { body: { name: name.trim(), password } });
-        onLogin({ server, code: r.code, token: r.token }, true);
-      } else {
-        const r = await api<{ token: string }>('POST', '/api/teacher/login', { body: { code, password } });
-        onLogin({ server, code, token: r.token }, false);
-      }
+      if (mode === 'login') await login(username.trim(), password, remember);
+      else await register({ username: username.trim(), password, email: email.trim(), parent, teacher, remember });
     } catch (err) {
       setError(messageOf(err));
     } finally {
@@ -91,73 +92,171 @@ function TeacherLogin({ onLogin }: { onLogin: (s: TeacherSession, created: boole
     }
   };
 
-  const ready = !busy && password.length >= 6 && (mode === 'create' ? name.trim().length > 0 && confirm.length >= 6 : code.length === 6);
+  const switchMode = (m: 'login' | 'register') => {
+    setMode(m);
+    setError(null);
+  };
+  const ready = !busy && username.trim().length > 0 && password.length > 0;
   return (
     <>
       <div className="tabs">
-        <button className={`btn small white ${mode === 'create' ? 'on' : ''}`} onClick={() => setMode('create')} data-testid="teacher-tab-create">
-          建立新房間
+        <button className={`btn small white ${mode === 'login' ? 'on' : ''}`} onClick={() => switchMode('login')} data-testid="account-tab-login">
+          登入
         </button>
-        <button className={`btn small white ${mode === 'login' ? 'on' : ''}`} onClick={() => setMode('login')} data-testid="teacher-tab-login">
-          登入已有的房間
+        <button className={`btn small white ${mode === 'register' ? 'on' : ''}`} onClick={() => switchMode('register')} data-testid="account-tab-register">
+          註冊新帳號
         </button>
       </div>
       <form className="panel-body" onSubmit={submit}>
-        {mode === 'create' ? (
+        <label className="label" htmlFor="account-username">
+          帳號名稱{mode === 'register' && '（4～20 個英文字母、數字或底線，不要用真實姓名）'}
+        </label>
+        <input
+          id="account-username"
+          className="text-input"
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+          maxLength={20}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          data-testid="account-username"
+        />
+        <label className="label" htmlFor="account-password">
+          密碼{mode === 'register' && `（至少 ${PASSWORD_MIN} 個字）`}
+        </label>
+        <input
+          id="account-password"
+          className="text-input"
+          type="password"
+          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          data-testid="account-password"
+        />
+        {mode === 'register' && (
           <>
-            <label className="label" htmlFor="room-name">
-              房間名稱（例如：二年一班、小安家）
+            <label className="label" htmlFor="account-confirm">
+              再輸入一次密碼
             </label>
-            <input id="room-name" className="text-input" maxLength={20} value={name} onChange={(e) => setName(e.target.value)} data-testid="room-name" />
-          </>
-        ) : (
-          <>
-            <label className="label" htmlFor="room-code">
-              房間代碼（6 位數字）
+            <input id="account-confirm" className="text-input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} data-testid="account-confirm" />
+            <label className="label" htmlFor="account-email">
+              email（忘記密碼時用來重設，不會公開）
             </label>
             <input
-              id="room-code"
+              id="account-email"
               className="text-input"
-              inputMode="numeric"
-              value={code}
-              onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              data-testid="room-code"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              data-testid="account-email"
             />
+            <span className="label">身分（可以兩個都勾，之後也可以在帳號設定加上）</span>
+            <Check checked={teacher} onChange={setTeacher} testId="role-teacher">
+              👩‍🏫 老師（建立班級、管理學生）
+            </Check>
+            <Check checked={parent} onChange={setParent} testId="role-parent">
+              👨‍👩‍👧 家長（管理自己孩子的雲端角色）
+            </Check>
           </>
         )}
-        <label className="label" htmlFor="room-password">
-          管理密碼（至少 6 個字，只有大人知道）
-        </label>
-        <input id="room-password" className="text-input" type="password" value={password} onChange={(e) => setPassword(e.target.value)} data-testid="room-password" />
-        {mode === 'create' && (
-          <>
-            <label className="label" htmlFor="room-confirm">
-              再輸入一次管理密碼
-            </label>
-            <input id="room-confirm" className="text-input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} data-testid="room-confirm" />
-          </>
-        )}
-        {error && (
-          <p className="notice" role="alert" style={{ color: '#c0392b' }} data-testid="teacher-error">
-            {error}
-          </p>
-        )}
+        <Check checked={remember} onChange={setRemember} testId="account-remember">
+          在這台裝置保持登入（教室共用的電腦請不要勾）
+        </Check>
+        <ErrorNote text={error} testId="account-error" />
         <div style={{ marginTop: 14 }}>
-          <button type="submit" className="btn big green" disabled={!ready} data-testid="teacher-submit">
-            {busy ? '連線中…' : mode === 'create' ? '建立房間' : '登入'}
+          <button type="submit" className="btn big green" disabled={!ready} data-testid="account-submit">
+            {busy ? '連線中…' : mode === 'login' ? '登入' : '註冊'}
           </button>
         </div>
-        {mode === 'login' && clientId && (
-          <div style={{ marginTop: 16 }}>
-            <span className="label">或用 Google 登入（要先在管理頁綁定 Google）</span>
-            <GoogleButton clientId={clientId} label="用 Google 登入" testId="teacher-google-login" onCredential={(t) => void googleLogin(t)} />
-          </div>
-        )}
-        <p className="notice">
-          孩子用「房間代碼＋暱稱＋自己設的 4 位數密碼」加入。伺服器只存暱稱，不收真實姓名；4 位數密碼是給孩子的方便措施，不是高強度防護。
-        </p>
+        <p className="notice">孩子不用註冊：孩子用老師給的「班級代碼＋暱稱＋自己設的 4 位數密碼」加入班級。</p>
       </form>
     </>
+  );
+}
+
+/** 帳號設定：加上另一個身分、改 email、改密碼 */
+function AccountSettings() {
+  const user = useAccount((s) => s.user);
+  const update = useAccount((s) => s.update);
+  const changePassword = useAccount((s) => s.changePassword);
+  const [email, setEmail] = useState(user?.email ?? '');
+  const [current, setCurrent] = useState('');
+  const [next, setNext] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  if (!user) return null;
+
+  /** 執行一個設定動作，顯示結果 */
+  const run = async (job: () => Promise<void>, done: string) => {
+    setError(null);
+    setMsg(null);
+    try {
+      await job();
+      setMsg(done);
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  };
+
+  const savePassword = () => {
+    const problem = checkPassword(next) ?? (next !== confirm ? '兩次輸入的新密碼不一樣' : null);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    void run(async () => {
+      await changePassword(current, next);
+      setCurrent('');
+      setNext('');
+      setConfirm('');
+    }, '密碼改好了，其他裝置的登入都已經登出');
+  };
+
+  return (
+    <div className="panel-body plain" data-testid="account-settings-panel">
+      <h4 style={{ margin: '0 0 6px' }}>身分</h4>
+      <p style={{ margin: '0 0 6px' }} data-testid="account-roles">
+        {[user.teacher && '👩‍🏫 老師', user.parent && '👨‍👩‍👧 家長'].filter(Boolean).join('、')}
+      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        {!user.teacher && (
+          <button className="btn small white" onClick={() => void run(() => update({ teacher: true }), '已加上老師身分')} data-testid="role-add-teacher">
+            加上老師身分
+          </button>
+        )}
+        {!user.parent && (
+          <button className="btn small white" onClick={() => void run(() => update({ parent: true }), '已加上家長身分')} data-testid="role-add-parent">
+            加上家長身分
+          </button>
+        )}
+      </div>
+      <h4 style={{ margin: '14px 0 6px' }}>email</h4>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+        <input className="text-input" type="email" inputMode="email" style={{ flex: '1 1 200px' }} value={email} onChange={(e) => setEmail(e.target.value)} aria-label="email" data-testid="settings-email" />
+        <button className="btn small white" disabled={email.trim() === (user.email ?? '')} onClick={() => void run(() => update({ email: email.trim() }), 'email 改好了')} data-testid="settings-email-save">
+          儲存 email
+        </button>
+      </div>
+      <h4 style={{ margin: '14px 0 6px' }}>改密碼</h4>
+      <input className="text-input" type="password" autoComplete="current-password" placeholder="目前的密碼" value={current} onChange={(e) => setCurrent(e.target.value)} aria-label="目前的密碼" data-testid="settings-current" />
+      <input className="text-input" type="password" autoComplete="new-password" placeholder={`新密碼（至少 ${PASSWORD_MIN} 個字）`} value={next} onChange={(e) => setNext(e.target.value)} aria-label="新密碼" data-testid="settings-next" />
+      <input className="text-input" type="password" autoComplete="new-password" placeholder="再輸入一次新密碼" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-label="再輸入一次新密碼" data-testid="settings-confirm" />
+      <div style={{ marginTop: 8 }}>
+        <button className="btn small white" disabled={!current || !next} onClick={savePassword} data-testid="settings-password-save">
+          改密碼
+        </button>
+      </div>
+      <ErrorNote text={error} testId="settings-error" />
+      {msg && (
+        <p className="notice" data-testid="settings-msg">
+          {msg}
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -211,40 +310,94 @@ function MemberActions({ member, onReset, onRemove }: { member: MemberSummary; o
   );
 }
 
-/** 已登入：房間資訊與成員列表 */
-function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSession; justCreated: boolean; onLogout: () => void }) {
-  const [room, setRoom] = useState<RoomSettings | null>(null);
-  const [members, setMembers] = useState<MemberSummary[]>([]);
-  /** 這個房間綁定的老師 Google 帳號（email 已遮罩） */
-  const [google, setGoogle] = useState<string[]>([]);
-  const clientId = useCloud((s) => s.googleClientId);
+/** 老師：我的班級清單與建立班級 */
+function ClassList({ onOpen }: { onOpen: (code: string, created: boolean) => void }) {
+  const call = useAccount((s) => s.call);
+  const [rooms, setRooms] = useState<TeacherRoomSummary[] | null>(null);
+  const [name, setName] = useState('');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
-
-  /** 呼叫老師 API；權杖失效就登出 */
-  const call = useCallback(
-    async <T,>(method: string, path: string, body?: unknown): Promise<T> => {
-      try {
-        return await api<T>(method, path, { base: session.server, token: session.token, body });
-      } catch (err) {
-        if (err instanceof ApiFailure && err.status === 401) onLogout();
-        throw err;
-      }
-    },
-    [session, onLogout],
-  );
 
   const reload = useCallback(async () => {
     try {
-      const r = await call<{ room: RoomSettings; members: MemberSummary[]; google: string[] }>('GET', '/api/teacher/room');
-      setRoom(r.room);
-      setMembers(r.members);
-      setGoogle(r.google);
+      setRooms((await call<TeacherRoomsResponse>('GET', '/api/teacher/rooms')).rooms);
       setError(null);
     } catch (err) {
       setError(messageOf(err));
     }
   }, [call]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  const create = async (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await call<{ room: RoomSettings }>('POST', '/api/teacher/rooms', { name: name.trim() });
+      setName('');
+      onOpen(r.room.code, true);
+    } catch (err) {
+      setError(messageOf(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="panel-body">
+      <h3 style={{ margin: '0 0 8px' }}>我的班級</h3>
+      {rooms === null ? (
+        <p className="plain">讀取中…</p>
+      ) : rooms.length === 0 ? (
+        <p className="plain">還沒有班級，先在下面建立一個。</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }} data-testid="class-list">
+          {rooms.map((r) => (
+            <button key={r.code} className="btn white" style={{ textAlign: 'left' }} onClick={() => onOpen(r.code, false)} data-testid={`class-${r.code}`}>
+              {r.name}（代碼 {r.code}）・{r.members} 位孩子
+            </button>
+          ))}
+        </div>
+      )}
+      <form onSubmit={create} style={{ marginTop: 14 }}>
+        <label className="label" htmlFor="class-name">
+          建立新班級（例如：二年一班、安親班）
+        </label>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input id="class-name" className="text-input" style={{ flex: '1 1 160px' }} maxLength={20} value={name} onChange={(e) => setName(e.target.value)} data-testid="class-name" />
+          <button type="submit" className="btn green" disabled={busy || !name.trim()} data-testid="class-create">
+            建立班級
+          </button>
+        </div>
+      </form>
+      <ErrorNote text={error} testId="class-error" />
+    </div>
+  );
+}
+
+/** 老師：一個班級的代碼、開關與成員列表 */
+function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreated: boolean; onBack: () => void }) {
+  const call = useAccount((s) => s.call);
+  const [room, setRoom] = useState<RoomSettings | null>(null);
+  const [members, setMembers] = useState<MemberSummary[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  /** 這個班級的 API 路徑 */
+  const base = `/api/teacher/rooms/${code}`;
+
+  const reload = useCallback(async () => {
+    try {
+      const r = await call<TeacherRoomResponse>('GET', base);
+      setRoom(r.room);
+      setMembers(r.members);
+      setError(null);
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  }, [call, base]);
 
   useEffect(() => {
     void reload();
@@ -263,62 +416,39 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
 
   return (
     <div className="panel-body">
-      {justCreated && <p className="notice">房間建好了！請記下房間代碼和管理密碼，之後要用代碼和管理密碼登入這個管理頁。</p>}
+      <button className="btn small white" onClick={onBack} data-testid="class-back">
+        ← 我的班級
+      </button>
+      {justCreated && <p className="notice">班級建好了！把下面的班級代碼告訴孩子：孩子在選角畫面點「🏫 班級」→「第一次加入」，輸入代碼就能加入。</p>}
       {room && (
         <>
           <div className="room-code-box">
-            <span className="label">房間代碼</span>
+            <span className="label">班級代碼</span>
             <strong className="room-code" data-testid="room-code-display">
               {room.code}
             </strong>
             <span className="plain">{room.name}</span>
           </div>
-          <label className="plain" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
-            <input type="checkbox" checked={room.joinOpen} onChange={(e) => void act(() => call('PATCH', '/api/teacher/room', { joinOpen: e.target.checked }), e.target.checked ? '已開放加入' : '已停止加入')} data-testid="toggle-join" />
+          <Check checked={room.joinOpen} onChange={(v) => void act(() => call('PATCH', base, { joinOpen: v }), v ? '已開放加入' : '已停止加入')} testId="toggle-join">
             允許新的孩子加入（全班都加入後可以關掉，避免代碼外流後有陌生人加入）
-          </label>
-          <label className="plain" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
-            <input type="checkbox" checked={room.chatOpen} onChange={(e) => void act(() => call('PATCH', '/api/teacher/room', { chatOpen: e.target.checked }), e.target.checked ? '已開放聊天' : '已關閉聊天')} data-testid="toggle-chat" />
+          </Check>
+          <Check checked={room.chatOpen} onChange={(v) => void act(() => call('PATCH', base, { chatOpen: v }), v ? '已開放聊天' : '已關閉聊天')} testId="toggle-chat">
             允許公頻聊天（孩子只能選預設短句，不能自由打字）
-          </label>
-          <label className="plain" style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '8px 0' }}>
-            <input type="checkbox" checked={room.giftsOpen} onChange={(e) => void act(() => call('PATCH', '/api/teacher/room', { giftsOpen: e.target.checked }), e.target.checked ? '已開放送禮' : '已關閉送禮')} data-testid="toggle-gifts" />
+          </Check>
+          <Check checked={room.giftsOpen} onChange={(v) => void act(() => call('PATCH', base, { giftsOpen: v }), v ? '已開放送禮' : '已關閉送禮')} testId="toggle-gifts">
             允許送禮物（用金幣買貼紙或外觀送同學；關掉後不能送新的，已送出的還是可以收下）
-          </label>
+          </Check>
         </>
       )}
-      {clientId && (
-        <div className="plain" style={{ margin: '8px 0' }} data-testid="teacher-google-section">
-          <strong>Google 快速登入（備選）</strong>
-          <p style={{ margin: '4px 0' }} data-testid="teacher-google-linked">
-            {google.length ? `已綁定：${google.join('、')}` : '還沒有綁定。綁定後可以用 Google 登入這個管理頁，不用記管理密碼（管理密碼照樣可以用）。'}
-          </p>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-            <GoogleButton clientId={clientId} label="綁定 Google 帳號" testId="teacher-google-link" onCredential={(t) => void act(() => call('POST', '/api/teacher/google/link', { idToken: t }), '綁定好了！之後可以在管理頁用 Google 登入。')} />
-            {google.length > 0 && (
-              <button className="btn small white" onClick={() => void act(() => call('DELETE', '/api/teacher/google/link'), '已解除 Google 綁定')} data-testid="teacher-google-unlink">
-                解除綁定
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-      {error && (
-        <p className="notice" role="alert" style={{ color: '#c0392b' }}>
-          {error}
-        </p>
-      )}
+      <ErrorNote text={error} testId="teacher-error" />
       {note && <p className="notice">{note}</p>}
       <div style={{ display: 'flex', gap: 8, margin: '8px 0', flexWrap: 'wrap' }}>
         <button className="btn small white" onClick={() => void reload()} data-testid="teacher-reload">
           🔄 重新整理
         </button>
-        <button className="btn small white" onClick={onLogout} data-testid="teacher-logout">
-          登出管理頁
-        </button>
       </div>
       {members.length === 0 ? (
-        <p className="plain">還沒有孩子加入。請孩子在選角畫面點「🏫 班級」→「第一次加入」，輸入上面的房間代碼。</p>
+        <p className="plain">還沒有孩子加入。請孩子在選角畫面點「🏫 班級」→「第一次加入」，輸入上面的班級代碼。</p>
       ) : (
         <div className="scroll-x">
           <table className="report-table" data-testid="member-table">
@@ -347,8 +477,8 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
                   <td>
                     <MemberActions
                       member={m}
-                      onReset={(pin) => act(() => call('POST', `/api/teacher/members/${m.id}/pin`, { pin }), `已把「${m.nickname}」的密碼改成新密碼，請告訴孩子`)}
-                      onRemove={() => act(() => call('DELETE', `/api/teacher/members/${m.id}`), `已移除「${m.nickname}」`)}
+                      onReset={(pin) => act(() => call('POST', `${base}/members/${m.id}/pin`, { pin }), `已把「${m.nickname}」的密碼改成新密碼，請告訴孩子`)}
+                      onRemove={() => act(() => call('DELETE', `${base}/members/${m.id}`), `已移除「${m.nickname}」`)}
                     />
                   </td>
                 </tr>
@@ -361,41 +491,97 @@ function RoomDashboard({ session, justCreated, onLogout }: { session: TeacherSes
   );
 }
 
+/** 已登入：帳號列、身分切換、老師的班級或家長頁 */
+function AccountHome() {
+  const user = useAccount((s) => s.user);
+  const refresh = useAccount((s) => s.refresh);
+  const logout = useAccount((s) => s.logout);
+  const [error, setError] = useState<string | null>(null);
+  /** 使用者選的身分頁；沒選過時老師優先 */
+  const [mode, setMode] = useState<'teacher' | 'parent' | null>(null);
+  /** 老師點開的班級 */
+  const [openClass, setOpenClass] = useState<{ code: string; created: boolean } | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+
+  // 重新整理頁面後只剩權杖：向伺服器讀回帳號資料
+  useEffect(() => {
+    if (!user) refresh().catch((err: unknown) => setError(messageOf(err)));
+  }, [user, refresh]);
+
+  if (!user) {
+    return (
+      <div className="panel-body">
+        <p className="plain">讀取帳號資料中…</p>
+        <ErrorNote text={error} testId="account-error" />
+      </div>
+    );
+  }
+  const current = mode && user[mode] ? mode : user.teacher ? 'teacher' : 'parent';
+  return (
+    <>
+      <div className="panel-body" style={{ paddingBottom: 0 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span className="plain" data-testid="account-name">
+            已登入：<strong>{user.username}</strong>
+          </span>
+          <button className="btn small white" onClick={() => setShowSettings((v) => !v)} data-testid="account-settings">
+            ⚙️ 帳號設定
+          </button>
+          <button className="btn small white" onClick={() => void logout()} data-testid="account-logout">
+            登出
+          </button>
+        </div>
+        {user.teacher && user.parent && (
+          <div className="tabs" style={{ marginTop: 8 }}>
+            <button className={`btn small white ${current === 'teacher' ? 'on' : ''}`} onClick={() => setMode('teacher')} data-testid="mode-teacher">
+              👩‍🏫 老師
+            </button>
+            <button
+              className={`btn small white ${current === 'parent' ? 'on' : ''}`}
+              onClick={() => {
+                setMode('parent');
+                setOpenClass(null);
+              }}
+              data-testid="mode-parent"
+            >
+              👨‍👩‍👧 家長
+            </button>
+          </div>
+        )}
+      </div>
+      {showSettings && <AccountSettings />}
+      {current === 'teacher' ? (
+        openClass ? (
+          <RoomDashboard key={openClass.code} code={openClass.code} justCreated={openClass.created} onBack={() => setOpenClass(null)} />
+        ) : (
+          <ClassList onOpen={(code, created) => setOpenClass({ code, created })} />
+        )
+      ) : (
+        <div className="panel-body plain" data-testid="parent-home">
+          <h3 style={{ margin: '0 0 8px' }}>家長</h3>
+          <p>把孩子的角色存到雲端、換電腦登入後接著玩的功能即將開放。</p>
+        </div>
+      )}
+    </>
+  );
+}
+
 export function TeacherScreen() {
   const goto = useUi((s) => s.goto);
-  const [session, setSession] = useState<TeacherSession | null>(() => getTeacherSession());
-  // 讀伺服器設定（決定要不要顯示 Google 按鈕）
-  useEffect(() => {
-    void useCloud.getState().loadConfig();
-  }, []);
-  const [justCreated, setJustCreated] = useState(false);
-  const logout = useCallback(() => {
-    setTeacherSession(null);
-    setSession(null);
-  }, []);
+  const session = useAccount((s) => s.session);
   return (
     <div className="panel-screen">
-      <div className="panel card" role="dialog" aria-label="班級管理">
+      <div className="panel card" role="dialog" aria-label="老師／家長帳號">
         <div className="panel-head">
           <span className="ribbon" style={{ background: '#2b2a4c' }}>
-            👩‍🏫 班級管理
+            👩‍🏫 老師／家長
           </span>
           <h2 />
           <button className="btn small white" onClick={() => goto('title')} data-testid="teacher-back">
             返回
           </button>
         </div>
-        {session ? (
-          <RoomDashboard session={session} justCreated={justCreated} onLogout={logout} />
-        ) : (
-          <TeacherLogin
-            onLogin={(s, created) => {
-              setTeacherSession(s);
-              setSession(s);
-              setJustCreated(created);
-            }}
-          />
-        )}
+        {session ? <AccountHome /> : <AccountGate />}
       </div>
     </div>
   );
