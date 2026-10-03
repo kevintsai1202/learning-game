@@ -3,60 +3,154 @@
     "key": "zh-TW|正確答案是：一般垃圾",
     "note": "目前用同音字「樂色」，在「一般」後面聽起來不對。垃圾要唸 ㄌㄜˋ ㄙㄜˋ。",
     "variants": [
-      { "label": "目前：同音字「樂色」", "text": "正確答案是：一般樂色" },
-      { "label": "同音字「勒色」", "text": "正確答案是：一般勒色" },
-      { "label": "同音字「勒澀」", "text": "正確答案是：一般勒澀" },
-      { "label": "讀音標記 le4 se4", "text": "正確答案是：一般<|phoneme_start|>le4<|phoneme_end|><|phoneme_start|>se4<|phoneme_end|>" },
-      { "label": "原句不修正（參考）", "text": "正確答案是：一般垃圾" }
+      {
+        "label": "目前：同音字「樂色」",
+        "text": "正確答案是：一般樂色"
+      },
+      {
+        "label": "同音字「勒色」",
+        "text": "正確答案是：一般勒色"
+      },
+      {
+        "label": "同音字「勒澀」",
+        "text": "正確答案是：一般勒澀"
+      },
+      {
+        "label": "讀音標記 le4 se4",
+        "text": "正確答案是：一般<|phoneme_start|>le4<|phoneme_end|><|phoneme_start|>se4<|phoneme_end|>"
+      },
+      {
+        "label": "原句不修正（參考）",
+        "text": "正確答案是：一般垃圾"
+      }
     ]
   },
   {
     "key": "zh-TW|一般垃圾",
     "note": "選項（按 🔊 時唸）。",
     "variants": [
-      { "label": "目前：同音字「樂色」", "text": "一般樂色" },
-      { "label": "同音字「勒色」", "text": "一般勒色" },
-      { "label": "同音字「勒澀」", "text": "一般勒澀" },
-      { "label": "讀音標記 le4 se4", "text": "一般<|phoneme_start|>le4<|phoneme_end|><|phoneme_start|>se4<|phoneme_end|>" }
+      {
+        "label": "目前：同音字「樂色」",
+        "text": "一般樂色"
+      },
+      {
+        "label": "同音字「勒色」",
+        "text": "一般勒色"
+      },
+      {
+        "label": "同音字「勒澀」",
+        "text": "一般勒澀"
+      },
+      {
+        "label": "讀音標記 le4 se4",
+        "text": "一般<|phoneme_start|>le4<|phoneme_end|><|phoneme_start|>se4<|phoneme_end|>"
+      }
     ]
   },
   {
     "key": "zh-TW|垃圾分成資源回收、廚餘、一般垃圾三類。",
     "note": "一句裡有兩個垃圾。",
     "variants": [
-      { "label": "目前：同音字「樂色」", "text": "樂色分成資源回收、廚餘、一般樂色三類。" },
-      { "label": "同音字「勒色」", "text": "勒色分成資源回收、廚餘、一般勒色三類。" },
-      { "label": "同音字「勒澀」", "text": "勒澀分成資源回收、廚餘、一般勒澀三類。" }
+      {
+        "label": "目前：同音字「樂色」",
+        "text": "樂色分成資源回收、廚餘、一般樂色三類。"
+      },
+      {
+        "label": "同音字「勒色」",
+        "text": "勒色分成資源回收、廚餘、一般勒色三類。"
+      },
+      {
+        "label": "同音字「勒澀」",
+        "text": "勒澀分成資源回收、廚餘、一般勒澀三類。"
+      }
     ]
   },
   {
     "key": "en-US|「太陽」用英文怎麼說？",
     "note": "陽變成輕聲，要唸二聲。",
     "variants": [
-      { "label": "目前：原句", "text": "「太陽」用英文怎麼說？" },
-      { "label": "「陽」加讀音標記 yang2", "text": "「太<|phoneme_start|>yang2<|phoneme_end|>」用英文怎麼說？" },
-      { "label": "同音字「太洋」", "text": "「太洋」用英文怎麼說？" },
-      { "label": "引號後加逗號", "text": "「太陽」，用英文怎麼說？" }
+      {
+        "label": "目前：原句",
+        "text": "「太陽」用英文怎麼說？"
+      },
+      {
+        "label": "「陽」加讀音標記 yang2",
+        "text": "「太<|phoneme_start|>yang2<|phoneme_end|>」用英文怎麼說？"
+      },
+      {
+        "label": "同音字「太洋」",
+        "text": "「太洋」用英文怎麼說？"
+      },
+      {
+        "label": "引號後加逗號",
+        "text": "「太陽」，用英文怎麼說？"
+      }
     ]
   },
   {
     "key": "en-US|「雨」用英文怎麼說？",
     "note": "雨變成二聲，要唸三聲。",
     "variants": [
-      { "label": "目前：原句", "text": "「雨」用英文怎麼說？" },
-      { "label": "讀音標記 yu3", "text": "「<|phoneme_start|>yu3<|phoneme_end|>」用英文怎麼說？" },
-      { "label": "同音字「語」", "text": "「語」用英文怎麼說？" },
-      { "label": "引號後加逗號", "text": "「雨」，用英文怎麼說？" }
+      {
+        "label": "目前：原句",
+        "text": "「雨」用英文怎麼說？"
+      },
+      {
+        "label": "讀音標記 yu3",
+        "text": "「<|phoneme_start|>yu3<|phoneme_end|>」用英文怎麼說？"
+      },
+      {
+        "label": "同音字「語」",
+        "text": "「語」用英文怎麼說？"
+      },
+      {
+        "label": "引號後加逗號",
+        "text": "「雨」，用英文怎麼說？"
+      }
     ]
   },
   {
     "key": "zh-TW|雨靴",
     "note": "靴要唸 ㄒㄩㄝ。",
     "variants": [
-      { "label": "目前：原句", "text": "雨靴" },
-      { "label": "「靴」加讀音標記 xue1", "text": "雨<|phoneme_start|>xue1<|phoneme_end|>" },
-      { "label": "同音字「雨薛」", "text": "雨薛" },
-      { "label": "說成「雨靴子」", "text": "雨靴子" }
+      {
+        "label": "目前：原句",
+        "text": "雨靴"
+      },
+      {
+        "label": "「靴」加讀音標記 xue1",
+        "text": "雨<|phoneme_start|>xue1<|phoneme_end|>"
+      },
+      {
+        "label": "同音字「雨薛」",
+        "text": "雨薛"
+      },
+      {
+        "label": "說成「雨靴子」",
+        "text": "雨靴子"
+      }
+    ]
+  },
+  {
+    "key": "zh-TW|鯨魚貼紙",
+    "note": "Whisper 抽查聽成「金魚貼紙」：鯨要唸 ㄐㄧㄥ（後鼻音），不要像金 ㄐㄧㄣ。貼紙簿點鯨魚貼紙時唸。",
+    "variants": [
+      {
+        "label": "目前：原句",
+        "text": "鯨魚貼紙"
+      },
+      {
+        "label": "讀音標記 jing1",
+        "text": "<|phoneme_start|>jing1<|phoneme_end|>魚貼紙"
+      },
+      {
+        "label": "讀音標記 jing1 yu2",
+        "text": "<|phoneme_start|>jing1<|phoneme_end|><|phoneme_start|>yu2<|phoneme_end|>貼紙"
+      },
+      {
+        "label": "同音字「經魚」",
+        "text": "經魚貼紙"
+      }
     ]
   }
 ]

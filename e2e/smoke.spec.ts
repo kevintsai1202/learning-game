@@ -13,6 +13,11 @@ test('建立角色後走進數學城堡，玩完一回合會拿到星星與金�
   await freshStart(page);
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/01-title.png` });
+  // 標題畫面的隱私權政策連結：建置產物裡有這一頁（Google 品牌驗證要求首頁連到隱私權政策）
+  await expect(page.getByTestId('privacy-link')).toHaveAttribute('href', './privacy.html');
+  const privacy = await page.request.get('./privacy.html');
+  expect(privacy.status()).toBe(200);
+  expect(await privacy.text()).toContain('知識島大冒險 隱私權政策');
 
   await createKid(page, '小安');
   await page.waitForTimeout(2500);

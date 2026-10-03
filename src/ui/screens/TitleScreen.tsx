@@ -1,6 +1,7 @@
 /**
  * 標題畫面：背景是環繞鏡頭的 3D 島，點「開始冒險」進入選角。
  * 第一次點擊同時解除瀏覽器的自動播放限制（音效、語音）。
+ * 底部的出處說明附隱私權政策連結（public/privacy.html；Google 品牌驗證要求首頁連到隱私權政策）。
  */
 import { useUi } from '../../store/useUi';
 import { useGame } from '../../store/useGame';
@@ -55,7 +56,12 @@ export function TitleScreen() {
       >
         👨‍👩‍👧 家長專區
       </button>
-      <div className="credit-line">內容依 108 課綱自編・筆順依教育部標準・詳見家長專區「資料來源」</div>
+      <div className="credit-line">
+        內容依 108 課綱自編・筆順依教育部標準・詳見家長專區「資料來源」・
+        <a href="./privacy.html" target="_blank" rel="noopener" style={{ color: 'inherit' }} data-testid="privacy-link">
+          隱私權政策
+        </a>
+      </div>
     </div>
   );
 }
