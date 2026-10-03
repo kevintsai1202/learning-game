@@ -5,18 +5,31 @@
 
 前提：已經有 Zeabur 帳號、神奇網路裝置已註冊、閘道器已開啟。
 
-## 1. 建專案、加 PostgreSQL
+## 1. 建專案、加 PostgreSQL（2026-10-03 已用 Zeabur CLI 完成）
 
-1. Zeabur 後台新增專案，伺服器選你的神奇網路裝置。
-2. 專案裡「新增服務」→ 資料庫 → **PostgreSQL**。
+```powershell
+npx zeabur@latest server list -i=false                                     # 找神奇網路伺服器的 ID
+npx zeabur@latest project create -n "learning-island" -r "server-<伺服器 ID>" -i=false --json
+npx zeabur@latest template search postgresql -i=false                      # 官方 PostgreSQL 範本代碼 B20CX0
+npx zeabur@latest template deploy -i=false -c B20CX0 --project-id <專案 ID>
+```
 
-## 2. 部署班級伺服器
+專案、服務的 ID 記在 `server/CLAUDE.md` 的「Zeabur 部署」。
 
-1. 「新增服務」→ GitHub → 選 `kevintsai1202/learning-game`，分支選 **`feature/online`**（之後合併到 main，再改成 `main`，見第 6 步）。
-2. Zeabur 會偵測到根目錄的 `Dockerfile`，用它建置（只包伺服器，不含前端與音檔）。
-3. 神奇網路裝置是 arm64（Mac mini、樹莓派）時，確認 Zeabur 建出來的映像檔架構相符；套件都是純 JavaScript，沒有原生模組。
+## 2. 部署班級伺服器（CLI 直接上傳）
 
-## 3. 環境變數（服務 → Variables）
+```powershell
+.\scripts\deploy\zeabur-server.ps1
+```
+
+- 腳本用 `git archive` 匯出已 commit 的 package.json、lock 檔、Dockerfile、server/、src/、tsconfig（約 180 個檔案、2 MB）再上傳；不會把 `.env` 的金鑰、`public/` 的音檔傳上去。Zeabur 看到 `Dockerfile` 就照它建置。
+- 第一次部署（建立服務）用 `npx zeabur@latest deploy --project-id <專案 ID> --name class-server --json -i=false`；之後一律用腳本（帶 `--service-id`，不會另建服務）。
+- 不經過 GitHub，所以 push 不會自動部署。想改成 push 自動部署：到 GitHub 讓 Zeabur 的 GitHub App 存取這個儲存庫，再用 `service deploy --template GIT` 改成 Git 部署。
+- 神奇網路裝置是 arm64（Mac mini、樹莓派）時，確認建出來的映像檔架構相符；套件都是純 JavaScript，沒有原生模組。
+
+## 3. 環境變數（已用 `variable env -f` 設好）
+
+用 CLI 設的話要用 `npx zeabur@latest variable env --id <服務 ID> -f <檔案>`（會取代該服務全部變數，之後要 `service restart`）：`variable create -k` 會把含逗號的值與 `${…}` 引用切壞。檔案用完要刪掉（裡面沒有密碼，但習慣上不留）。
 
 | 變數 | 值 |
 | --- | --- |
@@ -53,7 +66,7 @@
 
 1. `.github/workflows/deploy.yml` 的建置步驟寫入 `VITE_SERVER_URL=https://<名稱>.zeabur.app`（伺服器網址是公開的，前端本來就看得到）。
 2. 把 `feature/online` 合併到 `main` 並 push，GitHub Pages 自動部署，網站出現「班級登入」。
-3. Zeabur 服務的分支改成 `main`。
+3. 伺服器程式有變動時，在 main 上執行 `.\scripts\deploy\zeabur-server.ps1` 重新部署。
 
 ## 7. 交給孩子之前
 
