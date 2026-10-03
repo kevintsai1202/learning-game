@@ -133,9 +133,9 @@ describe('連線與廣播', () => {
     const { room, a, b } = await setup();
     const ca = await connect(a.token);
     const cb = await connect(b.token);
-    const list = await call('GET', '/api/teacher/room', undefined, room.token);
+    const list = await call('GET', `/api/teacher/rooms/${room.code}`, undefined, room.token);
     expect(list.body.members.every((m: { online: boolean }) => m.online)).toBe(true);
-    await call('DELETE', `/api/teacher/members/${b.account.id}`, undefined, room.token);
+    await call('DELETE', `/api/teacher/rooms/${room.code}/members/${b.account.id}`, undefined, room.token);
     expect((await cb.waitFor('kicked')).reason).toContain('移出');
     expect(await cb.closed).toBe(4001);
     await ca.waitFor('leave', (m) => m.id === b.account.id);

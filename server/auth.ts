@@ -51,6 +51,11 @@ export function newAccountId(): string {
   return `a_${randomBytes(9).toString('base64url')}`;
 }
 
+/** 大人帳號（家長、老師）的 id */
+export function newUserId(): string {
+  return `u_${randomBytes(9).toString('base64url')}`;
+}
+
 /** 暱稱檢查結果：通過時附上整理後的暱稱與比對用的鍵 */
 export type NicknameCheck = { ok: true; nickname: string; key: string } | { ok: false; reason: string };
 

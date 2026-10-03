@@ -73,11 +73,29 @@ export function makeClient(db: Db, opts: Partial<AppOptions> = {}) {
 
 export const AVATAR: AvatarConfig = { animal: 'rabbit', color: '#ffffff', hat: null };
 
-/** 建立一個房間，回傳代碼與老師權杖 */
-export async function createRoom(call: ReturnType<typeof makeClient>['call'], name = '二年一班', password = 'teach123') {
-  const r = await call('POST', '/api/rooms', { name, password });
-  if (r.status !== 200) throw new Error(`建立房間失敗：${r.status} ${JSON.stringify(r.body)}`);
-  return r.body as { code: string; token: string };
+/** 測試帳號名稱的流水號（同一毫秒建好幾個也不會撞名） */
+let userSeq = 0;
+
+/** 註冊一位大人（預設只有老師身分），回傳權杖與帳號資料 */
+export async function createUser(call: ReturnType<typeof makeClient>['call'], roles: { parent?: boolean; teacher?: boolean } = {}) {
+  const username = `user_${++userSeq}`;
+  const r = await call('POST', '/api/users', {
+    username,
+    password: 'teach1234',
+    email: `${username}@example.com`,
+    parent: roles.parent ?? false,
+    teacher: roles.teacher ?? true,
+  });
+  if (r.status !== 200) throw new Error(`註冊失敗：${r.status} ${JSON.stringify(r.body)}`);
+  return r.body as { token: string; user: { id: string; username: string } };
+}
+
+/** 建立一個班級（沒給老師權杖時，由一位新註冊的老師建立），回傳代碼與老師的權杖 */
+export async function createRoom(call: ReturnType<typeof makeClient>['call'], name = '二年一班', teacherToken?: string) {
+  const token = teacherToken ?? (await createUser(call)).token;
+  const r = await call('POST', '/api/teacher/rooms', { name }, token);
+  if (r.status !== 200) throw new Error(`建立班級失敗：${r.status} ${JSON.stringify(r.body)}`);
+  return { code: r.body.room.code as string, token };
 }
 
 /** 讓一位孩子加入房間，回傳權杖與帳號 */

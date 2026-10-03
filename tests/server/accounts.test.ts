@@ -14,42 +14,7 @@ beforeEach(async () => {
   await resetDb(db);
 });
 
-describe('建立房間與老師登入', () => {
-  it('建立房間拿到 6 位數代碼與老師權杖', async () => {
-    const { call } = makeClient(db);
-    const r = await call('POST', '/api/rooms', { name: '二年一班', password: 'teach123' });
-    expect(r.status).toBe(200);
-    expect(r.body.code).toMatch(/^[1-9]\d{5}$/);
-    expect(typeof r.body.token).toBe('string');
-    const room = await call('GET', '/api/teacher/room', undefined, r.body.token);
-    expect(room.body.room).toMatchObject({ code: r.body.code, name: '二年一班', joinOpen: true, chatOpen: true, giftsOpen: true });
-  });
-
-  it('房間名稱空白、管理密碼少於 6 字都不行', async () => {
-    const { call } = makeClient(db);
-    expect((await call('POST', '/api/rooms', { name: '  ', password: 'teach123' })).status).toBe(400);
-    expect((await call('POST', '/api/rooms', { name: '二年一班', password: '123' })).status).toBe(400);
-  });
-
-  it('老師用代碼＋管理密碼登入；密碼錯誤回 401', async () => {
-    const { call } = makeClient(db);
-    const { code } = await createRoom(call);
-    const ok = await call('POST', '/api/teacher/login', { code, password: 'teach123' });
-    expect(ok.status).toBe(200);
-    expect((await call('GET', '/api/teacher/room', undefined, ok.body.token)).status).toBe(200);
-    expect((await call('POST', '/api/teacher/login', { code, password: 'wrong!!' })).status).toBe(401);
-  });
-
-  it('老師密碼連錯 5 次鎖 5 分鐘，鎖定期間密碼正確也不行', async () => {
-    const clock = fakeClock();
-    const { call } = makeClient(db, { now: clock.now });
-    const { code } = await createRoom(call);
-    for (let i = 0; i < 5; i++) await call('POST', '/api/teacher/login', { code, password: 'wrong!!' });
-    expect((await call('POST', '/api/teacher/login', { code, password: 'teach123' })).status).toBe(423);
-    clock.advance(5 * 60_000 + 1);
-    expect((await call('POST', '/api/teacher/login', { code, password: 'teach123' })).status).toBe(200);
-  });
-});
+// 老師建立班級與登入（大人帳號）的測試在 teacher.test.ts 與 users.test.ts
 
 describe('孩子加入班級', () => {
   it('第一次加入：用選的外觀建立新角色，名字就是暱稱', async () => {
@@ -103,7 +68,7 @@ describe('孩子加入班級', () => {
     const { call } = makeClient(db);
     expect((await call('POST', '/api/join', { code: '999999', nickname: '小安', pin: '1234', avatar: AVATAR })).status).toBe(404);
     const { code, token } = await createRoom(call);
-    expect((await call('PATCH', '/api/teacher/room', { joinOpen: false }, token)).status).toBe(200);
+    expect((await call('PATCH', `/api/teacher/rooms/${code}`, { joinOpen: false }, token)).status).toBe(200);
     expect((await call('POST', '/api/join', { code, nickname: '小安', pin: '1234', avatar: AVATAR })).status).toBe(403);
   });
 });
@@ -170,7 +135,7 @@ describe('老師管理成員', () => {
     const { code, token } = await createRoom(call);
     const local = addProfile(createEmptySave(), { name: '安安', avatar: AVATAR }, new Date()).profiles[0];
     await joinRoom(call, code, '小安', '1234', { profile: { ...local, coins: 12, bestStars: { a: 3, b: 2 } } });
-    const r = await call('GET', '/api/teacher/room', undefined, token);
+    const r = await call('GET', `/api/teacher/rooms/${code}`, undefined, token);
     expect(r.body.members).toEqual([
       expect.objectContaining({ id: expect.any(String), nickname: '小安', coins: 12, stars: 5, wrongCount: 0, sessions: 0, lastSeen: expect.any(String) }),
     ]);
@@ -180,7 +145,7 @@ describe('老師管理成員', () => {
     const { call } = makeClient(db);
     const { code, token } = await createRoom(call);
     const kid = await joinRoom(call, code, '小安', '1234');
-    expect((await call('POST', `/api/teacher/members/${kid.account.id}/pin`, { pin: '4321' }, token)).status).toBe(200);
+    expect((await call('POST', `/api/teacher/rooms/${code}/members/${kid.account.id}/pin`, { pin: '4321' }, token)).status).toBe(200);
     expect((await call('POST', '/api/login', { code, nickname: '小安', pin: '1234' })).status).toBe(401);
     expect((await call('POST', '/api/login', { code, nickname: '小安', pin: '4321' })).status).toBe(200);
     expect((await call('GET', '/api/me', undefined, kid.token)).status).toBe(401);
@@ -190,10 +155,10 @@ describe('老師管理成員', () => {
     const { call } = makeClient(db);
     const { code, token } = await createRoom(call);
     const kid = await joinRoom(call, code, '小安', '1234');
-    expect((await call('DELETE', `/api/teacher/members/${kid.account.id}`, undefined, token)).status).toBe(200);
+    expect((await call('DELETE', `/api/teacher/rooms/${code}/members/${kid.account.id}`, undefined, token)).status).toBe(200);
     expect((await call('GET', '/api/me', undefined, kid.token)).status).toBe(401);
     expect((await call('POST', '/api/login', { code, nickname: '小安', pin: '1234' })).status).toBe(401);
-    expect((await call('GET', '/api/teacher/room', undefined, token)).body.members).toEqual([]);
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.members).toEqual([]);
     await joinRoom(call, code, '小安', '9999');
   });
 
@@ -202,8 +167,8 @@ describe('老師管理成員', () => {
     const a = await createRoom(call);
     const b = await createRoom(call, '二年二班');
     const kid = await joinRoom(call, a.code);
-    expect((await call('DELETE', `/api/teacher/members/${kid.account.id}`, undefined, b.token)).status).toBe(404);
-    expect((await call('GET', '/api/teacher/room', undefined, kid.token)).status).toBe(401);
+    expect((await call('DELETE', `/api/teacher/rooms/${a.code}/members/${kid.account.id}`, undefined, b.token)).status).toBe(404);
+    expect((await call('GET', `/api/teacher/rooms/${a.code}`, undefined, kid.token)).status).toBe(401);
     expect((await call('GET', '/api/me', undefined, a.token)).status).toBe(401);
   });
 });

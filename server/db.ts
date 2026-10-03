@@ -174,14 +174,44 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS gifts_status_created ON gifts (status, created_at)`,
     ],
   },
+  {
+    // 大人帳號（A1，docs/plans/accounts.md）：家長、老師用自訂的帳號密碼登入，身分可以兩個都有。
+    // 新的房間由老師帳號擁有，不再有管理密碼；改版前用管理密碼建的房間原封不動（沒有擁有者）。
+    // 權杖多一種「大人」（user_id），大人權杖不屬於任何房間
+    version: 4,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS users (
+        id text PRIMARY KEY,
+        username text NOT NULL,
+        username_key text NOT NULL UNIQUE,
+        password_hash text NOT NULL,
+        email text,
+        email_verified boolean NOT NULL DEFAULT false,
+        is_parent boolean NOT NULL DEFAULT false,
+        is_teacher boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL,
+        last_login timestamptz,
+        CHECK (is_parent OR is_teacher)
+      )`,
+      `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS owner_id text REFERENCES users(id) ON DELETE CASCADE`,
+      `ALTER TABLE rooms ALTER COLUMN teacher_hash DROP NOT NULL`,
+      `CREATE INDEX IF NOT EXISTS rooms_owner ON rooms (owner_id)`,
+      `ALTER TABLE tokens ADD COLUMN IF NOT EXISTS user_id text REFERENCES users(id) ON DELETE CASCADE`,
+      `ALTER TABLE tokens ALTER COLUMN room_code DROP NOT NULL`,
+      `CREATE INDEX IF NOT EXISTS tokens_user ON tokens (user_id)`,
+    ],
+  },
 ];
 
-/** 建表與升級（可以重複執行） */
-export async function migrate(db: Db): Promise<void> {
+/**
+ * 建表與升級（可以重複執行）。
+ * upTo：只升到這一版（測試用，模擬「正式環境停在舊版、之後才升級」）；沒給就升到最新。
+ */
+export async function migrate(db: Db, opts: { upTo?: number } = {}): Promise<void> {
   await db.query(`CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`);
   const done = new Set((await db.query<{ version: number }>('SELECT version FROM schema_migrations')).map((r) => r.version));
   for (const m of MIGRATIONS) {
-    if (done.has(m.version)) continue;
+    if (done.has(m.version) || (opts.upTo !== undefined && m.version > opts.upTo)) continue;
     await db.transaction(async (tx) => {
       for (const sql of m.statements) await tx.query(sql);
       await tx.query('INSERT INTO schema_migrations (version) VALUES ($1)', [m.version]);
@@ -191,7 +221,7 @@ export async function migrate(db: Db): Promise<void> {
 
 /** 清空所有資料（測試用；資料表結構保留） */
 export async function resetDb(db: Db): Promise<void> {
-  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links, gifts CASCADE');
+  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links, gifts, users CASCADE');
 }
 
 /** 刪掉 30 天前的操作去重紀錄（伺服器啟動時與每天執行一次） */

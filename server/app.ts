@@ -12,25 +12,26 @@ import { maskEmail, type GoogleConfig, type GoogleIdentity } from './google';
 import { lookupToken } from './tokens';
 import { emitGiftEvents, registerGiftRoutes, removeMemberWithRefunds } from './gifts';
 import { registerStatic } from './static';
+import { registerUserRoutes } from './users';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
-  createRoomRequest,
+  createClassRequest,
   googleTokenRequest,
   joinRequest,
   loginRequest,
   opsRequest,
   resetPinRequest,
   roomPatchRequest,
-  teacherLoginRequest,
   type GoogleKidsResponse,
   type GoogleLinksResponse,
-  type GoogleRoomsResponse,
   type MemberSummary,
   type OpsResponse,
   type RoomSettings,
   type ServerConfig,
   type SessionResponse,
+  type TeacherRoomResponse,
+  type TeacherRoomsResponse,
 } from '../src/online/protocol';
 import { addProfile, createEmptySave, parseProfile, type Profile } from '../src/store/save';
 
@@ -80,7 +81,10 @@ interface AccountRow {
 interface RoomRow {
   code: string;
   name: string;
-  teacher_hash: string;
+  /** 改版前用管理密碼建的房間才有（docs/plans/accounts.md） */
+  teacher_hash: string | null;
+  /** 擁有這個班級的老師帳號（改版前的房間是 null） */
+  owner_id: string | null;
   join_open: boolean;
   chat_open: boolean;
   gifts_open: boolean;
@@ -117,21 +121,42 @@ export function createApp(opts: AppOptions) {
     if (!flood.hit(clientIp(c))) throw new ApiError(429, 'too_many', '請求太頻繁，請稍後再試');
   };
 
-  /** 發一張權杖並存進資料庫 */
-  const issueToken = async (q: Queryable, kind: 'kid' | 'teacher', roomCode: string, accountId: string | null) => {
+  /** 發一張權杖並存進資料庫：孩子的權杖屬於某個房間的帳號；大人（家長、老師）的權杖屬於大人帳號 */
+  const issueToken = async (q: Queryable, who: { kind: 'kid'; roomCode: string; accountId: string } | { kind: 'user'; userId: string }) => {
     const token = newToken();
     const expires = new Date(nowMs() + TOKEN_DAYS * 24 * 3600 * 1000).toISOString();
-    await q.query('INSERT INTO tokens (token_hash, kind, room_code, account_id, expires_at) VALUES ($1, $2, $3, $4, $5::timestamptz)', [tokenHash(token), kind, roomCode, accountId, expires]);
+    await q.query('INSERT INTO tokens (token_hash, kind, room_code, account_id, user_id, expires_at) VALUES ($1, $2, $3, $4, $5, $6::timestamptz)', [
+      tokenHash(token),
+      who.kind,
+      who.kind === 'kid' ? who.roomCode : null,
+      who.kind === 'kid' ? who.accountId : null,
+      who.kind === 'user' ? who.userId : null,
+      expires,
+    ]);
     return token;
   };
 
-  /** 驗證 Authorization 標頭的權杖，種類不符或過期回 401 */
-  const authenticate = async (c: Context, kind: 'kid' | 'teacher'): Promise<Identity> => {
+  /** 讀 Authorization 標頭的權杖並查詢；沒有、過期或停用的種類回 401 */
+  const bearer = async (c: Context) => {
     const m = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '');
     if (!m) throw new ApiError(401, 'unauthorized', '請重新登入');
     const found = await lookupToken(db, m[1], now());
-    if (!found || found.kind !== kind) throw new ApiError(401, 'unauthorized', '請重新登入');
+    if (!found) throw new ApiError(401, 'unauthorized', '請重新登入');
+    return found;
+  };
+
+  /** 驗證孩子的權杖（大人權杖回 401） */
+  const authenticate = async (c: Context, _kind: 'kid' = 'kid'): Promise<Identity> => {
+    const found = await bearer(c);
+    if (found.kind !== 'kid') throw new ApiError(401, 'unauthorized', '請重新登入');
     return { roomCode: found.roomCode, accountId: found.accountId, hash: found.hash };
+  };
+
+  /** 驗證大人（家長、老師）的權杖（孩子權杖回 401） */
+  const authenticateUser = async (c: Context): Promise<{ userId: string; hash: string }> => {
+    const found = await bearer(c);
+    if (found.kind !== 'user') throw new ApiError(401, 'unauthorized', '請重新登入');
+    return { userId: found.userId, hash: found.hash };
   };
 
   /** 讀房間；不存在回 404 */
@@ -143,7 +168,7 @@ export function createApp(opts: AppOptions) {
 
   /** 加入或登入成功的回應 */
   const sessionResponse = async (account: AccountRow, room: RoomRow): Promise<SessionResponse> => ({
-    token: await issueToken(db, 'kid', room.code, account.id),
+    token: await issueToken(db, { kind: 'kid', roomCode: room.code, accountId: account.id }),
     account: { id: account.id, nickname: account.nickname },
     profile: account.profile,
     rev: account.rev,
@@ -174,10 +199,6 @@ export function createApp(opts: AppOptions) {
   const kidGoogle = async (accountId: string): Promise<string[]> =>
     (await db.query<{ email: string | null }>('SELECT email FROM google_links WHERE account_id = $1 ORDER BY linked_at', [accountId])).map((r) => shownEmail(r.email));
 
-  /** 某個房間綁定的老師 Google 帳號（遮罩後） */
-  const roomGoogle = async (code: string): Promise<string[]> =>
-    (await db.query<{ email: string | null }>('SELECT email FROM teacher_google_links WHERE room_code = $1 ORDER BY linked_at', [code])).map((r) => shownEmail(r.email));
-
   const app = new Hono();
 
   app.use(
@@ -203,43 +224,64 @@ export function createApp(opts: AppOptions) {
 
   app.get('/api/config', (c) => c.json<ServerConfig>({ googleClientId: opts.google?.clientId ?? null }));
 
-  // ---------- 老師 ----------
+  // ---------- 大人帳號（家長、老師） ----------
+  registerUserRoutes(app, {
+    db,
+    now,
+    limiter,
+    checkFlood,
+    assertNotLocked,
+    issueUserToken: (userId) => issueToken(db, { kind: 'user', userId }),
+    authenticateUser,
+  });
 
-  app.post('/api/rooms', async (c) => {
-    checkFlood(c);
-    const body = await readBody(c, createRoomRequest);
+  // ---------- 老師（大人帳號＋老師身分；一個老師可以有好幾個班級，只能管自己的） ----------
+
+  /** 驗證老師：大人權杖＋老師身分；只有家長身分回 403 */
+  const authenticateTeacher = async (c: Context): Promise<string> => {
+    const { userId } = await authenticateUser(c);
+    const row = (await db.query<{ is_teacher: boolean }>('SELECT is_teacher FROM users WHERE id = $1', [userId]))[0];
+    if (!row) throw new ApiError(401, 'unauthorized', '請重新登入');
+    if (!row.is_teacher) throw new ApiError(403, 'not_teacher', '這個帳號沒有老師身分，請先在帳號設定加上「老師」');
+    return userId;
+  };
+
+  /** 讀老師自己的班級；別人的班級和不存在的代碼一樣回 404（不透露代碼存在） */
+  const loadOwnRoom = async (q: Queryable, code: string, ownerId: string): Promise<RoomRow> => {
+    const room = (await q.query<RoomRow>('SELECT * FROM rooms WHERE code = $1 AND owner_id = $2', [code, ownerId]))[0];
+    if (!room) throw new ApiError(404, 'no_room', '找不到這個班級');
+    return room;
+  };
+
+  app.get('/api/teacher/rooms', async (c) => {
+    const owner = await authenticateTeacher(c);
+    const rows = await db.query<RoomRow & { members: number }>(
+      `SELECT r.*, (SELECT count(*)::int FROM accounts a WHERE a.room_code = r.code) AS members
+       FROM rooms r WHERE r.owner_id = $1 ORDER BY r.created_at, r.code`,
+      [owner],
+    );
+    return c.json<TeacherRoomsResponse>({ rooms: rows.map((r) => ({ ...roomSettings(r), members: r.members })) });
+  });
+
+  app.post('/api/teacher/rooms', async (c) => {
+    const owner = await authenticateTeacher(c);
+    const body = await readBody(c, createClassRequest);
     const name = body.name.trim();
-    if (!name || [...name].length > ROOM_NAME_MAX) throw new ApiError(400, 'bad_name', `房間名稱要 1～${ROOM_NAME_MAX} 個字`);
-    const teacherHash = await hashSecret(body.password);
-    // 代碼撞到既有房間就重抽
+    if (!name || [...name].length > ROOM_NAME_MAX) throw new ApiError(400, 'bad_name', `班級名稱要 1～${ROOM_NAME_MAX} 個字`);
+    // 代碼撞到既有班級就重抽
     for (let i = 0; i < 20; i++) {
-      const code = newRoomCode();
-      const rows = await db.query<{ code: string }>(
-        'INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ($1, $2, $3, $4::timestamptz) ON CONFLICT (code) DO NOTHING RETURNING code',
-        [code, name, teacherHash, now().toISOString()],
+      const rows = await db.query<RoomRow>(
+        'INSERT INTO rooms (code, name, owner_id, created_at) VALUES ($1, $2, $3, $4::timestamptz) ON CONFLICT (code) DO NOTHING RETURNING *',
+        [newRoomCode(), name, owner, now().toISOString()],
       );
-      if (rows.length) return c.json({ code, token: await issueToken(db, 'teacher', code, null) });
+      if (rows.length) return c.json({ room: roomSettings(rows[0]) });
     }
-    throw new Error('房間代碼產生失敗');
+    throw new Error('班級代碼產生失敗');
   });
 
-  app.post('/api/teacher/login', async (c) => {
-    checkFlood(c);
-    const body = await readBody(c, teacherLoginRequest);
-    const key = `teacher:${body.code}`;
-    assertNotLocked(key);
-    const room = (await db.query<RoomRow>('SELECT * FROM rooms WHERE code = $1', [body.code]))[0];
-    if (!room || !(await verifySecret(body.password, room.teacher_hash))) {
-      limiter.fail(key);
-      throw new ApiError(401, 'bad_login', '房間代碼或管理密碼不對');
-    }
-    limiter.reset(key);
-    return c.json({ token: await issueToken(db, 'teacher', room.code, null), room: roomSettings(room) });
-  });
-
-  app.get('/api/teacher/room', async (c) => {
-    const who = await authenticate(c, 'teacher');
-    const room = await loadRoom(db, who.roomCode);
+  app.get('/api/teacher/rooms/:code', async (c) => {
+    const owner = await authenticateTeacher(c);
+    const room = await loadOwnRoom(db, c.req.param('code'), owner);
     const rows = await db.query<AccountRow>('SELECT * FROM accounts WHERE room_code = $1 ORDER BY created_at, nickname', [room.code]);
     const members: MemberSummary[] = rows.map((a) => ({
       id: a.id,
@@ -252,76 +294,49 @@ export function createApp(opts: AppOptions) {
       lastSeen: new Date(a.last_seen).toISOString(),
       online: isOnline(a.id),
     }));
-    return c.json({ room: roomSettings(room), members, google: await roomGoogle(room.code) });
+    return c.json<TeacherRoomResponse>({ room: roomSettings(room), members });
   });
 
-  app.patch('/api/teacher/room', async (c) => {
-    const who = await authenticate(c, 'teacher');
+  app.patch('/api/teacher/rooms/:code', async (c) => {
+    const owner = await authenticateTeacher(c);
+    const room = await loadOwnRoom(db, c.req.param('code'), owner);
     const body = await readBody(c, roomPatchRequest);
     const rows = await db.query<RoomRow>(
       `UPDATE rooms SET join_open = COALESCE($2, join_open), chat_open = COALESCE($3, chat_open), gifts_open = COALESCE($4, gifts_open)
        WHERE code = $1 RETURNING *`,
-      [who.roomCode, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null],
+      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null],
     );
-    opts.onRoomChanged?.(who.roomCode, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open });
+    opts.onRoomChanged?.(room.code, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open });
     return c.json({ room: roomSettings(rows[0]) });
   });
 
-  app.post('/api/teacher/members/:id/pin', async (c) => {
-    const who = await authenticate(c, 'teacher');
+  app.post('/api/teacher/rooms/:code/members/:id/pin', async (c) => {
+    const owner = await authenticateTeacher(c);
+    const room = await loadOwnRoom(db, c.req.param('code'), owner);
     const body = await readBody(c, resetPinRequest);
     const pinHash = await hashSecret(body.pin);
     const rows = await db.query<{ nickname_key: string }>('UPDATE accounts SET pin_hash = $3 WHERE id = $1 AND room_code = $2 RETURNING nickname_key', [
       c.req.param('id'),
-      who.roomCode,
+      room.code,
       pinHash,
     ]);
     if (!rows.length) throw new ApiError(404, 'no_member', '找不到這位成員');
     // 舊密碼可能被別人知道了：那位孩子其他裝置的登入一併失效
     await db.query('DELETE FROM tokens WHERE account_id = $1', [c.req.param('id')]);
-    limiter.reset(`kid:${who.roomCode}:${rows[0].nickname_key}`);
+    limiter.reset(`kid:${room.code}:${rows[0].nickname_key}`);
     opts.onKick?.(c.req.param('id'), '老師重設了你的密碼，請用新密碼重新登入');
     return c.json({ ok: true });
   });
 
-  app.delete('/api/teacher/members/:id', async (c) => {
-    const who = await authenticate(c, 'teacher');
+  app.delete('/api/teacher/rooms/:code/members/:id', async (c) => {
+    const owner = await authenticateTeacher(c);
+    const room = await loadOwnRoom(db, c.req.param('code'), owner);
     // 別人送給他、還沒收的禮物要先退款，和刪帳號在同一個交易裡
-    const events = await removeMemberWithRefunds(db, c.req.param('id'), who.roomCode, now());
+    const events = await removeMemberWithRefunds(db, c.req.param('id'), room.code, now());
     if (!events) throw new ApiError(404, 'no_member', '找不到這位成員');
     emitGiftEvents(opts, events);
     opts.onKick?.(c.req.param('id'), '老師把你移出房間了');
     return c.json({ ok: true });
-  });
-
-  app.post('/api/teacher/google/link', async (c) => {
-    const who = await authenticate(c, 'teacher');
-    const g = await verifyGoogle(c);
-    await db.query(
-      `INSERT INTO teacher_google_links (google_sub, room_code, email, linked_at) VALUES ($1, $2, $3, $4::timestamptz)
-       ON CONFLICT (google_sub, room_code) DO UPDATE SET email = EXCLUDED.email, linked_at = EXCLUDED.linked_at`,
-      [g.sub, who.roomCode, g.email, now().toISOString()],
-    );
-    return c.json<GoogleLinksResponse>({ google: await roomGoogle(who.roomCode) });
-  });
-
-  app.delete('/api/teacher/google/link', async (c) => {
-    const who = await authenticate(c, 'teacher');
-    await db.query('DELETE FROM teacher_google_links WHERE room_code = $1', [who.roomCode]);
-    return c.json<GoogleLinksResponse>({ google: [] });
-  });
-
-  app.post('/api/teacher/google/login', async (c) => {
-    checkFlood(c);
-    const g = await verifyGoogle(c);
-    const rooms = await db.query<{ code: string; name: string }>(
-      'SELECT r.code, r.name FROM rooms r JOIN teacher_google_links t ON t.room_code = r.code WHERE t.google_sub = $1 ORDER BY r.created_at, r.code',
-      [g.sub],
-    );
-    if (!rooms.length) throw new ApiError(404, 'google_not_linked', '這個 Google 帳號還沒有綁定任何房間。請先用房間代碼和管理密碼登入，再到管理頁綁定 Google。');
-    const result: GoogleRoomsResponse = { rooms: [] };
-    for (const r of rooms) result.rooms.push({ code: r.code, name: r.name, token: await issueToken(db, 'teacher', r.code, null) });
-    return c.json(result);
   });
 
   // ---------- 孩子 ----------

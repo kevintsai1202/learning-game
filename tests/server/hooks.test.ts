@@ -43,7 +43,7 @@ describe('通知即時中樞', () => {
   it('老師改房間設定：帶上聊天與送禮的開關', async () => {
     const { call, hooks } = hooked();
     const { code, token } = await createRoom(call);
-    await call('PATCH', '/api/teacher/room', { chatOpen: false }, token);
+    await call('PATCH', `/api/teacher/rooms/${code}`, { chatOpen: false }, token);
     expect(hooks.onRoomChanged).toHaveBeenCalledWith(code, { chatOpen: false, giftsOpen: true });
   });
 
@@ -52,9 +52,9 @@ describe('通知即時中樞', () => {
     const { code, token } = await createRoom(call);
     const a = await joinRoom(call, code, '小安');
     const b = await joinRoom(call, code, '小美', '5678');
-    await call('POST', `/api/teacher/members/${a.account.id}/pin`, { pin: '0000' }, token);
+    await call('POST', `/api/teacher/rooms/${code}/members/${a.account.id}/pin`, { pin: '0000' }, token);
     expect(hooks.onKick).toHaveBeenCalledWith(a.account.id, expect.stringContaining('密碼'));
-    await call('DELETE', `/api/teacher/members/${b.account.id}`, undefined, token);
+    await call('DELETE', `/api/teacher/rooms/${code}/members/${b.account.id}`, undefined, token);
     expect(hooks.onKick).toHaveBeenCalledWith(b.account.id, expect.stringContaining('移出'));
   });
 
@@ -64,7 +64,7 @@ describe('通知即時中樞', () => {
     const a = await joinRoom(call, code, '小安');
     await joinRoom(call, code, '小美', '5678');
     online.id = a.account.id;
-    const r = await call('GET', '/api/teacher/room', undefined, token);
+    const r = await call('GET', `/api/teacher/rooms/${code}`, undefined, token);
     expect(r.body.members.map((m: { nickname: string; online: boolean }) => [m.nickname, m.online])).toEqual([
       ['小安', true],
       ['小美', false],

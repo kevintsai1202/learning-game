@@ -150,7 +150,7 @@ describe('送禮', () => {
     const s = await setup();
     const g1 = (await send(s, s.b.account.id, 'sticker.tulip')).body.gift.id;
     const g2 = (await send(s, s.b.account.id, 'sticker.star')).body.gift.id;
-    await s.call('PATCH', '/api/teacher/room', { giftsOpen: false }, s.teacher);
+    await s.call('PATCH', `/api/teacher/rooms/${s.code}`, { giftsOpen: false }, s.teacher);
     const closed = await send(s, s.b.account.id, 'sticker.apple');
     expect(closed.status).toBe(403);
     expect(closed.body.code).toBe('gifts_closed');
@@ -292,7 +292,7 @@ describe('老師移出成員', () => {
     expect(fromB.status).toBe(409); // 小美沒有金幣
     const fromA = (await send(s, s.c.account.id, 'sticker.apple')).body.gift.id;
     s.hooks.onProfileChanged.mockClear();
-    const del = await s.call('DELETE', `/api/teacher/members/${s.a.account.id}`, undefined, s.teacher);
+    const del = await s.call('DELETE', `/api/teacher/rooms/${s.code}/members/${s.a.account.id}`, undefined, s.teacher);
     expect(del.status).toBe(200);
     expect(s.hooks.onKick).toHaveBeenCalledWith(s.a.account.id, expect.any(String));
     // 小安被移出：他送給阿寶的禮物阿寶仍然可以收下
@@ -302,7 +302,7 @@ describe('老師移出成員', () => {
     await db.query(`UPDATE accounts SET profile = jsonb_set(profile, '{coins}', '30') WHERE id = $1`, [s.b.account.id]);
     const g = (await s.call('POST', '/api/gifts', { id: gid(), to: s.c.account.id, itemId: 'sticker.whale' }, s.b.token)).body.gift.id;
     expect((await me(s, s.b.token)).profile.coins).toBe(22);
-    await s.call('DELETE', `/api/teacher/members/${s.c.account.id}`, undefined, s.teacher);
+    await s.call('DELETE', `/api/teacher/rooms/${s.code}/members/${s.c.account.id}`, undefined, s.teacher);
     const b = await me(s, s.b.token);
     expect(b.profile.coins).toBe(30);
     expect(s.hooks.onProfileChanged).toHaveBeenCalledWith(s.b.account.id, b.rev, expect.objectContaining({ coins: 30 }));

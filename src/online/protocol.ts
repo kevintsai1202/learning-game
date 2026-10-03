@@ -9,11 +9,6 @@ import { avatarSchema } from './ops';
 export const roomCodeSchema = z.string().regex(/^\d{6}$/);
 /** 孩子的密碼：4 位數字 */
 export const pinSchema = z.string().regex(/^\d{4}$/);
-/** 老師的管理密碼：6～64 字 */
-export const teacherPasswordSchema = z.string().min(6).max(64);
-
-export const createRoomRequest = z.object({ name: z.string().max(40), password: teacherPasswordSchema });
-export const teacherLoginRequest = z.object({ code: roomCodeSchema, password: z.string().max(64) });
 export const roomPatchRequest = z.object({ joinOpen: z.boolean().optional(), chatOpen: z.boolean().optional(), giftsOpen: z.boolean().optional() });
 export const resetPinRequest = z.object({ pin: pinSchema });
 /** 加入班級：avatar（建新角色）與 profile（帶本機進度）擇一 */
@@ -29,6 +24,58 @@ export const opsRequest = z.object({ ops: z.array(z.unknown()).max(20) });
 export const sendGiftRequest = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/), to: z.string().max(64), itemId: z.string().max(64) });
 /** 送禮結果看過了 */
 export const ackGiftNoticesRequest = z.object({ ids: z.array(z.string().max(64)).max(50) });
+
+// ---------- 大人帳號（家長、老師；docs/plans/accounts.md） ----------
+// 帳號名稱、密碼、email 的規則在 userRules.ts（伺服器逐項檢查，才能回報是哪一項不對）；這裡只限制型別與長度
+
+/** 註冊：家長、老師至少勾一個 */
+export const registerRequest = z.object({
+  username: z.string().max(40),
+  password: z.string().max(200),
+  email: z.string().max(300),
+  parent: z.boolean(),
+  teacher: z.boolean(),
+});
+/** 用帳號密碼登入 */
+export const userLoginRequest = z.object({ username: z.string().max(40), password: z.string().max(200) });
+/** 修改自己的身分或 email（沒給的欄位不變） */
+export const userPatchRequest = z.object({ parent: z.boolean().optional(), teacher: z.boolean().optional(), email: z.string().max(300).optional() });
+/** 改密碼 */
+export const passwordChangeRequest = z.object({ current: z.string().max(200), next: z.string().max(200) });
+/** 老師建立班級 */
+export const createClassRequest = z.object({ name: z.string().max(40) });
+
+/** 老師的班級清單的一個班級（附成員數） */
+export interface TeacherRoomSummary extends RoomSettings {
+  members: number;
+}
+
+/** 老師的班級清單 */
+export interface TeacherRoomsResponse {
+  rooms: TeacherRoomSummary[];
+}
+
+/** 老師的班級管理頁：設定與成員 */
+export interface TeacherRoomResponse {
+  room: RoomSettings;
+  members: MemberSummary[];
+}
+
+/** 大人帳號的資料（只回給本人） */
+export interface UserInfo {
+  id: string;
+  username: string;
+  email: string | null;
+  emailVerified: boolean;
+  parent: boolean;
+  teacher: boolean;
+}
+
+/** 註冊或登入成功的回應 */
+export interface UserSessionResponse {
+  token: string;
+  user: UserInfo;
+}
 
 /** 房間的基本資訊 */
 export interface RoomInfo {
@@ -72,10 +119,6 @@ export interface GoogleKidsResponse {
   kids: SessionResponse[];
 }
 
-/** 老師用 Google 登入的回應：綁定的每個房間各一張管理頁權杖 */
-export interface GoogleRoomsResponse {
-  rooms: { code: string; name: string; token: string }[];
-}
 
 /** 已綁定的 Google 帳號（email 已遮罩） */
 export interface GoogleLinksResponse {

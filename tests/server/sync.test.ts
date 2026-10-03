@@ -102,10 +102,10 @@ describe('同步操作', () => {
 
   it('同步會更新最後上線時間（老師的成員列表看得到）', async () => {
     const clock = fakeClock();
-    const { call, kid, teacher } = await setup({ now: clock.now });
+    const { call, kid, teacher, code } = await setup({ now: clock.now });
     clock.advance(3600_000);
     await call('POST', '/api/ops', { ops: [] }, kid.token);
-    const room = await call('GET', '/api/teacher/room', undefined, teacher);
+    const room = await call('GET', `/api/teacher/rooms/${code}`, undefined, teacher);
     expect(new Date(room.body.members[0].lastSeen).getTime()).toBe(clock.now().getTime());
   });
 
