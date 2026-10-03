@@ -24,6 +24,8 @@ import { BadgesScreen } from './ui/screens/BadgesScreen';
 import { RestGuard } from './ui/RestGuard';
 import { startCloudSync } from './online/useCloud';
 import { startRealtime } from './online/realtimeClient';
+import { useAccount } from './online/useAccount';
+import { readEmailLink, stripEmailLink } from './online/emailLinks';
 
 /** 各畫面的配樂 */
 const SCREEN_MUSIC: Record<Screen, Track> = {
@@ -55,6 +57,15 @@ export function App() {
   // 雲端角色的同步排程與即時連線（沒有雲端角色時什麼都不做）
   useEffect(() => startCloudSync(), []);
   useEffect(() => startRealtime(), []);
+
+  // 從信裡的連結打開（?verify=／?reset=）：先從網址拿掉（重新整理不會再送一次），交給帳號頁處理
+  useEffect(() => {
+    const link = readEmailLink(window.location.search);
+    if (!link) return;
+    window.history.replaceState(window.history.state, '', stripEmailLink(window.location.href));
+    useAccount.getState().setEmailLink(link);
+    useUi.getState().goto('teacher');
+  }, []);
 
   // 換畫面就換配樂
   useEffect(() => playMusic(SCREEN_MUSIC[screen]), [screen]);

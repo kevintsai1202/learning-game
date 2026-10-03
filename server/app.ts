@@ -14,6 +14,8 @@ import { emitGiftEvents, registerGiftRoutes, removeMemberWithRefunds } from './g
 import { registerStatic } from './static';
 import { registerUserRoutes } from './users';
 import { registerParentRoutes } from './parents';
+import { registerEmailRoutes } from './email';
+import { createMailer, type Mailer } from './mail';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
@@ -60,6 +62,8 @@ export interface AppOptions {
   onGift?: (accountId: string) => void;
   /** Google 快速登入（備選）；沒有時 Google 相關 API 回 404 */
   google?: GoogleConfig | null;
+  /** 寄信（驗證 email、忘記密碼；server/mail.ts 的 createMailer）；沒有時停用寄信 */
+  mailer?: Mailer;
   /** 前端建置產物（dist/）的目錄：設定時伺服器同時提供前端（Zeabur 的 Docker 映像檔）；沒設定時不提供 */
   staticDir?: string;
 }
@@ -125,6 +129,7 @@ export function createApp(opts: AppOptions) {
   const flood = new RateLimiter(nowMs, opts.floodLimit ?? 300);
   const allowed = new Set(opts.allowedOrigins ?? []);
   const isOnline = opts.isOnline ?? (() => false);
+  const mailer = opts.mailer ?? createMailer({}).mailer;
 
   /** 擋同一個 IP 的大量請求 */
   const checkFlood = (c: Context) => {
@@ -265,7 +270,12 @@ export function createApp(opts: AppOptions) {
     onKick: opts.onKick,
     onProfileChanged: opts.onProfileChanged,
     onGift: opts.onGift,
+    mailer,
+    allowedOrigins: allowed,
   });
+
+  // ---------- Email 驗證與忘記密碼（A3） ----------
+  registerEmailRoutes(app, { db, now, mailer, allowedOrigins: allowed, limiter, checkFlood, authenticateUser });
 
   // ---------- 家長的雲端角色（A2） ----------
   registerParentRoutes(app, {

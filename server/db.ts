@@ -215,6 +215,26 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `ALTER TABLE tokens ADD COLUMN IF NOT EXISTS via text NOT NULL DEFAULT 'class'`,
     ],
   },
+  {
+    // Email 驗證與忘記密碼（A3，docs/plans/accounts.md 第 7 節）：寄出的連結只存雜湊、有期限、只能用一次；
+    // purpose 是 verify（驗證 email）或 reset（重設密碼），email 記寄到哪個地址（改 email 之後舊的驗證連結失效）。
+    // 使用者決定 email 只能綁一個帳號（不分大小寫）：忘記密碼用 email 找一定只對到一個帳號。
+    // v4 起註冊就必填 email，所以唯一索引不加 WHERE email IS NOT NULL
+    version: 6,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS email_tokens (
+        token_hash text PRIMARY KEY,
+        user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        purpose text NOT NULL,
+        email text NOT NULL,
+        expires_at timestamptz NOT NULL,
+        used_at timestamptz,
+        created_at timestamptz NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS email_tokens_user ON email_tokens (user_id, purpose, created_at)`,
+      `CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (lower(email))`,
+    ],
+  },
 ];
 
 /**
@@ -235,7 +255,7 @@ export async function migrate(db: Db, opts: { upTo?: number } = {}): Promise<voi
 
 /** 清空所有資料（測試用；資料表結構保留） */
 export async function resetDb(db: Db): Promise<void> {
-  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links, gifts, users CASCADE');
+  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links, gifts, email_tokens, users CASCADE');
 }
 
 /** 刪掉 30 天前的操作去重紀錄（伺服器啟動時與每天執行一次） */

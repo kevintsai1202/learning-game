@@ -169,10 +169,15 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 | 方法與路徑 | 用途 |
 | --- | --- |
-| `POST /api/users` | 註冊大人帳號（家長、老師）`{ username, password, email, parent, teacher }` → `{ token, user }`（`docs/plans/accounts.md`） |
+| `POST /api/users` | 註冊大人帳號（家長、老師）`{ username, password, email, parent, teacher, appUrl? }` → `{ token, user, verifyMail }`（`docs/plans/accounts.md`）。email 已經有帳號回 409 `email_taken`；同時寄驗證信，`verifyMail` 是 `sent`／`failed`／`disabled`／`limited`（寄不出去也不擋註冊） |
 | `POST /api/users/login` | `{ username, password }` → `{ token, user }`；連錯 5 次鎖 5 分鐘 |
-| `GET /api/users/me`、`PATCH /api/users/me` | 讀取或修改自己的身分、email `{ parent?, teacher?, email? }` |
+| `GET /api/users/me`、`PATCH /api/users/me` | 讀取或修改自己的身分、email `{ parent?, teacher?, email?, appUrl? }`；換了 email（不分大小寫比較）要重新驗證並寄驗證信到新的 email，回應多 `verifyMail`；email 已經有帳號回 409 `email_taken` |
 | `POST /api/users/me/password` | `{ current, next }` 改密碼（其他裝置的登入失效） |
+| `POST /api/users/me/verify/resend` | `{ appUrl? }` 重寄驗證信（A3）：每分鐘 1 封、每天 10 封，超過回 429＋`retryAfter`；已經驗證回 409；伺服器沒有設定寄信回 503 |
+| `POST /api/users/email/verify` | `{ token }` 打開驗證連結（不用登入）；過期（24 小時）、用過、或 email 已經換了回 400 `bad_token` |
+| `POST /api/users/password/forgot` | `{ login, appUrl? }` 忘記密碼（帳號名稱或 email，不分大小寫）：一律回 `{ ok: true }`，只寄給驗證過的 email，不透露帳號是否存在 |
+| `POST /api/users/password/reset` | `{ token, password }` 用重設連結設定新密碼（不用登入）：30 分鐘、只能用一次；成功後這個帳號所有裝置都登出 |
+| `GET /api/test/mails` | **只有 e2e 的測試信箱模式**（`TEST_MAIL_OUTBOX`）才有：記憶體裡寄出的信 `{ mails: [{ to, subject, text }] }` |
 | `DELETE /api/users/me` | `{ password }` 刪除自己的帳號：名下的雲端角色一併刪除（在班級裡的先結清禮物）；密碼錯回 401 `bad_password`，還有班級回 409 `has_classes`（刪掉老師帳號會連帶刪掉班上所有角色） |
 | `GET /api/parent/kids` | 家長名下的雲端角色 `{ kids: [{ id, profileId, name, avatar, room, coins, stars, lastSeen }] }`（`room` 沒有班級時是 null；`profileId` 讓裝置認出本機的同一個角色）；大人權杖＋家長身分，只有老師身分回 403 `not_parent` |
 | `POST /api/parent/kids` | 把這台裝置上的角色存到雲端 `{ profile }` → `{ token, account, profile, rev, room: null }`（孩子權杖，來源 `parent`）；同一個角色重複上傳回 409 `already_uploaded` |
@@ -208,7 +213,8 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 ## 11. 資料表（PostgreSQL）
 
-- `users(id, username, username_key, password_hash, email, email_verified, is_parent, is_teacher, created_at, last_login)`：大人帳號（第 4 版）
+- `users(id, username, username_key, password_hash, email, email_verified, is_parent, is_teacher, created_at, last_login)`：大人帳號（第 4 版）；第 6 版起 email 不分大小寫只能用一次（`lower(email)` 唯一索引）
+- `email_tokens(token_hash, user_id, purpose, email, expires_at, used_at, created_at)`：驗證（`verify`）與重設密碼（`reset`）連結的權杖雜湊（第 6 版，A3）；`email` 記寄到哪個地址，帳號換了 email 之後舊連結失效；也用來算每個帳號的寄信頻率
 - `rooms(code, name, owner_id, teacher_hash, join_open, chat_open, gifts_open, created_at)`：`owner_id` 是老師帳號；`teacher_hash` 只有改版前用管理密碼建的房間才有
 - `accounts(id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)`，`(room_code, nickname_key)` 唯一。第 5 版（A2）：`parent_id` 是家長帳號；`room_code` 可以空（家長名下、沒有班級的雲端角色），但和 `parent_id` 至少要有一個；沒有班級就沒有 `pin_hash`
 - `applied_ops(account_id, op_id, applied_at)`

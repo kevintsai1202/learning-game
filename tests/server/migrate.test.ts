@@ -114,4 +114,40 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       await d.close();
     }
   });
+
+  it('v5 的大人帳號都留著；email 不分大小寫只能用一次；email 權杖表可以用（A3）', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 5 });
+      for (const [id, name, email] of [
+        ['u1', 'Mom', 'mom@example.com'],
+        ['u2', 'Dad', 'Dad@Example.com'],
+      ]) {
+        await d.query(
+          "INSERT INTO users (id, username, username_key, password_hash, email, is_parent, is_teacher, created_at) VALUES ($1, $2, lower($2), 'h', $3, true, false, $4::timestamptz)",
+          [id, name, email, T],
+        );
+      }
+
+      await migrate(d);
+
+      expect((await d.query<{ id: string }>('SELECT id FROM users ORDER BY id')).map((r) => r.id)).toEqual(['u1', 'u2']);
+      // 同一個 email（大小寫不同也算）不能給第二個帳號
+      await expect(
+        d.query(
+          "INSERT INTO users (id, username, username_key, password_hash, email, is_parent, is_teacher, created_at) VALUES ('u3', 'Other', 'other', 'h', 'MOM@example.com', true, false, $1::timestamptz)",
+          [T],
+        ),
+      ).rejects.toThrow();
+      await d.query(
+        "INSERT INTO email_tokens (token_hash, user_id, purpose, email, expires_at, created_at) VALUES ('h1', 'u1', 'verify', 'mom@example.com', $1::timestamptz, $1::timestamptz)",
+        [T],
+      );
+      // 帳號刪除時權杖跟著刪
+      await d.query("DELETE FROM users WHERE id = 'u1'");
+      expect(await d.query('SELECT * FROM email_tokens')).toEqual([]);
+    } finally {
+      await d.close();
+    }
+  });
 });

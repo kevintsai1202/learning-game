@@ -56,6 +56,11 @@ export function newUserId(): string {
   return `u_${randomBytes(9).toString('base64url')}`;
 }
 
+/** 大人帳號的登入鎖定鍵（不分大小寫，同一個帳號名稱共用；登入、改密碼、刪除帳號、重設密碼都用這個） */
+export function userLockKey(username: string): string {
+  return `user:${username.trim().toLowerCase()}`;
+}
+
 /** 暱稱檢查結果：通過時附上整理後的暱稱與比對用的鍵 */
 export type NicknameCheck = { ok: true; nickname: string; key: string } | { ok: false; reason: string };
 

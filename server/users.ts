@@ -1,16 +1,32 @@
 /**
  * 大人帳號（家長、老師）的 HTTP 路由：註冊、登入、讀取與修改自己的資料、改密碼。
- * 登出共用 /api/logout（刪掉那張權杖）。規格見 docs/plans/accounts.md 的 A1。
+ * 登出共用 /api/logout（刪掉那張權杖）。規格見 docs/plans/accounts.md 的 A1；
+ * A3 起 email 只能綁一個帳號（不分大小寫），註冊與換 email 時寄驗證信（server/email.ts）。
  */
 import type { Context, Hono } from 'hono';
 import type { Db } from './db';
 import { ApiError, readBody } from './http';
-import { hashSecret, newUserId, verifySecret, type LoginLimiter } from './auth';
-import { deleteAccountRequest, passwordChangeRequest, registerRequest, userLoginRequest, userPatchRequest, type UserInfo, type UserSessionResponse } from '../src/online/protocol';
+import { hashSecret, newUserId, userLockKey, verifySecret, type LoginLimiter } from './auth';
+import {
+  deleteAccountRequest,
+  passwordChangeRequest,
+  registerRequest,
+  userLoginRequest,
+  userPatchRequest,
+  type MailStatus,
+  type UserInfo,
+  type UserPatchResponse,
+  type UserSessionResponse,
+} from '../src/online/protocol';
 import { checkEmail, checkPassword, checkUsername } from '../src/online/userRules';
 import { settlePendingGifts, type Events } from './gifts';
 import { KID_DELETED_REASON, emitExcept } from './parents';
+import { sendVerifyMail } from './email';
+import type { Mailer } from './mail';
 import type { Profile } from '../src/store/save';
+
+/** email 已經綁在別的帳號上 */
+const EMAIL_TAKEN = () => new ApiError(409, 'email_taken', '這個 email 已經有帳號了；如果是你的帳號，可以用「忘記密碼」找回');
 
 /** 資料表 users 的一列 */
 export interface UserRow {
@@ -43,6 +59,10 @@ export interface UserRouteDeps {
   onKick?: (accountId: string, reason: string) => void;
   onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
   onGift?: (accountId: string) => void;
+  /** 寄驗證信（A3） */
+  mailer: Mailer;
+  /** 允許的前端網域：驗證信裡的連結只指回這些網址 */
+  allowedOrigins: Set<string>;
 }
 
 /** 回給本人的帳號資料 */
@@ -51,7 +71,7 @@ export function userInfo(row: UserRow): UserInfo {
 }
 
 /** 登入鎖定的鍵（不分大小寫，同一個帳號名稱共用） */
-const lockKey = (username: string) => `user:${username.trim().toLowerCase()}`;
+const lockKey = userLockKey;
 
 /** 註冊大人帳號的路由 */
 export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
@@ -78,6 +98,7 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
 
     const taken = await db.query('SELECT 1 FROM users WHERE username_key = $1', [name.key]);
     if (taken.length) throw new ApiError(409, 'username_taken', '這個帳號名稱已經有人用了，換一個吧');
+    if ((await db.query('SELECT 1 FROM users WHERE lower(email) = lower($1)', [mail.email])).length) throw EMAIL_TAKEN();
     let rows: UserRow[];
     try {
       rows = await db.query<UserRow>(
@@ -86,11 +107,18 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
         [newUserId(), name.username, name.key, await hashSecret(body.password), mail.email, body.parent, body.teacher, now().toISOString()],
       );
     } catch (err) {
-      // 兩個人同時註冊同一個帳號名稱：唯一鍵衝突
-      if ((err as { code?: string }).code === '23505') throw new ApiError(409, 'username_taken', '這個帳號名稱已經有人用了，換一個吧');
+      // 兩個人同時註冊同一個帳號名稱或 email：唯一鍵衝突，查是哪一個
+      if ((err as { code?: string }).code === '23505') {
+        if ((await db.query('SELECT 1 FROM users WHERE username_key = $1', [name.key])).length) throw new ApiError(409, 'username_taken', '這個帳號名稱已經有人用了，換一個吧');
+        throw EMAIL_TAKEN();
+      }
       throw err;
     }
-    return c.json<UserSessionResponse>({ token: await deps.issueUserToken(rows[0].id), user: userInfo(rows[0]) });
+    const user = rows[0];
+    const token = await deps.issueUserToken(user.id);
+    // 寄驗證信：寄不出去也不擋註冊，畫面提示之後可以到帳號設定重寄
+    const verifyMail = await sendVerifyMail(deps, { id: user.id, username: user.username, email: mail.email }, body.appUrl);
+    return c.json<UserSessionResponse>({ token, user: userInfo(user), verifyMail });
   });
 
   app.post('/api/users/login', async (c) => {
@@ -122,23 +150,31 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
     if (!parent && !teacher) throw new ApiError(400, 'no_role', '家長、老師至少要保留一個身分');
     let email = row.email;
     let verified = row.email_verified;
+    /** 換了信箱（不分大小寫比較）：要重新驗證、寄驗證信到新的信箱 */
+    let changed = false;
     if (body.email !== undefined) {
       const mail = checkEmail(body.email);
       if (!mail.ok) throw new ApiError(400, 'bad_email', mail.reason);
-      // 換了信箱就要重新驗證
-      if (mail.email !== row.email) {
-        email = mail.email;
+      if (mail.email.toLowerCase() !== (row.email ?? '').toLowerCase()) {
+        if ((await db.query('SELECT 1 FROM users WHERE lower(email) = lower($1) AND id <> $2', [mail.email, row.id])).length) throw EMAIL_TAKEN();
+        changed = true;
         verified = false;
       }
+      // 同一個信箱只改大小寫：照存，不用重新驗證
+      email = mail.email;
     }
-    const rows = await db.query<UserRow>('UPDATE users SET is_parent = $2, is_teacher = $3, email = $4, email_verified = $5 WHERE id = $1 RETURNING *', [
-      row.id,
-      parent,
-      teacher,
-      email,
-      verified,
-    ]);
-    return c.json({ user: userInfo(rows[0]) });
+    let rows: UserRow[];
+    try {
+      rows = await db.query<UserRow>('UPDATE users SET is_parent = $2, is_teacher = $3, email = $4, email_verified = $5 WHERE id = $1 RETURNING *', [row.id, parent, teacher, email, verified]);
+    } catch (err) {
+      // 同時有人註冊或改成同一個 email
+      if ((err as { code?: string }).code === '23505') throw EMAIL_TAKEN();
+      throw err;
+    }
+    const user = rows[0];
+    let verifyMail: MailStatus | undefined;
+    if (changed && user.email) verifyMail = await sendVerifyMail(deps, { id: user.id, username: user.username, email: user.email }, body.appUrl);
+    return c.json<UserPatchResponse>({ user: userInfo(user), ...(verifyMail ? { verifyMail } : {}) });
   });
 
   app.post('/api/users/me/password', async (c) => {

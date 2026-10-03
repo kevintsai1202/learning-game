@@ -7,7 +7,7 @@
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
 - 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/engine/check.ts`（計分）
-- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「退出班級」的共用函式）；共用的 `ApiError`、`readBody` 在 `http.ts`
+- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「退出班級」的共用函式）；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
@@ -32,11 +32,14 @@ docker rm -f li-pg-test
 | `ALLOWED_ORIGINS` | 允許跨網域呼叫的前端網址，逗號分隔；預設 `http://localhost:5173,http://localhost:4183` |
 | `GOOGLE_CLIENT_ID` | Google 快速登入（備選）的 OAuth 用戶端 ID；沒有就不開 Google 登入。建立方式見 `docs/google-login-setup.md` |
 | `GOOGLE_TEST_JWKS`＋`ALLOW_TEST_GOOGLE=1` | **只給 e2e 用**的測試模式：用測試公鑰驗證 Google token。只設其中一個會拒絕啟動；正式環境絕不能設 |
+| `SMTP_USER`＋`SMTP_PASS` | 用 Gmail SMTP（`smtp.gmail.com:465`，TLS）寄驗證信與重設密碼信；`SMTP_PASS` 是應用程式密碼（空白會去掉）。只設一個或都沒設：不寄信（只設一個會警告） |
+| `MAIL_FROM` | 寄件人的顯示；沒設是 `"知識島大冒險" <SMTP_USER>` |
+| `TEST_MAIL_OUTBOX`＋`ALLOW_TEST_MAIL=1` | **只給 e2e 用**的測試信箱：信放在記憶體，`GET /api/test/mails` 讀得到。只設其中一個、或和 `SMTP_USER` 同時設會拒絕啟動；正式環境絕不能設 |
 | `STATIC_DIR` | 前端建置產物（`dist/`）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 `/app/dist`）。本機開發與 e2e 不設 |
 
 ## 規則
 
-- **給伺服器 import 的 `src/` 模組必須是純邏輯**：不能 import 畫面、音訊、3D（three、react）的程式。改了之後看 `npm run server:build` 的產物，import 清單只能有 hono、pg、zod、jose、ws、node 內建模組與動態載入的 PGlite。
+- **給伺服器 import 的 `src/` 模組必須是純邏輯**：不能 import 畫面、音訊、3D（three、react）的程式。改了之後看 `npm run server:build` 的產物，import 清單只能有 hono、pg、zod、jose、ws、nodemailer、node 內建模組與動態載入的 PGlite。
 - **改 `src/store/save.ts` 的規則等於同時改伺服器**：`tests/online/ops.test.ts` 的對照測試確認「本機原本的路徑」與 `applyOp` 結果相同。
 - 存檔只靠「操作」（`/api/ops`）與送禮的路由改變，不要新增「整份上傳存檔」的 API：會蓋掉伺服器端的變更（例如收到的禮物）。
 - 會讀後改的帳號資料一律在交易裡 `SELECT … FOR UPDATE`。PGlite 是單一連線測不出搶鎖，要用 Docker 的 PostgreSQL 驗證（`tests/server/sync.test.ts` 的並行測試拿掉列鎖就會失敗）。
@@ -54,6 +57,16 @@ docker rm -f li-pg-test
   - 老師移出成員（`removeMemberWithRefunds`）：交易開頭讀到的班級可能已經過期（家長讓他退出、又加入別的班級），結清禮物時鎖到帳號之後再確認一次，不是這個班的就丟出內部例外撤銷整個交易、回傳 null（路由回 404，不送撤銷前的退款通知）。老師只能移出自己班上的學生。
   - 存到雲端（`POST /api/parent/kids`）在交易裡先鎖家長的 `users` 列，再查重與新增：同時上傳同一個角色不會變成兩個分身。這個鎖只在這裡拿，期間只新增帳號、不鎖既有的帳號與禮物，和下面的鎖定順序不衝突。
   - 刪除角色、刪除自己的帳號：在交易裡結清禮物再刪，交易結束後才送通知，而且不送給被刪的角色（`parents.ts` 的 `emitExcept`）；還有班級的帳號不能刪（`has_classes`），因為刪掉老師帳號會連帶刪掉班上所有角色。
+- **Email 驗證與忘記密碼**（A3，`email.ts`、`mail.ts`，`docs/plans/accounts.md` 第 7 節）：
+  - email 只能綁一個帳號（`users` 的 `lower(email)` 唯一索引）；註冊與換 email 時查重回 409 `email_taken`，查重的寫法用 `WHERE lower(email) = lower($1)` 才吃得到索引。
+  - 連結權杖只存雜湊（`email_tokens`），驗證 24 小時、重設 30 分鐘、只能用一次；帳號換了 email 之後，舊信裡的連結失效（比對權杖記的 email）。
+  - 每個帳號每種信每分鐘 1 封、每天 10 封，用 `email_tokens` 計數（伺服器重啟也算數）。
+  - 忘記密碼一律回同一句話：帳號不存在、email 沒驗證、被頻率限制，都照常回應但不寄、不建權杖；不等寄信完成就回應（權杖要在回應前寫進資料庫）。
+  - 重設成功後刪掉這個帳號全部的權杖（所有裝置登出，包括正在重設的這台），並解除登入鎖定。
+  - 信裡的連結指回前端送來的 `appUrl`，網域要在 `ALLOWED_ORIGINS` 裡，否則用 GitHub Pages 的網址（`email.ts` 的 `appBaseUrl`）。
+  - 不寫「把信的內容印進記錄」的假寄信器：重設連結等於密碼。測試用 `TEST_MAIL_OUTBOX` 的記憶體信箱，或在 `createApp` 傳入寄信器。寄信失敗只回三種固定訊息，不轉出 SMTP 伺服器的回應（535 有時帶帳號），記錄只寫錯誤代碼。
+  - 寄信一律在交易外；註冊與換 email 時寄不出去不擋請求，回應帶 `verifyMail`（`sent`／`failed`／`disabled`／`limited`），畫面提示可以重寄。
+  - 會同時鎖帳號與連結權杖時，先鎖 `users` 再鎖 `email_tokens`（和刪除帳號時外鍵 CASCADE 的順序一樣）。
 - **老師的 API**（`/api/teacher/rooms…`）：大人權杖＋老師身分（只有家長身分回 403 `not_teacher`）＋這個班級是他的；別人的班級和不存在的代碼一樣回 404 `no_room`，不透露代碼存在。改版前用管理密碼建的房間沒有擁有者（`owner_id` 是 null），目前沒有登入方式，上線前要看正式環境有沒有這種房間（`docs/plans/accounts.md` 的 A5）。
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。

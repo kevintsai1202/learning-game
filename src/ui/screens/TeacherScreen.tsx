@@ -3,7 +3,7 @@
  * 老師看到「我的班級」（建立班級；點進去看成員、重設孩子密碼、移出、開關加入／聊天／送禮），
  * 家長的雲端角色在 A2 開放。沒勾「保持登入」時，登入狀態存 sessionStorage：教室共用電腦關掉分頁就登出。
  */
-import { useCallback, useEffect, useState, type ReactNode, type SubmitEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
 import { useUi } from '../../store/useUi';
 import { useGame } from '../../store/useGame';
 import { useAccount } from '../../online/useAccount';
@@ -60,6 +60,8 @@ function AccountGate() {
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** 顯示「忘記密碼」的表單 */
+  const [forgot, setForgot] = useState(false);
 
   /** 註冊表單的第一個問題（前端先擋，伺服器也會再檢查一次） */
   const registerProblem = (): string | null => {
@@ -100,6 +102,7 @@ function AccountGate() {
     setError(null);
   };
   const ready = !busy && username.trim().length > 0 && password.length > 0;
+  if (forgot) return <ForgotPassword onClose={() => setForgot(false)} />;
   return (
     <>
       <div className="tabs">
@@ -169,14 +172,195 @@ function AccountGate() {
           在這台裝置保持登入（教室共用的電腦請不要勾）
         </Check>
         <ErrorNote text={error} testId="account-error" />
-        <div style={{ marginTop: 14 }}>
+        <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="submit" className="btn big green" disabled={!ready} data-testid="account-submit">
             {busy ? '連線中…' : mode === 'login' ? '登入' : '註冊'}
           </button>
+          {mode === 'login' && (
+            <button type="button" className="btn small white" onClick={() => setForgot(true)} data-testid="forgot-open">
+              忘記密碼？
+            </button>
+          )}
         </div>
         <p className="notice">孩子不用註冊：孩子用老師給的「班級代碼＋暱稱＋自己設的 4 位數密碼」加入班級。</p>
       </form>
     </>
+  );
+}
+
+/** 忘記密碼：輸入帳號名稱或 email；不管帳號存不存在，送出後都顯示同一句話（不透露帳號是否存在） */
+function ForgotPassword({ onClose }: { onClose: () => void }) {
+  const forgotPassword = useAccount((s) => s.forgotPassword);
+  const [login, setLogin] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      await forgotPassword(login.trim());
+      setSent(true);
+    } catch (err) {
+      setError(messageOf(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form className="panel-body" onSubmit={submit} data-testid="forgot-panel">
+      <h3 style={{ margin: '0 0 8px' }}>忘記密碼</h3>
+      <label className="label" htmlFor="forgot-login">
+        帳號名稱或 email
+      </label>
+      <input
+        id="forgot-login"
+        className="text-input"
+        autoComplete="username"
+        autoCapitalize="none"
+        spellCheck={false}
+        value={login}
+        onChange={(e) => setLogin(e.target.value)}
+        data-testid="forgot-login"
+      />
+      <ErrorNote text={error} testId="forgot-error" />
+      {sent && (
+        <p className="notice" data-testid="forgot-msg">
+          如果這個帳號存在、email 也驗證過，重設密碼的信已經寄出（30 分鐘內有效），請到信箱收信；沒收到的話，看看垃圾郵件匣。email 沒驗證過的帳號沒辦法用這個方式找回。
+        </p>
+      )}
+      <div style={{ marginTop: 14, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+        <button type="submit" className="btn big green" disabled={busy || !login.trim()} data-testid="forgot-submit">
+          {busy ? '連線中…' : '寄重設密碼的信'}
+        </button>
+        <button type="button" className="btn small white" onClick={onClose} data-testid="forgot-back">
+          回到登入
+        </button>
+      </div>
+    </form>
+  );
+}
+
+/**
+ * 從信裡的連結打開網頁（App.tsx 讀出網址參數交過來）：
+ * 驗證連結一打開就送出驗證；重設連結顯示設定新密碼的表單（成功後要用新密碼重新登入）
+ */
+function EmailLinkPanel() {
+  const link = useAccount((s) => s.emailLink);
+  const setEmailLink = useAccount((s) => s.setEmailLink);
+  const verifyEmail = useAccount((s) => s.verifyEmail);
+  const resetPassword = useAccount((s) => s.resetPassword);
+  const [done, setDone] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  /** 已經送出過驗證的權杖（開發模式的 StrictMode 會把 effect 跑兩次，第二次會變成「連結已經用過」） */
+  const verified = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (link?.kind !== 'verify' || verified.current === link.token) return;
+    verified.current = link.token;
+    verifyEmail(link.token)
+      .then(() => setDone('email 驗證好了。忘記密碼時，就能用這個 email 重設。'))
+      .catch((err: unknown) => setError(messageOf(err)));
+  }, [link, verifyEmail]);
+
+  if (!link) return null;
+  /** 看完結果：關掉這個面板 */
+  const close = () => {
+    setEmailLink(null);
+    setDone(null);
+    setError(null);
+  };
+
+  const submitReset = async (e: SubmitEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const problem = checkPassword(password) ?? (password !== confirm ? '兩次輸入的密碼不一樣' : null);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      await resetPassword(link.token, password);
+      setDone('密碼改好了，請用新密碼登入（所有裝置的登入都已經登出）。');
+    } catch (err) {
+      setError(messageOf(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="panel-body plain" style={{ borderBottom: '2px dashed var(--line, #ccc)' }} data-testid="email-link-panel">
+      <h3 style={{ margin: '0 0 8px' }}>{link.kind === 'verify' ? '驗證 email' : '設定新密碼'}</h3>
+      {done ? (
+        <p className="notice" data-testid="email-link-result">
+          ✅ {done}
+        </p>
+      ) : link.kind === 'verify' ? (
+        !error && <p>驗證中…</p>
+      ) : (
+        <form onSubmit={submitReset}>
+          <input
+            className="text-input"
+            type="password"
+            autoComplete="new-password"
+            placeholder={`新密碼（至少 ${PASSWORD_MIN} 個字）`}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-label="新密碼"
+            data-testid="reset-password"
+          />
+          <input
+            className="text-input"
+            type="password"
+            autoComplete="new-password"
+            placeholder="再輸入一次新密碼"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            aria-label="再輸入一次新密碼"
+            data-testid="reset-confirm"
+          />
+          <button type="submit" className="btn big green" style={{ marginTop: 10 }} disabled={busy || !password} data-testid="reset-submit">
+            {busy ? '連線中…' : '設定新密碼'}
+          </button>
+        </form>
+      )}
+      <ErrorNote text={error} testId="email-link-error" />
+      {(done || error) && (
+        <button className="btn small white" onClick={close} data-testid="email-link-close">
+          知道了
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** 驗證信的寄送結果（註冊、換 email、重寄之後顯示在帳號頁上方；已經驗證就不顯示） */
+function VerifyMailNote() {
+  const status = useAccount((s) => s.verifyMail);
+  const user = useAccount((s) => s.user);
+  const clear = useAccount((s) => s.clearVerifyMail);
+  if (!status || !user || user.emailVerified) return null;
+  const text = {
+    sent: `驗證信已經寄到 ${user.email ?? ''}，請到信箱打開信裡的連結（24 小時內有效）。`,
+    failed: '驗證信沒有寄出，可以到「帳號設定」重寄。',
+    disabled: '伺服器還沒有設定寄信，暫時沒辦法驗證 email。',
+    limited: '驗證信寄太多次了，請稍後再到「帳號設定」重寄。',
+  }[status];
+  return (
+    <p className="notice" data-testid="verify-mail-note">
+      {text}{' '}
+      <button className="btn small white" onClick={clear}>
+        知道了
+      </button>
+    </p>
   );
 }
 
@@ -185,6 +369,7 @@ function AccountSettings() {
   const user = useAccount((s) => s.user);
   const update = useAccount((s) => s.update);
   const changePassword = useAccount((s) => s.changePassword);
+  const resendVerify = useAccount((s) => s.resendVerify);
   const [email, setEmail] = useState(user?.email ?? '');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -251,6 +436,14 @@ function AccountSettings() {
         )}
       </div>
       <h4 style={{ margin: '14px 0 6px' }}>email</h4>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', margin: '0 0 6px' }}>
+        <span data-testid="email-status">{user.emailVerified ? '✅ 已驗證（忘記密碼時可以用這個 email 重設）' : '⚠️ 還沒驗證：驗證之後，忘記密碼時才能用 email 重設'}</span>
+        {!user.emailVerified && (
+          <button className="btn small white" onClick={() => void run(() => resendVerify(), '驗證信已經寄出，請到信箱收信')} data-testid="resend-verify">
+            重寄驗證信
+          </button>
+        )}
+      </div>
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         <input className="text-input" type="email" inputMode="email" style={{ flex: '1 1 200px' }} value={email} onChange={(e) => setEmail(e.target.value)} aria-label="email" data-testid="settings-email" />
         <button className="btn small white" disabled={email.trim() === (user.email ?? '')} onClick={() => void run(() => update({ email: email.trim() }), 'email 改好了')} data-testid="settings-email-save">
@@ -756,6 +949,7 @@ function AccountHome() {
             登出
           </button>
         </div>
+        <VerifyMailNote />
         {user.teacher && user.parent && (
           <div className="tabs" style={{ marginTop: 8 }}>
             <button className={`btn small white ${current === 'teacher' ? 'on' : ''}`} onClick={() => setMode('teacher')} data-testid="mode-teacher">
@@ -803,6 +997,7 @@ export function TeacherScreen() {
             返回
           </button>
         </div>
+        <EmailLinkPanel />
         {session ? <AccountHome /> : <AccountGate />}
       </div>
     </div>

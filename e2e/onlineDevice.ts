@@ -125,3 +125,26 @@ export async function loginTeacher(page: Page, username: string, password = TEST
   await page.getByTestId('account-submit').click();
   await expect(page.getByTestId('account-name')).toContainText(username);
 }
+
+/** 測試信箱裡的一封信（伺服器開了 TEST_MAIL_OUTBOX 測試模式才有；正式伺服器沒有這個路由） */
+export interface TestMail {
+  to: string;
+  subject: string;
+  text: string;
+}
+
+/** 讀測試信箱裡寄給某個信箱的信（不分大小寫）；伺服器沒開測試信箱時回傳 null */
+export async function mailsTo(request: APIRequestContext, email: string): Promise<TestMail[] | null> {
+  const res = await request.get(`${SERVER}/api/test/mails`);
+  if (res.status() === 404) return null;
+  expect(res.ok(), `讀測試信箱 ${res.status()}`).toBe(true);
+  const { mails } = (await res.json()) as { mails: TestMail[] };
+  return mails.filter((m) => m.to.toLowerCase() === email.toLowerCase());
+}
+
+/** 從信件內文取出驗證或重設連結（完整網址） */
+export function linkIn(text: string, kind: 'verify' | 'reset'): string {
+  const url = text.match(/https?:\/\/\S+/g)?.find((u) => new URL(u).searchParams.has(kind));
+  if (!url) throw new Error(`信裡找不到 ${kind} 連結：${text}`);
+  return url;
+}

@@ -28,6 +28,12 @@ export const ackGiftNoticesRequest = z.object({ ids: z.array(z.string().max(64))
 // ---------- 大人帳號（家長、老師；docs/plans/accounts.md） ----------
 // 帳號名稱、密碼、email 的規則在 userRules.ts（伺服器逐項檢查，才能回報是哪一項不對）；這裡只限制型別與長度
 
+/**
+ * 前端目前的網址（A3）：信裡的驗證與重設連結指回這個網址；伺服器只在網域列在允許清單裡時才採用，
+ * 不然用 GitHub Pages 的網址（server/email.ts 的 appBaseUrl）
+ */
+const appUrlSchema = z.string().max(500).optional();
+
 /** 註冊：家長、老師至少勾一個 */
 export const registerRequest = z.object({
   username: z.string().max(40),
@@ -35,11 +41,20 @@ export const registerRequest = z.object({
   email: z.string().max(300),
   parent: z.boolean(),
   teacher: z.boolean(),
+  appUrl: appUrlSchema,
 });
 /** 用帳號密碼登入 */
 export const userLoginRequest = z.object({ username: z.string().max(40), password: z.string().max(200) });
-/** 修改自己的身分或 email（沒給的欄位不變） */
-export const userPatchRequest = z.object({ parent: z.boolean().optional(), teacher: z.boolean().optional(), email: z.string().max(300).optional() });
+/** 修改自己的身分或 email（沒給的欄位不變；換了 email 會寄驗證信到新的 email） */
+export const userPatchRequest = z.object({ parent: z.boolean().optional(), teacher: z.boolean().optional(), email: z.string().max(300).optional(), appUrl: appUrlSchema });
+/** 重寄驗證信（登入狀態） */
+export const resendVerifyRequest = z.object({ appUrl: appUrlSchema });
+/** 打開驗證連結：驗證 email（不用登入） */
+export const verifyEmailRequest = z.object({ token: z.string().max(200) });
+/** 忘記密碼：帳號名稱或 email */
+export const forgotPasswordRequest = z.object({ login: z.string().max(300), appUrl: appUrlSchema });
+/** 打開重設連結後設定新密碼（不用登入） */
+export const resetPasswordRequest = z.object({ token: z.string().max(200), password: z.string().max(200) });
 /** 改密碼 */
 export const passwordChangeRequest = z.object({ current: z.string().max(200), next: z.string().max(200) });
 /** 老師建立班級 */
@@ -101,6 +116,20 @@ export interface UserInfo {
 export interface UserSessionResponse {
   token: string;
   user: UserInfo;
+  /** 註冊時的驗證信寄出了沒（只有註冊的回應有；登入沒有） */
+  verifyMail?: MailStatus;
+}
+
+/**
+ * 驗證信的寄送結果：sent 寄出了；failed 寄信失敗（可以到帳號設定重寄）；
+ * disabled 伺服器沒有設定寄信；limited 寄太多次了（每分鐘 1 封、每天 10 封）
+ */
+export type MailStatus = 'sent' | 'failed' | 'disabled' | 'limited';
+
+/** 修改自己的資料的回應（換了 email 時多一個驗證信的寄送結果） */
+export interface UserPatchResponse {
+  user: UserInfo;
+  verifyMail?: MailStatus;
 }
 
 /** 房間的基本資訊 */

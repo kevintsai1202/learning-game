@@ -44,6 +44,9 @@ export default defineConfig({
             GOOGLE_CLIENT_ID: googleTest.clientId,
             GOOGLE_TEST_JWKS: JSON.stringify(googleTest.publicJwks),
             ALLOW_TEST_GOOGLE: '1',
+            // 測試信箱（A3）：驗證信與重設信放在記憶體，e2e 從 GET /api/test/mails 讀；兩個都要設，正式環境絕不能設
+            TEST_MAIL_OUTBOX: '1',
+            ALLOW_TEST_MAIL: '1',
           },
         },
       ],
