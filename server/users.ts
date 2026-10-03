@@ -6,8 +6,11 @@ import type { Context, Hono } from 'hono';
 import type { Db } from './db';
 import { ApiError, readBody } from './http';
 import { hashSecret, newUserId, verifySecret, type LoginLimiter } from './auth';
-import { passwordChangeRequest, registerRequest, userLoginRequest, userPatchRequest, type UserInfo, type UserSessionResponse } from '../src/online/protocol';
+import { deleteAccountRequest, passwordChangeRequest, registerRequest, userLoginRequest, userPatchRequest, type UserInfo, type UserSessionResponse } from '../src/online/protocol';
 import { checkEmail, checkPassword, checkUsername } from '../src/online/userRules';
+import { settlePendingGifts, type Events } from './gifts';
+import { KID_DELETED_REASON, emitExcept } from './parents';
+import type { Profile } from '../src/store/save';
 
 /** 資料表 users 的一列 */
 export interface UserRow {
@@ -36,6 +39,10 @@ export interface UserRouteDeps {
   issueUserToken: (userId: string) => Promise<string>;
   /** 驗證大人權杖，回傳帳號 id 與權杖雜湊 */
   authenticateUser: (c: Context) => Promise<{ userId: string; hash: string }>;
+  /** 刪除帳號時：名下角色的裝置收到踢線、班上退款的人收到存檔與禮物通知 */
+  onKick?: (accountId: string, reason: string) => void;
+  onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
+  onGift?: (accountId: string) => void;
 }
 
 /** 回給本人的帳號資料 */
@@ -150,6 +157,36 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
     await db.query('UPDATE users SET password_hash = $2 WHERE id = $1', [row.id, await hashSecret(body.next)]);
     // 舊密碼可能外流：其他裝置的登入一律失效，這台保留
     await db.query('DELETE FROM tokens WHERE user_id = $1 AND token_hash <> $2', [row.id, hash]);
+    return c.json({ ok: true });
+  });
+
+  /**
+   * 刪除自己的帳號（docs/plans/accounts.md 第 6 節）：要再輸入一次密碼；名下的雲端角色一併刪除，在班級裡的先和班上結清禮物。
+   * 還有班級時不能刪：刪掉老師帳號會連帶刪掉班級與班上所有角色（包括別人家長名下的）。
+   * 通知在交易結束後才送，而且不送給被刪的角色（那些帳號已經不存在）。
+   */
+  app.delete('/api/users/me', async (c) => {
+    const { row } = await loadMe(c);
+    const body = await readBody(c, deleteAccountRequest);
+    const key = lockKey(row.username);
+    deps.assertNotLocked(key);
+    if (!(await verifySecret(body.password, row.password_hash))) {
+      limiter.fail(key);
+      throw new ApiError(401, 'bad_password', '密碼不對');
+    }
+    limiter.reset(key);
+    const classes = await db.query('SELECT 1 FROM rooms WHERE owner_id = $1 LIMIT 1', [row.id]);
+    if (classes.length) throw new ApiError(409, 'has_classes', '這個帳號還有班級，要先移除班級才能刪除帳號（不然班上同學的角色會跟著不見）');
+    const events: Events = { profiles: [], gifts: [] };
+    const kidIds = await db.transaction(async (tx) => {
+      const kids = await tx.query<{ id: string; room_code: string | null }>('SELECT id, room_code FROM accounts WHERE parent_id = $1', [row.id]);
+      await settlePendingGifts(tx, kids.filter((k) => k.room_code).map((k) => k.id), now(), events, { includeOutgoing: true });
+      // 名下的角色、權杖跟著刪（外鍵 CASCADE）
+      await tx.query('DELETE FROM users WHERE id = $1', [row.id]);
+      return kids.map((k) => k.id);
+    });
+    emitExcept(deps, events, new Set(kidIds));
+    for (const id of kidIds) deps.onKick?.(id, KID_DELETED_REASON);
     return c.json({ ok: true });
   });
 }

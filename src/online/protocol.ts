@@ -44,6 +44,30 @@ export const userPatchRequest = z.object({ parent: z.boolean().optional(), teach
 export const passwordChangeRequest = z.object({ current: z.string().max(200), next: z.string().max(200) });
 /** 老師建立班級 */
 export const createClassRequest = z.object({ name: z.string().max(40) });
+/** 刪除自己的帳號：要再輸入一次密碼 */
+export const deleteAccountRequest = z.object({ password: z.string().max(200) });
+/** 家長把裝置上的角色上傳成雲端角色（存檔格式在伺服器用 parseProfile 檢查） */
+export const uploadKidRequest = z.object({ profile: z.unknown() });
+/** 已有的雲端角色加入班級（帶孩子權杖） */
+export const attachClassRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40), pin: pinSchema });
+
+/** 家長名下的一個雲端角色 */
+export interface KidSummary {
+  id: string;
+  name: string;
+  avatar: AvatarConfig;
+  /** 目前的班級；沒有班級是 null */
+  room: RoomInfo | null;
+  coins: number;
+  /** 各活動最佳星數加總 */
+  stars: number;
+  lastSeen: string;
+}
+
+/** 家長名下的雲端角色清單 */
+export interface ParentKidsResponse {
+  kids: KidSummary[];
+}
 
 /** 老師的班級清單的一個班級（附成員數） */
 export interface TeacherRoomSummary extends RoomSettings {
@@ -105,9 +129,18 @@ export interface MemberSummary {
   online: boolean;
 }
 
-/** 加入或登入成功的回應 */
+/** 加入、登入、家長上傳或「在這台裝置玩」成功的回應 */
 export interface SessionResponse {
   token: string;
+  account: { id: string; nickname: string };
+  profile: Profile;
+  rev: number;
+  /** 目前的班級；家長名下、還沒加入班級的雲端角色是 null */
+  room: RoomInfo | null;
+}
+
+/** 已有的雲端角色帶著自己的權杖加入班級（裝置沿用原本的權杖，所以回應沒有權杖） */
+export interface AttachResponse {
   account: { id: string; nickname: string };
   profile: Profile;
   rev: number;
@@ -135,6 +168,8 @@ export interface OpsResponse {
   profile: Profile;
   rev: number;
   rejected: { id: string; reason: string }[];
+  /** 這個角色目前的班級（退出班級、被移出時裝置靠它更新本機的雲端標記）；沒有班級是 null */
+  room: RoomInfo | null;
 }
 
 /** 同學名單的一位（選送禮對象用） */

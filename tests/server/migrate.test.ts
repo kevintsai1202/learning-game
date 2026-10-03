@@ -68,3 +68,50 @@ describe('升級到第 4 版', () => {
     ).rejects.toThrow();
   });
 });
+
+describe('升級到第 5 版（家長的雲端角色）', () => {
+  it('v4 的班級、孩子帳號與權杖都留著；舊權杖算「班級來源」；角色可以沒有班級但要有家長', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 4 });
+      await d.query(
+        "INSERT INTO users (id, username, username_key, password_hash, email, is_parent, is_teacher, created_at) VALUES ('t1', 'Teacher', 'teacher', 'h', 't@example.com', false, true, $1::timestamptz)",
+        [T],
+      );
+      await d.query("INSERT INTO rooms (code, name, owner_id, created_at) VALUES ('222222', '二年二班', 't1', $1::timestamptz)", [T]);
+      await d.query(
+        `INSERT INTO accounts (id, room_code, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+         VALUES ('acc2', '222222', '小美', '小美', 'scrypt$c$d', '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)`,
+        [T],
+      );
+      await d.query("INSERT INTO tokens (token_hash, kind, room_code, account_id, expires_at) VALUES ($1, 'kid', '222222', 'acc2', '2027-01-01T00:00:00Z')", [
+        tokenHash('kid-token-1111111111'),
+      ]);
+
+      await migrate(d);
+
+      expect((await d.query<{ via: string }>("SELECT via FROM tokens WHERE account_id = 'acc2'"))[0].via).toBe('class');
+      expect((await d.query<{ parent_id: string | null }>("SELECT parent_id FROM accounts WHERE id = 'acc2'"))[0].parent_id).toBeNull();
+      // 有家長、沒有班級、沒有孩子密碼：可以
+      await d.query(
+        "INSERT INTO users (id, username, username_key, password_hash, email, is_parent, is_teacher, created_at) VALUES ('p1', 'Mom', 'mom', 'h', 'm@example.com', true, false, $1::timestamptz)",
+        [T],
+      );
+      await d.query(
+        `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+         VALUES ('acc3', NULL, 'p1', '安安', '安安', NULL, '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)`,
+        [T],
+      );
+      // 班級和家長都沒有：擋下（沒有人能登入它）
+      await expect(
+        d.query(
+          `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+           VALUES ('acc4', NULL, NULL, '孤兒', '孤兒', NULL, '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)`,
+          [T],
+        ),
+      ).rejects.toThrow();
+    } finally {
+      await d.close();
+    }
+  });
+});

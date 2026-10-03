@@ -8,6 +8,9 @@ import type { AvatarConfig } from '../store/save';
 import type { ZoneId } from '../store/useUi';
 import type { ChatLine } from './presence';
 
+/** WebSocket 關閉代碼：角色沒有班級（家長名下、還沒加入班級，或剛退出班級）；和權杖無效（4003）分開，裝置不再重連 */
+export const CLOSE_NO_CLASS = 4004;
+
 /** 島上的建築 id（和 useUi 的 ZoneId 相同；伺服器驗證 where 訊息用） */
 export const ZONE_IDS = ['tower', 'math', 'zh', 'life', 'en', 'shop'] as const satisfies readonly ZoneId[];
 

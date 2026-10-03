@@ -10,7 +10,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import type { Db } from './db';
 import type { Hub, HubConn, JoinInfo } from './hub';
 import { lookupToken } from './tokens';
-import { parseClientMessage } from '../src/online/realtime';
+import { CLOSE_NO_CLASS, parseClientMessage } from '../src/online/realtime';
 import type { Profile } from '../src/store/save';
 
 /** 可以掛 upgrade 事件的 HTTP 伺服器（@hono/node-server 的 serve() 回傳值） */
@@ -75,17 +75,18 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
     }
   }, opts.pingMs ?? 30_000);
 
-  /** 用權杖查出加入房間需要的資料；不是有效的孩子權杖回傳 null */
-  async function joinInfoOf(token: string): Promise<JoinInfo | null> {
+  /** 用權杖查出加入房間需要的資料；不是有效的孩子權杖回傳 'bad'，角色沒有班級回傳 'noClass' */
+  async function joinInfoOf(token: string): Promise<JoinInfo | 'bad' | 'noClass'> {
     const who = await lookupToken(db, token, now());
-    if (!who || who.kind !== 'kid' || !who.accountId) return null;
+    if (!who || who.kind !== 'kid') return 'bad';
+    if (!who.roomCode) return 'noClass';
     const row = (
       await db.query<{ id: string; nickname: string; profile: Profile; room_code: string; chat_open: boolean; gifts_open: boolean }>(
         'SELECT a.id, a.nickname, a.profile, a.room_code, r.chat_open, r.gifts_open FROM accounts a JOIN rooms r ON r.code = a.room_code WHERE a.id = $1',
         [who.accountId],
       )
     )[0];
-    if (!row) return null;
+    if (!row) return 'bad';
     return { accountId: row.id, roomCode: row.room_code, nickname: row.nickname, profile: row.profile, flags: { chatOpen: row.chat_open, giftsOpen: row.gifts_open } };
   }
 
@@ -122,8 +123,12 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
         void joinInfoOf(msg.token)
           .then((info) => {
             if (ws.readyState !== ws.OPEN) return;
-            if (!info) {
+            if (info === 'bad') {
               ws.close(4003, 'bad token');
+              return;
+            }
+            if (info === 'noClass') {
+              ws.close(CLOSE_NO_CLASS, 'no class');
               return;
             }
             authed = true;

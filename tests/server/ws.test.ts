@@ -10,7 +10,9 @@ import { createApp } from '../../server/app';
 import { attachRealtime } from '../../server/ws';
 import { Hub } from '../../server/hub';
 import type { Db } from '../../server/db';
-import { createRoom, joinRoom, openTestDb, resetDb } from './helpers';
+import { createRoom, createUser, joinRoom, openTestDb, resetDb } from './helpers';
+import { addProfile, createEmptySave } from '../../src/store/save';
+import { CLOSE_NO_CLASS } from '../../src/online/realtime';
 import type { ServerMessage } from '../../src/online/realtime';
 
 let db: Db;
@@ -174,5 +176,33 @@ describe('斷線的情況', () => {
   it('不允許的網站來源：拒絕連線', async () => {
     const c = new Client('http://evil.test');
     await expect(c.opened).rejects.toThrow();
+  });
+});
+
+describe('家長名下的雲端角色', () => {
+  /** 家長把一個本機角色上傳成雲端角色，回傳角色的權杖與帳號 */
+  async function uploadKid() {
+    const mom = await createUser(call, { parent: true, teacher: false });
+    const local = addProfile(createEmptySave(), { name: '安安', avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, new Date()).profiles[0];
+    const up = (await call('POST', '/api/parent/kids', { profile: local }, mom.token)).body;
+    return { mom, up };
+  }
+
+  it('還沒加入班級：關閉（4004「沒有班級」，和權杖無效分開，裝置不再重連）', async () => {
+    const { up } = await uploadKid();
+    const c = new Client();
+    await c.opened;
+    c.send({ t: 'hello', token: up.token });
+    expect(await c.closed).toBe(CLOSE_NO_CLASS);
+  });
+
+  it('加入班級後可以連線；被老師移出時收到 kicked（進度都還在）', async () => {
+    const { up } = await uploadKid();
+    const room = await createRoom(call);
+    expect((await call('POST', '/api/join', { code: room.code, nickname: '安安', pin: '1234' }, up.token)).status).toBe(200);
+    const c = await connect(up.token);
+    await call('DELETE', `/api/teacher/rooms/${room.code}/members/${up.account.id}`, undefined, room.token);
+    const kicked = await c.waitFor('kicked');
+    expect(kicked.reason).toContain('進度都還在');
   });
 });

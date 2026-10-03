@@ -47,7 +47,7 @@ interface ProfileEvent {
 }
 
 /** 交易結束後要送出的通知：存檔有變的人、禮物狀態有變的人 */
-interface Events {
+export interface Events {
   profiles: ProfileEvent[];
   gifts: string[];
 }
@@ -290,26 +290,49 @@ export async function expireGifts(deps: Pick<GiftDeps, 'db' | 'onProfileChanged'
 }
 
 /**
- * 老師移出成員：在同一個交易裡先把別人送給他、還沒收的禮物退款，再刪帳號。
- * 帳號不在這個房間時回傳 null（呼叫端回 404）；成功時回傳要送出的通知。
- *
- * 先鎖住和他有關的所有待收禮物（送給他的、他送出的），再鎖帳號：刪帳號時資料庫會把他送出的禮物的 from_id 改成空的，
- * 那些列如果沒先鎖，可能和「收禮人正在收下」的交易互相等待。極少數情況下，鎖禮物和鎖帳號之間剛好有人送禮給他，
- * 那份禮物會變成沒有收禮人的待收禮物，7 天後由過期掃描退款。
+ * 結清幾個帳號和班上的未完成禮物（退出班級、刪除角色、刪除家長帳號用；只在交易裡呼叫）。
+ * - 別人送他們、還沒收的：退給送禮人（和送禮人收到「退回」通知）。
+ * - includeOutgoing 時，他們送出、對方還沒收的也退給他們自己，並標成看過了：退出班級後沒有畫面能顯示這則退款通知。
+ * 鎖定順序和其他路由一樣：先依 id 鎖禮物，再依 id 鎖帳號（server/CLAUDE.md）。
  */
-export async function removeMemberWithRefunds(db: Db, accountId: string, roomCode: string, now: Date): Promise<Events | null> {
+export async function settlePendingGifts(tx: Queryable, accountIds: string[], now: Date, events: Events, opts: { includeOutgoing: boolean }): Promise<void> {
+  if (!accountIds.length) return;
+  const ids = new Set(accountIds);
+  const related = await tx.query<GiftRow>("SELECT * FROM gifts WHERE (to_id = ANY($1) OR from_id = ANY($1)) AND status = 'pending' ORDER BY id FOR UPDATE", [[...ids]]);
+  const incoming = related.filter((g) => g.to_id !== null && ids.has(g.to_id));
+  const outgoing = opts.includeOutgoing ? related.filter((g) => g.from_id !== null && ids.has(g.from_id) && !incoming.includes(g)) : [];
+  const senders = [...incoming, ...outgoing].map((g) => g.from_id).filter((id): id is string => !!id);
+  const locked = await lockAccounts(tx, [...accountIds, ...senders]);
+  for (const gift of [...incoming, ...outgoing]) await refund(tx, gift, 'cancelled', now, events, locked);
+  if (outgoing.length) await tx.query('UPDATE gifts SET sender_seen = true WHERE id = ANY($1)', [outgoing.map((g) => g.id)]);
+}
+
+/** 讓一個角色退出班級（只在交易裡呼叫，禮物要先結清）：班級與孩子密碼清掉，用班級代碼登入的權杖失效；家長裝置上的權杖留著 */
+export async function detachFromClass(tx: Queryable, accountId: string): Promise<void> {
+  await tx.query('UPDATE accounts SET room_code = NULL, pin_hash = NULL WHERE id = $1', [accountId]);
+  await tx.query("DELETE FROM tokens WHERE account_id = $1 AND via = 'class'", [accountId]);
+}
+
+/**
+ * 老師移出成員：在交易裡結清禮物，再依有沒有家長帳號決定——
+ * 有家長的退出班級（禮物兩邊都結清、進度留在家長名下）；沒有家長的純班級角色照舊刪除（只退別人送他的）。
+ * 不是這個班的成員回傳 null。
+ */
+export async function removeMemberWithRefunds(db: Db, accountId: string, roomCode: string, now: Date): Promise<{ events: Events; left: boolean } | null> {
   const events: Events = { profiles: [], gifts: [] };
-  const removed = await db.transaction(async (tx) => {
-    const member = (await tx.query<{ id: string }>('SELECT id FROM accounts WHERE id = $1 AND room_code = $2', [accountId, roomCode]))[0];
-    if (!member) return false;
-    const related = await tx.query<GiftRow>("SELECT * FROM gifts WHERE (to_id = $1 OR from_id = $1) AND status = 'pending' ORDER BY id FOR UPDATE", [accountId]);
-    const incoming = related.filter((g) => g.to_id === accountId);
-    const locked = await lockAccounts(tx, [accountId, ...incoming.map((g) => g.from_id).filter((id): id is string => !!id)]);
-    for (const gift of incoming) await refund(tx, gift, 'cancelled', now, events, locked);
+  const result = await db.transaction(async (tx) => {
+    const member = (await tx.query<{ id: string; parent_id: string | null }>('SELECT id, parent_id FROM accounts WHERE id = $1 AND room_code = $2', [accountId, roomCode]))[0];
+    if (!member) return null;
+    if (member.parent_id) {
+      await settlePendingGifts(tx, [accountId], now, events, { includeOutgoing: true });
+      await detachFromClass(tx, accountId);
+      return 'left' as const;
+    }
+    await settlePendingGifts(tx, [accountId], now, events, { includeOutgoing: false });
     await tx.query('DELETE FROM accounts WHERE id = $1', [accountId]);
-    return true;
+    return 'deleted' as const;
   });
-  return removed ? events : null;
+  return result ? { events, left: result === 'left' } : null;
 }
 
 /** 送出移出成員後的通知（app.ts 用） */

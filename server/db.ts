@@ -201,6 +201,20 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `CREATE INDEX IF NOT EXISTS tokens_user ON tokens (user_id)`,
     ],
   },
+  {
+    // 家長的雲端角色（A2，docs/plans/accounts.md 第 6 節）：角色可以不屬於任何班級，但要有家長帳號（兩者至少一個，
+    // 否則沒有人能登入它）；沒加入班級就沒有孩子密碼。權杖記來源：class（孩子用班級代碼登入）、parent（家長登入後
+    // 「在這台裝置玩」）；退出班級時只撤銷 class 的。孩子權杖的班級改從帳號讀，tokens.room_code 只是保留寫入
+    version: 5,
+    statements: [
+      `ALTER TABLE accounts ALTER COLUMN room_code DROP NOT NULL`,
+      `ALTER TABLE accounts ADD COLUMN IF NOT EXISTS parent_id text REFERENCES users(id) ON DELETE CASCADE`,
+      `ALTER TABLE accounts ALTER COLUMN pin_hash DROP NOT NULL`,
+      `ALTER TABLE accounts ADD CONSTRAINT accounts_class_or_parent CHECK (room_code IS NOT NULL OR parent_id IS NOT NULL)`,
+      `CREATE INDEX IF NOT EXISTS accounts_parent ON accounts (parent_id)`,
+      `ALTER TABLE tokens ADD COLUMN IF NOT EXISTS via text NOT NULL DEFAULT 'class'`,
+    ],
+  },
 ];
 
 /**
