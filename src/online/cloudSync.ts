@@ -6,12 +6,14 @@ import { ApiFailure, type ApiOptions } from './api';
 import { ackBatch, emptyOutbox, rebase, takeBatch, type Outbox } from './sync';
 import type {
   AcceptGiftResponse,
+  AttachResponse,
   Classmate,
   ClassmatesResponse,
   GiftsResponse,
   GoogleKidsResponse,
   GoogleLinksResponse,
   OpsResponse,
+  RoomInfo,
   SendGiftResponse,
   SessionResponse,
 } from './protocol';
@@ -56,9 +58,54 @@ export interface LoginInput {
   pin: string;
 }
 
-/** 由加入／登入的回應組出本機的雲端標記 */
+/** 由加入／登入的回應組出本機的雲端標記；沒有班級（家長名下的雲端角色）就不帶班級 */
 function cloudOf(server: string, res: SessionResponse): CloudLink {
-  return { server, room: res.room.code, roomName: res.room.name, accountId: res.account.id };
+  return withRoom({ server, accountId: res.account.id }, res.room);
+}
+
+/** 雲端標記換成伺服器說的目前班級（加入、退出、被移出班級都靠這裡更新本機） */
+function withRoom(cloud: CloudLink, room: RoomInfo | null): CloudLink {
+  const { room: _code, roomName: _name, ...rest } = cloud;
+  return room ? { ...rest, room: room.code, roomName: room.name } : rest;
+}
+
+/**
+ * 家長把這台裝置上的角色存到雲端（docs/plans/accounts.md 第 6 節）：同一個角色就地變成雲端角色（沒有班級），
+ * 權杖記在這台裝置，之後照常同步。userToken 是家長的大人權杖。
+ */
+export async function uploadToCloud(deps: CloudDeps, server: string, userToken: string, profileId: string): Promise<Profile> {
+  const local = deps.getProfile(profileId);
+  if (!local) throw new Error('找不到這個角色');
+  if (local.cloud) throw new Error('這個角色已經是雲端角色了');
+  const res = await deps.call<SessionResponse>('POST', '/api/parent/kids', { base: server, token: userToken, body: { profile: local } });
+  const cloud = cloudOf(server, res);
+  deps.setToken(cloud.accountId, res.token);
+  deps.saveOutbox(cloud.accountId, emptyOutbox());
+  const profile: Profile = { ...res.profile, cloud };
+  deps.putProfile(profile);
+  return profile;
+}
+
+/**
+ * 家長在這台裝置登入後選孩子「在這台裝置玩」：拿一張這個角色的權杖，本機存檔＝伺服器版本＋這台裝置還沒送出的進度
+ * （和代碼登入同一條路）。kidId 是伺服器上的帳號 id。
+ */
+export async function playOnThisDevice(deps: CloudDeps, server: string, userToken: string, kidId: string): Promise<Profile> {
+  const res = await deps.call<SessionResponse>('POST', `/api/parent/kids/${encodeURIComponent(kidId)}/device`, { base: server, token: userToken, body: {} });
+  const cloud = cloudOf(server, res);
+  deps.setToken(cloud.accountId, res.token);
+  const profile = rebase(res.profile, deps.loadOutbox(cloud.accountId), cloud, deps.now());
+  deps.putProfile(profile);
+  return profile;
+}
+
+/** 已有的雲端角色加入班級（帶自己的權杖，不另開新角色）：本機的雲端標記多了班級，名字改成班上的暱稱 */
+export async function attachToClass(deps: CloudDeps, profileId: string, input: LoginInput): Promise<Profile> {
+  const { cloud, token } = credentials(deps, profileId);
+  const res = await deps.call<AttachResponse>('POST', '/api/join', { base: cloud.server, token, body: input });
+  const profile = rebase(res.profile, deps.loadOutbox(cloud.accountId), withRoom(cloud, res.room), deps.now());
+  deps.putProfile(profile);
+  return profile;
 }
 
 /** 加入班級：成功後本機多一個（或轉換成）雲端角色，回傳該角色 */
@@ -105,7 +152,7 @@ export async function googleLogin(deps: CloudDeps, server: string, idToken: stri
 /** 讀出雲端角色的伺服器位置與權杖；沒有登入就丟出錯誤 */
 function credentials(deps: CloudDeps, profileId: string): { cloud: CloudLink; token: string } {
   const cloud = deps.getProfile(profileId)?.cloud;
-  if (!cloud) throw new Error('這個角色沒有加入班級');
+  if (!cloud) throw new Error('這個角色不是雲端角色');
   const token = deps.getToken(cloud.accountId);
   if (!token) throw new Error('請先重新登入班級');
   return { cloud, token };
@@ -174,7 +221,8 @@ export async function syncProfile(deps: CloudDeps, profileId: string): Promise<S
     // 角色可能在送出期間被登出移除了
     const current = deps.getProfile(profileId);
     if (!current?.cloud) return { status: 'skipped' };
-    deps.putProfile(rebase(res.profile, rest, current.cloud, deps.now()));
+    // 班級跟著伺服器更新：在別台裝置退出班級、或被老師移出時，這台也會知道
+    deps.putProfile(rebase(res.profile, rest, withRoom(current.cloud, res.room), deps.now()));
     if (!rest.pending.length) return { status: 'synced', rev: res.rev, rejected: res.rejected };
   }
 }

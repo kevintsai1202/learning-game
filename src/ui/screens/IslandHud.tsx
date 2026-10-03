@@ -26,17 +26,23 @@ const CLOUD_LABEL: Record<CloudStatus, string> = {
   error: '⚠️ 同步失敗',
 };
 
-/** 雲端角色才顯示：進度有沒有存到班級；需要重新登入時點一下去登入 */
+/**
+ * 雲端角色才顯示：進度有沒有存到班級（家長名下、沒有班級的角色寫「雲端」）；
+ * 需要重新登入時點一下去登入：班級角色到班級畫面，沒有班級的到帳號頁（家長登入找回）
+ */
 function CloudChip() {
   const status = useCloud((s) => s.status);
   const pending = useCloud((s) => s.pending);
   const goto = useUi((s) => s.goto);
-  const label = CLOUD_LABEL[status] + (pending > 0 && status !== 'synced' ? `・${pending} 筆待上傳` : '');
+  /** 目前角色在不在班級裡 */
+  const inClass = useGame((s) => !!s.profile()?.cloud?.room);
+  const base = status === 'synced' && !inClass ? '☁️ 已存到雲端' : CLOUD_LABEL[status];
+  const label = base + (pending > 0 && status !== 'synced' ? `・${pending} 筆待上傳` : '');
   return (
     <button
       className="hud-chip"
       style={{ paddingLeft: 14 }}
-      onClick={() => status === 'needLogin' && goto('class')}
+      onClick={() => status === 'needLogin' && goto(inClass ? 'class' : 'teacher')}
       aria-label={`同步狀態：${label}`}
       data-testid="hud-cloud"
       data-status={status}

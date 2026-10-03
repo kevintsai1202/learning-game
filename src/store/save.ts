@@ -116,10 +116,10 @@ export interface SessionRecord {
 export interface CloudLink {
   /** 伺服器網址 */
   server: string;
-  /** 房間代碼（6 位數字） */
-  room: string;
-  /** 房間名稱（顯示用） */
-  roomName: string;
+  /** 班級代碼（6 位數字）；家長名下、還沒加入班級的雲端角色沒有（docs/plans/accounts.md 第 6 節） */
+  room?: string;
+  /** 班級名稱（顯示用）；沒有班級時沒有 */
+  roomName?: string;
   /** 伺服器上的帳號 id（與 Profile.id 不同） */
   accountId: string;
 }
@@ -451,7 +451,8 @@ export const profileSchema = z.object({
   recent: z.record(z.string(), z.array(z.string())),
   curriculum: z.object({ zh: z.string(), math: z.string(), term: z.enum(['上', '下', 'auto']) }),
   // 2026-10 新增：可省略，舊存檔不必升級版本
-  cloud: z.object({ server: z.string(), room: z.string(), roomName: z.string(), accountId: z.string() }).optional(),
+  // 2026-10 A2：班級可以沒有（家長名下的雲端角色）；舊版前端讀不了沒有班級的雲端角色，所以 A2～A4 只在 A5 一起上線
+  cloud: z.object({ server: z.string(), room: z.string().optional(), roomName: z.string().optional(), accountId: z.string() }).optional(),
   stats: z.object({ wrongCleared: int.min(0), written: int.min(0) }).optional(),
   badges: z.record(z.string(), z.string()).optional(),
   title: z.string().nullable().optional(),

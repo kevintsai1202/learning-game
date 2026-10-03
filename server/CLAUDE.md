@@ -7,7 +7,7 @@
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
 - 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/engine/check.ts`（計分）
-- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號）、`gifts.ts`（送禮物）；共用的 `ApiError`、`readBody` 在 `http.ts`
+- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「退出班級」的共用函式）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
@@ -43,7 +43,14 @@ docker rm -f li-pg-test
 - PGlite 轉接層自己排隊所有查詢；交易裡只能用 `tx.query`，在交易裡呼叫 `db.query` 會卡死。
 - 資料表結構只往後加版本（`server/db.ts` 的 `MIGRATIONS`），不修改已發布的版本。
 - 登入鎖定以「房間＋暱稱」（孩子）或「帳號名稱」（大人）計次（5 次鎖 5 分鐘），不用 IP：同一間教室共用對外 IP。IP 只擋大量請求（每分鐘 300 次）。
-- **權杖兩種**（`tokens.ts` 的 `lookupToken` 回傳分型別）：孩子（屬於某個房間的帳號）與大人（`user_id`，不屬於房間）。`authenticate(c, 'kid')` 只收孩子的權杖、`authenticateUser` 只收大人的；改版前的老師權杖（kind `teacher`）一律視為無效。
+- **權杖兩種**（`tokens.ts` 的 `lookupToken` 回傳分型別）：孩子（雲端角色）與大人（`user_id`，不屬於班級）。改版前的老師權杖（kind `teacher`）一律視為無效。
+  - 孩子權杖的「目前班級」從帳號讀（`accounts.room_code`，加入或退出班級立刻生效），`tokens.room_code` 只是保留寫入；`tokens.via` 記來源：`class`（孩子用班級代碼登入，例如學校平板）、`parent`（家長「在這台裝置玩」）。
+  - `authenticate(c, 'kid')`：班級功能用，角色沒有班級時回 403 `no_class`（送禮、同學名單因此不用自己檢查）；`authenticateKidAny`：班級可以空，只給同步（`/api/ops`）、讀存檔（`/api/me`）與「帶權杖加入班級」用；`authenticateUser` 只收大人的。WebSocket 遇到沒有班級的角色用 4004（`CLOSE_NO_CLASS`）關閉，和權杖無效（4003）分開。
+- **家長的雲端角色與退出班級**（A2，`docs/plans/accounts.md` 第 6 節）：
+  - 角色可以只有家長、沒有班級（`accounts` 的限制：班級與家長至少一個）；沒有班級就沒有孩子密碼。
+  - 退出班級（老師移出家長名下的角色、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts`（收到與送出的未收禮物都退款，送出的標成看過）＋`detachFromClass`（班級與孩子密碼清空、刪掉 `class` 來源的權杖，家長裝置上的留著）；沒有家長的純班級角色照舊刪除。
+  - 老師重設孩子密碼只撤銷 `class` 來源的權杖。
+  - 刪除角色、刪除自己的帳號：在交易裡結清禮物再刪，交易結束後才送通知，而且不送給被刪的角色（`parents.ts` 的 `emitExcept`）；還有班級的帳號不能刪（`has_classes`），因為刪掉老師帳號會連帶刪掉班上所有角色。
 - **老師的 API**（`/api/teacher/rooms…`）：大人權杖＋老師身分（只有家長身分回 403 `not_teacher`）＋這個班級是他的；別人的班級和不存在的代碼一樣回 404 `no_room`，不透露代碼存在。改版前用管理密碼建的房間沒有擁有者（`owner_id` 是 null），目前沒有登入方式，上線前要看正式環境有沒有這種房間（`docs/plans/accounts.md` 的 A5）。
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。

@@ -144,7 +144,7 @@ export function ProfilesScreen() {
                 <span className="meta">
                   🪙 {p.coins}　⭐ {Object.values(p.bestStars).reduce((s, v) => s + v, 0)}
                 </span>
-                {p.cloud && <span className="cloud-badge">🏫 {p.cloud.roomName}</span>}
+                {p.cloud && <span className="cloud-badge">{p.cloud.room ? `🏫 ${p.cloud.roomName ?? ''}` : '☁️ 雲端'}</span>}
               </button>
             ))}
             {onlineEnabled() && (

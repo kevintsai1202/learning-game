@@ -5,9 +5,11 @@
  */
 import { useCallback, useEffect, useState, type ReactNode, type SubmitEvent } from 'react';
 import { useUi } from '../../store/useUi';
+import { useGame } from '../../store/useGame';
 import { useAccount } from '../../online/useAccount';
+import { useCloud } from '../../online/useCloud';
 import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
-import type { MemberSummary, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse } from '../../online/protocol';
+import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse } from '../../online/protocol';
 
 /** 顯示「多久以前」 */
 function ago(iso: string): string {
@@ -188,6 +190,9 @@ function AccountSettings() {
   const [confirm, setConfirm] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** 刪除帳號：按第一次才出現密碼欄與確定鈕 */
+  const [deleting, setDeleting] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
   if (!user) return null;
 
   /** 執行一個設定動作，顯示結果 */
@@ -215,6 +220,16 @@ function AccountSettings() {
       setConfirm('');
     }, '密碼改好了，其他裝置的登入都已經登出');
   };
+
+  /** 刪除帳號：家長名下的角色一併刪除，這台裝置上的那些角色也拿掉，最後登出 */
+  const deleteAccount = () =>
+    void run(async () => {
+      const call = useAccount.getState().call;
+      const kids = user.parent ? (await call<ParentKidsResponse>('GET', '/api/parent/kids')).kids : [];
+      await call('DELETE', '/api/users/me', { password: deletePassword });
+      for (const k of kids) useCloud.getState().forget(k.id);
+      await useAccount.getState().logout();
+    }, '帳號已經刪除');
 
   return (
     <div className="panel-body plain" data-testid="account-settings-panel">
@@ -250,10 +265,169 @@ function AccountSettings() {
           改密碼
         </button>
       </div>
+      <h4 style={{ margin: '14px 0 6px' }}>刪除帳號</h4>
+      <p style={{ margin: '0 0 6px' }}>家長名下的雲端角色會一併刪除，刪除後無法復原。還有班級的老師帳號要先移除班級。</p>
+      {deleting ? (
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <input
+            className="text-input"
+            type="password"
+            autoComplete="current-password"
+            placeholder="再輸入一次密碼"
+            style={{ flex: '1 1 160px' }}
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            aria-label="再輸入一次密碼"
+            data-testid="delete-password"
+          />
+          <button className="btn small red" disabled={!deletePassword} onClick={deleteAccount} data-testid="delete-account-confirm">
+            確定刪除帳號
+          </button>
+          <button className="btn small white" onClick={() => setDeleting(false)}>
+            取消
+          </button>
+        </div>
+      ) : (
+        <button className="btn small white" onClick={() => setDeleting(true)} data-testid="delete-account">
+          刪除帳號
+        </button>
+      )}
       <ErrorNote text={error} testId="settings-error" />
       {msg && (
         <p className="notice" data-testid="settings-msg">
           {msg}
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** 家長：名下的雲端角色（在這台裝置玩、退出班級、刪除），以及這台裝置上還沒存到雲端的角色（存到雲端） */
+function ParentHome() {
+  const call = useAccount((s) => s.call);
+  const session = useAccount((s) => s.session);
+  const profiles = useGame((s) => s.save.profiles);
+  const [kids, setKids] = useState<KidSummary[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  /** 等待第二次確認刪除的孩子 */
+  const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+
+  const reload = useCallback(async () => {
+    try {
+      setKids((await call<ParentKidsResponse>('GET', '/api/parent/kids')).kids);
+      setError(null);
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  }, [call]);
+
+  useEffect(() => {
+    void reload();
+  }, [reload]);
+
+  /** 執行一個動作後重新整理清單 */
+  const act = async (fn: () => Promise<unknown>, done: string) => {
+    setError(null);
+    setNote(null);
+    try {
+      await fn();
+      setNote(done);
+      await reload();
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  };
+
+  if (!session) return null;
+  /** 這台裝置上有沒有這個雲端角色 */
+  const onThisDevice = (kidId: string) => profiles.some((p) => p.cloud?.accountId === kidId);
+  const localOnly = profiles.filter((p) => !p.cloud);
+
+  return (
+    <div className="panel-body plain" data-testid="parent-home">
+      <h3 style={{ margin: '0 0 8px' }}>我的孩子（雲端角色）</h3>
+      {kids === null ? (
+        <p>讀取中…</p>
+      ) : kids.length === 0 ? (
+        <p>還沒有雲端角色。把下面這台裝置上的角色「存到雲端」，換電腦用家長帳號登入就能接著玩。</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="kid-list">
+          {kids.map((k) => (
+            <div key={k.id} className="card" style={{ padding: '8px 12px' }} data-testid={`kid-${k.name}`}>
+              <div>
+                <strong>{k.name}</strong>　{k.room ? `🏫 ${k.room.name}` : '☁️ 還沒加入班級'}・⭐ {k.stars}・🪙 {k.coins}・{ago(k.lastSeen)}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                {onThisDevice(k.id) ? (
+                  <span data-testid={`kid-here-${k.name}`}>✅ 這台裝置上有</span>
+                ) : (
+                  <button
+                    className="btn small green"
+                    onClick={() => void act(() => useCloud.getState().playOnThisDevice(k.id, session.server, session.token), `「${k.name}」已經在這台裝置上了，回到選角畫面就能玩`)}
+                    data-testid={`kid-device-${k.name}`}
+                  >
+                    在這台裝置玩
+                  </button>
+                )}
+                {k.room && (
+                  <button className="btn small white" onClick={() => void act(() => call('POST', `/api/parent/kids/${k.id}/leave-class`, {}), `「${k.name}」已經退出班級，進度都還在`)} data-testid={`kid-leave-${k.name}`}>
+                    退出班級
+                  </button>
+                )}
+                {confirmDelete === k.id ? (
+                  <>
+                    <button
+                      className="btn small red"
+                      onClick={() =>
+                        void act(async () => {
+                          await call('DELETE', `/api/parent/kids/${k.id}`);
+                          useCloud.getState().forget(k.id);
+                          setConfirmDelete(null);
+                        }, `已經刪除「${k.name}」`)
+                      }
+                      data-testid={`kid-delete-confirm-${k.name}`}
+                    >
+                      確定刪除「{k.name}」（進度會全部不見）
+                    </button>
+                    <button className="btn small white" onClick={() => setConfirmDelete(null)}>
+                      取消
+                    </button>
+                  </>
+                ) : (
+                  <button className="btn small white" onClick={() => setConfirmDelete(k.id)} data-testid={`kid-delete-${k.name}`}>
+                    刪除
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+      {localOnly.length > 0 && (
+        <>
+          <h3 style={{ margin: '16px 0 6px' }}>這台裝置上的角色</h3>
+          <p style={{ margin: '0 0 6px' }}>存到雲端後，換電腦用家長帳號登入就能接著玩。</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {localOnly.map((p) => (
+              <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }} data-testid={`local-${p.name}`}>
+                <strong>{p.name}</strong>
+                <button
+                  className="btn small green"
+                  onClick={() => void act(() => useCloud.getState().uploadToCloud(p.id, session.server, session.token), `「${p.name}」已經存到雲端`)}
+                  data-testid={`upload-${p.name}`}
+                >
+                  存到雲端
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <ErrorNote text={error} testId="parent-error" />
+      {note && (
+        <p className="notice" data-testid="parent-note">
+          {note}
         </p>
       )}
     </div>
@@ -557,10 +731,7 @@ function AccountHome() {
           <ClassList onOpen={(code, created) => setOpenClass({ code, created })} />
         )
       ) : (
-        <div className="panel-body plain" data-testid="parent-home">
-          <h3 style={{ margin: '0 0 8px' }}>家長</h3>
-          <p>把孩子的角色存到雲端、換電腦登入後接著玩的功能即將開放。</p>
-        </div>
+        <ParentHome />
       )}
     </>
   );

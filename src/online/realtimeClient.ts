@@ -10,7 +10,7 @@
  */
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
-import type { MemberState, RoomFlags, ServerMessage } from './realtime';
+import { CLOSE_NO_CLASS, type MemberState, type RoomFlags, type ServerMessage } from './realtime';
 import { usePresence } from './usePresence';
 import { getToken } from './storage';
 import { useCloud } from './useCloud';
@@ -63,6 +63,27 @@ export function zoneOfScreen(screen: Screen, zone: ZoneId | null): ZoneId | null
   return screen === 'zone' || screen === 'activity' || screen === 'result' || screen === 'shop' ? zone : null;
 }
 
+/** 被踢線或伺服器說「沒有班級」之後記住的帳號與班級：同一個帳號、同一個班級不再自動重連 */
+export interface RealtimeBlock {
+  accountId: string;
+  room: string | undefined;
+}
+
+/**
+ * 角色或班級變了之後，封鎖怎麼處理（純函式）：
+ * - 帳號與班級都沒變：維持（例如在別台裝置登入被踢，不要兩台互踢）
+ * - 同一個角色退出了班級（被老師移出、家長讓他退出，同步後本機班級清空）：反正不會再連線，
+ *   被踢的提示留著，讓孩子看到「進度都還在」；之後加入班級或換角色才清掉
+ * - 換了角色、或加入了別的班級：解除封鎖，提示清掉
+ */
+export function updateBlock(blocked: RealtimeBlock | null, current: { accountId: string; room?: string } | undefined): { blocked: RealtimeBlock | null; clearNotice: boolean } {
+  if (!blocked) return { blocked: null, clearNotice: false };
+  const sameAccount = blocked.accountId === current?.accountId;
+  if (sameAccount && blocked.room === current?.room) return { blocked, clearNotice: false };
+  if (sameAccount && !current?.room) return { blocked: { accountId: blocked.accountId, room: undefined }, clearNotice: false };
+  return { blocked: null, clearNotice: true };
+}
+
 /** 不在遊戲裡的畫面（不連線） */
 const OFFLINE_SCREENS: Screen[] = ['title', 'profiles', 'class', 'teacher'];
 
@@ -90,14 +111,19 @@ export function startRealtime(): () => void {
   let accountId: string | null = null;
   let retry = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
-  let kickedFor: string | null = null;
+  /**
+   * 被踢線或伺服器說「沒有班級」時，記住是哪個帳號在哪個班級：同一個帳號、同一個班級不再自動重連
+   * （避免兩台裝置互踢、或一直連到已經退出的班級）。角色或班級變了之後怎麼處理見 updateBlock。
+   */
+  let blocked: RealtimeBlock | null = null;
   let last = { x: NaN, z: NaN, h: NaN, at: 0 };
   let lastZone: ZoneId | null | undefined;
 
   /** 應該連到哪個帳號；不該連線時回傳 null */
   const wanted = () => {
     const p = useGame.getState().profile();
-    if (!p?.cloud || OFFLINE_SCREENS.includes(useUi.getState().screen)) return null;
+    // 只有在班級裡的雲端角色才連線（家長名下、還沒加入班級的角色只同步進度）
+    if (!p?.cloud?.room || OFFLINE_SCREENS.includes(useUi.getState().screen)) return null;
     const token = getToken(p.cloud.accountId);
     return token ? { profile: p, token, url: wsUrlOf(p.cloud.server) } : null;
   };
@@ -163,19 +189,29 @@ export function startRealtime(): () => void {
           void useGifts.getState().load();
           break;
         case 'kicked':
-          kickedFor = accountId;
+          blocked = accountId ? { accountId, room: useGame.getState().profile()?.cloud?.room } : null;
           useRealtime.setState({ status: 'kicked', notice: msg.reason });
+          // 被移出班級時，家長名下的角色進度還在：同步一次，本機的班級跟著清掉（用班級代碼登入的裝置會變成要重新登入）
+          void useCloud.getState().syncNow();
           break;
         case 'error':
           useRealtime.setState({ notice: msg.message });
           break;
       }
     };
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
       if (socket !== ws) return;
       socket = null;
       usePresence.getState().clear();
       if (useRealtime.getState().status === 'kicked') return;
+      // 伺服器說這個角色沒有班級（剛退出班級、本機還沒同步到）：不重連，同步一次更新本機的班級
+      if (ev.code === CLOSE_NO_CLASS) {
+        blocked = accountId ? { accountId, room: useGame.getState().profile()?.cloud?.room } : null;
+        accountId = null;
+        useRealtime.setState({ status: 'off' });
+        void useCloud.getState().syncNow();
+        return;
+      }
       // 斷線：2、4、8…秒後重連，最多 30 秒
       useRealtime.setState({ status: 'connecting' });
       retry += 1;
@@ -191,11 +227,12 @@ export function startRealtime(): () => void {
   const evaluate = () => {
     const target = wanted();
     const id = target?.profile.cloud?.accountId ?? null;
-    if (id !== kickedFor) {
-      kickedFor = null;
-      if (useRealtime.getState().status === 'kicked') useRealtime.setState({ status: 'off', notice: null });
-    }
-    if (!target || id === kickedFor) {
+    // 角色或班級變了：解除封鎖或保留被踢的提示（updateBlock）
+    const next = updateBlock(blocked, useGame.getState().profile()?.cloud);
+    blocked = next.blocked;
+    if (next.clearNotice && useRealtime.getState().status === 'kicked') useRealtime.setState({ status: 'off', notice: null });
+    const isBlocked = blocked !== null && blocked.accountId === id;
+    if (!target || isBlocked) {
       if (socket || accountId) disconnect();
       return;
     }

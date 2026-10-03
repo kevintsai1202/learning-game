@@ -27,6 +27,7 @@ export function ClassScreen() {
   const active = useGame((s) => s.profile());
   const join = useCloud((s) => s.join);
   const login = useCloud((s) => s.login);
+  const attachToClass = useCloud((s) => s.attachToClass);
   const googleLogin = useCloud((s) => s.googleLogin);
   const googleClientId = useCloud((s) => s.googleClientId);
   // 目前角色是雲端角色但需要重新登入時，先填好代碼與暱稱
@@ -40,7 +41,8 @@ export function ClassScreen() {
   const [avatar, setAvatar] = useState<AvatarConfig>({ animal: 'bear', color: COLORS[0], hat: null });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const localProfiles = profiles.filter((p) => !p.cloud);
+  /** 可以帶進度加入的角色：本機角色（上傳一份到班級），以及家長名下、還沒加入班級的雲端角色（同一個角色直接加入） */
+  const localProfiles = profiles.filter((p) => !p.cloud || (!p.cloud.room && !!getToken(p.cloud.accountId)));
   const ready = code.length === 6 && nickname.trim().length > 0 && pin.length === 4 && !busy;
 
   /** 成功後進島 */
@@ -58,10 +60,15 @@ export function ClassScreen() {
     setError(null);
     try {
       const input = { code, nickname: nickname.trim(), pin };
+      const picked = profiles.find((x) => x.id === source);
       const p =
         mode === 'login'
           ? await login(input)
-          : await join(source === 'new' ? { ...input, avatar } : { ...input, profile: profiles.find((x) => x.id === source)! });
+          : source === 'new' || !picked
+            ? await join({ ...input, avatar })
+            : picked.cloud
+              ? await attachToClass(picked.id, input)
+              : await join({ ...input, profile: picked });
       enterIsland(p.name);
     } catch (err) {
       setError(err instanceof Error ? err.message : '發生錯誤，請再試一次');
@@ -164,7 +171,7 @@ export function ClassScreen() {
                     <option value="new">建立新角色</option>
                     {localProfiles.map((p) => (
                       <option key={p.id} value={p.id}>
-                        帶著「{p.name}」的進度過去
+                        {p.cloud ? `用「${p.name}」加入（雲端角色）` : `帶著「${p.name}」的進度過去`}
                       </option>
                     ))}
                   </select>

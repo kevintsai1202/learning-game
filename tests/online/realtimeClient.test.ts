@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyServerMessage, wsUrlOf, zoneOfScreen } from '../../src/online/realtimeClient';
+import { applyServerMessage, updateBlock, wsUrlOf, zoneOfScreen } from '../../src/online/realtimeClient';
 import { emptyPresence, onIsland } from '../../src/online/presence';
 import type { MemberState } from '../../src/online/realtime';
 
@@ -56,5 +56,30 @@ describe('連線網址與所在建築', () => {
     expect(zoneOfScreen('shop', 'shop')).toBe('shop');
     expect(zoneOfScreen('island', null)).toBeNull();
     expect(zoneOfScreen('badges', 'math')).toBeNull();
+  });
+});
+
+describe('被踢線之後的封鎖（同一個帳號、同一個班級不自動重連）', () => {
+  const blocked = { accountId: 'a_1', room: '123456' };
+
+  it('帳號與班級都沒變：維持封鎖，提示留著（例如在別台裝置登入被踢）', () => {
+    expect(updateBlock(blocked, { accountId: 'a_1', room: '123456' })).toEqual({ blocked, clearNotice: false });
+  });
+
+  it('同一個角色退出了班級（被老師移出、家長讓他退出，同步後班級清空）：提示留著讓孩子看到「進度都還在」', () => {
+    expect(updateBlock(blocked, { accountId: 'a_1' })).toEqual({ blocked: { accountId: 'a_1', room: undefined }, clearNotice: false });
+  });
+
+  it('退出班級之後又加入班級：解除封鎖、清掉提示（可以再連線）', () => {
+    expect(updateBlock({ accountId: 'a_1', room: undefined }, { accountId: 'a_1', room: '654321' })).toEqual({ blocked: null, clearNotice: true });
+  });
+
+  it('換成別的角色（雲端或本機角色）：解除封鎖、清掉提示', () => {
+    expect(updateBlock(blocked, { accountId: 'a_2', room: '123456' })).toEqual({ blocked: null, clearNotice: true });
+    expect(updateBlock(blocked, undefined)).toEqual({ blocked: null, clearNotice: true });
+  });
+
+  it('沒有封鎖：什麼都不做', () => {
+    expect(updateBlock(null, { accountId: 'a_1', room: '123456' })).toEqual({ blocked: null, clearNotice: false });
   });
 });

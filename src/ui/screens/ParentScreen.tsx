@@ -544,8 +544,8 @@ function ClassTab({ profile }: { profile: Profile }) {
         <tbody>
           <tr>
             <th>班級</th>
-            <td>
-              {cloud.roomName}（房間代碼 {cloud.room}）
+            <td data-testid="class-room">
+              {cloud.room ? `${cloud.roomName ?? ''}（房間代碼 ${cloud.room}）` : '還沒加入班級（家長名下的雲端角色）'}
             </td>
           </tr>
           <tr>
@@ -578,9 +578,20 @@ function ClassTab({ profile }: { profile: Profile }) {
             🔄 立即同步
           </button>
         )}
-        {!hasToken && (
-          <button className="btn small" onClick={() => goto('class')}>
-            🔑 重新登入
+        {!hasToken &&
+          (cloud.room ? (
+            <button className="btn small" onClick={() => goto('class')}>
+              🔑 重新登入
+            </button>
+          ) : (
+            // 家長名下、沒有班級的角色沒有孩子密碼：請家長登入後「在這台裝置玩」
+            <button className="btn small" onClick={() => goto('teacher')}>
+              🔑 家長登入找回角色
+            </button>
+          ))}
+        {hasToken && !cloud.room && (
+          <button className="btn small" onClick={() => goto('class')} data-testid="class-join-from-cloud">
+            🏫 加入班級
           </button>
         )}
         {!confirmLogout ? (
@@ -593,8 +604,12 @@ function ClassTab({ profile }: { profile: Profile }) {
           </button>
         )}
       </div>
-      <p className="notice">登出後，這台裝置上的「{profile.name}」會移除；進度存在班級伺服器，用房間代碼＋暱稱＋密碼就能再登入。忘記密碼請老師重設。</p>
-      {hasToken && <GoogleLinkSection profile={profile} />}
+      <p className="notice">
+        {cloud.room
+          ? `登出後，這台裝置上的「${profile.name}」會移除；進度存在班級伺服器，用房間代碼＋暱稱＋密碼就能再登入。忘記密碼請老師重設。`
+          : `登出後，這台裝置上的「${profile.name}」會移除；進度存在家長帳號，家長登入後選「在這台裝置玩」就能找回。`}
+      </p>
+      {hasToken && cloud.room && <GoogleLinkSection profile={profile} />}
     </div>
   );
 }
