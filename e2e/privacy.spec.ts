@@ -1,8 +1,31 @@
 /**
  * 隱私權政策頁（Google 品牌驗證會審這一頁）：中英文都要有 Google 使用者資料的說明與有限使用（Limited Use）聲明；
  * 手機寬度時資料表格只在自己的框裡左右捲動，整頁不能橫向捲動。
+ * 首頁（Google 也會審）：不執行 JavaScript 也要看得到遊戲說明與隱私權政策連結；遊戲載入後這段靜態內容會被取代。
  */
 import { expect, test } from '@playwright/test';
+
+test.describe('首頁的靜態內容（不執行 JavaScript，像 Google 的爬蟲）', () => {
+  test.use({ javaScriptEnabled: false });
+
+  test('看得到遊戲名稱、說明與隱私權政策連結', async ({ page }) => {
+    // Google 實際抓的是原始 HTML
+    const raw = await (await page.request.get('./')).text();
+    expect(raw).toContain('href="./privacy.html"');
+    await page.goto('./');
+    // 名稱要和 OAuth 同意畫面的應用程式名稱一致
+    await expect(page.getByRole('heading', { level: 1, name: '知識島大冒險' })).toBeVisible();
+    await expect(page.getByText('給國小二年級的 3D 遊戲化學習網站')).toBeVisible();
+    await expect(page.getByRole('link', { name: '隱私權政策 Privacy Policy' })).toHaveAttribute('href', './privacy.html');
+    await page.screenshot({ path: 'test-results/boot-no-js.png' });
+  });
+});
+
+test('遊戲載入後，首頁的靜態說明會被遊戲畫面取代', async ({ page }) => {
+  await page.goto('./');
+  await expect(page.getByTestId('start')).toBeVisible();
+  await expect(page.locator('#boot')).toHaveCount(0);
+});
 
 test('隱私權政策：中英文都有 Google 使用者資料與有限使用聲明，手機寬度不會橫向捲動', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 800 });

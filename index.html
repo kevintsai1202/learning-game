@@ -7,9 +7,51 @@
     <meta name="theme-color" content="#4fc0ff" />
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏝️</text></svg>" />
     <title>知識島大冒險</title>
+    <style>
+      /* 載入前的靜態說明（#boot）：JavaScript 還沒載入、或不執行 JavaScript 的爬蟲（例如 Google 品牌驗證）看得到；
+         #root 不能捲動，所以這一段自己置中、自己捲動；用一般字型（注音字型子集會在字旁加注音） */
+      #boot {
+        height: 100%;
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 24px 16px;
+        text-align: center;
+        font-family: var(--font-plain, 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif);
+        color: #2b2a4c;
+      }
+      #boot h1 {
+        margin: 0;
+        font-size: 32px;
+      }
+      #boot p {
+        margin: 0;
+        max-width: 34em;
+        line-height: 1.7;
+      }
+      #boot .en {
+        color: #5b5a7c;
+        font-size: 14px;
+      }
+      #boot a {
+        color: #1d6fb8;
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- 載入前的靜態說明：React 掛載時整段被取代（e2e/privacy.spec.ts 會檢查） -->
+      <div id="boot">
+        <h1>知識島大冒險</h1>
+        <p>給國小二年級的 3D 遊戲化學習網站：在小島上探索，練習國語、數學、英語、生活與健康。</p>
+        <p class="en" lang="en">Learning Island (知識島大冒險) is a 3D learning game for second-grade students.</p>
+        <p>遊戲載入中…</p>
+        <p><a href="./privacy.html">隱私權政策 Privacy Policy</a></p>
+      </div>
+    </div>
     <noscript>這個學習遊戲需要開啟 JavaScript 才能玩喔。</noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
