@@ -38,7 +38,7 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - `src/writing/` 筆順描寫（Hanzi Writer、注音與字母的中心線字形）
 - `src/world/` 3D 島嶼與舞台（R3F）；`src/ui/` DOM 介面
 - `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、商品目錄（`catalog.ts`）、禮物目錄（`gifts.ts`）、自訂題庫、畫面狀態
-- `src/online/` 線上版前端：操作套用（`ops.ts`，伺服器共用）、同步佇列（`sync.ts`）、同步迴圈與送禮 API（`cloudSync.ts`）、狀態與排程（`useCloud.ts`）、即時連線（`realtimeClient.ts`）、禮物狀態（`useGifts.ts`）、大人帳號的登入狀態（`useAccount.ts`）與帳號規則（`userRules.ts`，伺服器共用；`docs/plans/accounts.md`）
+- `src/online/` 線上版前端：操作套用（`ops.ts`，伺服器共用）、同步佇列（`sync.ts`）、同步迴圈、送禮與家長雲端角色的 API（`cloudSync.ts`）、狀態與排程（`useCloud.ts`）、即時連線（`realtimeClient.ts`）、禮物狀態（`useGifts.ts`）、大人帳號的登入狀態（`useAccount.ts`）與帳號規則（`userRules.ts`，伺服器共用；`docs/plans/accounts.md`）
 - `server/` 班級伺服器（另有 `server/CLAUDE.md`）；規格與分期在 `docs/plans/online.md`；部署在 Zeabur（`docs/deploy-zeabur.md`），正式網址 GitHub Pages 與 `learning-island.zeabur.app`
 - `src/content/` 題庫格式（zod）、課綱代碼對照、資料來源清單
 - `public/data/strokes/` 國字筆順資料（腳本產生）；`public/licenses/` 授權全文

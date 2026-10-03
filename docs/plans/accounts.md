@@ -50,7 +50,7 @@
 | 期 | 內容 | 開始前要先做的 |
 | --- | --- | --- |
 | A1 大人帳號 | 註冊、登入、登出、改密碼、身分切換；老師用帳號管理多個班級，拿掉房間管理密碼 | （已完成） |
-| A2 家長的雲端角色 | 我的孩子、存到雲端、在這台裝置玩、刪除；雲端角色加入班級；老師移出改成退出班級；家長讓孩子退出班級；刪除自己的帳號 | 無 |
+| A2 家長的雲端角色 | 我的孩子、存到雲端、在這台裝置玩、刪除；雲端角色加入班級；老師移出改成退出班級；家長讓孩子退出班級；刪除自己的帳號 | （已完成） |
 | A3 Email | 註冊驗證信、忘記密碼寄重設連結 | 第 8 節：Gmail 應用程式密碼、Zeabur 環境變數 |
 | A4 Google 快速登入 | Google 改綁大人帳號，拿掉「Google 直接綁孩子」 | 無 |
 | A5 上線 | 隱私權政策、備份、合併 main、部署、上線後檢查 | Google 品牌驗證的結果（第 9 節的判準） |
@@ -70,6 +70,20 @@
 - 注意：feature/online 的線上 e2e（`online`、`gifts`、`realtime`、`accounts`）已改用 `POST /api/users` 註冊老師，正式環境在 A5 上線前還是舊程式、沒有這個路由，所以 A5 之前從 feature/online 對正式伺服器跑 remote e2e（`playwright.remote.config.ts`）一定失敗；要測正式環境請先切回 main。
 
 ## 6. A2 家長的雲端角色
+
+**2026-10-04 完成**，實作在：
+
+- 伺服器：`server/parents.ts`（家長的 API）、`server/gifts.ts`（`settlePendingGifts`、`detachFromClass`、`removeMemberWithRefunds`）、`server/users.ts`（刪除自己的帳號）、`server/app.ts`（`authenticateKidAny`、帶權杖加入班級）、`server/ws.ts`（4004）。
+- 前端：`src/online/cloudSync.ts`（`uploadToCloud`、`playOnThisDevice`、`attachToClass`，同步時班級跟著伺服器更新）、`src/online/realtimeClient.ts`（只有在班級裡才連、`updateBlock`）、`src/ui/screens/TeacherScreen.tsx`（家長模式、刪除帳號）、選角卡片、班級畫面、家長專區、島上的同步狀態。
+- 測試：`tests/server/parent.test.ts`、`tests/server/parent-class.test.ts`、`tests/server/migrate.test.ts`（第 4→5 版）、`tests/server/ws.test.ts`（4004）、`tests/online/parentCloud.test.ts`（前端接真正的伺服器 app）、`tests/online/realtimeClient.test.ts`（封鎖規則）、`e2e/parent-cloud.spec.ts`。Docker 的 PostgreSQL 跑過一次（伺服器與同步測試 213 個全過）。
+
+實作時補的細節（規劃裡沒寫到的）：
+
+- 被移出班級的提示（「老師把你移出班級了，進度都還在」）在同步把本機班級清掉之後仍留著，之後加入班級或換角色才清掉；否則提示不到一秒就消失。
+- 島上的同步狀態：沒有班級的角色寫「☁️ 已存到雲端」；需要重新登入時點它到帳號頁（家長登入找回），班級角色照舊到班級畫面。
+- 同一個角色（同一個 `Profile.id`）重複存到雲端回 409 `already_uploaded`；存到雲端時名字截到 12 個字（班級暱稱的上限）。
+- 家長刪除帳號時，前端先讀名下的角色，刪除成功後把這台裝置上的那些角色也拿掉。
+- 已知：`e2e/parent-cloud.spec.ts` 的刪除帳號測試第一次跑時，偶發一次「按下確定刪除後 15 秒沒有反應」，之後連續 5 次通過，記錄到的 API 時序都在 2 秒內。再出現時，先在 `e2e/onlineDevice.ts` 的 `openDevice` 記錄打到伺服器的請求與耗時，再查原因。
 
 ### 資料表（第 5 版）
 

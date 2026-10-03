@@ -37,11 +37,12 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 ## 3. 班級與帳號
 
 - **房間代碼**：6 位數字（孩子可以用現有的數字鍵盤輸入），隨機產生、不重複。
-- **老師／家長**：標題畫面「👩‍🏫 老師／家長」→ 建立房間（房間名稱＋管理密碼，至少 6 字）→ 拿到代碼。之後用「代碼＋管理密碼」登入管理頁。
+- **老師／家長**：標題畫面「👩‍🏫 老師／家長」→ 註冊或登入大人帳號（帳號名稱＋密碼，勾選家長或老師；`docs/plans/accounts.md`）。老師在帳號頁建立班級、拿到代碼；家長在帳號頁管理孩子的雲端角色（見下面「家長的雲端角色」）。改版前（2026-10-03 A1 之前）用「代碼＋管理密碼」，已經拿掉。
 - **孩子第一次加入**：房間代碼 → 暱稱（最多 12 字，房間內不重複）→ 自己設 4 位數密碼 → 選動物外觀，或「把這台裝置上的角色進度帶過去」。房間關閉加入時不能加入。
   - 帶進度過去時，本機那個角色**直接變成雲端角色**（同一個 `Profile.id`，加上 `cloud` 欄位，名字改成暱稱），選角畫面不會多出一個同名角色。伺服器保留原本的 `Profile.id`；帳號 id（`accountId`）是另一個識別，只用在伺服器與權杖。
   - 在新裝置登入時，用伺服器存檔的 `Profile.id` 建立本機角色；這台裝置已經有同 id 的角色（例如登出後再登入）就直接取代。
 - **孩子之後登入**：房間代碼＋暱稱＋密碼。登入後這台裝置記住（權杖存在 localStorage `learning-island-cloud`，不放進存檔，所以家長的「備份」不會帶出權杖），選角畫面直接點角色就能玩。
+- **家長的雲端角色**（2026-10-04 A2，`docs/plans/accounts.md` 第 6 節）：角色可以不加入班級、只掛在家長帳號下。家長把這台裝置上的角色「存到雲端」，換電腦時登入家長帳號、選孩子「在這台裝置玩」就能接著玩。雲端角色之後可以用代碼加入班級（同一個角色，不另開新角色）；被老師移出、或家長讓他退出班級時，進度都留著，繼續當沒有班級的雲端角色玩。沒有班級的角色只同步進度，不連即時連線（沒有公頻與送禮）。沒有家長帳號的純班級角色，老師移出時照舊刪除。
 - **密碼與暴力破解**：4 位數密碼只有一萬種，所以**以「房間＋暱稱」計次**：連續錯 5 次鎖 5 分鐘。不用 IP 計次：同一間電腦教室 30 個孩子共用一個對外 IP，上課開頭一起登入就會被誤鎖；IP 層級只擋明顯的洪水（每分鐘 300 次以上）。密碼與管理密碼用 scrypt 加鹽雜湊。
 - **權杖**：隨機 32 bytes，資料庫只存雜湊，180 天到期，到期要重新輸入密碼。
 
@@ -166,21 +167,26 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 2026-10-03 A1 改版後的介面：老師改用大人帳號（`docs/plans/accounts.md`）。改版前用「房間代碼＋管理密碼」建立與登入、老師的 Google 綁在房間上，這些 API 已經拿掉（見 git 歷史）；老師的 Google 快速登入在 A4 改成綁大人帳號。
 
-
 | 方法與路徑 | 用途 |
 | --- | --- |
 | `POST /api/users` | 註冊大人帳號（家長、老師）`{ username, password, email, parent, teacher }` → `{ token, user }`（`docs/plans/accounts.md`） |
 | `POST /api/users/login` | `{ username, password }` → `{ token, user }`；連錯 5 次鎖 5 分鐘 |
 | `GET /api/users/me`、`PATCH /api/users/me` | 讀取或修改自己的身分、email `{ parent?, teacher?, email? }` |
 | `POST /api/users/me/password` | `{ current, next }` 改密碼（其他裝置的登入失效） |
+| `DELETE /api/users/me` | `{ password }` 刪除自己的帳號：名下的雲端角色一併刪除（在班級裡的先結清禮物）；密碼錯回 401 `bad_password`，還有班級回 409 `has_classes`（刪掉老師帳號會連帶刪掉班上所有角色） |
+| `GET /api/parent/kids` | 家長名下的雲端角色 `{ kids: [{ id, name, avatar, room, coins, stars, lastSeen }] }`（`room` 沒有班級時是 null）；大人權杖＋家長身分，只有老師身分回 403 `not_parent` |
+| `POST /api/parent/kids` | 把這台裝置上的角色存到雲端 `{ profile }` → `{ token, account, profile, rev, room: null }`（孩子權杖，來源 `parent`）；同一個角色重複上傳回 409 `already_uploaded` |
+| `POST /api/parent/kids/:id/device` | 在這台裝置玩：發一張孩子權杖（來源 `parent`）並回傳存檔，格式同上；別人的角色和不存在的一樣回 404 `no_kid` |
+| `DELETE /api/parent/kids/:id` | 刪除角色（在班級裡的先結清禮物） |
+| `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖失效；不在班級回 409 `not_in_class` |
 | `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
 | `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`；別人的班級和不存在的代碼一樣回 404 |
-| `POST /api/teacher/rooms/:code/members/:id/pin` | 重設孩子密碼 |
-| `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 |
-| `POST /api/join` | `{ code, nickname, pin, profile? }` → `{ token, account, profile, rev }` |
-| `POST /api/login` | `{ code, nickname, pin }` → 同上 |
-| `GET /api/me` | 目前存檔與版本號 |
-| `POST /api/ops` | `{ ops: Op[] }` → `{ profile, rev, rejected: [{ id, reason }] }` |
+| `POST /api/teacher/rooms/:code/members/:id/pin` | 重設孩子密碼（只撤銷 `class` 來源的權杖，家長裝置上的不受影響） |
+| `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 → `{ ok, left }`：家長名下的角色改成退出班級（`left: true`，進度留在家長名下），純班級角色照舊刪除 |
+| `POST /api/join` | `{ code, nickname, pin, profile? }` → `{ token, account, profile, rev, room }`。帶孩子權杖時是「雲端角色加入班級」：同一個帳號掛進班級、沿用原本的權杖，回 `{ account, profile, rev, room }`；已經在班級裡回 409 `already_in_class` |
+| `POST /api/login` | `{ code, nickname, pin }` → `{ token, account, profile, rev, room }` |
+| `GET /api/me` | 目前存檔與版本號、班級（沒有班級是 null）、有沒有家長帳號（`owned`） |
+| `POST /api/ops` | `{ ops: Op[] }` → `{ profile, rev, rejected: [{ id, reason }], room }`（`room` 是目前的班級，沒有是 null：裝置靠它知道在別台裝置退出、或被老師移出班級） |
 | `GET /api/classmates` | 全班同學（不含自己）`[{ id, nickname, avatar, online, inventory }]`，選送禮對象用；外觀經過 `equippedOf` |
 | `POST /api/gifts` | `{ id, to, itemId }` → `{ gift, profile, rev }`（id 由裝置產生，重送不重複扣款） |
 | `GET /api/gifts` | `{ incoming, notices, sentToday, dailyLimit }`：待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份 |
@@ -192,18 +198,21 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/google/login` | `{ idToken }` → `{ kids: SessionResponse[] }`；沒綁定回 404 `google_not_linked` |
 | `GET /healthz` | Zeabur 健康檢查 |
 
+孩子權杖用在同學名單、送禮這些班級功能時，角色沒有班級回 403 `no_class`；同步（`/api/ops`）、讀存檔（`/api/me`）與帶權杖加入班級不需要班級。
+
 ### WebSocket（`/ws`，連上後第一則訊息送權杖）
 
 - 裝置 → 伺服器：`hello { token }`、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
 - 伺服器 → 裝置：`welcome { self, room, members, chat }`、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`kicked { reason }`
+- 關閉代碼：權杖無效 4003；角色沒有班級 4004（裝置不重連，同步一次讓本機的班級清掉）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
 
 ## 11. 資料表（PostgreSQL）
 
 - `users(id, username, username_key, password_hash, email, email_verified, is_parent, is_teacher, created_at, last_login)`：大人帳號（第 4 版）
 - `rooms(code, name, owner_id, teacher_hash, join_open, chat_open, gifts_open, created_at)`：`owner_id` 是老師帳號；`teacher_hash` 只有改版前用管理密碼建的房間才有
-- `accounts(id, room_code, nickname, pin_hash, profile_json, rev, created_at, last_seen)`，`(room_code, nickname)` 唯一
+- `accounts(id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)`，`(room_code, nickname_key)` 唯一。第 5 版（A2）：`parent_id` 是家長帳號；`room_code` 可以空（家長名下、沒有班級的雲端角色），但和 `parent_id` 至少要有一個；沒有班級就沒有 `pin_hash`
 - `applied_ops(account_id, op_id, applied_at)`
-- `tokens(token_hash, kind, account_id, room_code, expires_at)`
+- `tokens(token_hash, kind, account_id, user_id, room_code, via, expires_at)`：`kind` 是 `kid`（孩子，`account_id`）或 `user`（大人，`user_id`）。孩子權杖的 `via` 是 `class`（用班級代碼登入）或 `parent`（家長「在這台裝置玩」），退出班級與老師重設密碼只撤銷 `class` 的；孩子目前的班級從 `accounts.room_code` 讀，`tokens.room_code` 只是保留寫入
 - `gifts(id, room_code, from_id, to_id, from_nickname, to_nickname, item_id, price, status, sender_seen, created_at, resolved_at)`：`status` 是 `pending`／`accepted`／`declined`／`expired`／`returned`（已經有了自動退回）／`cancelled`（收禮人被移出）；`from_id`、`to_id` 在帳號刪除時設成空的；`sender_seen` 表示送禮人看過結果了
 
 ## 12. 前端改動
