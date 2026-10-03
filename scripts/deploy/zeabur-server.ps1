@@ -1,7 +1,8 @@
 # 把班級伺服器重新部署到 Zeabur（直接上傳，不經過 GitHub）。
 #
-# 只上傳伺服器建置需要的檔案（git archive 匯出已 commit 的 package.json、lock 檔、Dockerfile、server/、src/、tsconfig），
-# 不會把 .env 的金鑰、public/ 的音檔、node_modules 傳上去；沒 commit 的改動不會部署。
+# 只上傳建置需要的檔案（git archive 匯出已 commit 的 package.json、lock 檔、Dockerfile、server/、src/、public/、index.html、設定檔，
+# 約 50 MB），不會把 .env 的金鑰、node_modules 傳上去；沒 commit 的改動不會部署。
+# 映像檔同時提供前端，所以重新部署伺服器也是重新部署前端：重啟時線上的孩子會斷線一下（會自動重連）。
 # Zeabur 看到 Dockerfile 就照它建置。專案與服務 ID 見 server/CLAUDE.md 的「Zeabur 部署」。
 #
 # 執行（PowerShell 7，專案根目錄；Zeabur CLI 要先登入：npx zeabur@latest auth status）：
@@ -12,7 +13,7 @@ $ErrorActionPreference = 'Stop'
 $ProjectId = '6ac070128ae74b28932b917f'
 $ServiceId = '6ac0724e3eaaf9d7d3e1d390'
 # 上傳的檔案清單（伺服器建置用到的全部）
-$Files = @('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore', 'tsconfig.json', 'server', 'src')
+$Files = @('package.json', 'package-lock.json', 'Dockerfile', '.dockerignore', 'tsconfig.json', 'vite.config.ts', 'index.html', 'server', 'src', 'public')
 
 $Export = Join-Path ([IO.Path]::GetTempPath()) 'learning-island-zeabur-server'
 if (Test-Path $Export) { Remove-Item -Recurse -Force $Export }

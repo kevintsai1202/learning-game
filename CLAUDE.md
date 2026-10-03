@@ -17,6 +17,8 @@ npm test             # 單元測試
 npm run build        # 型別檢查 + 建置到 dist/
 npx playwright test  # e2e（需先 build；班級伺服器由 playwright 自動打包啟動）
 npm run server:build; npm run server:start   # 本機啟動班級伺服器（port 8787，PGlite 記憶體資料庫）
+.\scripts\deploy\zeabur-server.ps1   # 重新部署班級伺服器（同時提供前端）到 Zeabur；步驟與注意事項見 docs/deploy-zeabur.md
+$env:E2E_SERVER_URL = 'https://learning-island.zeabur.app'; npx playwright test --config playwright.remote.config.ts e2e/realtime.spec.ts --grep-invert Google   # 對外部伺服器跑線上 e2e（再設 BASE_URL 就連前端也用外部的）
 .\.venv\Scripts\python scripts\build-font.py   # 內容新增字之後重產注音字型子集
 # 預錄語音（改了題目文字或 src/ui/lines.ts 之後；金鑰在 .env）
 npx vitest run --config vitest.voice.config.ts                                  # 盤點要預錄的句子 → data-src/voice/inventory.json
@@ -37,7 +39,7 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - `src/world/` 3D 島嶼與舞台（R3F）；`src/ui/` DOM 介面
 - `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、商品目錄（`catalog.ts`）、禮物目錄（`gifts.ts`）、自訂題庫、畫面狀態
 - `src/online/` 線上版前端：操作套用（`ops.ts`，伺服器共用）、同步佇列（`sync.ts`）、同步迴圈與送禮 API（`cloudSync.ts`）、狀態與排程（`useCloud.ts`）、即時連線（`realtimeClient.ts`）、禮物狀態（`useGifts.ts`）
-- `server/` 班級伺服器（另有 `server/CLAUDE.md`）；規格與分期在 `docs/plans/online.md`
+- `server/` 班級伺服器（另有 `server/CLAUDE.md`）；規格與分期在 `docs/plans/online.md`；部署在 Zeabur（`docs/deploy-zeabur.md`），正式網址 GitHub Pages 與 `learning-island.zeabur.app`
 - `src/content/` 題庫格式（zod）、課綱代碼對照、資料來源清單
 - `public/data/strokes/` 國字筆順資料（腳本產生）；`public/licenses/` 授權全文
 

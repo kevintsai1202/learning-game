@@ -11,6 +11,7 @@ import { LoginLimiter, RateLimiter, checkNickname, hashSecret, newAccountId, new
 import { maskEmail, type GoogleConfig, type GoogleIdentity } from './google';
 import { lookupToken } from './tokens';
 import { emitGiftEvents, registerGiftRoutes, removeMemberWithRefunds } from './gifts';
+import { registerStatic } from './static';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
@@ -54,6 +55,8 @@ export interface AppOptions {
   onGift?: (accountId: string) => void;
   /** Google 快速登入（備選）；沒有時 Google 相關 API 回 404 */
   google?: GoogleConfig | null;
+  /** 前端建置產物（dist/）的目錄：設定時伺服器同時提供前端（Zeabur 的 Docker 映像檔）；沒設定時不提供 */
+  staticDir?: string;
 }
 
 /** 權杖有效天數 */
@@ -491,6 +494,9 @@ export function createApp(opts: AppOptions) {
 
   // ---------- 送禮物（P3） ----------
   registerGiftRoutes(app, { db, now, authenticate, isOnline, onProfileChanged: opts.onProfileChanged, onGift: opts.onGift });
+
+  // ---------- 前端靜態檔（最後註冊，不蓋掉上面的路由） ----------
+  if (opts.staticDir) registerStatic(app, opts.staticDir);
 
   return app;
 }

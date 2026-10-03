@@ -34,7 +34,7 @@ npx zeabur@latest template deploy -i=false -c B20CX0 --project-id <專案 ID>
 | 變數 | 值 |
 | --- | --- |
 | `DATABASE_URL` | `${POSTGRES_CONNECTION_STRING}`（引用同專案 PostgreSQL 的連線字串） |
-| `ALLOWED_ORIGINS` | `https://kevintsai1202.github.io,http://localhost:4183`（`localhost` 是測試用，第 7 步要拿掉） |
+| `ALLOWED_ORIGINS` | 正式：`https://kevintsai1202.github.io,https://learning-island.zeabur.app`（伺服器同時提供前端，同網址的 WebSocket 也會檢查來源）；對正式伺服器跑 e2e 時暫時加 `,http://localhost:4183`，跑完要拿掉 |
 | `GOOGLE_CLIENT_ID` | 你的 Google OAuth 用戶端 ID（見 `docs/google-login-setup.md`） |
 
 - **絕對不要設 `GOOGLE_TEST_JWKS`、`ALLOW_TEST_GOOGLE`**：那是 e2e 的測試模式，會接受測試金鑰簽的假 Google 登入。
@@ -70,7 +70,7 @@ npx zeabur@latest template deploy -i=false -c B20CX0 --project-id <專案 ID>
 
 ## 7. 交給孩子之前
 
-1. `ALLOWED_ORIGINS` 拿掉 `,http://localhost:4183`（存檔後 Zeabur 會重新部署）。
+1. `ALLOWED_ORIGINS` 改成 `https://kevintsai1202.github.io,https://learning-island.zeabur.app`（拿掉 `localhost`）。用 `variable env -f` 設的話，檔案要同時有 `DATABASE_URL`、`ALLOWED_ORIGINS`、`GOOGLE_CLIENT_ID` 三個（它會取代全部變數），之後 `service restart`。
 2. 清掉測試建的房間與帳號（e2e 用的是很弱的測試密碼）：在 Zeabur 的 PostgreSQL 服務開資料庫主控台，執行
 
    ```sql
@@ -84,4 +84,7 @@ npx zeabur@latest template deploy -i=false -c B20CX0 --project-id <專案 ID>
 
 - **資料存在神奇網路裝置上**：裝置關機或斷網時，班級就連不上；裝置壞掉，資料就沒了。備份方式待決定（Zeabur 的資料庫備份功能，或在裝置上定期 `pg_dump`）。
 - **防大量請求的限制**：建立房間、加入、登入每個 IP 每分鐘最多 300 次。伺服器取 `X-Forwarded-For` 的最後一個位址；經過閘道器時，所有孩子可能看起來是同一個位址，變成全班共用這 300 次。一個班級的登入量遠低於此。
-- **更新**：push 到 Zeabur 追蹤的分支，就會自動重新建置與部署。
+- **兩個網址**：`https://kevintsai1202.github.io/learning-game/`（GitHub Pages，平常用）與 `https://learning-island.zeabur.app/`（班級伺服器同時提供的前端，學校網路擋 github.io 時用）。兩邊是同一份程式，資料都在班級伺服器，換網址登入同一個帳號就好。Google 登入要在 Google Console 的「已授權的 JavaScript 來源」加上兩個網址。
+- **zeabur 網址比較慢**：前端的 3D 素材與音檔經過「東京閘道器 → 家裡的神奇網路裝置」，第一次載入比 GitHub Pages 的 CDN 慢，也吃家裡的上傳頻寬；之後瀏覽器會快取。
+- **重新部署伺服器＝也重新部署 zeabur 網址的前端**：重啟時線上的孩子會斷線一下（會自動重連）。GitHub Pages 那一份由 push main 自動部署。
+- **伺服器停機時**：GitHub Pages 網址照樣能單機玩（讀不到伺服器設定就不顯示班級功能），只是班級功能暫時用不了；zeabur 網址則整個打不開。

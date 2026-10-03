@@ -32,6 +32,7 @@ docker rm -f li-pg-test
 | `ALLOWED_ORIGINS` | 允許跨網域呼叫的前端網址，逗號分隔；預設 `http://localhost:5173,http://localhost:4183` |
 | `GOOGLE_CLIENT_ID` | Google 快速登入（備選）的 OAuth 用戶端 ID；沒有就不開 Google 登入。建立方式見 `docs/google-login-setup.md` |
 | `GOOGLE_TEST_JWKS`＋`ALLOW_TEST_GOOGLE=1` | **只給 e2e 用**的測試模式：用測試公鑰驗證 Google token。只設其中一個會拒絕啟動；正式環境絕不能設 |
+| `STATIC_DIR` | 前端建置產物（`dist/`）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 `/app/dist`）。本機開發與 e2e 不設 |
 
 ## 規則
 
@@ -52,6 +53,7 @@ docker rm -f li-pg-test
   - 退款一律用 `gifts.price`（送出當時的價格），不查現在的目錄；退款與收下都要呼叫 `onProfileChanged`，禮物狀態有變的人呼叫 `onGift`（中樞送 `{ t: 'gift' }`）。
   - 禮物 id 由裝置產生，同一個送禮人重送同一個 id 回傳原本那份（不重複扣款）。
   - `main.ts` 啟動時與每小時跑 `expireGifts`（7 天沒收下就退款），關機時清掉計時器。
+- **同時提供前端**（`static.ts`，只在 `STATIC_DIR` 有設時開）：註冊在所有路由之後，不蓋掉 `/api`；快取標頭在拿到回應之後補（`serveStatic` 的 `onFound` 在回應建立後才呼叫，那時設的標頭不會生效）。網頁與語音對照表不快取，`assets/` 與雜湊檔名的語音快取一年，其他一天。Docker 建置的前端用 `VITE_SERVER_URL=same-origin`（`src/online/config.ts` 的 `resolveServerUrl`），所以 `ALLOWED_ORIGINS` 要包含伺服器自己的網址（同網址的 WebSocket 也會送 Origin）。
 - Google 帳號只存 `sub` 與 email；回給前端的 email 一律遮罩（`maskEmail`），老師的 API 不回傳家長的 email。
 - Google 登入的測試一律用程式產生的金鑰（`tests/server/googleKeys.ts`）或 `e2e/fixtures/google-test-key.json`，不要連到真正的 Google。
 

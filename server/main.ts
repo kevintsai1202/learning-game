@@ -7,6 +7,7 @@
  * - ALLOWED_ORIGINS：允許跨網域呼叫的前端網址，逗號分隔（預設本機開發與 preview 的網址）
  * - GOOGLE_CLIENT_ID：Google 快速登入的 OAuth Client ID；沒有就不開 Google 登入
  * - GOOGLE_TEST_JWKS＋ALLOW_TEST_GOOGLE=1：e2e 的測試模式（用測試公鑰驗證），正式環境絕不能設
+ * - STATIC_DIR：前端建置產物（dist/）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 /app/dist）
  */
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
@@ -48,6 +49,7 @@ async function main(): Promise<void> {
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
     onKick: (id, reason) => hub.kick(id, reason),
     onGift: (id) => hub.notify(id, { t: 'gift' }),
+    staticDir: process.env.STATIC_DIR || undefined,
   });
   // 過期的禮物：啟動時與每小時退款給送禮人（退款一樣通知送禮人的裝置）
   const sweepGifts = () =>
@@ -56,7 +58,7 @@ async function main(): Promise<void> {
   const giftTimer = setInterval(sweepGifts, GIFT_SWEEP_MS);
   const server = serve({ fetch: app.fetch, port, hostname: '0.0.0.0' }, (info) => {
     console.log(
-      `班級伺服器啟動：port ${info.port}，資料庫 ${process.env.DATABASE_URL ? 'PostgreSQL' : 'PGlite'}，Google 登入 ${google ? (google.testMode ? '測試模式' : '開啟') : '關閉'}，允許 ${allowedOrigins.join(', ')}`,
+      `班級伺服器啟動：port ${info.port}，資料庫 ${process.env.DATABASE_URL ? 'PostgreSQL' : 'PGlite'}，Google 登入 ${google ? (google.testMode ? '測試模式' : '開啟') : '關閉'}，前端 ${process.env.STATIC_DIR || '不提供'}，允許 ${allowedOrigins.join(', ')}`,
     );
   });
 

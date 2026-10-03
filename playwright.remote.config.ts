@@ -20,12 +20,15 @@ export default defineConfig({
   ...base,
   // 遠端伺服器比本機慢一些：單一測試給多一點時間
   timeout: 300_000,
-  webServer: [
-    {
-      command: 'npm run preview',
-      url: 'http://localhost:4183',
-      reuseExistingServer: true,
-      timeout: 60_000,
-    },
-  ],
+  // 前端也在外部時（BASE_URL，例如伺服器同時提供的前端或 GitHub Pages）不必啟動本機 preview
+  webServer: process.env.BASE_URL
+    ? undefined
+    : [
+        {
+          command: 'npm run preview',
+          url: 'http://localhost:4183',
+          reuseExistingServer: true,
+          timeout: 60_000,
+        },
+      ],
 });
