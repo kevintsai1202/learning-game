@@ -390,6 +390,12 @@ button {
   min-width: 0;
   max-width: 100%;
 }
+/* 彈出卡片（結算、選難度…）比畫面高時在卡片裡捲動：外層全螢幕不能捲，超出的部分會被切掉、按不到
+   （2026-10-03 使用者回報：直式手機答完題的選單，最下面的按鈕按不到） */
+.panel-screen > .card {
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+}
 .panel select,
 .panel input,
 .panel textarea {
@@ -1042,6 +1048,11 @@ button {
   justify-content: center;
   flex-wrap: wrap;
   margin-top: 16px;
+  /* 結算內容很多、卡片要捲動時，按鈕固定在卡片底部：孩子不用往下滑也按得到 */
+  position: sticky;
+  bottom: 0;
+  padding: 8px 0 4px;
+  background: var(--paper);
 }
 
 /* 視覺題材共用 */
@@ -1732,6 +1743,17 @@ button {
   }
   .panel-screen > .card {
     padding: 14px !important;
+    /* 外層的邊距只剩 8px，卡片可以再高一點 */
+    max-height: calc(100dvh - 16px);
+  }
+  /* 結算畫面的按鈕固定在卡片底部：縮小一點，少擋一點後面的內容（和橫放手機相同的大小） */
+  .result-actions {
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .result-actions .btn {
+    font-size: 20px;
+    padding: 6px 12px 8px;
   }
   .tagline {
     max-width: calc(100vw - 24px);
