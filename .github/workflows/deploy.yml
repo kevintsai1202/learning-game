@@ -29,8 +29,11 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      # 型別檢查＋建置到 dist/
+      # 型別檢查＋建置到 dist/。
+      # 班級伺服器網址（Zeabur，見 docs/deploy-zeabur.md）：這個網址是公開的（前端本來就看得到），直接寫在這裡，不用另外設 GitHub 變數
       - run: npm run build
+        env:
+          VITE_SERVER_URL: https://learning-island.zeabur.app
       - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
