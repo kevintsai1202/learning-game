@@ -59,6 +59,8 @@ export const SENTENCE_FIXES = [
   { match: /^「雨」用英文怎麼說？$/, fix: (s) => s.replace('」用', '」，用') },
   // 靴要唸 ㄒㄩㄝ
   { match: /^(正確答案是：)?雨靴$/, fix: (s) => s.replace('靴', phonemeTag('xue1')) },
+  // 鯨要唸 ㄐㄧㄥ（後鼻音）：Whisper 抽查聽成「金魚」，使用者試聽後選了兩個字都標記的版本（2026-10-03）
+  { match: /^鯨魚貼紙$/, fix: (s) => s.replace('鯨魚', `${phonemeTag('jing1')}${phonemeTag('yu2')}`) },
 ];
 
 /**
