@@ -164,14 +164,19 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 ### HTTP（JSON）
 
+2026-10-03 A1 改版後的介面：老師改用大人帳號（`docs/plans/accounts.md`）。改版前用「房間代碼＋管理密碼」建立與登入、老師的 Google 綁在房間上，這些 API 已經拿掉（見 git 歷史）；老師的 Google 快速登入在 A4 改成綁大人帳號。
+
+
 | 方法與路徑 | 用途 |
 | --- | --- |
-| `POST /api/rooms` | 建立房間 `{ name, password }` → `{ code, token }` |
-| `POST /api/teacher/login` | `{ code, password }` → `{ token }` |
-| `GET /api/teacher/room` | 房間設定＋成員列表 |
-| `PATCH /api/teacher/room` | `{ joinOpen?, chatOpen?, giftsOpen? }` |
-| `POST /api/teacher/members/:id/pin` | 重設孩子密碼 |
-| `DELETE /api/teacher/members/:id` | 移除成員 |
+| `POST /api/users` | 註冊大人帳號（家長、老師）`{ username, password, email, parent, teacher }` → `{ token, user }`（`docs/plans/accounts.md`） |
+| `POST /api/users/login` | `{ username, password }` → `{ token, user }`；連錯 5 次鎖 5 分鐘 |
+| `GET /api/users/me`、`PATCH /api/users/me` | 讀取或修改自己的身分、email `{ parent?, teacher?, email? }` |
+| `POST /api/users/me/password` | `{ current, next }` 改密碼（其他裝置的登入失效） |
+| `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
+| `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`；別人的班級和不存在的代碼一樣回 404 |
+| `POST /api/teacher/rooms/:code/members/:id/pin` | 重設孩子密碼 |
+| `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 |
 | `POST /api/join` | `{ code, nickname, pin, profile? }` → `{ token, account, profile, rev }` |
 | `POST /api/login` | `{ code, nickname, pin }` → 同上 |
 | `GET /api/me` | 目前存檔與版本號 |
@@ -185,8 +190,6 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `GET /api/config` | `{ googleClientId }`（沒開 Google 登入是 null） |
 | `POST /api/google/link`、`DELETE /api/google/link` | 家長把 Google 綁到孩子（孩子權杖）`{ idToken }` → `{ google: [遮罩後的 email] }` |
 | `POST /api/google/login` | `{ idToken }` → `{ kids: SessionResponse[] }`；沒綁定回 404 `google_not_linked` |
-| `POST /api/teacher/google/link`、`DELETE /api/teacher/google/link` | 老師把 Google 綁到房間（老師權杖） |
-| `POST /api/teacher/google/login` | `{ idToken }` → `{ rooms: [{ code, name, token }] }` |
 | `GET /healthz` | Zeabur 健康檢查 |
 
 ### WebSocket（`/ws`，連上後第一則訊息送權杖）
@@ -196,7 +199,8 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 ## 11. 資料表（PostgreSQL）
 
-- `rooms(code, name, teacher_hash, join_open, chat_open, gifts_open, created_at)`
+- `users(id, username, username_key, password_hash, email, email_verified, is_parent, is_teacher, created_at, last_login)`：大人帳號（第 4 版）
+- `rooms(code, name, owner_id, teacher_hash, join_open, chat_open, gifts_open, created_at)`：`owner_id` 是老師帳號；`teacher_hash` 只有改版前用管理密碼建的房間才有
 - `accounts(id, room_code, nickname, pin_hash, profile_json, rev, created_at, last_seen)`，`(room_code, nickname)` 唯一
 - `applied_ops(account_id, op_id, applied_at)`
 - `tokens(token_hash, kind, account_id, room_code, expires_at)`

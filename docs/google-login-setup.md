@@ -1,6 +1,6 @@
 # Google 快速登入：建立 OAuth 用戶端 ID
 
-班級伺服器的「用 Google 登入」（家長與老師的備選登入）需要一個 Google OAuth 用戶端 ID。這一步要用你自己的 Google 帳號在 Google Cloud Console 建立，程式這邊沒辦法代勞。沒有設定時，遊戲照常運作，只是不會出現 Google 按鈕。
+班級伺服器的「用 Google 登入」（備選的快速登入）需要一個 Google OAuth 用戶端 ID。目前只有家長用（綁在孩子的班級帳號上）；老師的 Google 快速登入在大人帳號改版（A1）時拿掉，A4 會改成 Google 綁大人帳號（`docs/plans/accounts.md`）。這一步要用你自己的 Google 帳號在 Google Cloud Console 建立，程式這邊沒辦法代勞。沒有設定時，遊戲照常運作，只是不會出現 Google 按鈕。
 
 設計說明見 `docs/plans/online.md` 3.1 節。
 
@@ -55,7 +55,7 @@ $env:GOOGLE_CLIENT_ID = '貼上你的用戶端 ID'; npm run server:start
 node scripts/deploy/check-google-origins.mjs
 ```
 
-打開兩個正式網址的老師登入畫面，看 Google 按鈕載不載得出來（不登入、不寫資料）：沒加進「已授權的 JavaScript 來源」的網址，Google 會回 403，主控台出現 `The given origin is not allowed for the given client ID`。Google 說設定改完要幾分鐘到幾小時才生效。
+打開兩個正式網址的班級登入畫面（「開始」→「班級」，家長的 Google 快速登入按鈕），看 Google 按鈕載不載得出來（不登入、不寫資料）：沒加進「已授權的 JavaScript 來源」的網址，Google 會回 403，主控台出現 `The given origin is not allowed for the given client ID`。Google 說設定改完要幾分鐘到幾小時才生效。
 
 ## 發布成正式版與品牌驗證（2026-10-03）
 
