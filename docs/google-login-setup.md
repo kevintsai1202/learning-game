@@ -28,6 +28,7 @@ Google Cloud Console 的選單名稱偶爾會改，下面括號裡是舊名稱�
    - 名稱：`知識島大冒險（網頁）`
    - **已授權的 JavaScript 來源**（只填網域，不要有路徑，結尾不要斜線）：
      - `https://kevintsai1202.github.io`（GitHub Pages 的正式網址）
+     - `https://learning-island.zeabur.app`（班級伺服器同時提供的前端，學校擋 github.io 時用）
      - `http://localhost:4183`（本機 `vite preview`）
      - `http://localhost:5173`（本機 `vite dev`）
    - 已授權的重新導向 URI：不用填（用彈出視窗登入）。
@@ -47,6 +48,21 @@ $env:GOOGLE_CLIENT_ID = '貼上你的用戶端 ID'; npm run server:start
 接著在瀏覽器打開 `http://localhost:4183`，在開發者工具的 Console 執行 `localStorage.setItem('learning-island-server-url', 'http://localhost:8787')` 後重新整理，班級畫面就會出現「使用 Google 帳戶登入」按鈕。
 
 正式環境（Zeabur）：在伺服器服務的環境變數加上 `GOOGLE_CLIENT_ID`（P4 部署時一起設定）。
+
+## 檢查來源有沒有設好
+
+```powershell
+node scripts/deploy/check-google-origins.mjs
+```
+
+打開兩個正式網址的老師登入畫面，看 Google 按鈕載不載得出來（不登入、不寫資料）：沒加進「已授權的 JavaScript 來源」的網址，Google 會回 403，主控台出現 `The given origin is not allowed for the given client ID`。Google 說設定改完要幾分鐘到幾小時才生效。
+
+## 發布成正式版與品牌驗證（2026-10-03）
+
+- 只用 `openid`、`email`、`profile` 時，發布成正式版不必先通過驗證；上傳了標誌、要在同意畫面顯示標誌與名稱，才需要通過「品牌驗證」（Google Auth Platform → 驗證中心）。
+- 品牌頁：首頁 `https://kevintsai1202.github.io/learning-game/`、隱私權政策 `https://kevintsai1202.github.io/learning-game/privacy.html`、已授權網域 `kevintsai1202.github.io` 與 `learning-island.zeabur.app`（`github.io`、`zeabur.app` 都在 Public Suffix List 上，要填完整的子網域）。
+- 首頁網域要在 Google Search Console 驗證擁有權，用 Cloud 專案擁有者的 Google 帳號：新增「網址前置字元」資源 `https://kevintsai1202.github.io/`，選「HTML 檔案」驗證，把 Google 給的 `google….html` 放到 `kevintsai1202.github.io` 儲存庫的根目錄。`learning-island.zeabur.app` 的驗證檔放這個專案的 `public/`（班級伺服器會放在網址根目錄）。驗證完要等 24 小時，再到驗證中心重新送審。
+- 隱私權政策（`public/privacy.html`）要逐項寫清楚：收集哪些資料、用途、存放位置與保存期限、誰看得到、Google 使用者資料的取用與刪除，以及有限使用（Limited Use）聲明。第一次送審被退「內容不足」，之後改成中英文對照的版本；`e2e/privacy.spec.ts` 會檢查這些內容還在。
 
 ## 注意
 
