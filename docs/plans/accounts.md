@@ -65,6 +65,7 @@
 - 老師的 API 改成 `/api/teacher/rooms[/:code]…`；別人的班級回 404、只有家長身分回 403。舊的建房間、管理密碼登入、老師的 Google 綁定都拿掉了。
 - 家長頁先顯示「即將開放」（A2）。
 - 上線（A5）前要做：看正式環境有沒有改版前用管理密碼建的房間（沒有擁有者，改版後沒有登入方式；有的話加認領流程）；`scripts/deploy/purge-test-rooms` 改成用 e2e 帳號（`e2e_` 開頭）找測試資料；隱私權政策加上大人帳號。
+- 注意：feature/online 的線上 e2e（`online`、`gifts`、`realtime`、`accounts`）已改用 `POST /api/users` 註冊老師，正式環境在 A5 上線前還是舊程式、沒有這個路由，所以 A5 之前從 feature/online 對正式伺服器跑 remote e2e（`playwright.remote.config.ts`）一定失敗；要測正式環境請先切回 main。
 
 原本的範圍：
 
