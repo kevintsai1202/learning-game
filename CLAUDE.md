@@ -17,7 +17,7 @@ npm test             # 單元測試
 npm run build        # 型別檢查 + 建置到 dist/
 npx playwright test  # e2e（需先 build；班級伺服器由 playwright 自動打包啟動）
 npm run server:build; npm run server:start   # 本機啟動班級伺服器（port 8787，PGlite 記憶體資料庫）
-.\scripts\deploy\zeabur-server.ps1   # 重新部署班級伺服器（同時提供前端）到 Zeabur；步驟與注意事項見 docs/deploy-zeabur.md
+# 部署：合併到 main 並 push → GitHub Pages 與 Zeabur（班級伺服器＋同一份前端）都會自動部署；步驟與注意事項見 docs/deploy-zeabur.md
 $env:E2E_SERVER_URL = 'https://learning-island.zeabur.app'; npx playwright test --config playwright.remote.config.ts e2e/realtime.spec.ts --grep-invert Google   # 對外部伺服器跑線上 e2e（再設 BASE_URL 就連前端也用外部的）
 .\.venv\Scripts\python scripts\build-font.py   # 內容新增字之後重產注音字型子集
 # 預錄語音（改了題目文字或 src/ui/lines.ts 之後；金鑰在 .env）

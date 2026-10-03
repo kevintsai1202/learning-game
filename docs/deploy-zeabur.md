@@ -16,15 +16,16 @@ npx zeabur@latest template deploy -i=false -c B20CX0 --project-id <專案 ID>
 
 專案、服務的 ID 記在 `server/CLAUDE.md` 的「Zeabur 部署」。
 
-## 2. 部署班級伺服器（CLI 直接上傳）
+## 2. 部署班級伺服器（從 GitHub 部署，push main 自動更新）
 
 ```powershell
-.\scripts\deploy\zeabur-server.ps1
+npx zeabur@latest service search-repo learning-game --json -i=false      # 找儲存庫 ID（1399563645）
+npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --template GIT --repo-id 1399563645 --branch-name main --name island-server
 ```
 
-- 腳本用 `git archive` 匯出已 commit 的 package.json、lock 檔、Dockerfile、server/、src/、tsconfig（約 180 個檔案、2 MB）再上傳；不會把 `.env` 的金鑰、`public/` 的音檔傳上去。Zeabur 看到 `Dockerfile` 就照它建置。
-- 第一次部署（建立服務）用 `npx zeabur@latest deploy --project-id <專案 ID> --name class-server --json -i=false`；之後一律用腳本（帶 `--service-id`，不會另建服務）。
-- 不經過 GitHub，所以 push 不會自動部署。想改成 push 自動部署：到 GitHub 讓 Zeabur 的 GitHub App 存取這個儲存庫，再用 `service deploy --template GIT` 改成 Git 部署。
+- 要先讓 Zeabur 的 GitHub App 存取這個儲存庫（https://github.com/apps/zeabur/installations/new → 選 `learning-game`），`search-repo` 才找得到。
+- Zeabur 每次 push main 都會重新 clone、照根目錄的 `Dockerfile` 建置（同時建伺服器與前端）。GitHub Pages 也是 push main 部署，兩邊永遠是同一份程式。
+- 一開始用過 CLI 直接上傳（`npx zeabur@latest deploy`），伺服器加前端與音檔約 50 MB，上傳超過 CLI 的時限（`failed to prepare upload … Client.Timeout exceeded`，重試也一樣），所以改成從 GitHub 部署。
 - 神奇網路裝置是 arm64（Mac mini、樹莓派）時，確認建出來的映像檔架構相符；套件都是純 JavaScript，沒有原生模組。
 
 ## 3. 環境變數（已用 `variable env -f` 設好）
@@ -66,7 +67,7 @@ npx zeabur@latest template deploy -i=false -c B20CX0 --project-id <專案 ID>
 
 1. `.github/workflows/deploy.yml` 的建置步驟寫入 `VITE_SERVER_URL=https://<名稱>.zeabur.app`（伺服器網址是公開的，前端本來就看得到）。
 2. 把 `feature/online` 合併到 `main` 並 push，GitHub Pages 自動部署，網站出現「班級登入」。
-3. 伺服器程式有變動時，在 main 上執行 `.\scripts\deploy\zeabur-server.ps1` 重新部署。
+3. 合併到 main 並 push 之後，Zeabur 會自動重新部署伺服器（與它提供的前端）。
 
 ## 7. 交給孩子之前
 

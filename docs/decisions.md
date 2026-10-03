@@ -199,7 +199,7 @@
 
 - **架構**：前端放 GitHub Pages（push main 自動部署，建置時帶 `VITE_SERVER_URL=https://learning-island.zeabur.app`，這個網址是公開的，直接寫在 `deploy.yml`）；班級伺服器與 PostgreSQL 放 Zeabur，跑在使用者的「神奇網路」裝置上，經由東京伺服器的閘道器對外（`learning-island.zeabur.app`）。步驟與 ID 見 `docs/deploy-zeabur.md`、`server/CLAUDE.md`。
 - **兩邊都放（使用者選的）**：班級伺服器同時提供同一份前端（`STATIC_DIR`），學校網路擋 github.io 時改用 zeabur 網址。Docker 建置的前端用 `VITE_SERVER_URL=same-origin`，換網域不必重新建置。代價：zeabur 網址的素材經過閘道器與家裡的裝置，第一次載入較慢；重新部署伺服器也會重新部署這份前端。
-- **部署方式**：Zeabur 的 GitHub App 沒有這個儲存庫的權限，改用 CLI 直接上傳（`scripts/deploy/zeabur-server.ps1`，`git archive` 只送已 commit 的必要檔案，不含 `.env`）。神奇網路上的服務只能在後台的 Domains 分頁綁網域（CLI 會回 `WONDER_MESH_SERVER_REQUIRES_GATEWAY`）。
+- **部署方式**：從 GitHub 的 main 部署（Zeabur 的 GitHub App 授權這個儲存庫），push main 時 GitHub Pages 與 Zeabur 都自動更新。一開始用 CLI 直接上傳，但伺服器加前端與音檔約 50 MB，超過 CLI 的上傳時限，所以改成 Git 部署。神奇網路上的服務只能在後台的 Domains 分頁綁網域（CLI 會回 `WONDER_MESH_SERVER_REQUIRES_GATEWAY`）。
 - **驗證方式**：先在本機用同一份 Docker 映像檔接 PostgreSQL 跑線上 e2e，再用 `playwright.remote.config.ts` 對正式伺服器跑（排除 Google 測試，正式環境不開測試模式）；WebSocket 穿過閘道器沒有問題。
 - **伺服器停機時**：GitHub Pages 網址仍可單機玩，只是沒有班級功能（讀不到伺服器設定就不顯示）。這是能把伺服器放在家裡裝置上的前提。
 - **已知風險**：資料存在家裡的裝置上（備份方式待決定）；經過閘道器時所有孩子的 IP 可能看起來一樣，建立房間、加入、登入的每分鐘 300 次限制會變成全班共用（一個班級遠低於此）。

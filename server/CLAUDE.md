@@ -60,8 +60,8 @@ docker rm -f li-pg-test
 ## Zeabur 部署（2026-10-03）
 
 - 專案 `learning-island`（ID `6ac070128ae74b28932b917f`），在神奇網路伺服器 `Wonder Mesh`（ID `69eeeb93f5343e60f36375c2`，新北市）上；對外經由閘道器（東京的騰訊雲伺服器）。
-- 服務：`class-server`（ID `6ac0724e3eaaf9d7d3e1d390`，CLI 直接上傳、用根目錄 Dockerfile 建置）、`postgresql`（ID `6ac071748ae74b28932b9226`，市集範本 `B20CX0`）。
-- 更新伺服器：commit 之後執行 `.\scripts\deploy\zeabur-server.ps1`（帶 `--service-id` 更新同一個服務；不帶會另建一個新服務）。不經過 GitHub，push 不會自動部署。
-- 紀錄：`npx zeabur@latest deployment log --service-id 6ac0724e3eaaf9d7d3e1d390 -t runtime -i=false`。
+- 服務：`island-server`（ID `6ac096ec3eaaf9d7d3e1def7`，從 GitHub 的 main 部署，用根目錄 Dockerfile 建置伺服器與前端）、`postgresql`（ID `6ac071748ae74b28932b9226`，市集範本 `B20CX0`）。舊的 `class-server`（ID `6ac0724e3eaaf9d7d3e1d390`，CLI 直接上傳）已被取代。
+- 更新：合併到 main 並 push，Zeabur 自動重新建置與部署（GitHub Pages 同時部署）。直接上傳（`zeabur deploy`）約 50 MB 會超過 CLI 的上傳時限，不要再用。
+- 紀錄：`npx zeabur@latest deployment log --service-id 6ac096ec3eaaf9d7d3e1def7 -t runtime -i=false`（建置紀錄用 `-t build`）。
 - 環境變數用 `variable env -f <檔案>` 設（會取代全部變數）：`variable create -k` 會把含逗號的值（`ALLOWED_ORIGINS`）與 `${POSTGRES_CONNECTION_STRING}` 引用切壞。
 - 網域只能在後台服務的 **Domains** 分頁綁：神奇網路伺服器上的服務要經由閘道器，CLI 的 `domain create` 會回 `WONDER_MESH_SERVER_REQUIRES_GATEWAY`。
