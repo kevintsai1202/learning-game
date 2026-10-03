@@ -168,8 +168,8 @@ test('手機：禮物卡片與送禮視窗在畫面內，不擋右上角按鈕�
   const room = await api('POST', '/api/rooms', { name: '二年四班', password: 'teach123' });
   const mei = await api('POST', '/api/join', { code: room.code, nickname: '小美', pin: '2222', profile: withCoins(100, 'panda') });
   const bao = await api('POST', '/api/join', { code: room.code, nickname: '阿寶', pin: '1111', profile: withCoins(100) });
-  // 小美（沒有開裝置）先送阿寶一張獨角獸貼紙
-  await api('POST', '/api/gifts', { id: 'gift-phone-0001', to: bao.account.id, itemId: 'sticker.unicorn' }, mei.token);
+  // 小美（沒有開裝置）先送阿寶一張獨角獸貼紙；禮物 id 每次不同（對正式伺服器重跑時，資料庫裡已經有上一次的 id）
+  await api('POST', '/api/gifts', { id: `gift-phone-${Date.now()}`, to: bao.account.id, itemId: 'sticker.unicorn' }, mei.token);
 
   const { context, page } = await openDevice(browser, baseURL!);
   await page.setViewportSize({ width: 390, height: 844 });

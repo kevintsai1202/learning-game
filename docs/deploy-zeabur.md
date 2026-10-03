@@ -81,11 +81,20 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
    房間清掉時，帳號、登入權杖、禮物、Google 綁定、同步紀錄都會一起清空；資料表結構保留。
 3. Google OAuth：「已授權的 JavaScript 來源」要有 `https://kevintsai1202.github.io`，應用程式已發布為正式版。
 
-## 8. 注意事項
+## 8. 清掉測試資料
+
+對正式伺服器跑過 e2e 之後，用腳本清掉測試房間（只挑管理密碼 `teach123` 的房間，真正的房間不會動）：
+
+```powershell
+.\scripts\deploy\purge-test-rooms.ps1           # 只列出
+.\scripts\deploy\purge-test-rooms.ps1 -Apply    # 真的刪除（帳號、權杖、禮物、Google 綁定會跟著刪）
+```
+
+## 9. 注意事項
 
 - **資料存在神奇網路裝置上**：裝置關機或斷網時，班級就連不上；裝置壞掉，資料就沒了。備份方式待決定（Zeabur 的資料庫備份功能，或在裝置上定期 `pg_dump`）。
 - **防大量請求的限制**：建立房間、加入、登入每個 IP 每分鐘最多 300 次。伺服器取 `X-Forwarded-For` 的最後一個位址；經過閘道器時，所有孩子可能看起來是同一個位址，變成全班共用這 300 次。一個班級的登入量遠低於此。
 - **兩個網址**：`https://kevintsai1202.github.io/learning-game/`（GitHub Pages，平常用）與 `https://learning-island.zeabur.app/`（班級伺服器同時提供的前端，學校網路擋 github.io 時用）。兩邊是同一份程式，資料都在班級伺服器，換網址登入同一個帳號就好。Google 登入要在 Google Console 的「已授權的 JavaScript 來源」加上兩個網址。
-- **zeabur 網址比較慢**：前端的 3D 素材與音檔經過「東京閘道器 → 家裡的神奇網路裝置」，第一次載入比 GitHub Pages 的 CDN 慢，也吃家裡的上傳頻寬；之後瀏覽器會快取。
+- **zeabur 網址只當備用**：前端素材（約 2.5 MB）經過「東京閘道器 → 家裡的神奇網路裝置」，實測同時下載時整體只有約每秒 450 KB（閘道器已經用 gzip 壓縮）。2026-10-03 對 zeabur 網址跑多台裝置的 e2e：只有 1～2 台時通過，同時開 2～3 個全新瀏覽器時，素材下載把路塞住，登入等 API 請求超過 15 秒時限而失敗；同一批測試改用 GitHub Pages 前端則全部通過。所以平常用 GitHub Pages，只有學校網路擋 github.io 時才用 zeabur 網址，而且避免全班在同一刻打開；大量使用時會連帶拖慢共用閘道器的班級功能。真的要靠它，就要把伺服器搬到頻寬足夠的主機。
 - **重新部署伺服器＝也重新部署 zeabur 網址的前端**：重啟時線上的孩子會斷線一下（會自動重連）。GitHub Pages 那一份由 push main 自動部署。
 - **伺服器停機時**：GitHub Pages 網址照樣能單機玩（讀不到伺服器設定就不顯示班級功能），只是班級功能暫時用不了；zeabur 網址則整個打不開。
