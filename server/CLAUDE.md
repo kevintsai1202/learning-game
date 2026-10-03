@@ -65,4 +65,4 @@ docker rm -f li-pg-test
 - 紀錄：`npx zeabur@latest deployment log --service-id 6ac096ec3eaaf9d7d3e1def7 -t runtime -i=false`（建置紀錄用 `-t build`）。
 - 環境變數用 `variable env -f <檔案>` 設（會取代全部變數）：`variable create -k` 會把含逗號的值（`ALLOWED_ORIGINS`）與 `${POSTGRES_CONNECTION_STRING}` 引用切壞。
 - 網域只能在後台服務的 **Domains** 分頁綁：神奇網路伺服器上的服務要經由閘道器，CLI 的 `domain create` 會回 `WONDER_MESH_SERVER_REQUIRES_GATEWAY`，`domain list` 也查不到（顯示 No domains found），網域狀態只能在後台看。
-- 暫停、刪除或新增同專案的服務之後，一定要再查正式網址的 `/healthz`：2026-10-03 暫停 `class-server` 後，`island-server` 照常在跑，正式網址卻全部回 502，到 `island-server` 的 Domains 分頁重新綁定網域才恢復。
+- 暫停、刪除或新增同專案的服務之後，一定要再查正式網址的 `/healthz`：2026-10-03 暫停 `class-server` 後，`island-server` 照常在跑，正式網址卻全部回 502，在後台重新綁定網域後才恢復。
