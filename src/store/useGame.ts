@@ -16,6 +16,7 @@ import {
   createEmptySave,
   isValidSave,
   loadSave,
+  recordPuzzle,
   recordSession,
   removeProfile,
   replaceProfile,
@@ -27,6 +28,7 @@ import {
   type AvatarConfig,
   type CurriculumChoice,
   type Profile,
+  type PuzzlePlay,
   type SaveData,
   type Settings,
 } from './save';
@@ -71,9 +73,12 @@ interface GameStore {
   updateCurriculum: (profileId: string, curriculum: CurriculumChoice) => void;
   /** 紀錄一回合；回傳這一回合新得到的獎章 id（結算畫面慶祝用） */
   finishSession: (result: SessionResult) => string[];
+  /** 紀錄益智遊戲的一局；回傳這局拿到的金幣（每日上限之後是 0）與新得到的獎章 */
+  finishPuzzle: (play: PuzzlePlay) => { coins: number; newBadges: string[] };
   /** 選擇顯示的稱號（獎章 id；null 表示不顯示）；不能選時回傳 false */
   chooseTitle: (badgeId: string | null) => boolean;
-  tickPlayTime: (seconds: number) => void;
+  /** 累計遊玩時間；puzzle 表示在益智遊戲館（同時算進益智遊戲的每日時間） */
+  tickPlayTime: (seconds: number, puzzle?: boolean) => void;
   purchase: (itemId: string, price: number) => boolean;
   updateSettings: (patch: Partial<Settings>) => void;
   setParentPin: (pin: string) => void;
@@ -130,6 +135,14 @@ export const useGame = create<GameStore>((set, get) => {
       if (cloudAct(activeId(), { kind: 'session', result }) === null) commit(recordSession(get().save, activeId(), result, new Date()));
       return newlyEarned(before, get().profile()!);
     },
+    finishPuzzle: (play) => {
+      const before = get().profile()!;
+      // 雲端操作不帶金幣：套用端（本機與伺服器）依星數與今天已拿的益智金幣重算
+      const op: OpBody = { kind: 'puzzle', game: play.game, stars: play.stars, ...(play.answers ? { answers: play.answers } : {}) };
+      if (cloudAct(activeId(), op) === null) commit(recordPuzzle(get().save, activeId(), play, new Date()));
+      const after = get().profile()!;
+      return { coins: after.coins - before.coins, newBadges: newlyEarned(before, after) };
+    },
     chooseTitle: (badgeId) => {
       const cloud = cloudAct(activeId(), { kind: 'title', badge: badgeId });
       if (cloud !== null) return cloud;
@@ -140,9 +153,11 @@ export const useGame = create<GameStore>((set, get) => {
         return false;
       }
     },
-    tickPlayTime: (seconds) => {
+    tickPlayTime: (seconds, puzzle = false) => {
       if (!get().save.activeProfileId) return;
-      if (cloudAct(activeId(), { kind: 'playTime', seconds }) === null) commit(addPlayTime(get().save, activeId(), seconds, new Date()));
+      // 不在益智遊戲館時不帶 puzzle 欄位，操作格式和以前一樣
+      const op: OpBody = puzzle ? { kind: 'playTime', seconds, puzzle: true } : { kind: 'playTime', seconds };
+      if (cloudAct(activeId(), op) === null) commit(addPlayTime(get().save, activeId(), seconds, new Date(), puzzle));
     },
     purchase: (itemId, price) => {
       // 雲端角色的價格查目錄（和伺服器相同），不採用畫面傳來的價格

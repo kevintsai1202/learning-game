@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { moveByInput, nearestDoor, resolveCollisions, stepToward, lerpAngle } from '../../src/world/movement';
-import { ZONES, doorOf, WALK_RADIUS } from '../../src/world/layout';
+import { ZONES, doorOf, WALK_RADIUS, zoneName } from '../../src/world/layout';
+import type { ZoneId } from '../../src/store/useUi';
 
 describe('stepToward 走向目標點', () => {
   it('每一步最多走 speed × dt，不會走過頭', () => {
@@ -51,6 +52,28 @@ describe('nearestDoor 靠近門口', () => {
         expect(Math.hypot(d.x - other.x, d.z - other.z), `${z.id} 門口與 ${other.id}`).toBeGreaterThan(other.radius + 0.4);
       }
     }
+  });
+});
+
+describe('建築版面', () => {
+  it('建築彼此不重疊（中間至少留 1.5 公尺的路）', () => {
+    for (const a of ZONES) {
+      for (const b of ZONES) {
+        if (a.id >= b.id) continue;
+        expect(Math.hypot(a.x - b.x, a.z - b.z) - a.radius - b.radius, `${a.id} 與 ${b.id}`).toBeGreaterThan(1.5);
+      }
+    }
+  });
+
+  it('益智遊戲館在右前方，和左前方的百寶屋對稱', () => {
+    const puzzle = ZONES.find((z) => z.id === 'puzzle')!;
+    const shop = ZONES.find((z) => z.id === 'shop')!;
+    expect(puzzle).toMatchObject({ x: -shop.x, z: shop.z, rotY: -shop.rotY, name: '益智遊戲館' });
+  });
+
+  it('建築名稱：不認得的建築 id 不丟例外（同學的裝置版本比較新時會送來）', () => {
+    expect(zoneName('math')).toBe('數學城堡');
+    expect(zoneName('castle-of-future' as ZoneId)).toBe('別的地方');
   });
 });
 

@@ -9,7 +9,8 @@ import { usePacks } from '../../store/usePacks';
 import { ALL_ACTIVITIES } from '../../activities/registry';
 import { indicatorLabel, splitIndicatorKey } from '../../content/indicators';
 import { SOURCES } from '../../content/sources';
-import { dateKey, skillMastery, type Profile, type Settings } from '../../store/save';
+import { dateKey, puzzleToday, skillMastery, type Profile, type Settings } from '../../store/save';
+import { PUZZLE_DAILY_COIN_CAP } from '../../store/puzzle';
 import type { SpeakLang, SubjectId } from '../../core/types';
 import { starText } from './ZoneMenu';
 import { currentVoice, getVoicePref, listVoices, onlyBasicVoice, onVoicesChanged, previewVoice, setVoicePref } from '../../audio/speech';
@@ -21,6 +22,18 @@ import { getToken } from '../../online/storage';
 import { BADGES } from '../../store/badges';
 
 const SUBJECT_NAME: Record<SubjectId, string> = { zh: '國語', math: '數學', en: '英語', life: '生活與健康' };
+
+/** 學習報告裡的益智遊戲館：今天玩了幾分鐘（上限在設定分頁調）、拿了幾枚益智金幣 */
+function PuzzleReport({ profile }: { profile: Profile }) {
+  const limitMin = useGame((s) => s.save.settings.puzzleLimitMin);
+  const today = puzzleToday(profile, new Date());
+  return (
+    <p data-testid="report-puzzle">
+      🧩 益智遊戲館：今天玩了 {Math.round(today.seconds / 60)} 分鐘（每日上限 {limitMin === 0 ? '不另外限制' : `${limitMin} 分鐘`}，也算在每日遊玩時間裡）・ 今天拿到 {today.coins}／
+      {PUZZLE_DAILY_COIN_CAP} 枚益智金幣
+    </p>
+  );
+}
 
 /** 下載文字檔 */
 function download(filename: string, text: string): void {
@@ -129,6 +142,7 @@ function ReportTab({ profile }: { profile: Profile }) {
           </div>
         ))}
       </div>
+      <PuzzleReport profile={profile} />
       {bySubject.map(({ sub, acts }) =>
         acts.length ? (
           <div key={sub}>
@@ -320,6 +334,16 @@ function SettingsTab() {
           {[0, 20, 30, 45, 60, 90].map((m) => (
             <option key={m} value={m}>
               {m === 0 ? '不限制' : `${m} 分鐘`}
+            </option>
+          ))}
+        </select>,
+      )}
+      {row(
+        '益智遊戲館每日上限',
+        <select value={settings.puzzleLimitMin} onChange={(e) => update({ puzzleLimitMin: Number(e.target.value) })} style={{ fontSize: 18 }} data-testid="setting-puzzleLimitMin">
+          {[10, 15, 20, 30, 0].map((m) => (
+            <option key={m} value={m}>
+              {m === 0 ? '不另外限制' : `${m} 分鐘`}
             </option>
           ))}
         </select>,

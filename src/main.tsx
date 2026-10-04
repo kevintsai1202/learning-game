@@ -15,6 +15,7 @@ import { usePresence } from './online/usePresence';
 import { startPresenceDemo } from './online/presenceDemo';
 import { useRealtime } from './online/realtimeClient';
 import { useGifts } from './online/useGifts';
+import { puzzleDebug } from './puzzle/debug';
 import './styles/global.css';
 
 declare global {
@@ -38,6 +39,8 @@ declare global {
       realtime: typeof useRealtime;
       /** 禮物狀態（待收下、送禮結果、送禮視窗） */
       gifts: typeof useGifts;
+      /** 益智遊戲館：機器人的速度、目前遊戲的狀態 */
+      puzzle: typeof puzzleDebug;
     };
   }
 }
@@ -55,6 +58,7 @@ window.__game = {
   presenceDemo: startPresenceDemo,
   realtime: useRealtime,
   gifts: useGifts,
+  puzzle: puzzleDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

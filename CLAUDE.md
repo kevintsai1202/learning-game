@@ -16,6 +16,7 @@ npm run dev          # 開發伺服器
 npm test             # 單元測試
 npm run build        # 型別檢查 + 建置到 dist/
 npx playwright test  # e2e（需先 build；班級伺服器由 playwright 自動打包啟動）
+npx vitest run --config vitest.puzzle.config.ts --silent=false   # 七巧板剪影設計工具：預覽題庫的擺法、給外框讓解題器找擺法
 npm run server:build; npm run server:start   # 本機啟動班級伺服器（port 8787，PGlite 記憶體資料庫）
 # 部署：合併到 main 並 push → GitHub Pages 與 Zeabur（班級伺服器＋同一份前端）都會自動部署；步驟與注意事項見 docs/deploy-zeabur.md
 $env:E2E_SERVER_URL = 'https://learning-island.zeabur.app'; npx playwright test --config playwright.remote.config.ts e2e/realtime.spec.ts --grep-invert Google   # 對外部伺服器跑線上 e2e（再設 BASE_URL 就連前端也用外部的）
@@ -37,8 +38,9 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - `src/quiz/` 答題流程（`session.ts` 狀態機）、作答元件、題目附圖
 - `src/writing/` 筆順描寫（Hanzi Writer、注音與字母的中心線字形）
 - `src/world/` 3D 島嶼與舞台（R3F）；`src/ui/` DOM 介面
-- `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、商品目錄（`catalog.ts`）、禮物目錄（`gifts.ts`）、自訂題庫、畫面狀態
+- `src/store/` 存檔（`save.ts` 純函式 + `useGame` store）、商品目錄（`catalog.ts`）、禮物目錄（`gifts.ts`）、益智遊戲的金幣與時間規則（`puzzle.ts`，伺服器共用）、自訂題庫、畫面狀態
 - `src/online/` 線上版前端：操作套用（`ops.ts`，伺服器共用）、同步佇列（`sync.ts`）、同步迴圈、送禮與家長雲端角色的 API（`cloudSync.ts`）、狀態與排程（`useCloud.ts`）、即時連線（`realtimeClient.ts`）、禮物狀態（`useGifts.ts`）、大人帳號的登入狀態（`useAccount.ts`）、信裡驗證與重設連結的網址參數（`emailLinks.ts`）與帳號規則（`userRules.ts`，伺服器共用；`docs/plans/accounts.md`）
+- `src/puzzle/` 益智遊戲館的畫面（選單與結算 `PuzzleScreen.tsx`、五個遊戲、和機器人搶答的共用流程 `useDuel.ts`）；`src/engine/puzzle/` 益智遊戲的規則（出題、判定、機器人，純函式）。規格見 `docs/plans/puzzle-house.md`
 - `server/` 班級伺服器（另有 `server/CLAUDE.md`）；規格與分期在 `docs/plans/online.md`；部署在 Zeabur（`docs/deploy-zeabur.md`），正式網址 GitHub Pages 與 `learning-island.zeabur.app`
 - `src/content/` 題庫格式（zod）、課綱代碼對照、資料來源清單
 - `public/data/strokes/` 國字筆順資料（腳本產生）；`public/licenses/` 授權全文
@@ -51,5 +53,5 @@ node scripts/voice/adopt.mjs "zh-TW|雨靴" 2                    # 把核可的�
 - 要朗讀的固定句子放 `src/ui/lines.ts`，題目的朗讀文字一律經過 `src/quiz/spoken.ts`；預錄語音的盤點腳本靠這兩處收集句子。
 - 每題要有 `indicators`（108 課綱代碼）與 `source`。
 - `public/google794a0ce8bfe02629.html` 是 Google Search Console 的網域驗證檔（OAuth 品牌驗證要用），不能刪也不能改；`kevintsai1202.github.io` 儲存庫根目錄的同名檔案也一樣。
-- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud、presence、realtime、presenceDemo、gifts）讀狀態與自動作答。多台裝置的測試用 `e2e/onlineDevice.ts` 開啟（3D 畫質設成低，否則軟體 WebGL 會把 CPU 吃滿）。e2e 的伺服器開著測試信箱（`TEST_MAIL_OUTBOX`），驗證與重設連結用 `onlineDevice.ts` 的 `mailsTo`／`linkIn` 讀。裝置紀錄出現 `net::ERR_NETWORK_CHANGED` 時，是開發機的網路變動（Wi-Fi 斷線、漫遊）讓 Chrome 中斷了請求，連 localhost 也一樣：先查 Windows 事件記錄（`Microsoft-Windows-NetworkProfile/Operational` 的 10000／10001、System 的 `Netwtw14`）對時間，單獨重跑該測試。
+- e2e：`workers: 1`、SwiftShader 參數已設好；用 `window.__game`（ui、game、player、teleport、quiz、cloud、presence、realtime、presenceDemo、gifts、puzzle）讀狀態與自動作答；益智遊戲的機器人速度用 `__game.puzzle.botDelayFactor` 調。多台裝置的測試用 `e2e/onlineDevice.ts` 開啟（3D 畫質設成低，否則軟體 WebGL 會把 CPU 吃滿）。e2e 的伺服器開著測試信箱（`TEST_MAIL_OUTBOX`），驗證與重設連結用 `onlineDevice.ts` 的 `mailsTo`／`linkIn` 讀。裝置紀錄出現 `net::ERR_NETWORK_CHANGED` 時，是開發機的網路變動（Wi-Fi 斷線、漫遊）讓 Chrome 中斷了請求，連 localhost 也一樣：先查 Windows 事件記錄（`Microsoft-Windows-NetworkProfile/Operational` 的 10000／10001、System 的 `Netwtw14`）對時間，單獨重跑該測試。
 - 雲端角色的存檔只能透過「操作」改變（`src/online/ops.ts`），伺服器用同一份規則套用；`src/` 裡給伺服器 import 的模組不能 import 畫面、音訊、3D 的程式。

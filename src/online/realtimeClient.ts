@@ -58,7 +58,11 @@ export function wsUrlOf(server: string): string {
   return `${server.replace(/\/+$/, '').replace(/^http/, 'ws')}/ws`;
 }
 
-/** 依目前畫面判斷在哪棟建築裡（建築選單、答題、結算、百寶屋）；其他畫面算在島上 */
+/**
+ * 依目前畫面判斷在哪棟建築裡（建築選單、答題、結算、百寶屋）；其他畫面算在島上。
+ * 益智遊戲館（screen 'puzzle'）第一批不回報：已經開著的舊版網頁收到不認得的建築，
+ * 會在畫同學位置時丟出例外而整個畫面當掉；舊版伺服器也會因為格式不符而斷線。第二批做線上對局時再加進 ZONE_IDS。
+ */
 export function zoneOfScreen(screen: Screen, zone: ZoneId | null): ZoneId | null {
   return screen === 'zone' || screen === 'activity' || screen === 'result' || screen === 'shop' ? zone : null;
 }

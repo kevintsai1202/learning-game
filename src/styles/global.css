@@ -2067,3 +2067,348 @@ button {
   }
 }
 
+
+/* ---------- 益智遊戲館 ---------- */
+/* 選單標題列的小標籤（今天還能玩多久、今天的益智金幣） */
+.puzzle-chip {
+  font-size: 16px;
+  margin-left: 8px;
+  padding: 2px 12px;
+}
+.puzzle-time-up {
+  font-size: 22px;
+  font-weight: 800;
+  background: #fff2c6;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 8px 14px;
+  margin: 4px 0 14px;
+}
+.activity-card .puzzle-modes {
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.puzzle-mode-title {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 16px 0 6px;
+}
+/* 遊戲畫面：置中的大卡片（島嶼在背景） */
+.puzzle-play {
+  width: min(920px, 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 18px 16px;
+}
+.puzzle-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.puzzle-head .grow {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.puzzle-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 2px 4px;
+}
+.puzzle-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.puzzle-play > .feedback {
+  align-self: center;
+  margin-top: 10px;
+}
+/* 和機器人比賽的比分 */
+.scoreboard {
+  font-size: 24px;
+  font-weight: 900;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 2px 16px 4px;
+}
+.duel-status {
+  min-height: 52px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  text-align: center;
+}
+.bot-thinking {
+  font-size: 20px;
+  color: var(--ink-soft);
+  animation: bot-think 1.2s ease-in-out infinite;
+}
+@keyframes bot-think {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .puzzle-play {
+    padding: 8px 10px 10px;
+  }
+  .scoreboard {
+    font-size: 19px;
+  }
+  .puzzle-chip {
+    display: inline-block;
+    margin: 4px 6px 0 0;
+  }
+}
+
+/* 記憶翻牌：卡片翻面（--cols 由元件依張數設定） */
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin: 8px auto 0;
+}
+.memory-card {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border: none;
+  padding: 0;
+  background: none;
+  perspective: 700px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.memory-card:disabled {
+  cursor: default;
+}
+.memory-card .inner {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.35s;
+  transform-style: preserve-3d;
+}
+.memory-card.up .inner {
+  transform: rotateY(180deg);
+}
+.memory-card .side {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+.memory-card .back {
+  background: repeating-linear-gradient(45deg, #2f6fde 0 10px, #4f86ec 10px 20px);
+  font-size: clamp(22px, 4vw, 34px);
+}
+.memory-card .front {
+  background: #fff;
+  transform: rotateY(180deg);
+  font-weight: 800;
+  font-size: clamp(15px, 2.6vw, 26px);
+  line-height: 1.25;
+  padding: 4px;
+  text-align: center;
+}
+.memory-card .front .emoji {
+  font-size: clamp(28px, 5.5vw, 52px);
+  line-height: 1.1;
+}
+.memory-card .front .en {
+  font-family: var(--font-en, inherit);
+}
+.memory-card.kid .front {
+  background: #d8f7e6;
+}
+.memory-card.bot .front {
+  background: #e9e0ff;
+}
+.memory-card .who {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 15px;
+}
+.memory-turn.kid {
+  background: #d8f7e6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .memory-card .inner {
+    transition: none;
+  }
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .memory-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+}
+
+/* 找不同：左右兩張風景（直式畫面上下排） */
+.spot-hint {
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+  margin: 6px 0 8px;
+}
+.spot-scenes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  /* 寬螢幕上兩張圖的高度不超過畫面（4:3 的圖，留給標題列與說明） */
+  width: min(100%, calc((100dvh - 210px) * 2.7));
+  margin: 0 auto;
+}
+.spot-scene {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: #d8f3ff;
+  touch-action: manipulation;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.spot-found circle {
+  animation: pop-in 0.3s ease both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.spot-miss {
+  animation: wiggle 0.45s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+.spot-hurry {
+  background: #ffe0e6;
+  animation: wiggle 0.8s ease infinite;
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .spot-scenes {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(100%, calc((100dvh - 230px) * 0.66));
+    gap: 8px;
+  }
+  .spot-hint {
+    font-size: 16px;
+    margin: 4px 0 6px;
+  }
+}
+
+/* 積木大師：等角投影的積木堆 */
+.blocks-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.blocks-view svg {
+  width: min(360px, 80vw);
+  max-height: 34vh;
+}
+.blocks-sum {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  background: #fff2c6;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  padding: 2px 14px 4px;
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .blocks-view svg {
+    max-height: 28vh;
+  }
+}
+
+/* 七巧板：盤面（左邊或上面是剪影框，另一邊是收納區） */
+.tangram-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+.tangram-tip {
+  font-size: 16px;
+  color: var(--ink-soft);
+}
+.tangram-board {
+  width: 100%;
+  max-height: calc(100dvh - 200px);
+  /* 橫放手機高度不夠：盤面至少 260px 高，卡片捲動 */
+  min-height: 260px;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tangram-frame {
+  fill: #fff8e6;
+  stroke: #e8dcc0;
+  stroke-width: 0.06;
+}
+.tangram-silhouette polygon {
+  fill: #3b3a5e;
+  stroke: #3b3a5e;
+  stroke-width: 0.05;
+  stroke-linejoin: round;
+}
+.tangram-lines polygon {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.16 0.12;
+}
+.tangram-hint {
+  fill: rgba(255, 255, 255, 0.25);
+  stroke-width: 0.12;
+  stroke-dasharray: 0.25 0.15;
+  animation: bot-think 0.9s ease-in-out infinite;
+  pointer-events: none;
+}
+.tangram-piece {
+  stroke: #ffffff;
+  stroke-width: 0.07;
+  stroke-linejoin: round;
+  cursor: grab;
+}
+.tangram-piece.selected {
+  stroke: #2b2a4c;
+  stroke-width: 0.11;
+}
+.tangram-piece.placed {
+  cursor: move;
+}
+.tangram-bot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 22px;
+}
+.tangram-bot svg {
+  width: 70px;
+  height: 70px;
+}

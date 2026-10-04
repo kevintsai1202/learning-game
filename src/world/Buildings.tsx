@@ -1,5 +1,5 @@
 /**
- * 島上的六棟建築：數學城堡、文字森林、ABC 海灘、生活村、挑戰塔、百寶屋。
+ * 島上的七棟建築：數學城堡、文字森林、ABC 海灘、生活村、挑戰塔、百寶屋、益智遊戲館。
  * 每棟都以原點為中心、正面朝 +z，由 IslandScene 依 layout 擺放與旋轉。
  */
 import { useRef } from 'react';
@@ -464,6 +464,103 @@ export function TreasureShop() {
   );
 }
 
+/**
+ * 拼圖片的輪廓（以中心為原點，w、h 是不含凸塊的大小）：右邊與上面各有一個圓凸塊。
+ * 凸塊的圓心在邊外 0.6r，和邊交在 ±0.8r 的地方（3-4-5 直角三角形），路徑才會接得剛好。
+ */
+function jigsawShape(w: number, h: number): THREE.Shape {
+  const r = Math.min(w, h) * 0.2;
+  const [x0, x1, y0, y1] = [-w / 2, w / 2, -h / 2, h / 2];
+  const a = Math.acos(0.6);
+  const s = new THREE.Shape();
+  s.moveTo(x0, y0);
+  s.lineTo(x1, y0);
+  s.lineTo(x1, -0.8 * r);
+  s.absarc(x1 + 0.6 * r, 0, r, Math.PI + a, Math.PI - a, false);
+  s.lineTo(x1, y1);
+  s.lineTo(0.8 * r, y1);
+  s.absarc(0, y1 + 0.6 * r, r, -(Math.PI / 2 - a), Math.PI + (Math.PI / 2 - a), false);
+  s.lineTo(x0, y1);
+  s.closePath();
+  return s;
+}
+
+/** 屋頂的拼圖片與頂上的大拼圖（模組層級只建一次） */
+const ROOF_PIECE = jigsawShape(1.45, 1.15);
+const BIG_PIECE = jigsawShape(1.1, 1.1);
+const PIECE_EXTRUDE = { depth: 0.2, bevelEnabled: true, bevelThickness: 0.05, bevelSize: 0.05, bevelSegments: 2 };
+
+/** 頂上慢慢轉的大拼圖 */
+function SpinningPiece({ y }: { y: number }) {
+  const piece = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (!piece.current) return;
+    piece.current.rotation.y = state.clock.elapsedTime * 0.9;
+    piece.current.position.y = y + Math.sin(state.clock.elapsedTime * 1.6) * 0.15;
+  });
+  return (
+    <mesh ref={piece} material={toon('#ffc93c')} position={[0, y, 0]} castShadow userData={{ dynamic: true }}>
+      <extrudeGeometry args={[BIG_PIECE, PIECE_EXTRUDE]} />
+    </mesh>
+  );
+}
+
+/** 益智遊戲館：積木堆成的小屋、四片拼圖拼成的屋頂、頂上會轉的大拼圖，門口旁有積木 */
+export function PuzzleHouse() {
+  const colors = ['#ff6b4a', '#2f6fde', '#ffc93c', '#3fbf7f'];
+  return (
+    <group>
+      <mesh material={toon('#e8f0ff')} position={[0, 1.15, 0]} castShadow receiveShadow>
+        <boxGeometry args={[3.2, 2.3, 2.6]} />
+      </mesh>
+      {/* 前面兩根積木柱：三塊不同顏色疊起來 */}
+      {[-1, 1].map((side) =>
+        [0, 1, 2].map((i) => (
+          <mesh key={`${side}${i}`} material={toon(colors[(i + (side > 0 ? 1 : 0)) % 4])} position={[side * 1.62, 0.38 + i * 0.76, 1.32]} castShadow>
+            <boxGeometry args={[0.7, 0.72, 0.7]} />
+          </mesh>
+        )),
+      )}
+      {/* 屋頂：2×2 片拼圖，稍微往前傾讓鏡頭看得到（前緣要高過牆頂 2.3） */}
+      <group position={[0, 2.6, 0]} rotation={[-Math.PI / 2 + 0.18, 0, 0]}>
+        {[
+          [-0.78, -0.62],
+          [0.78, -0.62],
+          [-0.78, 0.62],
+          [0.78, 0.62],
+        ].map(([x, y], i) => (
+          <mesh key={i} material={toon(colors[i])} position={[x, y, 0]} castShadow>
+            <extrudeGeometry args={[ROOF_PIECE, PIECE_EXTRUDE]} />
+          </mesh>
+        ))}
+      </group>
+      <SpinningPiece y={4.1} />
+      <Door z={1.32} w={1.0} h={1.5} color="#1f4fa8" />
+      {/* 圓形與三角形的窗 */}
+      <mesh material={toon('#ffe9a8')} position={[-0.95, 1.55, 1.31]} rotation={[Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.3, 0.3, 0.06, 20]} />
+      </mesh>
+      {/* 三角窗：三邊的圓柱轉 −90 度，尖角朝上 */}
+      <mesh material={toon('#ffe9a8')} position={[0.95, 1.5, 1.31]} rotation={[-Math.PI / 2, 0, 0]}>
+        <cylinderGeometry args={[0.36, 0.36, 0.06, 3]} />
+      </mesh>
+      {/* 門口旁的積木：方塊、圓柱、三角錐 */}
+      <group position={[-2.3, 0, 1.5]} rotation={[0, -0.3, 0]}>
+        <mesh material={toon('#ff6b4a')} position={[0, 0.3, 0]} castShadow>
+          <boxGeometry args={[0.6, 0.6, 0.6]} />
+        </mesh>
+        <mesh material={toon('#3fbf7f')} position={[0.75, 0.3, 0.1]} castShadow>
+          <cylinderGeometry args={[0.28, 0.28, 0.6, 16]} />
+        </mesh>
+        <mesh material={toon('#2f6fde')} position={[0, 0.85, 0]} castShadow>
+          <coneGeometry args={[0.36, 0.5, 4]} />
+        </mesh>
+      </group>
+      <Signboard text="益智遊戲館" color="#2f6fde" position={[2.3, 0, 2.2]} />
+    </group>
+  );
+}
+
 /** 依區域 id 取得建築元件 */
 export const BUILDINGS: Record<ZoneId, () => React.JSX.Element> = {
   math: MathCastle,
@@ -472,4 +569,5 @@ export const BUILDINGS: Record<ZoneId, () => React.JSX.Element> = {
   life: LifeVillage,
   tower: ChallengeTower,
   shop: TreasureShop,
+  puzzle: PuzzleHouse,
 };

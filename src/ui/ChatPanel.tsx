@@ -9,7 +9,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { usePresence } from '../online/usePresence';
 import { sayPhrase, useRealtime } from '../online/realtimeClient';
 import { useGifts } from '../online/useGifts';
-import { zoneById } from '../world/layout';
+import { zoneName } from '../world/layout';
 import { CHAT_PHRASES, type ChatGroup } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
@@ -63,7 +63,7 @@ export function ChatPanel() {
       </ul>
       {inside.length > 0 && (
         <div className="chat-inside" data-testid="chat-inside">
-          {inside.map((m) => `${m.nickname}在${zoneById(m.zone!).name}`).join('・')}
+          {inside.map((m) => `${m.nickname}在${zoneName(m.zone!)}`).join('・')}
         </div>
       )}
       {notice && (

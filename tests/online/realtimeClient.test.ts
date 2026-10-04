@@ -57,6 +57,10 @@ describe('連線網址與所在建築', () => {
     expect(zoneOfScreen('island', null)).toBeNull();
     expect(zoneOfScreen('badges', 'math')).toBeNull();
   });
+
+  it('益智遊戲館第一批不回報給即時連線（舊版網頁不認得這棟建築會當掉；第二批做線上對局時再加）', () => {
+    expect(zoneOfScreen('puzzle', 'puzzle')).toBeNull();
+  });
 });
 
 describe('被踢線之後的封鎖（同一個帳號、同一個班級、同一張權杖不自動重連）', () => {

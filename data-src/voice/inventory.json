@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 336,
-  "全部": 3419,
-  "zh": 1798,
+  "介面": 359,
+  "全部": 3442,
+  "zh": 1821,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34650,
+ "chars": 34853,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -16630,6 +16630,15 @@
    ]
   },
   {
+   "key": "zh-TW|七巧板",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "七巧板",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|人行道",
    "lang": "zh-TW",
    "voice": "zh",
@@ -17270,6 +17279,24 @@
    "text": "今天玩很久囉！",
    "sources": [
     "ui:rest"
+   ]
+  },
+  {
+   "key": "zh-TW|今天的益智遊戲金幣拿滿了，明天再來拿喔！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "今天的益智遊戲金幣拿滿了，明天再來拿喔！",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
+   "key": "zh-TW|今天的益智遊戲時間用完了，去其他建築挑戰吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "今天的益智遊戲時間用完了，去其他建築挑戰吧！",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -17985,6 +18012,15 @@
    "sources": [
     "life.community",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|平手！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "平手！",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -26976,6 +27012,15 @@
    ]
   },
   {
+   "key": "zh-TW|再來一局吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "再來一局吧！",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|再看左右有沒有車",
    "lang": "zh-TW",
    "voice": "zh",
@@ -26992,6 +27037,15 @@
    "text": "再想想看！",
    "sources": [
     "ui:retry"
+   ]
+  },
+  {
+   "key": "zh-TW|再試一次吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "再試一次吧！",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -27436,7 +27490,8 @@
    "voice": "zh",
    "text": "好厲害！",
    "sources": [
-    "ui:chat"
+    "ui:chat",
+    "ui:puzzle"
    ]
   },
   {
@@ -27828,6 +27883,15 @@
    ]
   },
   {
+   "key": "zh-TW|你贏了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "你贏了！",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|冷氣",
    "lang": "zh-TW",
    "voice": "zh",
@@ -28068,6 +28132,15 @@
    ]
   },
   {
+   "key": "zh-TW|找不同",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "找不同",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|找不到垃圾桶時，可以先把垃圾帶回家再丟。",
    "lang": "zh-TW",
    "voice": "zh",
@@ -28075,6 +28148,15 @@
    "sources": [
     "life.environment",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|找出兩張圖不一樣的地方！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "找出兩張圖不一樣的地方！",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -28094,6 +28176,15 @@
    "sources": [
     "life.season",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|把七塊板子拖進剪影裡，拼出圖案！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "把七塊板子拖進剪影裡，拼出圖案！",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -29226,6 +29317,15 @@
    ]
   },
   {
+   "key": "zh-TW|看不到的也要算喔！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "看不到的也要算喔！",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|看到下面哪個人的做法是對的？",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29263,6 +29363,15 @@
    "sources": [
     "life.emotion",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|看看每一疊有幾個，再加起來。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "看看每一疊有幾個，再加起來。",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -29536,6 +29645,15 @@
    ]
   },
   {
+   "key": "zh-TW|差一點點！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "差一點點！",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|拿手機拍照",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29605,6 +29723,24 @@
    ]
   },
   {
+   "key": "zh-TW|益智搶答",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "益智搶答",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
+   "key": "zh-TW|益智遊戲館！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "益智遊戲館！",
+   "sources": [
+    "ui:zone"
+   ]
+  },
+  {
    "key": "zh-TW|真好，恭喜你",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29671,6 +29807,15 @@
    "text": "紙箱要丟到哪一個桶子？",
    "sources": [
     "life.recycle3d"
+   ]
+  },
+  {
+   "key": "zh-TW|記憶翻牌",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "記憶翻牌",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -29809,6 +29954,15 @@
    "text": "動物與植物",
    "sources": [
     "ui:menu"
+   ]
+  },
+  {
+   "key": "zh-TW|動動腦，和機器人比一比。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "動動腦，和機器人比一比。",
+   "sources": [
+    "ui:zone"
    ]
   },
   {
@@ -31480,6 +31634,15 @@
    ]
   },
   {
+   "key": "zh-TW|都答錯了，看看正確答案。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "都答錯了，看看正確答案。",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|閉上眼睛走",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32920,6 +33083,15 @@
    ]
   },
   {
+   "key": "zh-TW|數數看，共有幾個積木？",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "數數看，共有幾個積木？",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|數學小達人",
    "lang": "zh-TW",
    "voice": "zh",
@@ -33154,6 +33326,15 @@
    ]
   },
   {
+   "key": "zh-TW|輪到你翻牌了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "輪到你翻牌了！",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|輪流玩",
    "lang": "zh-TW",
    "voice": "zh",
@@ -33282,12 +33463,30 @@
    ]
   },
   {
+   "key": "zh-TW|機器人搶先答對了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "機器人搶先答對了！",
+   "sources": [
+    "ui:puzzle"
+   ]
+  },
+  {
    "key": "zh-TW|獨角獸貼紙",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "獨角獸貼紙",
    "sources": [
     "ui:gift"
+   ]
+  },
+  {
+   "key": "zh-TW|積木大師",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "積木大師",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {
@@ -33462,6 +33661,15 @@
    "sources": [
     "life.nature",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|點一下板子可以轉方向。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "點一下板子可以轉方向。",
+   "sources": [
+    "ui:puzzle"
    ]
   },
   {

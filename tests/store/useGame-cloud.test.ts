@@ -97,3 +97,44 @@ describe('useGame：雲端角色', () => {
     expect(recorded).toEqual([{ accountId: 'a_1', op: expect.objectContaining({ kind: 'curriculum' }) }]);
   });
 });
+
+describe('useGame：益智遊戲館', () => {
+  const quizAnswers = [{ question: q('p'), correct: false, firstTry: false }];
+
+  it('本機角色：玩完一局拿到金幣，回傳這局的金幣；不記錄雲端操作', () => {
+    makeKid(false, 0);
+    expect(useGame.getState().finishPuzzle({ game: 'memory', stars: 3 })).toEqual({ coins: 5, newBadges: [] });
+    expect(useGame.getState().profile()!.coins).toBe(5);
+    expect(recorded).toEqual([]);
+  });
+
+  it('今天的益智金幣拿滿了：這局 0 枚', () => {
+    makeKid(false, 0);
+    for (let i = 0; i < 4; i++) useGame.getState().finishPuzzle({ game: 'quiz', stars: 3 });
+    expect(useGame.getState().finishPuzzle({ game: 'quiz', stars: 3 })).toEqual({ coins: 0, newBadges: [] });
+    expect(useGame.getState().profile()!.coins).toBe(20);
+  });
+
+  it('雲端角色：記錄一筆 puzzle 操作（不帶金幣，由伺服器算），本機照同樣規則更新', () => {
+    makeKid(true, 0);
+    const r = useGame.getState().finishPuzzle({ game: 'quiz', stars: 2, answers: quizAnswers });
+    expect(r.coins).toBe(3);
+    const p = useGame.getState().profile()!;
+    expect(p.coins).toBe(3);
+    expect(Object.keys(p.wrongBook)).toEqual(['p']);
+    expect(recorded).toHaveLength(1);
+    expect(recorded[0].op).toMatchObject({ kind: 'puzzle', game: 'quiz', stars: 2, answers: quizAnswers });
+    expect(recorded[0].op).not.toHaveProperty('coins');
+  });
+
+  it('在益智遊戲館的遊玩時間帶 puzzle 旗標；其他地方的操作格式和以前一樣（沒有這個欄位）', () => {
+    makeKid(true);
+    useGame.getState().tickPlayTime(30, true);
+    useGame.getState().tickPlayTime(30);
+    expect(recorded[0].op).toMatchObject({ kind: 'playTime', seconds: 30, puzzle: true });
+    expect(recorded[1].op).not.toHaveProperty('puzzle');
+    const p = useGame.getState().profile()!;
+    expect(Object.values(p.playLog)).toEqual([60]);
+    expect(Object.values(p.puzzle!.days)).toEqual([{ seconds: 30, coins: 0 }]);
+  });
+});
