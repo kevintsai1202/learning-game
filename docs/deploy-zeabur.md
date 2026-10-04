@@ -89,6 +89,14 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
 
 ## 8. 清掉測試資料
 
+先看正式資料庫有什麼（唯讀交易，不會改任何東西；只印筆數、班級代碼與名稱，不印孩子的暱稱與 email）：
+
+```powershell
+.\scripts\deploy\inspect-prod-data.ps1
+```
+
+這兩支腳本都經由 `scripts/deploy/Invoke-ServerNode.ps1` 在班級伺服器的容器裡執行 Node 腳本：先 gzip 再 base64 送過去（Windows 上 `npx` 經過 `cmd.exe`，命令列上限 8191 字元，直接 base64 會超過）。
+
 對正式伺服器跑過 e2e 之後，用腳本清掉測試資料。A5 上線（資料表升級）之後：挑 e2e 的大人帳號（帳號名稱 `e2e_` 開頭、email `帳號名稱@example.com`、密碼 `teach1234`，三個都符合才算），連同它的班級、班上與名下的角色一起刪；改版前用管理密碼 `teach123` 建的測試房間也一起清。真正的資料不會動；測試班級裡有別人家長名下的角色時整個拒絕。A5 上線前（資料表還是改版前的版本）新版腳本會拒絕執行，舊的測試房間請用 main 分支的舊版腳本清。
 
 ```powershell
