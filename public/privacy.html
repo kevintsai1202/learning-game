@@ -147,7 +147,7 @@
         </svg>
         <div>
           <h1>知識島大冒險 隱私權政策</h1>
-          <p class="updated">最後更新：2026 年 10 月 3 日</p>
+          <p class="updated">最後更新：2026 年 10 月 4 日</p>
         </div>
       </header>
       <p class="lang"><a href="#english">English version below</a></p>
@@ -160,7 +160,7 @@
       </p>
 
       <h2>1. 適用範圍與營運者</h2>
-      <p>本政策適用於「知識島大冒險」的網站、遊戲與班級伺服器。本服務由個人開發者（GitHub 帳號 kevintsai1202）開發與維運，以下稱「我們」。遊戲免費，不需要註冊也可以單機遊玩；加入班級與 Google 帳號登入都是選用功能。</p>
+      <p>本政策適用於「知識島大冒險」的網站、遊戲與班級伺服器。本服務由個人開發者（GitHub 帳號 kevintsai1202）開發與維運，以下稱「我們」。遊戲免費，不需要註冊也可以單機遊玩；家長與老師的帳號、加入班級、Google 帳號登入都是選用功能。帳號是給家長與老師使用的；孩子用老師給的班級代碼加入班級，不需要註冊。</p>
 
       <h2>2. 我們收集的資料</h2>
       <div class="table-wrap">
@@ -181,28 +181,46 @@
               <td>直到清除瀏覽器的網站資料</td>
             </tr>
             <tr>
-              <td>孩子的班級帳號：暱稱、4 位數密碼（只存雜湊值）、學習進度與收藏、加入時間與最後上線時間</td>
-              <td>孩子加入班級時，以及之後每次存檔</td>
+              <td>家長與老師的帳號：帳號名稱、電子郵件地址（必填，用來驗證與重設密碼）、電子郵件是否驗證過、密碼（只存雜湊值）、身分（家長／老師）、建立時間與最後登入時間</td>
+              <td>註冊或修改帳號設定時</td>
               <td>班級伺服器的資料庫</td>
-              <td>帳號存在期間；老師移出成員時刪除</td>
+              <td>帳號存在期間；在帳號設定刪除帳號時刪除</td>
             </tr>
             <tr>
-              <td>老師的房間：房間名稱、管理密碼（只存雜湊值）、班級功能的開關設定</td>
-              <td>老師建立房間時</td>
+              <td>驗證信與重設密碼信裡的連結（伺服器只存雜湊值）與寄出時間</td>
+              <td>註冊、更換電子郵件、重寄驗證信、申請重設密碼時</td>
               <td>班級伺服器的資料庫</td>
-              <td>房間存在期間</td>
+              <td>驗證連結 24 小時、重設連結 30 分鐘後失效，而且只能用一次；刪除帳號時一併刪除</td>
+            </tr>
+            <tr>
+              <td>家長名下的雲端角色：角色名字、外觀、學習進度與收藏、最後上線時間（不加入班級也可以存）</td>
+              <td>家長在帳號頁把角色「存到雲端」時，以及之後每次存檔</td>
+              <td>班級伺服器的資料庫</td>
+              <td>家長刪除這個角色或刪除自己的帳號時刪除</td>
+            </tr>
+            <tr>
+              <td>孩子在班級裡的資料：班上的暱稱、4 位數密碼（只存雜湊值）、學習進度與收藏、加入時間與最後上線時間</td>
+              <td>孩子用班級代碼加入班級時，以及之後每次存檔</td>
+              <td>班級伺服器的資料庫</td>
+              <td>老師移出時：沒有家長帳號的角色刪除；家長名下的角色只退出班級，進度留在家長帳號</td>
+            </tr>
+            <tr>
+              <td>班級：班級名稱、建立班級的老師帳號、加入、聊天與送禮功能的開關</td>
+              <td>老師建立班級時</td>
+              <td>班級伺服器的資料庫</td>
+              <td>班級存在期間</td>
             </tr>
             <tr>
               <td>登入權杖（伺服器只存雜湊值）</td>
               <td>每次登入時</td>
               <td>班級伺服器的資料庫；這台裝置的瀏覽器</td>
-              <td>最長 180 天；登出、重設密碼或移出成員時刪除</td>
+              <td>最長 180 天；登出、改密碼（其他裝置）、重設密碼（所有裝置）、移出成員或刪除帳號時刪除</td>
             </tr>
             <tr>
               <td>禮物紀錄：送禮人與收禮人的暱稱、禮物、時間、狀態</td>
               <td>送禮物時</td>
               <td>班級伺服器的資料庫</td>
-              <td>房間存在期間（7 天沒收下的禮物會自動退回）</td>
+              <td>班級存在期間（7 天沒收下的禮物會自動退回；退出班級時，還沒收下的禮物也會退回）</td>
             </tr>
             <tr>
               <td>存檔同步的操作編號（避免同一筆變更套用兩次）</td>
@@ -218,47 +236,49 @@
             </tr>
             <tr>
               <td>Google 帳號識別碼、電子郵件地址、綁定時間（見第 4 節）</td>
-              <td>家長或老師綁定 Google 帳號時</td>
+              <td>家長或老師用 Google 註冊，或在帳號設定綁定 Google 帳號時</td>
               <td>班級伺服器的資料庫</td>
-              <td>解除綁定、移出成員或刪除房間時刪除</td>
+              <td>解除綁定或刪除帳號時刪除</td>
             </tr>
             <tr>
               <td>連線的 IP 位址</td>
-              <td>建立房間、加入班級、登入時</td>
+              <td>註冊、登入、加入班級、驗證電子郵件與重設密碼的請求</td>
               <td>伺服器的記憶體，不寫入資料庫</td>
               <td>只用來限制短時間內的大量請求；伺服器重新啟動就清除</td>
             </tr>
           </tbody>
         </table>
       </div>
-      <p>我們不收集孩子的真實姓名、生日、照片、聯絡方式或所在位置。遊戲不使用麥克風或相機，也不錄音；語音朗讀使用預錄的音檔或裝置內建的語音功能。</p>
+      <p>我們不收集孩子的真實姓名、生日、照片、聯絡方式或所在位置；電子郵件地址只向家長與老師收集。遊戲不使用麥克風或相機，也不錄音；語音朗讀使用預錄的音檔或裝置內建的語音功能。</p>
 
       <h2>3. 資料的用途</h2>
       <ul>
-        <li>保存與同步學習進度，讓孩子換裝置也能接著玩。</li>
+        <li>保存與同步學習進度，讓孩子換裝置也能接著玩；家長可以用自己的帳號把孩子的角色存到雲端，在新裝置找回。</li>
         <li>提供班級功能：多人同島、短句聊天、送禮物。</li>
         <li>讓老師管理班級、查看學習摘要。</li>
         <li>登入與帳號安全：辨識登入的人，防止猜密碼與大量請求。</li>
+        <li>電子郵件地址只用來寄送驗證信與重設密碼的信（見第 6 節），不寄廣告或電子報。</li>
       </ul>
       <p>我們不會把資料用於廣告、行銷、使用者分析或剖析，不會出售資料，也不會用來訓練人工智慧模型。</p>
 
       <h2>4. Google 使用者資料（使用 Google 帳號登入）</h2>
-      <p>家長或老師可以選擇把 Google 帳號綁定到孩子的班級帳號或老師的房間，之後用 Google 帳號登入，不必再輸入代碼與密碼。這是選用功能，原本的代碼登入一直可以使用。</p>
+      <p>家長或老師可以選擇用 Google 帳號註冊，或在帳號設定把 Google 帳號綁定到自己的帳號，之後在帳號頁按「使用 Google 帳戶登入」快速登入。這是選用功能，帳號名稱與密碼一直可以登入。孩子的角色不會綁定 Google 帳號。</p>
       <ul>
-        <li><strong>要求的權限：</strong>只有 <code>openid</code>、<code>email</code>、<code>profile</code>（Google 歸類為非敏感範圍）。我們不會存取 Gmail、Google 雲端硬碟、聯絡人、日曆或任何其他 Google 服務的資料。</li>
-        <li><strong>取得的資料：</strong>登入時，Google 提供的登入按鈕（Google Identity Services）會交給我們一張由 Google 簽署的登入憑證（ID token），內含 Google 帳號識別碼、電子郵件地址、名稱與大頭貼網址。伺服器用 Google 公開的金鑰驗證憑證確實來自 Google。</li>
-        <li><strong>如何使用：</strong>Google 帳號識別碼只用來找出這個 Google 帳號綁定的班級帳號或房間，完成登入；電子郵件地址只用來在家長專區與老師管理頁顯示「綁定的是哪個帳號」，畫面上會遮住部分字元。</li>
+        <li><strong>要求的權限：</strong>只有 <code>openid</code>、<code>email</code>、<code>profile</code>（Google 歸類為非敏感範圍）。我們不會存取 Gmail 信箱、Google 雲端硬碟、聯絡人、日曆或任何其他 Google 服務的資料。</li>
+        <li><strong>取得的資料：</strong>登入時，Google 提供的登入按鈕（Google Identity Services）會交給我們一張由 Google 簽署的登入憑證（ID token），內含 Google 帳號識別碼、電子郵件地址（以及 Google 是否驗證過這個地址）、名稱與大頭貼網址。伺服器用 Google 公開的金鑰驗證憑證確實來自 Google。</li>
+        <li><strong>如何使用：</strong>Google 帳號識別碼只用來找出綁定的家長或老師帳號，完成登入。用 Google 註冊時，Google 驗證過的電子郵件地址會成為帳號的電子郵件地址（用途見第 3 節）；綁定時記下的電子郵件地址只用來在帳號設定顯示「綁定的是哪個 Google 帳號」，畫面上會遮住部分字元。</li>
         <li><strong>保存的資料：</strong>只保存 Google 帳號識別碼、電子郵件地址與綁定時間，存在班級伺服器的資料庫。名稱、大頭貼與憑證裡的其他資料一律不保存。</li>
-        <li><strong>分享與揭露：</strong>Google 使用者資料不會出售、不會用於廣告、不會提供或轉移給任何第三方，也不會用來訓練人工智慧模型。除了維護系統安全或依法律要求之外，不會有人檢視這些資料。老師管理頁不會顯示家長綁定的電子郵件。</li>
-        <li><strong>刪除與撤銷：</strong>隨時可以在家長專區或老師管理頁按「解除綁定」，伺服器會立即刪除該筆紀錄（Google 帳號識別碼與電子郵件地址）。也可以到 Google 帳戶的「第三方應用程式和服務」頁面（<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>）移除「知識島大冒險」的登入權限。老師移出成員時，該帳號的 Google 綁定也會一併刪除。</li>
+        <li><strong>分享與揭露：</strong>Google 使用者資料不會出售、不會用於廣告、不會提供或轉移給任何第三方，也不會用來訓練人工智慧模型。除了維護系統安全或依法律要求之外，不會有人檢視這些資料。老師看不到家長的帳號資料與電子郵件地址。</li>
+        <li><strong>刪除與撤銷：</strong>隨時可以在帳號設定按「解除」，伺服器會立即刪除該筆綁定（Google 帳號識別碼與電子郵件地址）；刪除帳號時，所有綁定一併刪除。也可以到 Google 帳戶的「第三方應用程式和服務」頁面（<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>）移除「知識島大冒險」的登入權限。</li>
         <li><strong>有限使用聲明：</strong>知識島大冒險對於從 Google API 取得之資訊的使用與轉移，將遵守 <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API 服務使用者資料政策（Google API Services User Data Policy）</a>，包括其中的有限使用（Limited Use）規定。</li>
       </ul>
 
       <h2>5. 誰看得到這些資料</h2>
       <ul>
         <li><strong>同一班的同學：</strong>暱稱、角色外觀、是否上線、在島上的位置、聊天短句（遊戲裡沒有可以自由打字的地方）；選禮物時看得到對方已經有哪些外觀（避免送重複）；收到的禮物會顯示送禮人的暱稱。</li>
-        <li><strong>老師：</strong>班上每個孩子的暱稱、星星、金幣、錯題數、完成回合數、加入時間、最後上線時間與是否上線。老師可以重設孩子的密碼、移出成員，以及開關加入、聊天與送禮功能。</li>
-        <li><strong>家長：</strong>用孩子的帳號登入後，看得到該帳號的完整進度與錯題本。</li>
+        <li><strong>老師：</strong>班上每個孩子的暱稱、星星、金幣、錯題數、完成回合數、加入時間、最後上線時間與是否上線。老師可以重設孩子在班上的密碼、移出成員，以及開關加入、聊天與送禮功能。老師看不到家長的帳號資料與電子郵件地址。</li>
+        <li><strong>家長：</strong>用家長帳號登入後，看得到自己名下雲端角色的摘要（名字、外觀、所在班級、星星、金幣、最後上線時間），可以把角色下載到這台裝置、讓角色退出班級或刪除角色；裝置上的家長專區看得到這台裝置上角色的完整進度與錯題本。</li>
+        <li><strong>帳號本人：</strong>帳號設定看得到自己的帳號名稱、電子郵件地址、身分與綁定的 Google 帳號。</li>
         <li>班級以外的人看不到班級裡的任何資料。</li>
       </ul>
 
@@ -266,14 +286,15 @@
       <ul>
         <li><strong>GitHub Pages（GitHub, Inc.）：</strong>提供網站檔案。GitHub 可能依 <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub 隱私權聲明</a>記錄連線資料（例如 IP 位址）。</li>
         <li><strong>Zeabur：</strong>用來部署與管理班級伺服器和資料庫。伺服器與資料庫位於台灣；網際網路連線經由位於日本東京的閘道伺服器轉送。</li>
-        <li><strong>Google：</strong>只有畫面出現「使用 Google 帳戶登入」按鈕時，才會載入 Google 的登入程式；使用時適用 <a href="https://policies.google.com/privacy" rel="noopener">Google 隱私權政策</a>。</li>
+        <li><strong>Google（登入）：</strong>只有畫面出現「使用 Google 帳戶登入」按鈕時，才會載入 Google 的登入程式；使用時適用 <a href="https://policies.google.com/privacy" rel="noopener">Google 隱私權政策</a>。</li>
+        <li><strong>Google（寄信）：</strong>驗證信與重設密碼的信透過 Google 的 Gmail 寄送，所以收件人的電子郵件地址與信件內容（帳號名稱與連結）會經過 Google 的郵件伺服器，適用 Google 隱私權政策。寄件人是我們的 Gmail 帳號。</li>
         <li>除此之外，不使用廣告、分析、追蹤或其他第三方服務。我們不會把資料提供給第三方，法律要求時除外。</li>
       </ul>
 
       <h2>7. 本機儲存與 Cookie</h2>
       <ul>
         <li>我們不使用 Cookie。</li>
-        <li>遊戲用瀏覽器的本機儲存（localStorage）存放：遊戲存檔與設定、語音偏好、匯入的題庫與教材版本、班級登入資訊，以及還沒同步到伺服器的存檔變更。老師管理頁的登入狀態存在 sessionStorage，關閉分頁就清除。</li>
+        <li>遊戲用瀏覽器的本機儲存（localStorage）存放：遊戲存檔與設定、語音偏好、匯入的題庫與教材版本、孩子角色的登入權杖，以及還沒同步到伺服器的存檔變更。家長與老師帳號的登入狀態預設存在 sessionStorage（關閉分頁就清除），勾選「在這台裝置保持登入」時才存在 localStorage。</li>
         <li>這些資料只存在你的裝置上，清除瀏覽器的網站資料就會刪除。</li>
         <li>使用 Google 登入按鈕時，Google 可能依其政策在 Google 自己的網域使用 Cookie。</li>
       </ul>
@@ -282,45 +303,48 @@
       <ul>
         <li>各項資料的保存期限見第 2 節的表格。</li>
         <li><strong>單機遊玩的資料：</strong>清除瀏覽器的網站資料即可刪除。</li>
-        <li><strong>孩子的班級帳號：</strong>老師在管理頁移出成員時，伺服器會刪除該帳號的進度、收藏、登入權杖與 Google 綁定；同學已經收到的禮物紀錄裡，仍會留著送禮人的暱稱。</li>
-        <li><strong>Google 綁定：</strong>家長專區或老師管理頁按「解除綁定」即刪除。</li>
-        <li><strong>整個班級或其他資料：</strong>家長或老師可以透過第 13 節的聯絡方式提出刪除要求；確認是該班的老師或孩子的家長後，我們會盡快刪除。</li>
+        <li><strong>家長與老師的帳號：</strong>在帳號設定按「刪除帳號」並再輸入一次密碼，就會刪除帳號、名下的雲端角色與進度、登入權杖、驗證與重設連結以及 Google 綁定；角色如果還在班級裡，還沒收下的禮物會先退回。還有班級的老師帳號要先處理班級（刪除會影響班上的孩子），請透過第 13 節的聯絡方式聯絡我們。</li>
+        <li><strong>家長名下的雲端角色：</strong>家長可以在帳號頁刪除個別角色，或讓角色退出班級（進度保留）。</li>
+        <li><strong>孩子在班級裡的資料：</strong>老師移出成員時，沒有家長帳號的角色會刪除進度、收藏與登入權杖；家長名下的角色只退出班級，進度留在家長帳號。同學已經收到的禮物紀錄裡，仍會留著送禮人的暱稱。</li>
+        <li><strong>Google 綁定：</strong>在帳號設定按「解除」即刪除。</li>
+        <li><strong>整個班級或其他資料：</strong>透過第 13 節的聯絡方式提出刪除要求；確認是該班的老師或孩子的家長後，我們會盡快刪除。</li>
       </ul>
 
       <h2>9. 兒童隱私</h2>
-      <p>本遊戲的使用者是國小學童。孩子只用「房間代碼＋暱稱＋4 位數密碼」加入老師建立的班級，我們不收集孩子的真實姓名、生日、照片、聯絡方式或所在位置；遊戲沒有可以自由打字的聊天。Google 帳號登入是給家長與老師使用的選項。建議家長陪同孩子使用，並提醒孩子不要在暱稱裡使用真名。</p>
+      <p>本遊戲的使用者是國小學童。孩子不需要註冊帳號：孩子用老師給的「班級代碼＋暱稱＋4 位數密碼」加入班級，或由家長用自己的帳號管理孩子的雲端角色。我們不收集孩子的真實姓名、生日、照片、聯絡方式或所在位置；電子郵件地址與 Google 帳號登入只給家長與老師使用；遊戲沒有可以自由打字的聊天。建議家長陪同孩子使用，並提醒孩子不要在暱稱裡使用真名。</p>
 
       <h2>10. 資料安全</h2>
       <ul>
         <li>網站與班級伺服器的網址都使用 HTTPS 加密連線。</li>
-        <li>管理密碼與孩子的 4 位數密碼只保存無法還原的雜湊值（scrypt）；登入權杖在伺服器上也只保存雜湊值。</li>
-        <li>同一個帳號連續輸錯 5 次密碼會鎖住 5 分鐘；建立房間、加入班級與登入都有流量限制。</li>
+        <li>家長與老師的密碼（至少 8 個字）與孩子的 4 位數密碼只保存無法還原的雜湊值（scrypt）；登入權杖、驗證與重設密碼的連結在伺服器上也只保存雜湊值。</li>
+        <li>驗證連結 24 小時、重設密碼的連結 30 分鐘後失效，而且只能用一次；重設密碼後，這個帳號在所有裝置的登入都會登出。</li>
+        <li>同一個帳號連續輸錯 5 次密碼會鎖住 5 分鐘；註冊、登入、加入班級、驗證電子郵件與重設密碼都有流量限制。申請重設密碼時，不論帳號是否存在都顯示同樣的訊息。</li>
         <li>Google 登入憑證一律用 Google 公開的金鑰驗證。</li>
         <li>孩子的 4 位數密碼是方便孩子使用的措施，不是高強度的防護。</li>
       </ul>
 
       <h2>11. 你的權利</h2>
-      <p>依中華民國《個人資料保護法》，你可以請求查詢或閱覽、製給複製本、補充或更正、停止蒐集處理或利用，以及刪除你的個人資料。學習進度可以在遊戲與家長專區查看；Google 綁定可以隨時解除；其他請求請透過第 13 節的聯絡方式提出。</p>
+      <p>依中華民國《個人資料保護法》，你可以請求查詢或閱覽、製給複製本、補充或更正、停止蒐集處理或利用，以及刪除你的個人資料。帳號設定可以查看與修改電子郵件地址、身分與密碼，解除 Google 綁定，或刪除整個帳號；學習進度可以在遊戲、家長專區與帳號頁查看；其他請求請透過第 13 節的聯絡方式提出。</p>
 
       <h2>12. 政策更新</h2>
       <p>政策有變動時，會更新本頁內容與最上方的日期。</p>
 
       <h2>13. 聯絡我們</h2>
       <p>
-        在 GitHub 專案頁提出問題：<a href="https://github.com/kevintsai1202/learning-game/issues" rel="noopener">https://github.com/kevintsai1202/learning-game/issues</a>。這是公開頁面，請只留下房間代碼與暱稱，不要留下孩子的真實姓名或其他個人資料。
+        在 GitHub 專案頁提出問題：<a href="https://github.com/kevintsai1202/learning-game/issues" rel="noopener">https://github.com/kevintsai1202/learning-game/issues</a>。這是公開頁面，請只留下帳號名稱、班級代碼或暱稱，不要留下電子郵件地址、孩子的真實姓名或其他個人資料。
       </p>
 
       <!-- ===== English version ===== -->
       <section class="en" id="english" lang="en">
         <h1>Learning Island (知識島大冒險) Privacy Policy</h1>
-        <p class="updated">Last updated: October 3, 2026</p>
+        <p class="updated">Last updated: October 4, 2026</p>
         <p class="lead">
           Learning Island (知識島大冒險) is a 3D learning game for second-grade elementary school children (<a href="https://kevintsai1202.github.io/learning-game/">https://kevintsai1202.github.io/learning-game/</a>, mirror
           <a href="https://learning-island.zeabur.app/">https://learning-island.zeabur.app/</a>). This policy explains what data we collect, why, where it is stored, how long it is kept, who can see it, and how data obtained through Google Sign-In is used. We only collect the data needed to provide the game. We show no ads, never sell or share data, and use no tracking or analytics tools.
         </p>
 
         <h2>1. Scope and operator</h2>
-        <p>This policy applies to the Learning Island website, game, and class server. The service is developed and operated by an individual developer (GitHub account kevintsai1202), referred to as "we" below. The game is free and can be played on a single device without registering; joining a class and signing in with Google are optional.</p>
+        <p>This policy covers the Learning Island website, game, and class server. The service is developed and operated by an individual developer (GitHub account kevintsai1202), referred to as "we". The game is free and can be played on a single device without registering. Parent and teacher accounts, joining a class, and Google Sign-In are optional. Accounts are for parents and teachers; children join a class with the class code their teacher gives them and do not register.</p>
 
         <h2>2. Data we collect</h2>
         <div class="table-wrap">
@@ -335,139 +359,163 @@
             </thead>
             <tbody>
               <tr>
-                <td>Character name, appearance, learning progress (stars, coins, wrong-answer notebook, play history, badges, collections) and settings (single-device play)</td>
-                <td>Once play starts</td>
-                <td>Only in this device's browser; never sent to a server</td>
+                <td>Character name, appearance, learning progress (stars, coins, mistake notebook, play history, badges, collections), and settings (single-device play)</td>
+                <td>After play starts</td>
+                <td>Only in this device's browser; never sent to the server</td>
                 <td>Until the browser's site data is cleared</td>
               </tr>
               <tr>
-                <td>Child's class account: nickname, 4-digit PIN (hash only), learning progress and collections, join time and last-seen time</td>
-                <td>When the child joins a class and each time progress is saved</td>
+                <td>Parent and teacher accounts: username, email address (required; used for verification and password reset), whether the email is verified, password (hash only), role (parent/teacher), creation time and last sign-in time</td>
+                <td>When registering or changing account settings</td>
                 <td>Class server database</td>
-                <td>While the account exists; deleted when the teacher removes the member</td>
+                <td>While the account exists; deleted when you delete the account in account settings</td>
               </tr>
               <tr>
-                <td>Teacher's room: room name, admin password (hash only), class feature switches</td>
-                <td>When the teacher creates a room</td>
+                <td>Links in verification and password-reset emails (the server stores only a hash) and when they were sent</td>
+                <td>When registering, changing the email, resending a verification email, or requesting a password reset</td>
                 <td>Class server database</td>
-                <td>While the room exists</td>
+                <td>Verification links expire after 24 hours and reset links after 30 minutes, and each works only once; deleted with the account</td>
               </tr>
               <tr>
-                <td>Sign-in tokens (the server stores hashes only)</td>
-                <td>At each sign-in</td>
+                <td>Parent-owned cloud characters: character name, appearance, learning progress and collections, last online time (can be saved without joining a class)</td>
+                <td>When a parent chooses "Save to cloud" on the account page, and on every later save</td>
+                <td>Class server database</td>
+                <td>Deleted when the parent deletes the character or their own account</td>
+              </tr>
+              <tr>
+                <td>A child's class membership: class nickname, 4-digit PIN (hash only), learning progress and collections, join time and last online time</td>
+                <td>When the child joins a class with a class code, and on every later save</td>
+                <td>Class server database</td>
+                <td>When a teacher removes the child: characters without a parent account are deleted; parent-owned characters only leave the class and keep their progress under the parent account</td>
+              </tr>
+              <tr>
+                <td>Classes: class name, the teacher account that created it, and switches for joining, chat, and gifts</td>
+                <td>When a teacher creates a class</td>
+                <td>Class server database</td>
+                <td>While the class exists</td>
+              </tr>
+              <tr>
+                <td>Sign-in tokens (the server stores only a hash)</td>
+                <td>Each sign-in</td>
                 <td>Class server database; this device's browser</td>
-                <td>Up to 180 days; deleted on sign-out, PIN reset, or member removal</td>
+                <td>Up to 180 days; deleted on sign-out, password change (other devices), password reset (all devices), removal from a class, or account deletion</td>
               </tr>
               <tr>
-                <td>Gift records: sender and recipient nicknames, item, time, status</td>
+                <td>Gift records: sender and recipient nicknames, gift, time, status</td>
                 <td>When a gift is sent</td>
                 <td>Class server database</td>
-                <td>While the room exists (gifts not accepted within 7 days are refunded automatically)</td>
+                <td>While the class exists (gifts not accepted within 7 days are returned automatically; unaccepted gifts are also returned when a child leaves the class)</td>
               </tr>
               <tr>
-                <td>Sync operation IDs (to avoid applying the same change twice)</td>
-                <td>When progress is synced</td>
+                <td>Save-sync operation IDs (to avoid applying the same change twice)</td>
+                <td>When saves sync</td>
                 <td>Class server database</td>
                 <td>Deleted automatically after 30 days</td>
               </tr>
               <tr>
                 <td>Position on the island, online status, chat phrases</td>
-                <td>While online on the island with classmates</td>
-                <td>Server memory only; not written to the database</td>
-                <td>Position removed when offline; only the latest 30 chat lines per class are kept and are cleared when the server restarts</td>
+                <td>While classmates are on the island together</td>
+                <td>Server memory only; never written to the database</td>
+                <td>Positions are removed after going offline; only the latest 30 chat phrases per class are kept, and they are cleared when the server restarts</td>
               </tr>
               <tr>
-                <td>Google account ID, email address, link time (see Section 4)</td>
-                <td>When a parent or teacher links a Google account</td>
+                <td>Google account ID, email address, and link time (see Section 4)</td>
+                <td>When a parent or teacher registers with Google or links a Google account in account settings</td>
                 <td>Class server database</td>
-                <td>Deleted on unlink, member removal, or room deletion</td>
+                <td>Deleted when unlinked or when the account is deleted</td>
               </tr>
               <tr>
                 <td>Connection IP address</td>
-                <td>When creating a room, joining a class, or signing in</td>
-                <td>Server memory only; not written to the database</td>
+                <td>On requests to register, sign in, join a class, verify an email, or reset a password</td>
+                <td>Server memory only; never written to the database</td>
                 <td>Used only to limit bursts of requests; cleared when the server restarts</td>
               </tr>
             </tbody>
           </table>
         </div>
-        <p>We do not collect children's real names, birthdays, photos, contact details, or location. The game does not use the microphone or camera and records no audio; read-aloud uses pre-recorded audio files or the device's built-in speech feature.</p>
+        <p>We do not collect children's real names, birthdays, photos, contact details, or location; email addresses are collected only from parents and teachers. The game does not use the microphone or camera and does not record audio; read-aloud uses pre-recorded audio or the device's built-in speech.</p>
 
         <h2>3. How we use data</h2>
         <ul>
-          <li>To save and sync learning progress so a child can continue on another device.</li>
-          <li>To provide class features: playing on the same island, phrase chat, and gifts.</li>
-          <li>To let teachers manage their class and view learning summaries.</li>
-          <li>For sign-in and account security: identifying who signs in and preventing password guessing and request floods.</li>
+          <li>Save and sync learning progress so children can continue on another device; parents can use their own account to save a child's character to the cloud and get it back on a new device.</li>
+          <li>Provide class features: a shared island, chat phrases, and gifts.</li>
+          <li>Let teachers manage their classes and see learning summaries.</li>
+          <li>Sign-in and account security: identify who is signed in and prevent password guessing and request floods.</li>
+          <li>Email addresses are used only to send verification and password-reset emails (see Section 6); we never send ads or newsletters.</li>
         </ul>
-        <p>We do not use data for advertising, marketing, user analytics, or profiling. We do not sell data, and we do not use it to train artificial intelligence models.</p>
+        <p>We never use data for advertising, marketing, user analytics, or profiling, never sell it, and never use it to train AI models.</p>
 
         <h2>4. Google user data (Sign in with Google)</h2>
-        <p>Parents or teachers may optionally link a Google account to a child's class account or to a teacher's room, and then sign in with Google instead of entering codes and passwords. This is optional; code-based sign-in always remains available.</p>
+        <p>Parents and teachers can choose to register with their Google account, or link a Google account to their own account in account settings, and then sign in quickly with "Sign in with Google" on the account page. This is optional; signing in with the username and password always works. Children's characters are never linked to Google accounts.</p>
         <ul>
-          <li><strong>Scopes requested:</strong> only <code>openid</code>, <code>email</code>, and <code>profile</code> (classified by Google as non-sensitive). We do not access Gmail, Google Drive, Contacts, Calendar, or any other Google service data.</li>
-          <li><strong>Data accessed:</strong> at sign-in, the Google Identity Services button gives us an ID token signed by Google that contains the Google account ID, email address, name, and profile picture URL. Our server verifies the token with Google's public keys.</li>
-          <li><strong>How it is used:</strong> the Google account ID is used only to find the class account or room linked to that Google account and complete sign-in. The email address is used only to show which account is linked in the parent area and the teacher admin page, with part of it masked.</li>
-          <li><strong>What is stored:</strong> only the Google account ID, email address, and link time, in the class server database. The name, profile picture, and any other token contents are never stored.</li>
-          <li><strong>Sharing and disclosure:</strong> Google user data is never sold, never used for advertising, never shared with or transferred to any third party, and never used to train artificial intelligence models. No one reads this data except as needed for security or to comply with the law. Teachers cannot see the email addresses linked by parents.</li>
-          <li><strong>Deletion and revocation:</strong> you can press "Unlink" in the parent area or the teacher admin page at any time, and the server immediately deletes that record (Google account ID and email address). You can also remove Learning Island's sign-in access on the "Third-party apps &amp; services" page of your Google Account (<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>). When a teacher removes a member, that account's Google links are deleted as well.</li>
+          <li><strong>Requested permissions:</strong> only <code>openid</code>, <code>email</code>, and <code>profile</code> (classified by Google as non-sensitive scopes). We never access Gmail mailboxes, Google Drive, contacts, calendars, or any other Google service data.</li>
+          <li><strong>Data we receive:</strong> when you sign in, the Google-provided sign-in button (Google Identity Services) gives us an ID token signed by Google that contains the Google account ID, email address (and whether Google has verified it), name, and profile picture URL. The server verifies the token with Google's public keys.</li>
+          <li><strong>How we use it:</strong> the Google account ID is used only to find the linked parent or teacher account and complete sign-in. When you register with Google, the email address verified by Google becomes your account's email address (used as described in Section 3); the email address stored with a link is used only to show which Google account is linked in account settings, partially masked.</li>
+          <li><strong>Data we store:</strong> only the Google account ID, email address, and link time, stored in the class server database. The name, profile picture, and any other token data are never stored.</li>
+          <li><strong>Sharing and disclosure:</strong> Google user data is never sold, used for advertising, provided or transferred to any third party, or used to train AI models. No one views it except as needed to keep the system secure or as required by law. Teachers cannot see parents' account details or email addresses.</li>
+          <li><strong>Deletion and revocation:</strong> you can choose "Unlink" in account settings at any time, and the server immediately deletes that link (Google account ID and email address); deleting your account deletes all links. You can also remove Learning Island's access on your Google Account's "Third-party apps &amp; services" page (<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>).</li>
           <li><strong>Limited Use disclosure:</strong> Learning Island's use and transfer of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
         </ul>
 
         <h2>5. Who can see the data</h2>
         <ul>
-          <li><strong>Classmates in the same class:</strong> nickname, character appearance, online status, position on the island, and chat phrases (there is no free-text input anywhere in the game); when choosing a gift, which appearance items the recipient already owns (to avoid duplicates); and the sender's nickname on received gifts.</li>
-          <li><strong>The teacher:</strong> each child's nickname, stars, coins, number of wrong answers, completed rounds, join time, last-seen time, and online status. The teacher can reset a child's PIN, remove members, and turn joining, chat, and gifts on or off.</li>
-          <li><strong>Parents:</strong> after signing in with the child's account, the account's full progress and wrong-answer notebook.</li>
-          <li>No one outside the class can see any class data.</li>
+          <li><strong>Classmates in the same class:</strong> nickname, character appearance, online status, position on the island, and chat phrases (there is no free-text typing anywhere in the game); when choosing a gift, which outfits the recipient already has (to avoid duplicates); received gifts show the sender's nickname.</li>
+          <li><strong>Teachers:</strong> each child's nickname, stars, coins, number of mistakes, completed rounds, join time, last online time, and online status in their class. Teachers can reset a child's class PIN, remove members, and turn joining, chat, and gifts on or off. Teachers cannot see parents' account details or email addresses.</li>
+          <li><strong>Parents:</strong> after signing in with a parent account, a summary of their own cloud characters (name, appearance, class, stars, coins, last online time); they can download a character to the current device, take it out of a class, or delete it. The parent area on a device shows the full progress and mistake notebook of the characters on that device.</li>
+          <li><strong>Account owners:</strong> account settings show your own username, email address, roles, and linked Google accounts.</li>
+          <li>People outside a class cannot see any data in that class.</li>
         </ul>
 
         <h2>6. Third-party services and data location</h2>
         <ul>
           <li><strong>GitHub Pages (GitHub, Inc.):</strong> serves the website files. GitHub may log connection data (such as IP addresses) under the <a href="https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">GitHub General Privacy Statement</a>.</li>
-          <li><strong>Zeabur:</strong> used to deploy and manage the class server and database. The server and database are located in Taiwan; internet connections are relayed through a gateway server in Tokyo, Japan.</li>
-          <li><strong>Google:</strong> Google's sign-in script is loaded only when a "Sign in with Google" button is shown; its use is subject to the <a href="https://policies.google.com/privacy" rel="noopener">Google Privacy Policy</a>.</li>
-          <li>We use no other advertising, analytics, tracking, or third-party services, and we do not provide data to third parties except when required by law.</li>
+          <li><strong>Zeabur:</strong> used to deploy and manage the class server and database. The server and database are located in Taiwan; internet traffic is relayed through a gateway server in Tokyo, Japan.</li>
+          <li><strong>Google (sign-in):</strong> Google's sign-in script is loaded only when a "Sign in with Google" button appears on screen; its use is governed by the <a href="https://policies.google.com/privacy" rel="noopener">Google Privacy Policy</a>.</li>
+          <li><strong>Google (email):</strong> verification and password-reset emails are sent through Google's Gmail, so the recipient's email address and the message content (username and link) pass through Google's mail servers and are governed by the Google Privacy Policy. Emails are sent from our Gmail account.</li>
+          <li>Otherwise we use no advertising, analytics, tracking, or other third-party services. We never provide data to third parties except as required by law.</li>
         </ul>
 
         <h2>7. Local storage and cookies</h2>
         <ul>
           <li>We do not use cookies.</li>
-          <li>The game uses the browser's localStorage for save data and settings, voice preferences, imported question packs and textbook editions, class sign-in information, and progress changes not yet synced to the server. The teacher admin page keeps its sign-in state in sessionStorage, which is cleared when the tab is closed.</li>
+          <li>The game uses the browser's localStorage for: game saves and settings, voice preferences, imported question banks and textbook editions, sign-in tokens for children's characters, and save changes not yet synced to the server. Parent and teacher sign-in is kept in sessionStorage by default (cleared when the tab is closed), and in localStorage only if "Stay signed in on this device" is checked.</li>
           <li>This data stays on your device and is deleted when you clear the browser's site data.</li>
-          <li>When the Google sign-in button is used, Google may use cookies on its own domains under its policies.</li>
+          <li>When you use the Google sign-in button, Google may use cookies on Google's own domains under its own policies.</li>
         </ul>
 
         <h2>8. Retention and deletion</h2>
         <ul>
-          <li>Retention periods for each kind of data are listed in the table in Section 2.</li>
+          <li>See the table in Section 2 for each item's retention period.</li>
           <li><strong>Single-device data:</strong> delete it by clearing the browser's site data.</li>
-          <li><strong>A child's class account:</strong> when the teacher removes the member on the admin page, the server deletes that account's progress, collections, sign-in tokens, and Google links. Gift records already received by classmates keep the sender's nickname.</li>
-          <li><strong>Google links:</strong> deleted by pressing "Unlink" in the parent area or the teacher admin page.</li>
-          <li><strong>A whole class or other data:</strong> parents or teachers can request deletion through the contact method in Section 13. After confirming the requester is the class's teacher or the child's parent, we will delete it as soon as possible.</li>
+          <li><strong>Parent and teacher accounts:</strong> choose "Delete account" in account settings and enter your password again to delete the account, its cloud characters and their progress, sign-in tokens, verification and reset links, and Google links; if a character is still in a class, its unaccepted gifts are returned first. A teacher account that still has classes must deal with those classes first (deleting it would affect the children in them); please contact us as described in Section 13.</li>
+          <li><strong>Parent-owned cloud characters:</strong> on the account page, parents can delete individual characters or take a character out of a class (its progress is kept).</li>
+          <li><strong>A child's class membership:</strong> when a teacher removes a member, characters without a parent account are deleted together with their progress, collections, and sign-in tokens; parent-owned characters only leave the class and keep their progress under the parent account. Gifts already received by classmates still show the sender's nickname.</li>
+          <li><strong>Google links:</strong> choose "Unlink" in account settings.</li>
+          <li><strong>Whole classes or other data:</strong> request deletion through the contact in Section 13; once we confirm you are the class teacher or the child's parent, we will delete it promptly.</li>
         </ul>
 
         <h2>9. Children's privacy</h2>
-        <p>The game is used by elementary school children. Children join a teacher-created class with only a room code, a nickname, and a 4-digit PIN. We do not collect children's real names, birthdays, photos, contact details, or location, and there is no free-text chat. Google Sign-In is an option for parents and teachers. We recommend that parents accompany their children and remind them not to use their real names as nicknames.</p>
+        <p>Our users are elementary school children. Children do not register accounts: they join a teacher's class with "class code + nickname + 4-digit PIN", or a parent manages their cloud characters with the parent's own account. We do not collect children's real names, birthdays, photos, contact details, or location; email addresses and Google Sign-In are only for parents and teachers; there is no free-text chat in the game. We recommend that parents accompany their children and remind them not to use real names as nicknames.</p>
 
         <h2>10. Security</h2>
         <ul>
-          <li>The website and the class server use HTTPS (encrypted) connections.</li>
-          <li>Admin passwords and children's 4-digit PINs are stored only as irreversible hashes (scrypt); sign-in tokens are also stored only as hashes on the server.</li>
-          <li>Five consecutive wrong passwords lock the account for 5 minutes; creating rooms, joining classes, and signing in are rate-limited.</li>
+          <li>The website and class server addresses use HTTPS.</li>
+          <li>Parent and teacher passwords (at least 8 characters) and children's 4-digit PINs are stored only as irreversible hashes (scrypt); sign-in tokens and the links in verification and password-reset emails are also stored only as hashes on the server.</li>
+          <li>Verification links expire after 24 hours and password-reset links after 30 minutes, and each can be used only once; resetting a password signs that account out on all devices.</li>
+          <li>Five wrong passwords in a row lock that account for 5 minutes; registering, signing in, joining a class, verifying an email, and resetting a password are rate-limited. A password-reset request always shows the same message whether or not the account exists.</li>
           <li>Google ID tokens are always verified with Google's public keys.</li>
-          <li>A child's 4-digit PIN is a convenience for children, not strong protection.</li>
+          <li>Children's 4-digit PINs are a convenience for children, not strong protection.</li>
         </ul>
 
         <h2>11. Your rights</h2>
-        <p>Under Taiwan's Personal Data Protection Act, you may request to inquire about or review, obtain copies of, supplement or correct, stop the collection, processing, or use of, and delete your personal data. Learning progress can be viewed in the game and the parent area, Google links can be removed at any time, and other requests can be made through the contact method in Section 13.</p>
+        <p>Under Taiwan's Personal Data Protection Act, you may request to inquire about or review, obtain copies of, supplement or correct, stop the collection, processing, or use of, and delete your personal data. In account settings you can view and change your email address, roles, and password, unlink Google accounts, or delete the whole account; learning progress can be viewed in the game, the parent area, and the account page. For other requests, use the contact in Section 13.</p>
 
         <h2>12. Changes to this policy</h2>
         <p>When this policy changes, we will update this page and the date at the top.</p>
 
         <h2>13. Contact us</h2>
         <p>
-          Open an issue on the GitHub project page: <a href="https://github.com/kevintsai1202/learning-game/issues" rel="noopener">https://github.com/kevintsai1202/learning-game/issues</a>. This page is public, so please leave only the room code and nickname, never a child's real name or other personal data.
+          Open an issue on the GitHub project page: <a href="https://github.com/kevintsai1202/learning-game/issues" rel="noopener">https://github.com/kevintsai1202/learning-game/issues</a>. This page is public, so please leave only a username, class code, or nickname, never an email address, a child's real name, or other personal data.
         </p>
       </section>
 

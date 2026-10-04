@@ -37,9 +37,22 @@ test('隱私權政策：中英文都有 Google 使用者資料與有限使用聲
   await expect(body).toContainText('4. Google 使用者資料');
   await expect(body).toContainText('只保存 Google 帳號識別碼、電子郵件地址與綁定時間');
   await expect(body).toContainText('有限使用（Limited Use）規定');
+  // A2～A4 改版的內容：家長與老師的帳號、經由 Gmail 寄信、自己刪除帳號、Google 綁大人帳號；過時的說法已經拿掉
+  await expect(body).toContainText('家長與老師的帳號');
+  await expect(body).toContainText('透過 Google 的 Gmail 寄送');
+  await expect(body).toContainText('「刪除帳號」');
+  await expect(body).toContainText('把 Google 帳號綁定到自己的帳號');
+  await expect(body).not.toContainText('管理密碼');
+  await expect(body).not.toContainText('孩子的班級帳號或老師的房間');
   // 英文版（Google 審核人員看得懂的版本）
-  await expect(page.locator('#english')).toContainText('Learning Island (知識島大冒險) Privacy Policy');
-  await expect(page.locator('#english')).toContainText('including the Limited Use requirements');
+  const en = page.locator('#english');
+  await expect(en).toContainText('Learning Island (知識島大冒險) Privacy Policy');
+  await expect(en).toContainText('including the Limited Use requirements');
+  await expect(en).toContainText('Parent and teacher accounts');
+  await expect(en).toContainText("sent through Google's Gmail");
+  await expect(en).toContainText('"Delete account"');
+  await expect(en).toContainText('link a Google account to their own account');
+  await expect(en).not.toContainText('admin password');
   // 中英文各有一個連到 Google API 服務使用者資料政策的連結
   await expect(page.locator('a[href="https://developers.google.com/terms/api-services-user-data-policy"]')).toHaveCount(2);
 

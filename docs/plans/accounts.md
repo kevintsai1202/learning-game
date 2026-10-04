@@ -237,16 +237,16 @@ A3 開始前，你要做的（這幾步我不能替你做）：
 
 **上線前**：
 
-1. 隱私權政策改版：大人帳號（帳號名稱、email、密碼雜湊、身分）、email 只用於驗證與重設並經由 Gmail 寄出、家長名下的雲端角色與家長自行刪除、退出班級（取代「移出就刪除」）、Google 綁大人帳號；`e2e/privacy.spec.ts` 跟著更新。
-2. 用 Docker 的 PostgreSQL 跑全部伺服器測試（第 4～7 版升級與鎖定順序）。
+1. ✅（2026-10-04 完成，在 feature/online）隱私權政策改版：大人帳號（帳號名稱、email、密碼雜湊、身分）、email 只用於驗證與重設並經由 Gmail 寄出、家長名下的雲端角色與家長自行刪除、退出班級（取代「移出就刪除」）、Google 綁大人帳號；`e2e/privacy.spec.ts` 跟著更新（也檢查過時的「管理密碼」說法已經拿掉）。上線那天如果內容又改了，記得改最上方的日期。
+2. 用 Docker 的 PostgreSQL 跑全部伺服器測試（第 4～7 版升級與鎖定順序）。A2～A4 每期收尾都跑過；上線前合併好的版本再跑一次。
 3. 看正式環境有沒有改版前用管理密碼建的房間（沒有擁有者，改版後沒有登入方式）；有的話先加認領流程。也查 `google_links` 有幾筆、對應哪些孩子：第 7 版會刪掉這張表（OAuth 還在測試模式時只有你的測試帳號能用 Google 登入，預期是 0 筆或只有測試資料）。
-4. `scripts/deploy/purge-test-rooms` 改成用 `e2e_` 開頭的大人帳號找測試資料。
+4. ✅（2026-10-04 完成）`scripts/deploy/purge-test-rooms` 改成找 e2e 的大人帳號（帳號名稱 `e2e_` 開頭、email `帳號名稱@example.com`、密碼 `teach1234`，三個都符合才算），連同它的班級與角色一起刪；改版前的測試房間照舊清。測試班級裡有別人家長名下的角色、或資料表還是改版前的版本時拒絕（`tests/server/purgeTestData.test.ts`）。
 5. Zeabur 環境變數：有 SMTP 三個，沒有任何測試模式的變數（`GOOGLE_TEST_JWKS`、`ALLOW_TEST_GOOGLE`、`TEST_MAIL_OUTBOX`、`ALLOW_TEST_MAIL`）。
 6. 備份正式資料庫（`pg_dump`，經 `zeabur service exec`），再部署——伺服器啟動時會自動升級資料表。
 
 **上線**：合併 main、push，GitHub Pages 與 Zeabur 同一天更新。
 
-**上線後**：healthz、首頁、隱私權政策；從 main 對正式伺服器跑線上 e2e；Google 來源檢查；真的寄一封驗證信與重設信到你的信箱。
+**上線後**：healthz、首頁、隱私權政策；從 main 對正式伺服器跑線上 e2e；Google 來源檢查（`scripts/deploy/check-google-origins.mjs`，上線後應該顯示按鈕在帳號頁）；真的寄一封驗證信與重設信到你的信箱（第 10 節第 13 題）；用真的 Google 帳號走一次「用 Google 註冊」和「帳號設定綁定 → 登出 → 用 Google 登入」（e2e 只用假 token 測過）；跑 `purge-test-rooms.ps1`（先列出、確認後 `-Apply`）清掉線上 e2e 留下的測試資料。
 
 ## 10. 使用者的決定（2026-10-03）
 
