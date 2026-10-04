@@ -171,8 +171,8 @@
 
 ### 伺服器
 
-- `server/mail.ts`：寄信介面。有 `SMTP_USER` 時用 Gmail SMTP（`smtp.gmail.com`）寄；沒有時用假寄信器（寫進記錄）。
-- **測試用的信箱**（e2e 讀驗證與重設連結）：`TEST_MAIL_OUTBOX=1`＋`ALLOW_TEST_MAIL=1` 兩個都設才開 `GET /api/test/mails`；只設一個、或同時設了 `SMTP_USER`，伺服器拒絕啟動（和 Google 測試模式同一套守門）。**正式環境絕不能設**——寫進 `server/CLAUDE.md` 的環境變數表與 `docs/deploy-zeabur.md` 第 3 節。
+- `server/mail.ts`：寄信介面。有 `MAIL_SMTP_USERNAME` 時用 Gmail SMTP（`smtp.gmail.com`）寄；沒有時用假寄信器（寫進記錄）。
+- **測試用的信箱**（e2e 讀驗證與重設連結）：`TEST_MAIL_OUTBOX=1`＋`ALLOW_TEST_MAIL=1` 兩個都設才開 `GET /api/test/mails`；只設一個、或同時設了 `MAIL_SMTP_USERNAME`，伺服器拒絕啟動（和 Google 測試模式同一套守門）。**正式環境絕不能設**——寫進 `server/CLAUDE.md` 的環境變數表與 `docs/deploy-zeabur.md` 第 3 節。
 - 註冊、改 email 後寄驗證信（24 小時內有效）；重寄（每個帳號每分鐘 1 封、每天 10 封）；`POST /api/users/email/verify { token }`。
 - 忘記密碼：`POST /api/users/password/forgot { login }`（帳號名稱或 email）一律回「如果帳號存在，已經寄出」，不透露帳號是否存在；只寄給驗證過的 email。`POST /api/users/password/reset { token, password }`：30 分鐘內有效、只能用一次，成功後這個帳號在所有裝置的登入都失效。
 - 信裡的連結：用請求的來源網址（必須在 `ALLOWED_ORIGINS` 裡，否則用 GitHub Pages 的網址），不接受前端指定任意網址，避免被拿來做釣魚連結。
@@ -186,7 +186,7 @@
 
 ### 測試
 
-- 伺服器（假寄信器）：驗證流程、重設流程（過期、用過、錯的權杖）、不透露帳號是否存在、頻率限制、連結只用允許清單裡的網址；守門設定（只設一個、或和 `SMTP_USER` 同時設，拒絕啟動）。
+- 伺服器（假寄信器）：驗證流程、重設流程（過期、用過、錯的權杖）、不透露帳號是否存在、頻率限制、連結只用允許清單裡的網址；守門設定（只設一個、或和 `MAIL_SMTP_USERNAME` 同時設，拒絕啟動）。
 - e2e：註冊後從測試信箱拿驗證連結 → 驗證成功；忘記密碼 → 拿重設連結 → 設新密碼 → 用新密碼登入。
 
 ### 開始前要先做的
@@ -202,10 +202,12 @@ A3 開始前，你要做的（這幾步我不能替你做）：
 
 1. 寄件的 Google 帳號要開啟「兩步驟驗證」。
 2. 在 Google 帳戶的「應用程式密碼」建立一組（16 個字元）。
-3. 自己到 Zeabur 後台 `island-server` 的環境變數加上 `SMTP_USER`（寄件信箱）、`SMTP_PASS`（應用程式密碼）、`MAIL_FROM`（寄件人的顯示，例如 `知識島大冒險 <你的信箱>`）。**應用程式密碼不要貼在對話裡。**
+3. 自己到 Zeabur 後台 `island-server` 的環境變數加上 `MAIL_SMTP_USERNAME`（寄件信箱）、`MAIL_SMTP_PASSWORD`（應用程式密碼）、`MAIL_FROM`（寄件人的顯示，例如 `知識島大冒險 <你的信箱>`）。**應用程式密碼不要貼在對話裡。**
 4. 本機要測真的寄信時，把同樣三個變數加進 `.env`（不進版控、不上傳）。
 
 注意：用 CLI 的 `variable env -f` 設環境變數會取代全部變數（`docs/deploy-zeabur.md` 第 3 節），之後用它就要把這三個一起寫進檔案，或改在後台設定。
+
+**2026-10-04 現況**：第 1、2 步早就做過了：使用者的 Gmail 已經有應用程式密碼，Zeabur 的 `subtutor` 專案（`subtutor-ai` 服務）用的就是同名變數 `MAIL_SMTP_USERNAME`、`MAIL_SMTP_PASSWORD`（變數名稱因此改成和它一樣，原本叫 `SMTP_USER`、`SMTP_PASS`）。第 4 步也做了：本機 `.env` 已經設好這兩個。剩下第 3 步，上線那天把同名變數設到 `island-server`（`MAIL_FROM` 可以不設）。兩個網站共用同一個 Gmail，每天的寄信額度也共用。
 
 ## 9. A4 Google 快速登入、A5 上線
 

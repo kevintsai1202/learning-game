@@ -32,9 +32,9 @@ docker rm -f li-pg-test
 | `ALLOWED_ORIGINS` | 允許跨網域呼叫的前端網址，逗號分隔；預設 `http://localhost:5173,http://localhost:4183` |
 | `GOOGLE_CLIENT_ID` | Google 快速登入（備選）的 OAuth 用戶端 ID；沒有就不開 Google 登入。建立方式見 `docs/google-login-setup.md` |
 | `GOOGLE_TEST_JWKS`＋`ALLOW_TEST_GOOGLE=1` | **只給 e2e 用**的測試模式：用測試公鑰驗證 Google token。只設其中一個會拒絕啟動；正式環境絕不能設 |
-| `SMTP_USER`＋`SMTP_PASS` | 用 Gmail SMTP（`smtp.gmail.com:465`，TLS）寄驗證信與重設密碼信；`SMTP_PASS` 是應用程式密碼（空白會去掉）。只設一個或都沒設：不寄信（只設一個會警告） |
-| `MAIL_FROM` | 寄件人的顯示；沒設是 `"知識島大冒險" <SMTP_USER>` |
-| `TEST_MAIL_OUTBOX`＋`ALLOW_TEST_MAIL=1` | **只給 e2e 用**的測試信箱：信放在記憶體，`GET /api/test/mails` 讀得到。只設其中一個、或和 `SMTP_USER` 同時設會拒絕啟動；正式環境絕不能設 |
+| `MAIL_SMTP_USERNAME`＋`MAIL_SMTP_PASSWORD` | 用 Gmail SMTP（`smtp.gmail.com:465`，TLS）寄驗證信與重設密碼信；`MAIL_SMTP_PASSWORD` 是應用程式密碼（空白會去掉）。只設一個或都沒設：不寄信（只設一個會警告） |
+| `MAIL_FROM` | 寄件人的顯示；沒設是 `"知識島大冒險" <MAIL_SMTP_USERNAME>` |
+| `TEST_MAIL_OUTBOX`＋`ALLOW_TEST_MAIL=1` | **只給 e2e 用**的測試信箱：信放在記憶體，`GET /api/test/mails` 讀得到。只設其中一個、或和 `MAIL_SMTP_USERNAME` 同時設會拒絕啟動；正式環境絕不能設 |
 | `STATIC_DIR` | 前端建置產物（`dist/`）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 `/app/dist`）。本機開發與 e2e 不設 |
 
 ## 規則

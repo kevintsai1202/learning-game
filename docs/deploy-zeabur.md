@@ -37,13 +37,13 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
 | `DATABASE_URL` | `${POSTGRES_CONNECTION_STRING}`（引用同專案 PostgreSQL 的連線字串） |
 | `ALLOWED_ORIGINS` | 正式：`https://kevintsai1202.github.io,https://learning-island.zeabur.app`（伺服器同時提供前端，同網址的 WebSocket 也會檢查來源）；對正式伺服器跑 e2e 時暫時加 `,http://localhost:4183`，跑完要拿掉 |
 | `GOOGLE_CLIENT_ID` | 你的 Google OAuth 用戶端 ID（見 `docs/google-login-setup.md`） |
-| `SMTP_USER` | 寄驗證信與重設密碼信的 Gmail 信箱（A3 上線時加；`docs/plans/accounts.md` 第 8 節）。**你自己在後台設** |
-| `SMTP_PASS` | 那個 Gmail 的「應用程式密碼」（16 個字元，有空白也沒關係）。**你自己在後台設，不要貼在對話裡** |
+| `MAIL_SMTP_USERNAME` | 寄驗證信與重設密碼信的 Gmail 信箱（A3 上線時加；`docs/plans/accounts.md` 第 8 節）。**你自己在後台設** |
+| `MAIL_SMTP_PASSWORD` | 那個 Gmail 的「應用程式密碼」（16 個字元，有空白也沒關係）。**你自己在後台設，不要貼在對話裡** |
 | `MAIL_FROM` | 寄件人的顯示，例如 `知識島大冒險 <你的信箱>`；沒設就用這個格式 |
 
 - **絕對不要設 `GOOGLE_TEST_JWKS`、`ALLOW_TEST_GOOGLE`**：那是 e2e 的測試模式，會接受測試金鑰簽的假 Google 登入。
-- **絕對不要設 `TEST_MAIL_OUTBOX`、`ALLOW_TEST_MAIL`**：那是 e2e 的測試信箱，驗證與重設連結會放在記憶體、任何人都讀得到（和 `SMTP_USER` 同時設時伺服器會拒絕啟動）。
-- `SMTP_USER` 與 `SMTP_PASS` 只設一個時，伺服器照常啟動但不寄信（記錄裡有警告）；兩個都沒設時也不寄信，註冊照常、驗證信與重設信不會寄出。
+- **絕對不要設 `TEST_MAIL_OUTBOX`、`ALLOW_TEST_MAIL`**：那是 e2e 的測試信箱，驗證與重設連結會放在記憶體、任何人都讀得到（和 `MAIL_SMTP_USERNAME` 同時設時伺服器會拒絕啟動）。
+- `MAIL_SMTP_USERNAME` 與 `MAIL_SMTP_PASSWORD` 只設一個時，伺服器照常啟動但不寄信（記錄裡有警告）；兩個都沒設時也不寄信，註冊照常、驗證信與重設信不會寄出。
 - 用 `variable env -f` 設環境變數會取代全部變數：檔案裡要同時有上面全部的變數（包括 SMTP 三個），不然改在後台設定。
 - **沒設 `DATABASE_URL` 會啟動失敗，這是故意的**：正式的映像檔沒有記憶體資料庫，不會悄悄把孩子的進度存在記憶體裡、重開就不見。
 - `PORT`（8080）與 `TZ`（`Asia/Taipei`，每日送禮上限與收禮日期依台灣時間）已經寫在 Dockerfile，不用設。

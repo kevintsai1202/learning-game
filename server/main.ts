@@ -7,7 +7,7 @@
  * - ALLOWED_ORIGINS：允許跨網域呼叫的前端網址，逗號分隔（預設本機開發與 preview 的網址）
  * - GOOGLE_CLIENT_ID：Google 快速登入的 OAuth Client ID；沒有就不開 Google 登入
  * - GOOGLE_TEST_JWKS＋ALLOW_TEST_GOOGLE=1：e2e 的測試模式（用測試公鑰驗證），正式環境絕不能設
- * - SMTP_USER＋SMTP_PASS（＋MAIL_FROM）：用 Gmail SMTP 寄驗證信與重設密碼信；沒有就停用寄信（server/mail.ts）
+ * - MAIL_SMTP_USERNAME＋MAIL_SMTP_PASSWORD（＋MAIL_FROM）：用 Gmail SMTP 寄驗證信與重設密碼信；沒有就停用寄信（server/mail.ts）
  * - TEST_MAIL_OUTBOX＋ALLOW_TEST_MAIL=1：e2e 的測試信箱（GET /api/test/mails），正式環境絕不能設
  * - STATIC_DIR：前端建置產物（dist/）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 /app/dist）
  */
@@ -36,7 +36,7 @@ async function main(): Promise<void> {
   const { mailer, warnings: mailWarnings } = createMailer(process.env);
   for (const w of mailWarnings) console.warn(`⚠️ ${w}`);
   if (mailer.kind === 'outbox') console.warn('⚠️ 測試信箱模式：信放在記憶體、GET /api/test/mails 讀得到，只能用在 e2e，正式環境絕不能開。');
-  if (mailer.kind === 'disabled') console.warn('寄信停用（沒有設定 SMTP_USER／SMTP_PASS）：註冊照常，驗證信與重設密碼信不會寄出。');
+  if (mailer.kind === 'disabled') console.warn('寄信停用（沒有設定 MAIL_SMTP_USERNAME／MAIL_SMTP_PASSWORD）：註冊照常，驗證信與重設密碼信不會寄出。');
   const db = await openDb({ url: process.env.DATABASE_URL, pgliteDir: process.env.PGLITE_DIR });
   await migrate(db);
   await pruneAppliedOps(db, new Date());

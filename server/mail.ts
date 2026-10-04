@@ -1,9 +1,9 @@
 /**
  * 寄信（A3，docs/plans/accounts.md 第 7、8 節）。依環境變數決定：
- * - SMTP_USER＋SMTP_PASS 都設：用 Gmail SMTP（smtp.gmail.com:465，TLS，會驗證伺服器憑證）寄；
+ * - MAIL_SMTP_USERNAME＋MAIL_SMTP_PASSWORD 都設：用 Gmail SMTP（smtp.gmail.com:465，TLS，會驗證伺服器憑證）寄；
  *   應用程式密碼裡的空白去掉（Google 顯示時每 4 個字一組）。寄件人用 MAIL_FROM，沒設就是「知識島大冒險 <寄件信箱>」
  * - TEST_MAIL_OUTBOX=1＋ALLOW_TEST_MAIL=1：測試用信箱，信放在記憶體（GET /api/test/mails 讀，給 e2e 用）。
- *   兩個都要故意設才開；只設一個、或和 SMTP_USER 同時設就拒絕啟動。正式環境絕不能設
+ *   兩個都要故意設才開；只設一個、或和 MAIL_SMTP_USERNAME 同時設就拒絕啟動。正式環境絕不能設
  * - 都沒設（或 SMTP 只設一半，會警告）：停用，寄信回「伺服器沒有設定寄信」
  * 不把信的內容寫進記錄（驗證與重設連結等於密碼）；寄信失敗只回三種固定訊息，SMTP 伺服器的回應不轉出、不寫進記錄。
  */
@@ -76,7 +76,7 @@ export function createMailer(
     );
   }
   if (testOutbox) {
-    if (env.SMTP_USER) throw new Error('測試用信箱（TEST_MAIL_OUTBOX）和 SMTP_USER 不能同時設，拒絕啟動：測試模式不能在會真的寄信的環境開。');
+    if (env.MAIL_SMTP_USERNAME) throw new Error('測試用信箱（TEST_MAIL_OUTBOX）和 MAIL_SMTP_USERNAME 不能同時設，拒絕啟動：測試模式不能在會真的寄信的環境開。');
     const outbox: MailMessage[] = [];
     return {
       mailer: {
@@ -88,8 +88,8 @@ export function createMailer(
     };
   }
 
-  const user = env.SMTP_USER?.trim();
-  const pass = env.SMTP_PASS;
+  const user = env.MAIL_SMTP_USERNAME?.trim();
+  const pass = env.MAIL_SMTP_PASSWORD;
   if (user && pass) {
     const options = smtpOptions(user, pass);
     const transport = opts.createTransport ? opts.createTransport(options) : (nodemailer.createTransport(options) as unknown as MailTransport);
@@ -112,7 +112,7 @@ export function createMailer(
     };
   }
 
-  const warnings = user || pass ? [`寄信設定不完整：SMTP_USER 與 SMTP_PASS 要一起設（缺 ${user ? 'SMTP_PASS' : 'SMTP_USER'}），先停用寄信`] : [];
+  const warnings = user || pass ? [`寄信設定不完整：MAIL_SMTP_USERNAME 與 MAIL_SMTP_PASSWORD 要一起設（缺 ${user ? 'MAIL_SMTP_PASSWORD' : 'MAIL_SMTP_USERNAME'}），先停用寄信`] : [];
   return {
     mailer: {
       kind: 'disabled',
