@@ -43,8 +43,11 @@ function numberZh(n) {
  */
 export const phonemeTag = (py) => `<|phoneme_start|>${py}<|phoneme_end|>`;
 
-/** 同音字替代（全部句子）：垃圾用台灣讀音 ㄌㄜˋ ㄙㄜˋ */
-export const SUBSTITUTE = [['垃圾', '樂色']];
+/** 同音字替代（全部句子）：垃圾用台灣讀音 ㄌㄜˋ ㄙㄜˋ；數數看的兩個數都是動詞 ㄕㄨˇ（使用者 2026-10-04 試聽後選「鼠鼠看」） */
+export const SUBSTITUTE = [
+  ['垃圾', '樂色'],
+  ['數數看', '鼠鼠看'],
+];
 
 /** 讀音標記（全部句子） */
 export const PRONOUNCE = [['餅乾', ['bing3', 'gan1']]];
