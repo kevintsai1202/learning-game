@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyOp, normalizeOpTime, opSchema, PLAYTIME_OP_MAX, type Op } from '../../src/online/ops';
-import { addPlayTime, addProfile, buyItem, createEmptySave, recordSession, setAvatar, setCurriculum, setTitle, type Profile, type SaveData } from '../../src/store/save';
+import { addPlayTime, addProfile, buyItem, createEmptySave, puzzleToday, recordPuzzle, recordSession, setAvatar, setCurriculum, setTitle, type Profile, type SaveData } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
 
 const q = (id: string): Question => ({ id, subject: 'math', skill: 'math.add', indicators: ['N-2-2'], prompt: id, type: 'number', answer: 1 });
@@ -232,5 +232,59 @@ describe('操作格式驗證', () => {
     expect(opSchema.safeParse(op).success).toBe(true);
     const noSkill = { ...op, result: { ...op.result, answers: [{ question: { id: 'x', type: 'number', prompt: 'x' }, correct: true, firstTry: true }] } };
     expect(opSchema.safeParse(noSkill).success).toBe(false);
+  });
+});
+
+describe('操作套用：益智遊戲館', () => {
+  const quizAnswers: AnswerRecord[] = [
+    { question: q('p1'), correct: true, firstTry: true },
+    { question: q('p2'), correct: false, firstTry: false },
+  ];
+
+  it('益智遊戲的一局與遊玩時間：applyOp 和本機路徑結果相同（含 JSON 序列化）', () => {
+    const start = kid();
+    const ops: Op[] = [
+      { id: 'g1', at: AT, kind: 'playTime', seconds: 60, puzzle: true },
+      { id: 'g2', at: AT, kind: 'puzzle', game: 'quiz', stars: 3, answers: quizAnswers },
+      { id: 'g3', at: AT, kind: 'puzzle', game: 'memory', stars: 2 },
+      { id: 'g4', at: AT, kind: 'playTime', seconds: 30 },
+    ];
+    const viaOps = applyAll(start, ops);
+    const at = new Date(AT);
+    let s: SaveData = { ...createEmptySave(), profiles: [start], activeProfileId: start.id };
+    s = addPlayTime(s, start.id, 60, at, true);
+    s = recordPuzzle(s, start.id, { game: 'quiz', stars: 3, answers: quizAnswers }, at);
+    s = recordPuzzle(s, start.id, { game: 'memory', stars: 2 }, at);
+    s = addPlayTime(s, start.id, 30, at);
+    expect(viaOps).toEqual(s.profiles[0]);
+    expect(JSON.stringify(viaOps)).toBe(JSON.stringify(s.profiles[0]));
+    expect(viaOps.coins).toBe(200 + 5 + 3);
+    expect(puzzleToday(viaOps, at)).toEqual({ seconds: 60, coins: 8 });
+  });
+
+  it('金幣由套用端依星數算，每天最多 20 枚', () => {
+    const ops: Op[] = Array.from({ length: 6 }, (_, i) => ({ id: `g${i}`, at: AT, kind: 'puzzle', game: 'spot', stars: 3 }) as Op);
+    const p = applyAll(kid(), ops);
+    expect(p.coins).toBe(200 + 20);
+  });
+
+  it('遊戲 id 不在清單、星數不是 1～3 的整數：格式驗證失敗', () => {
+    const ok = { id: 'g', at: AT, kind: 'puzzle', game: 'tangram', stars: 1 };
+    expect(opSchema.safeParse(ok).success).toBe(true);
+    expect(opSchema.safeParse({ ...ok, game: 'chess' }).success).toBe(false);
+    expect(opSchema.safeParse({ ...ok, stars: 0 }).success).toBe(false);
+    expect(opSchema.safeParse({ ...ok, stars: 4 }).success).toBe(false);
+    expect(opSchema.safeParse({ ...ok, stars: 2.5 }).success).toBe(false);
+  });
+
+  it('遊玩時間的益智旗標可以省略（舊格式照收）；不是布林值就格式不符', () => {
+    expect(opSchema.safeParse({ id: 't', at: AT, kind: 'playTime', seconds: 30 }).success).toBe(true);
+    expect(opSchema.safeParse({ id: 't', at: AT, kind: 'playTime', seconds: 30, puzzle: true }).success).toBe(true);
+    expect(opSchema.safeParse({ id: 't', at: AT, kind: 'playTime', seconds: 30, puzzle: 'yes' }).success).toBe(false);
+  });
+
+  it(`益智遊戲的單筆遊玩時間也以 ${PLAYTIME_OP_MAX} 秒為上限`, () => {
+    const r = applyOp(kid(), { id: 't', at: AT, kind: 'playTime', seconds: 2400, puzzle: true }, NOW);
+    expect(r.ok && puzzleToday(r.profile, new Date(AT)).seconds).toBe(PLAYTIME_OP_MAX);
   });
 });

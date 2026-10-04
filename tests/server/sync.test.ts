@@ -133,3 +133,24 @@ describe('同步操作', () => {
     expect(me.body.profile.inventory).toHaveLength(1);
   });
 });
+
+describe('益智遊戲館', () => {
+  it('益智遊戲的金幣在伺服器也是每天最多 20 枚（分兩批送也一樣）', async () => {
+    const { call, kid } = await setup();
+    const puzzle = (id: string): Op => ({ id, at: AT, kind: 'puzzle', game: 'quiz', stars: 3 });
+    const first = await call('POST', '/api/ops', { ops: [puzzle('z1'), puzzle('z2'), puzzle('z3')] }, kid.token);
+    expect(first.status).toBe(200);
+    expect(first.body.profile.coins).toBe(100 + 15);
+    const second = await call('POST', '/api/ops', { ops: [puzzle('z4'), puzzle('z5')] }, kid.token);
+    expect(second.body.rejected).toEqual([]);
+    expect(second.body.profile.coins).toBe(100 + 20);
+    expect(second.body.profile.puzzle.days['2026-10-02'].coins).toBe(20);
+  });
+
+  it('在益智遊戲館的遊玩時間同時記到整體與益智遊戲', async () => {
+    const { call, kid } = await setup();
+    const r = await call('POST', '/api/ops', { ops: [{ id: 't1', at: AT, kind: 'playTime', seconds: 30, puzzle: true }] }, kid.token);
+    expect(r.body.profile.playLog['2026-10-02']).toBe(30);
+    expect(r.body.profile.puzzle.days['2026-10-02'].seconds).toBe(30);
+  });
+});

@@ -4,10 +4,11 @@
  */
 import { z } from 'zod';
 import { hashString } from '../core/rng';
-import type { Question, SessionResult, SubjectId } from '../core/types';
+import type { AnswerRecord, Question, SessionResult, SubjectId } from '../core/types';
 import { subjectSchema } from '../content/schema';
 import { awardBadges, badgeById } from './badges';
 import { owns } from './catalog';
+import { DEFAULT_PUZZLE_LIMIT_MIN, puzzleCoinsFor, trimPuzzleDays, type PuzzleDay, type PuzzleGameId, type PuzzleStats } from './puzzle';
 
 /** 存檔格式版本；欄位有不相容變更時加一，並在 loadSave 補上轉換（v2：加入 recent、curriculum） */
 export const SAVE_SCHEMA_VERSION = 2;
@@ -176,6 +177,8 @@ export interface Profile {
   stickers?: Record<string, number>;
   /** 最近收到的禮物，最新的在前面，最多 50 筆（2026-10 新增） */
   giftLog?: GiftLogEntry[];
+  /** 益智遊戲館的紀錄（2026-10 新增；舊存檔沒有時當作空的） */
+  puzzle?: PuzzleStats;
 }
 
 /** 全機設定 */
@@ -194,6 +197,8 @@ export interface Settings {
   music: boolean;
   /** 每日遊玩上限（分鐘），0 表示不限制 */
   dailyLimitMin: number;
+  /** 益智遊戲館每日上限（分鐘），0 表示不另外限制（仍受每日遊玩上限）；2026-10 新增 */
+  puzzleLimitMin: number;
   /** 3D 畫質 */
   quality: 'auto' | 'low' | 'high';
 }
@@ -215,6 +220,7 @@ export const DEFAULT_SETTINGS: Settings = {
   sfx: true,
   music: true,
   dailyLimitMin: 30,
+  puzzleLimitMin: DEFAULT_PUZZLE_LIMIT_MIN,
   quality: 'auto',
 };
 
@@ -281,46 +287,60 @@ export function skillMastery(stat: SkillStat | undefined): number {
 }
 
 /**
- * 紀錄一回合：金幣、最佳星數、技能熟練度、課綱指標累計、錯題本、歷史。
+ * 作答紀錄對學習資料的更新：技能熟練度、課綱指標累計、錯題本、學習統計（學習回合與益智搶答共用）。
  * 熟練度規則：一次答對 +1、第二次才答對不變、最後仍答錯 −1。
+ */
+function learnFrom(p: Profile, answers: AnswerRecord[], today: string): Pick<Profile, 'skills' | 'indicators' | 'wrongBook' | 'stats'> {
+  const skills = { ...p.skills };
+  const indicators = { ...p.indicators };
+  const wrongBook = { ...p.wrongBook };
+  const stats: LearningStats = { wrongCleared: p.stats?.wrongCleared ?? 0, written: p.stats?.written ?? 0 };
+  for (const a of answers) {
+    const q = a.question;
+    const prev = skills[q.skill] ?? { box: 0, attempts: 0, firstTry: 0, lastSeen: today };
+    const delta = a.firstTry ? 1 : a.correct ? 0 : -1;
+    skills[q.skill] = {
+      box: Math.max(0, Math.min(MAX_BOX, prev.box + delta)),
+      attempts: prev.attempts + 1,
+      firstTry: prev.firstTry + (a.firstTry ? 1 : 0),
+      lastSeen: today,
+    };
+    for (const code of q.indicators) {
+      const key = `${q.subject}:${code}`;
+      const s = indicators[key] ?? { attempts: 0, firstTry: 0 };
+      indicators[key] = { attempts: s.attempts + 1, firstTry: s.firstTry + (a.firstTry ? 1 : 0) };
+    }
+    const w = wrongBook[q.id];
+    if (!a.firstTry) {
+      wrongBook[q.id] = { question: q, wrongCount: (w?.wrongCount ?? 0) + 1, lastWrong: today, streak: 0 };
+    } else if (w) {
+      const streak = w.streak + 1;
+      if (streak >= WRONG_BOOK_CLEAR_STREAK) {
+        delete wrongBook[q.id];
+        stats.wrongCleared += 1;
+      } else {
+        wrongBook[q.id] = { ...w, streak };
+      }
+    }
+    // 描寫題完成（最後寫完）才算寫完一個字
+    if (q.type === 'write' && a.correct) stats.written += 1;
+  }
+  return { skills, indicators, wrongBook, stats };
+}
+
+/** 記住某個活動這次做過的題目（同一題只留最新一次，最多 RECENT_LIMIT 題），下次出題時優先避開 */
+function withRecent(recent: Profile['recent'], key: string, ids: string[]): Profile['recent'] {
+  const prev = (recent[key] ?? []).filter((id) => !ids.includes(id));
+  return { ...recent, [key]: [...prev, ...ids].slice(-RECENT_LIMIT) };
+}
+
+/**
+ * 紀錄一回合：金幣、最佳星數、技能熟練度、課綱指標累計、錯題本、歷史。
  */
 export function recordSession(save: SaveData, profileId: string, result: SessionResult, now: Date): SaveData {
   const today = dateKey(now);
   return updateProfile(save, profileId, (p) => {
-    const skills = { ...p.skills };
-    const indicators = { ...p.indicators };
-    const wrongBook = { ...p.wrongBook };
-    const stats: LearningStats = { wrongCleared: p.stats?.wrongCleared ?? 0, written: p.stats?.written ?? 0 };
-    for (const a of result.answers) {
-      const q = a.question;
-      const prev = skills[q.skill] ?? { box: 0, attempts: 0, firstTry: 0, lastSeen: today };
-      const delta = a.firstTry ? 1 : a.correct ? 0 : -1;
-      skills[q.skill] = {
-        box: Math.max(0, Math.min(MAX_BOX, prev.box + delta)),
-        attempts: prev.attempts + 1,
-        firstTry: prev.firstTry + (a.firstTry ? 1 : 0),
-        lastSeen: today,
-      };
-      for (const code of q.indicators) {
-        const key = `${q.subject}:${code}`;
-        const s = indicators[key] ?? { attempts: 0, firstTry: 0 };
-        indicators[key] = { attempts: s.attempts + 1, firstTry: s.firstTry + (a.firstTry ? 1 : 0) };
-      }
-      const w = wrongBook[q.id];
-      if (!a.firstTry) {
-        wrongBook[q.id] = { question: q, wrongCount: (w?.wrongCount ?? 0) + 1, lastWrong: today, streak: 0 };
-      } else if (w) {
-        const streak = w.streak + 1;
-        if (streak >= WRONG_BOOK_CLEAR_STREAK) {
-          delete wrongBook[q.id];
-          stats.wrongCleared += 1;
-        } else {
-          wrongBook[q.id] = { ...w, streak };
-        }
-      }
-      // 描寫題完成（最後寫完）才算寫完一個字
-      if (q.type === 'write' && a.correct) stats.written += 1;
-    }
+    const learned = learnFrom(p, result.answers, today);
     const record: SessionRecord = {
       activityId: result.activityId,
       subject: result.subject,
@@ -331,35 +351,90 @@ export function recordSession(save: SaveData, profileId: string, result: Session
       coins: result.coins,
       seconds: result.seconds,
     };
-    // 記住這回合的題目（同一題只留最新一次），下回合出題時優先避開
-    const ids = result.answers.map((a) => a.question.id);
-    const prevRecent = (p.recent[result.activityId] ?? []).filter((id) => !ids.includes(id));
-    const recent = { ...p.recent, [result.activityId]: [...prevRecent, ...ids].slice(-RECENT_LIMIT) };
     const updated: Profile = {
       ...p,
-      recent,
+      // 記住這回合的題目，下回合出題時優先避開
+      recent: withRecent(
+        p.recent,
+        result.activityId,
+        result.answers.map((a) => a.question.id),
+      ),
       coins: p.coins + result.coins,
       bestStars: { ...p.bestStars, [result.activityId]: Math.max(p.bestStars[result.activityId] ?? 0, result.stars) },
-      skills,
-      indicators,
-      wrongBook,
+      skills: learned.skills,
+      indicators: learned.indicators,
+      wrongBook: learned.wrongBook,
       history: [...p.history, record].slice(-HISTORY_LIMIT),
-      stats,
+      stats: learned.stats,
     };
     // 最後一步才頒發獎章：條件要看這一回合算完之後的存檔（達成的那一回合當下就拿到）
     return awardBadges(updated, today);
   });
 }
 
-/** 累計遊玩時間（秒），只保留最近 60 天 */
-export function addPlayTime(save: SaveData, profileId: string, seconds: number, now: Date): SaveData {
+/**
+ * 累計遊玩時間（秒），只保留最近 60 天。
+ * puzzle：在益智遊戲館玩的時間，同時加到益智遊戲的每日秒數（也照樣算進整體的遊玩時間）。
+ */
+export function addPlayTime(save: SaveData, profileId: string, seconds: number, now: Date, puzzle = false): SaveData {
   const key = dateKey(now);
   return updateProfile(save, profileId, (p) => {
     const playLog = { ...p.playLog, [key]: (p.playLog[key] ?? 0) + seconds };
     const keys = Object.keys(playLog).sort();
     for (const k of keys.slice(0, Math.max(0, keys.length - 60))) delete playLog[k];
-    return { ...p, playLog };
+    if (!puzzle) return { ...p, playLog };
+    const stats = p.puzzle ?? { days: {}, best: {} };
+    const day = stats.days[key] ?? { seconds: 0, coins: 0 };
+    return { ...p, playLog, puzzle: { ...stats, days: trimPuzzleDays({ ...stats.days, [key]: { ...day, seconds: day.seconds + seconds } }) } };
   });
+}
+
+/** 益智遊戲的一局（星星數由各遊戲的規則算出來） */
+export interface PuzzlePlay {
+  game: PuzzleGameId;
+  /** 1～3 顆星 */
+  stars: number;
+  /** 益智搶答的作答紀錄（題目都來自一般題庫）；其他遊戲沒有 */
+  answers?: AnswerRecord[];
+}
+
+/**
+ * 紀錄益智遊戲的一局：依星數給金幣（每天的益智金幣有上限）、記最佳星數。
+ * 有作答紀錄（益智搶答）時，照學習的規則更新熟練度、課綱統計與錯題本，但不寫歷史紀錄（不算學習回合）。
+ * 最後一步照樣頒發獎章：條件都由存檔算出來，本機與伺服器算出的結果相同。
+ */
+export function recordPuzzle(save: SaveData, profileId: string, play: PuzzlePlay, now: Date): SaveData {
+  const today = dateKey(now);
+  return updateProfile(save, profileId, (p) => {
+    const stats = p.puzzle ?? { days: {}, best: {} };
+    const day = stats.days[today] ?? { seconds: 0, coins: 0 };
+    const coins = puzzleCoinsFor(play.stars, day.coins);
+    let updated: Profile = {
+      ...p,
+      coins: p.coins + coins,
+      puzzle: {
+        days: trimPuzzleDays({ ...stats.days, [today]: { ...day, coins: day.coins + coins } }),
+        best: { ...stats.best, [play.game]: Math.max(stats.best[play.game] ?? 0, play.stars) },
+      },
+    };
+    if (play.answers?.length) {
+      updated = {
+        ...updated,
+        ...learnFrom(p, play.answers, today),
+        recent: withRecent(
+          p.recent,
+          `puzzle.${play.game}`,
+          play.answers.map((a) => a.question.id),
+        ),
+      };
+    }
+    return awardBadges(updated, today);
+  });
+}
+
+/** 某一天的益智遊戲紀錄（遊玩秒數與拿到的金幣）；沒玩過是 0 */
+export function puzzleToday(p: Profile, day: Date): PuzzleDay {
+  return p.puzzle?.days[dateKey(day)] ?? { seconds: 0, coins: 0 };
 }
 
 /** 指定日期的遊玩秒數 */
@@ -457,6 +532,12 @@ export const profileSchema = z.object({
   title: z.string().nullable().optional(),
   stickers: z.record(z.string(), int.min(0)).optional(),
   giftLog: z.array(z.object({ from: z.string(), itemId: z.string(), date: z.string() })).optional(),
+  puzzle: z
+    .object({
+      days: z.record(z.string(), z.object({ seconds: z.number().min(0), coins: int.min(0) })),
+      best: z.record(z.string(), int.min(0).max(3)),
+    })
+    .optional(),
 });
 const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),
@@ -472,6 +553,8 @@ const saveSchema = z.object({
     sfx: z.boolean(),
     music: z.boolean(),
     dailyLimitMin: int.min(0).max(240),
+    // 2026-10 新增：舊存檔沒有這個欄位時補成預設值
+    puzzleLimitMin: int.min(0).max(240).default(DEFAULT_PUZZLE_LIMIT_MIN),
     quality: z.enum(['auto', 'low', 'high']),
   }),
 });

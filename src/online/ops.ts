@@ -4,16 +4,18 @@
  * 這個檔案只能 import 純邏輯（存檔規則、計分、目錄、zod），伺服器會直接打包它。
  */
 import { z } from 'zod';
-import type { SessionResult } from '../core/types';
+import type { AnswerRecord, SessionResult } from '../core/types';
 import { subjectSchema } from '../content/schema';
 import { scoreSession } from '../engine/check';
 import { SLOTS, findItem, owns } from '../store/catalog';
 import { badgeById } from '../store/badges';
+import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
 import {
   ANIMAL_IDS,
   addPlayTime,
   buyItem,
   createEmptySave,
+  recordPuzzle,
   recordSession,
   setAvatar,
   setCurriculum,
@@ -41,11 +43,14 @@ interface OpBase {
 /** 一種操作 */
 export type Op =
   | (OpBase & { kind: 'session'; result: SessionResult })
-  | (OpBase & { kind: 'playTime'; seconds: number })
+  /** puzzle：在益智遊戲館玩的時間（同時算進整體與益智遊戲的時間；舊裝置沒有這個欄位） */
+  | (OpBase & { kind: 'playTime'; seconds: number; puzzle?: boolean })
   | (OpBase & { kind: 'buy'; itemId: string })
   | (OpBase & { kind: 'avatar'; avatar: AvatarConfig })
   | (OpBase & { kind: 'curriculum'; curriculum: CurriculumChoice })
-  | (OpBase & { kind: 'title'; badge: string | null });
+  | (OpBase & { kind: 'title'; badge: string | null })
+  /** 益智遊戲的一局：金幣由套用端依星數與每日上限算；answers 只有益智搶答會帶 */
+  | (OpBase & { kind: 'puzzle'; game: PuzzleGameId; stars: number; answers?: AnswerRecord[] });
 
 /** 操作的內容（不含 id 與時間，產生操作時再補上） */
 export type OpBody = Op extends infer T ? (T extends Op ? Omit<T, 'id' | 'at'> : never) : never;
@@ -70,6 +75,9 @@ export const avatarSchema = z.object({
   trail: z.string().max(40).nullable().optional(),
 });
 
+/** 一題的作答紀錄（回合與益智搶答共用） */
+const answerSchema = z.object({ question: opQuestion, correct: z.boolean(), firstTry: z.boolean() });
+
 /** 操作的格式（伺服器逐筆驗證） */
 export const opSchema = z.discriminatedUnion('kind', [
   z.object({
@@ -83,10 +91,10 @@ export const opSchema = z.discriminatedUnion('kind', [
       stars: z.number().int().min(0).max(3),
       coins: z.number().int().min(0),
       seconds: z.number().min(0).max(24 * 3600),
-      answers: z.array(z.object({ question: opQuestion, correct: z.boolean(), firstTry: z.boolean() })).max(SESSION_MAX_QUESTIONS),
+      answers: z.array(answerSchema).max(SESSION_MAX_QUESTIONS),
     }),
   }),
-  z.object({ ...base, kind: z.literal('playTime'), seconds: z.number().positive().max(24 * 3600) }),
+  z.object({ ...base, kind: z.literal('playTime'), seconds: z.number().positive().max(24 * 3600), puzzle: z.boolean().optional() }),
   z.object({ ...base, kind: z.literal('buy'), itemId: z.string().min(1).max(40) }),
   z.object({ ...base, kind: z.literal('avatar'), avatar: avatarSchema }),
   z.object({
@@ -95,6 +103,13 @@ export const opSchema = z.discriminatedUnion('kind', [
     curriculum: z.object({ zh: z.string().max(60), math: z.string().max(60), term: z.enum(['上', '下', 'auto']) }),
   }),
   z.object({ ...base, kind: z.literal('title'), badge: z.string().max(40).nullable() }),
+  z.object({
+    ...base,
+    kind: z.literal('puzzle'),
+    game: z.enum(PUZZLE_GAME_IDS),
+    stars: z.number().int().min(1).max(3),
+    answers: z.array(answerSchema).max(SESSION_MAX_QUESTIONS).optional(),
+  }),
 ]);
 
 /** 驗證並轉成 Op；格式不符回傳 null。題目只做寬鬆檢查，型別上視為 Question（與錯題本相同的做法） */
@@ -140,7 +155,7 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
     }
     case 'playTime': {
       const seconds = Math.min(op.seconds, PLAYTIME_OP_MAX);
-      return { ok: true, profile: onProfile(profile, (s, id) => addPlayTime(s, id, seconds, at)) };
+      return { ok: true, profile: onProfile(profile, (s, id) => addPlayTime(s, id, seconds, at, op.puzzle === true)) };
     }
     case 'buy': {
       const item = findItem(op.itemId);
@@ -164,6 +179,9 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
     case 'title':
       if (op.badge !== null && (!profile.badges?.[op.badge] || !badgeById(op.badge)?.title)) return { ok: false, reason: '還沒有這個稱號' };
       return { ok: true, profile: onProfile(profile, (s, id) => setTitle(s, id, op.badge)) };
+    case 'puzzle':
+      // 金幣在 recordPuzzle 裡依星數與今天已拿的益智金幣重算（操作裡沒有金幣欄位）
+      return { ok: true, profile: onProfile(profile, (s, id) => recordPuzzle(s, id, { game: op.game, stars: op.stars, answers: op.answers }, at)) };
   }
 }
 
