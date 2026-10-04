@@ -336,3 +336,82 @@ test('記憶翻牌和機器人輪流：翻錯換機器人翻，配到比較多�
   await expect(page.getByTestId('puzzle-summary')).toContainText('你 ');
   await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
 });
+
+/** 找不同：在指定的那張圖上點風景座標 (x, y)（用 SVG 的座標轉換換成畫面座標） */
+async function tapScene(page: Page, x: number, y: number, which: 'spot-left' | 'spot-right' = 'spot-right'): Promise<void> {
+  const p = await page.evaluate(
+    ({ x, y, which }) => {
+      const svg = document.querySelector(`[data-testid="${which}"]`) as SVGSVGElement;
+      const pt = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()!);
+      return { x: pt.x, y: pt.y };
+    },
+    { x, y, which },
+  );
+  await page.mouse.click(p.x, p.y);
+}
+
+/** 找一個不在任何不同處範圍裡的點（點錯用） */
+function missPoint(diffs: { x: number; y: number; r: number }[]): { x: number; y: number } {
+  const candidates = [
+    { x: 12, y: 12 },
+    { x: 388, y: 12 },
+    { x: 12, y: 288 },
+    { x: 388, y: 288 },
+    { x: 200, y: 290 },
+  ];
+  return candidates.find((c) => diffs.every((d) => Math.hypot(d.x - c.x, d.y - c.y) > d.r + 4))!;
+}
+
+test('找不同自己玩：點錯扣 3 秒，左圖右圖都可以點；全部找到拿 3 星', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-spot').click();
+  await page.getByTestId('puzzle-solo-1').click();
+  await expect(page.getByTestId('spot-game')).toHaveAttribute('data-mode', 'solo');
+  const s = await puzzleState(page);
+  expect(s.diffs).toHaveLength(3);
+  const miss = missPoint(s.diffs);
+  await tapScene(page, miss.x, miss.y);
+  await expect.poll(async () => (await puzzleState(page)).penalty).toBe(3);
+  await tapScene(page, s.diffs[0].x, s.diffs[0].y, 'spot-left');
+  await expect.poll(async () => (await puzzleState(page)).found[0]).toBe('kid');
+  await page.screenshot({ path: `${SHOTS}/10-spot.png` });
+  for (const i of [1, 2]) await tapScene(page, s.diffs[i].x, s.diffs[i].y);
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toContainText('3 處全部找到了');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+});
+
+test('找不同和機器人一起找：誰先點到就是誰的，找到比較多處的贏', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-spot').click();
+  await page.getByTestId('puzzle-vs-3').click();
+  await expect(page.getByTestId('spot-game')).toHaveAttribute('data-mode', 'vs');
+  const s = await puzzleState(page);
+  expect(s.diffs).toHaveLength(7);
+  for (const i of [0, 1]) await tapScene(page, s.diffs[i].x, s.diffs[i].y);
+  // 等機器人找到一處（厲害約 5～8 秒）
+  await expect.poll(async () => ((await puzzleState(page)).found as (string | null)[]).includes('bot'), { timeout: 20_000 }).toBe(true);
+  await page.screenshot({ path: `${SHOTS}/11-spot-vs.png` });
+  await setBotDelay(page, 1000);
+  const now = await puzzleState(page);
+  for (let i = 0; i < 7; i++) if (!now.found[i]) await tapScene(page, s.diffs[i].x, s.diffs[i].y);
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toContainText('機器人');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+});
+
+test('找不同和機器人：機器人找得很快就輸了，1 星 2 枚金幣', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await setBotDelay(page, 0.001);
+  await page.getByTestId('puzzle-spot').click();
+  await page.getByTestId('puzzle-vs-1').click();
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toHaveText('你 0：3 機器人');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +2');
+});

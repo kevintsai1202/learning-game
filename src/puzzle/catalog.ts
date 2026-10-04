@@ -39,6 +39,15 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     vs: '和機器人輪流翻牌：配對成功可以再翻一次，配到比較多對的贏',
     soloLevels: true,
   },
+  {
+    id: 'spot',
+    title: '找不同',
+    icon: '🔍',
+    description: '兩張島上的風景圖，右邊的圖有幾個地方不一樣，找出來點一下！',
+    solo: '限時找完（簡單 3 處、普通 5 處、厲害 7 處），亂點會扣 3 秒',
+    vs: '和機器人一起找：誰先點到就是誰的，找到比較多處的贏',
+    soloLevels: true,
+  },
 ];
 
 /** 依 id 找遊戲 */

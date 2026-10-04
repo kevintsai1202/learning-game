@@ -22,11 +22,13 @@ import { puzzleDebug } from './debug';
 import type { PuzzleGameProps, PuzzleMode, PuzzleOutcome, PuzzleRun } from './types';
 import QuizGame from './quiz/QuizGame';
 import MemoryGame from './memory/MemoryGame';
+import SpotGame from './spot/SpotGame';
 
 /** 各遊戲的元件（目錄 catalog.ts 是純資料，元件的對照放這裡） */
 const GAME_COMPONENTS: Partial<Record<PuzzleGameId, ComponentType<PuzzleGameProps>>> = {
   quiz: QuizGame,
   memory: MemoryGame,
+  spot: SpotGame,
 };
 
 /** 機器人的三種難度 */

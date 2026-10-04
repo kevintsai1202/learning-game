@@ -2262,3 +2262,56 @@ button {
     gap: 7px;
   }
 }
+
+/* 找不同：左右兩張風景（直式畫面上下排） */
+.spot-hint {
+  text-align: center;
+  font-size: 19px;
+  font-weight: 700;
+  margin: 6px 0 8px;
+}
+.spot-scenes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  /* 寬螢幕上兩張圖的高度不超過畫面（4:3 的圖，留給標題列與說明） */
+  width: min(100%, calc((100dvh - 210px) * 2.7));
+  margin: 0 auto;
+}
+.spot-scene {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: #d8f3ff;
+  touch-action: manipulation;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.spot-found circle {
+  animation: pop-in 0.3s ease both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.spot-miss {
+  animation: wiggle 0.45s ease;
+  transform-box: fill-box;
+  transform-origin: center;
+  pointer-events: none;
+}
+.spot-hurry {
+  background: #ffe0e6;
+  animation: wiggle 0.8s ease infinite;
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .spot-scenes {
+    grid-template-columns: minmax(0, 1fr);
+    width: min(100%, calc((100dvh - 230px) * 0.66));
+    gap: 8px;
+  }
+  .spot-hint {
+    font-size: 16px;
+    margin: 4px 0 6px;
+  }
+}
