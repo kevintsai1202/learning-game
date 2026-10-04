@@ -2067,3 +2067,106 @@ button {
   }
 }
 
+
+/* ---------- 益智遊戲館 ---------- */
+/* 選單標題列的小標籤（今天還能玩多久、今天的益智金幣） */
+.puzzle-chip {
+  font-size: 16px;
+  margin-left: 8px;
+  padding: 2px 12px;
+}
+.puzzle-time-up {
+  font-size: 22px;
+  font-weight: 800;
+  background: #fff2c6;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 8px 14px;
+  margin: 4px 0 14px;
+}
+.activity-card .puzzle-modes {
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.puzzle-mode-title {
+  font-size: 19px;
+  font-weight: 800;
+  margin: 16px 0 6px;
+}
+/* 遊戲畫面：置中的大卡片（島嶼在背景） */
+.puzzle-play {
+  width: min(920px, 100%);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 18px 16px;
+}
+.puzzle-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.puzzle-head .grow {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.puzzle-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 2px 4px;
+}
+.puzzle-reveal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.puzzle-play > .feedback {
+  align-self: center;
+  margin-top: 10px;
+}
+/* 和機器人比賽的比分 */
+.scoreboard {
+  font-size: 24px;
+  font-weight: 900;
+  background: #fff;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 2px 16px 4px;
+}
+.duel-status {
+  min-height: 52px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 10px;
+  text-align: center;
+}
+.bot-thinking {
+  font-size: 20px;
+  color: var(--ink-soft);
+  animation: bot-think 1.2s ease-in-out infinite;
+}
+@keyframes bot-think {
+  50% {
+    opacity: 0.45;
+  }
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .puzzle-play {
+    padding: 8px 10px 10px;
+  }
+  .scoreboard {
+    font-size: 19px;
+  }
+  .puzzle-chip {
+    display: inline-block;
+    margin: 4px 6px 0 0;
+  }
+}

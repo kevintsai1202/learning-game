@@ -21,6 +21,7 @@ import { ParentScreen } from './ui/screens/ParentScreen';
 import { ClassScreen } from './ui/screens/ClassScreen';
 import { TeacherScreen } from './ui/screens/TeacherScreen';
 import { BadgesScreen } from './ui/screens/BadgesScreen';
+import { PuzzleScreen } from './puzzle/PuzzleScreen';
 import { RestGuard } from './ui/RestGuard';
 import { startCloudSync } from './online/useCloud';
 import { startRealtime } from './online/realtimeClient';
@@ -38,6 +39,7 @@ const SCREEN_MUSIC: Record<Screen, Track> = {
   class: 'island',
   teacher: 'shop',
   badges: 'shop',
+  puzzle: 'quiz',
 };
 
 export function App() {
@@ -88,6 +90,7 @@ export function App() {
         {screen === 'class' && <ClassScreen />}
         {screen === 'teacher' && <TeacherScreen />}
         {screen === 'badges' && <BadgesScreen />}
+        {screen === 'puzzle' && <PuzzleScreen />}
         <RestGuard />
       </div>
     </>

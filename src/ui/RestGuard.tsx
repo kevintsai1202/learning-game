@@ -7,6 +7,7 @@ import { useUi } from '../store/useUi';
 import { secondsPlayedOn } from '../store/save';
 import { speak } from '../audio/speech';
 import { REST_LINE } from './lines';
+import { playTimeKind } from '../puzzle/time';
 
 const TICK_SECONDS = 30;
 
@@ -21,11 +22,11 @@ export function RestGuard() {
   const [unlocked, setUnlocked] = useState(false);
   const [pin, setPin] = useState('');
 
-  // 在島上或答題時才算遊玩時間（標題、家長區不算）；分頁在背景時不計
+  // 在島上或答題時才算遊玩時間（標題、家長區不算）；分頁在背景時不計。益智遊戲館的時間另外記一份（也算進整體）
   useEffect(() => {
     const id = setInterval(() => {
-      const s = useUi.getState().screen;
-      if (document.visibilityState === 'visible' && s !== 'title' && s !== 'parent' && s !== 'profiles') tick(TICK_SECONDS);
+      const kind = playTimeKind(useUi.getState().screen);
+      if (document.visibilityState === 'visible' && kind !== 'none') tick(TICK_SECONDS, kind === 'puzzle');
     }, TICK_SECONDS * 1000);
     return () => clearInterval(id);
   }, [tick]);

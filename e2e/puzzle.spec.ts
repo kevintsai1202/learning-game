@@ -1,0 +1,268 @@
+/**
+ * 益智遊戲館（第一批）：島上的建築與門口、選單、益智搶答（自己玩、和機器人）、每日金幣上限、
+ * 時間用完的訊息與家長設定、遊玩時間的累計、雲端角色的金幣與伺服器一致。
+ * 規格見 docs/plans/puzzle-house.md 第 6 節。機器人的速度用 window.__game.puzzle.botDelayFactor 控制。
+ */
+import { expect, test, type Page } from '@playwright/test';
+import { answerCurrent, createKid, freshStart, screen, standAtDoor } from './helpers';
+import { SERVER, cloudState, flushDeviceLogs, openDevice, profileOf } from './onlineDevice';
+
+const SHOTS = 'e2e/screenshots/puzzle';
+
+test.afterEach(async ({}, testInfo) => flushDeviceLogs(testInfo));
+
+/** 直接進益智遊戲館（和 helpers 的 enterZone 一樣跳過走路） */
+async function enterPuzzle(page: Page): Promise<void> {
+  await page.evaluate(() => (window as any).__game.ui.getState().enterZone('puzzle'));
+  await expect(page.getByTestId('puzzle-menu')).toBeVisible();
+}
+
+/** 遊戲公開給 e2e 的狀態（src/puzzle/debug.ts） */
+async function puzzleState(page: Page): Promise<any> {
+  return page.evaluate(() => JSON.parse(JSON.stringify((window as any).__game.puzzle.state)));
+}
+
+/** 機器人反應時間的倍數：很大＝機器人幾乎不會答，很小＝馬上答 */
+async function setBotDelay(page: Page, factor: number): Promise<void> {
+  await page.evaluate((f) => ((window as any).__game.puzzle.botDelayFactor = f), factor);
+}
+
+/** 把目前角色今天的益智紀錄改成指定值（測上限用） */
+async function setPuzzleToday(page: Page, day: { seconds: number; coins: number }): Promise<void> {
+  await page.evaluate((day) => {
+    const g = (window as any).__game.game.getState();
+    const p = g.profile();
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const key = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    g.putProfile({ ...p, puzzle: { days: { [key]: day }, best: p.puzzle?.best ?? {} } });
+  }, day);
+}
+
+/** 今天的益智紀錄 */
+async function puzzleToday(page: Page): Promise<{ seconds: number; coins: number }> {
+  return page.evaluate(() => {
+    const p = (window as any).__game.game.getState().profile();
+    const d = new Date();
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return p.puzzle?.days[`${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`] ?? { seconds: 0, coins: 0 };
+  });
+}
+
+/** 益智搶答自己玩：前 correct 題答對，之後一直答錯到結束（答錯 3 題），停在結算畫面 */
+async function playSoloQuiz(page: Page, correct: number): Promise<void> {
+  await page.getByTestId('puzzle-quiz').click();
+  await page.getByTestId('puzzle-solo').click();
+  await expect(page.getByTestId('quiz-game')).toHaveAttribute('data-mode', 'solo');
+  for (let k = 0; k < correct + 3; k++) {
+    // 等畫面換到第 k 題（目前題目才會是這一題）
+    await expect.poll(async () => (await puzzleState(page))?.index).toBe(k);
+    if (k < correct) {
+      await answerCurrent(page, true);
+      await expect(page.getByTestId('feedback-good')).toBeVisible();
+    } else {
+      await answerCurrent(page, false);
+      await page.getByTestId('next').click();
+    }
+  }
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+}
+
+test('島上有益智遊戲館：走到門口出現泡泡，進去看到選單、今天的時間與金幣', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page, '小明');
+  // 門口位置與 src/world/layout.ts 的 doorOf 相同算法（x 7.5、z 11、朝向 −0.35、半徑 2.6）
+  const door = await page.evaluate(() => {
+    const rotY = -0.35;
+    const d = 2.6 + 1.2;
+    return { x: 7.5 + Math.sin(rotY) * d, z: 11 + Math.cos(rotY) * d };
+  });
+  await standAtDoor(page, door);
+  await expect(page.getByTestId('door-bubble')).toContainText('益智遊戲館');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/01-door.png` });
+  await page.getByTestId('enter-zone').click();
+  await expect.poll(() => screen(page)).toBe('puzzle');
+  await expect(page.getByTestId('puzzle-time-left')).toContainText('今天還可以玩 15 分鐘');
+  await expect(page.getByTestId('puzzle-coins-today')).toContainText('今天 0／20');
+  await expect(page.getByTestId('puzzle-quiz')).toBeVisible();
+  await page.screenshot({ path: `${SHOTS}/02-menu.png` });
+  await page.getByTestId('leave-zone').click();
+  await expect.poll(() => screen(page)).toBe('island');
+});
+
+test('益智搶答自己玩：連對 3 題後答錯 3 題結束，1 星 2 枚金幣，答錯的題目進錯題本', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await playSoloQuiz(page, 3);
+  await expect(page.getByTestId('puzzle-summary')).toHaveText('最多連對 3 題');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +2');
+  await page.screenshot({ path: `${SHOTS}/03-solo-result.png` });
+  const p = await profileOf(page);
+  expect(p.coins).toBe(2);
+  expect(Object.keys(p.wrongBook)).toHaveLength(3);
+  expect(p.recent['puzzle.quiz']).toHaveLength(6);
+  // 學習的歷史紀錄與島上的星星不受影響
+  expect(p.history).toEqual([]);
+  expect(p.bestStars).toEqual({});
+  expect(p.puzzle.best).toEqual({ quiz: 1 });
+  // 選單上顯示最佳星數與今天拿到的金幣
+  await page.getByTestId('puzzle-back-menu').click();
+  await expect(page.getByTestId('puzzle-quiz')).toContainText('★☆☆');
+  await expect(page.getByTestId('puzzle-coins-today')).toContainText('今天 2／20');
+});
+
+test('益智搶答和機器人比賽：搶先答對 10 題贏了，3 星 5 枚金幣', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await setBotDelay(page, 1000);
+  await page.getByTestId('puzzle-quiz').click();
+  await page.getByTestId('puzzle-vs-2').click();
+  await expect(page.getByTestId('quiz-game')).toHaveAttribute('data-mode', 'vs');
+  await page.screenshot({ path: `${SHOTS}/04-vs.png` });
+  for (let k = 0; k < 10; k++) {
+    await expect.poll(async () => {
+      const s = await puzzleState(page);
+      return s?.index === k && s?.phase === 'open';
+    }).toBe(true);
+    await answerCurrent(page, true);
+    await expect.poll(async () => (await puzzleState(page))?.kid).toBe(k + 1);
+  }
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toHaveText('你 10：0 機器人');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+  await page.screenshot({ path: `${SHOTS}/05-vs-win.png` });
+});
+
+test('益智搶答和機器人比賽：機器人搶先答對就輸了，1 星 2 枚金幣', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await setBotDelay(page, 0.001);
+  await page.getByTestId('puzzle-quiz').click();
+  await page.getByTestId('puzzle-vs-3').click();
+  for (let k = 0; k < 10; k++) {
+    // 機器人馬上答：答對這一題就結束；答錯的話孩子也故意答錯
+    await expect.poll(async () => {
+      const s = await puzzleState(page);
+      return s?.index === k && (s.phase !== 'open' || s.botOut);
+    }).toBe(true);
+    const s = await puzzleState(page);
+    if (s.phase === 'open') {
+      await answerCurrent(page, false);
+      await expect.poll(async () => (await puzzleState(page))?.phase).toBe('none');
+    }
+  }
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toContainText('你 0：');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +2');
+});
+
+test('每天的益智金幣最多 20 枚：拿滿了這局就說明明天再來', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await setPuzzleToday(page, { seconds: 0, coins: 18 });
+  await enterPuzzle(page);
+  await expect(page.getByTestId('puzzle-coins-today')).toContainText('今天 18／20');
+  await playSoloQuiz(page, 0);
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +2');
+  await page.getByTestId('puzzle-again').click();
+  for (let k = 0; k < 3; k++) {
+    await expect.poll(async () => (await puzzleState(page))?.index).toBe(k);
+    await answerCurrent(page, false);
+    await page.getByTestId('next').click();
+  }
+  await expect(page.getByTestId('puzzle-coin-cap')).toContainText('今天的益智遊戲金幣拿滿了');
+  await page.screenshot({ path: `${SHOTS}/06-coin-cap.png` });
+  expect((await profileOf(page)).coins).toBe(2);
+  // 遊玩秒數每 30 秒累計一次（這個測試可能跑超過 30 秒），只比金幣
+  expect((await puzzleToday(page)).coins).toBe(20);
+});
+
+test('益智遊戲時間用完：選單停用並提醒；家長改成不另外限制就可以玩', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await setPuzzleToday(page, { seconds: 15 * 60, coins: 0 });
+  await enterPuzzle(page);
+  await expect(page.getByTestId('puzzle-time-up')).toContainText('今天的益智遊戲時間用完了，去其他建築挑戰吧！');
+  await expect(page.getByTestId('puzzle-quiz')).toBeDisabled();
+  await page.screenshot({ path: `${SHOTS}/07-time-up.png` });
+
+  // 家長專區：益智遊戲館每日上限（預設 15 分鐘）改成不另外限制
+  await page.evaluate(() => (window as any).__game.ui.getState().goto('parent'));
+  for (const k of ['1', '2', '3', '4', '1', '2', '3', '4']) await page.getByTestId(`pin-${k}`).click();
+  await expect(page.getByTestId('report-puzzle')).toContainText('今天玩了 15 分鐘');
+  await page.getByTestId('tab-settings').click();
+  await expect(page.getByTestId('setting-puzzleLimitMin')).toHaveValue('15');
+  await page.getByTestId('setting-puzzleLimitMin').selectOption('0');
+  await page.getByTestId('parent-back').click();
+  await enterPuzzle(page);
+  await expect(page.getByTestId('puzzle-time-left')).toContainText('今天不限時間');
+  await expect(page.getByTestId('puzzle-quiz')).toBeEnabled();
+});
+
+test('玩到一半離開：確認後回選單，這一局不記錄', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-quiz').click();
+  await page.getByTestId('puzzle-solo').click();
+  await expect.poll(async () => (await puzzleState(page))?.index).toBe(0);
+  await answerCurrent(page, true);
+  await page.getByRole('button', { name: '離開' }).click();
+  await page.getByTestId('confirm-exit').click();
+  await expect(page.getByTestId('puzzle-menu')).toBeVisible();
+  const p = await profileOf(page);
+  expect(p.coins).toBe(0);
+  expect(p.puzzle?.best ?? {}).toEqual({});
+});
+
+test('在益智遊戲館的時間每 30 秒累計一次，同時算進整體的遊玩時間', async ({ page }) => {
+  test.setTimeout(120_000);
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await expect.poll(async () => (await puzzleToday(page)).seconds, { timeout: 45_000 }).toBeGreaterThanOrEqual(30);
+  const p = await profileOf(page);
+  const played = Object.values(p.playLog as Record<string, number>).reduce((a, b) => a + b, 0);
+  expect(played).toBeGreaterThanOrEqual((await puzzleToday(page)).seconds);
+});
+
+test('雲端角色：益智遊戲的金幣由伺服器用同樣規則算，同步後兩邊一致', async ({ browser, baseURL, request }) => {
+  test.setTimeout(240_000);
+  const room = await request.post(`${SERVER}/api/rooms`, { data: { name: '益智測試班', password: 'teach123' } });
+  expect(room.ok()).toBe(true);
+  const { code } = await room.json();
+  const kid = await openDevice(browser, baseURL!);
+  const { page } = kid;
+  await createKid(page, '安安');
+  await page.evaluate(() => (window as any).__game.ui.getState().goto('profiles'));
+  await page.getByTestId('open-class').click();
+  await page.getByTestId('class-tab-join').click();
+  await page.getByTestId('class-code').fill(code);
+  await page.getByTestId('class-nickname').fill('益智小安');
+  await page.getByTestId('class-pin').fill('1234');
+  await page.getByTestId('class-submit').click();
+  await expect.poll(() => screen(page)).toBe('island');
+  await expect.poll(() => cloudState(page), { timeout: 20_000 }).toEqual({ status: 'synced', pending: 0 });
+
+  await enterPuzzle(page);
+  await playSoloQuiz(page, 5);
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +3');
+  await expect.poll(() => cloudState(page), { timeout: 20_000 }).toEqual({ status: 'synced', pending: 0 });
+
+  // 直接問伺服器：金幣、益智紀錄、錯題本都和裝置上一樣
+  const local = await profileOf(page);
+  const token = await page.evaluate((id) => JSON.parse(localStorage.getItem('learning-island-cloud')!)[id], local.cloud.accountId);
+  const me = await request.get(`${SERVER}/api/me`, { headers: { authorization: `Bearer ${token}` } });
+  const server = (await me.json()).profile;
+  expect(server.coins).toBe(local.coins);
+  expect(server.coins).toBe(3);
+  // 遊玩秒數每 30 秒累計一次，可能剛好還沒上傳；只比金幣與最佳星數
+  expect(Object.values(server.puzzle.days as Record<string, { coins: number }>).map((d) => d.coins)).toEqual([3]);
+  expect(server.puzzle.best).toEqual({ quiz: 2 });
+  expect(Object.keys(server.wrongBook).sort()).toEqual(Object.keys(local.wrongBook).sort());
+  await kid.context.close();
+});

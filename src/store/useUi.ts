@@ -4,11 +4,14 @@
 import { create } from 'zustand';
 import type { SessionResult } from '../core/types';
 
-/** 畫面（class：孩子加入／登入班級；teacher：老師的班級管理；badges：獎章簿） */
-export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'teacher' | 'badges';
+/** 畫面（class：孩子加入／登入班級；teacher：老師的班級管理；badges：獎章簿；puzzle：益智遊戲館，選單與遊戲都在這個畫面） */
+export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'teacher' | 'badges' | 'puzzle';
 
 /** 島上的區域（建築） */
-export type ZoneId = 'math' | 'zh' | 'en' | 'life' | 'tower' | 'shop';
+export type ZoneId = 'math' | 'zh' | 'en' | 'life' | 'tower' | 'shop' | 'puzzle';
+
+/** 有自己畫面的建築（其他建築都用活動選單 zone） */
+const OWN_SCREEN: Partial<Record<ZoneId, Screen>> = { shop: 'shop', puzzle: 'puzzle' };
 
 /** 正在進行的活動 */
 export interface ActivityRun {
@@ -62,7 +65,7 @@ export const useUi = create<UiStore>((set) => ({
   goto: (screen) => set({ screen }),
   say: (text) => set((s) => ({ bubble: { text, id: (s.bubble?.id ?? 0) + 1 } })),
   clearBubble: () => set({ bubble: null }),
-  enterZone: (zone) => set({ zone, screen: zone === 'shop' ? 'shop' : 'zone' }),
+  enterZone: (zone) => set({ zone, screen: OWN_SCREEN[zone] ?? 'zone' }),
   setNearZone: (nearZone) => set({ nearZone }),
   startActivity: (run) => set({ run, screen: 'activity', mood: 'idle' }),
   showResult: (lastResult, newBadges = []) => set({ lastResult, lastNewBadges: newBadges, screen: 'result', mood: 'cheer' }),

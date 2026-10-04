@@ -34,6 +34,7 @@ export const ZONES: ZoneLayout[] = [
   { id: 'life', name: '生活村', intro: '生活村！認識四季、安全和健康。', subject: 'life', x: -16, z: 2.5, rotY: 1.1, radius: 3.8, color: '#f2b705', icon: '🏡' },
   { id: 'en', name: 'ABC 海灘', intro: 'ABC 海灘！一起說英語、寫字母。', subject: 'en', x: 16, z: 2.5, rotY: -1.1, radius: 3.4, color: '#2bb5c8', icon: '🏖️' },
   { id: 'shop', name: '百寶屋', intro: '百寶屋！用金幣換帽子和裝扮。', subject: null, x: -7.5, z: 11, rotY: 0.35, radius: 2.6, color: '#e8457c', icon: '🎁' },
+  { id: 'puzzle', name: '益智遊戲館', intro: '益智遊戲館！動動腦，和機器人比一比。', subject: null, x: 7.5, z: 11, rotY: -0.35, radius: 2.6, color: '#2f6fde', icon: '🧩' },
 ];
 
 /** 依 id 取得區域 */
@@ -41,6 +42,11 @@ export function zoneById(id: ZoneId): ZoneLayout {
   const z = ZONES.find((v) => v.id === id);
   if (!z) throw new Error(`找不到區域 ${id}`);
   return z;
+}
+
+/** 建築名稱；不認得的 id（例如同學的裝置版本比較新）回傳「別的地方」，不丟例外 */
+export function zoneName(id: ZoneId): string {
+  return ZONES.find((v) => v.id === id)?.name ?? '別的地方';
 }
 
 /** 門口位置：建築正面前方 radius + 1.2 公尺 */

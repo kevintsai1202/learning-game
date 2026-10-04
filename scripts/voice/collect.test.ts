@@ -25,6 +25,7 @@ import { clipKey, isSymbolSentence } from '../../src/audio/clips';
 import { answerLine, optionSpeech, questionSpeech } from '../../src/quiz/spoken';
 import * as LINES from '../../src/ui/lines';
 import { ZONES } from '../../src/world/layout';
+import { PUZZLE_GAMES } from '../../src/puzzle/catalog';
 import { ITEMS } from '../../src/store/catalog';
 import { ANIMALS } from '../../src/ui/screens/ProfilesScreen';
 import { BADGES } from '../../src/store/badges';
@@ -121,6 +122,8 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
   Object.values(LINES.GIFT_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:gift'));
   STICKERS.forEach((st) => addSpoken(giftName(st.id), 'zh-TW', 'ui:gift'));
   ZONES.forEach((z) => addSpoken(z.intro, 'zh-TW', 'ui:zone'));
+  Object.values(LINES.PUZZLE_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:puzzle'));
+  PUZZLE_GAMES.forEach((g) => addSpoken(g.title, 'zh-TW', 'ui:puzzle'));
   // 選單上的活動名稱（含三家版本的課本單元與期中期末模擬）
   const menu: ActivityDef[] = [...ALL_ACTIVITIES];
   for (const e of BUILT_IN_EDITIONS) for (const v of e.volumes) menu.push(...unitActivities(e, v), ...examActivities(e, v));
