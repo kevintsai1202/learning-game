@@ -21,10 +21,12 @@ import { puzzleSecondsLeft } from './time';
 import { puzzleDebug } from './debug';
 import type { PuzzleGameProps, PuzzleMode, PuzzleOutcome, PuzzleRun } from './types';
 import QuizGame from './quiz/QuizGame';
+import MemoryGame from './memory/MemoryGame';
 
 /** 各遊戲的元件（目錄 catalog.ts 是純資料，元件的對照放這裡） */
 const GAME_COMPONENTS: Partial<Record<PuzzleGameId, ComponentType<PuzzleGameProps>>> = {
   quiz: QuizGame,
+  memory: MemoryGame,
 };
 
 /** 機器人的三種難度 */
@@ -179,9 +181,19 @@ function ModePicker({ game, onPick, onClose }: { game: PuzzleGameInfo; onPick: (
         </div>
         <p style={{ fontSize: 18, margin: '8px 0 14px' }}>{game.description}</p>
         <p className="puzzle-mode-title">👤 自己玩：{game.solo}</p>
-        <button className="btn big green" style={{ width: '100%' }} onClick={() => onPick('solo', 1)} data-testid="puzzle-solo">
-          開始 ▶
-        </button>
+        {game.soloLevels ? (
+          <div className="level-pick">
+            {LEVELS.map((l) => (
+              <button key={l.level} className={`btn ${l.color}`} onClick={() => onPick('solo', l.level)} data-testid={`puzzle-solo-${l.level}`}>
+                {l.name}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <button className="btn big green" style={{ width: '100%' }} onClick={() => onPick('solo', 1)} data-testid="puzzle-solo">
+            開始 ▶
+          </button>
+        )}
         <p className="puzzle-mode-title">🤖 和機器人比賽：{game.vs}</p>
         <div className="level-pick">
           {LEVELS.map((l) => (

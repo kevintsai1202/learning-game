@@ -266,3 +266,73 @@ test('雲端角色：益智遊戲的金幣由伺服器用同樣規則算，同�
   expect(Object.keys(server.wrongBook).sort()).toEqual(Object.keys(local.wrongBook).sort());
   await kid.context.close();
 });
+
+/** 記憶翻牌：把某一對的兩張牌翻開（依公開的「每張屬於第幾對」），等它配對成功 */
+async function flipPair(page: Page, pair: number): Promise<void> {
+  const s = await puzzleState(page);
+  const [a, b] = (s.pairs as number[]).map((p, i) => (p === pair ? i : -1)).filter((i) => i >= 0);
+  await page.getByTestId(`memory-card-${a}`).click();
+  await page.getByTestId(`memory-card-${b}`).click();
+  // 配對成功；配完最後一對時遊戲結束、狀態清成 null
+  await expect.poll(async () => {
+    const now = await puzzleState(page);
+    return !now || now.owner[a] !== null;
+  }).toBe(true);
+}
+
+test('記憶翻牌自己玩：一步配一對，6 步配完 6 對拿 3 星 5 枚金幣', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-memory').click();
+  await page.getByTestId('puzzle-solo-1').click();
+  await expect(page.getByTestId('memory-game')).toHaveAttribute('data-mode', 'solo');
+  await expect(page.locator('[data-testid^="memory-card-"]')).toHaveCount(12);
+  for (let p = 0; p < 2; p++) await flipPair(page, p);
+  // 翻開第三對的一張，截圖看翻面
+  const s = await puzzleState(page);
+  await page.getByTestId(`memory-card-${(s.pairs as number[]).indexOf(2)}`).click();
+  await page.waitForTimeout(500);
+  await page.screenshot({ path: `${SHOTS}/08-memory.png` });
+  const other = (s.pairs as number[]).lastIndexOf(2);
+  await page.getByTestId(`memory-card-${other}`).click();
+  for (let p = 3; p < 6; p++) await flipPair(page, p);
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toHaveText('用 6 步配完 6 對');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+  expect((await profileOf(page)).puzzle.best).toEqual({ memory: 3 });
+});
+
+test('記憶翻牌和機器人輪流：翻錯換機器人翻，配到比較多對的贏', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-memory').click();
+  await page.getByTestId('puzzle-vs-1').click();
+  await expect(page.getByTestId('memory-game')).toHaveAttribute('data-mode', 'vs');
+  // 孩子先連續配 4 對（配對成功可以再翻）
+  for (let p = 0; p < 4; p++) await flipPair(page, p);
+  expect((await puzzleState(page)).scores).toEqual({ kid: 4, bot: 0 });
+  // 故意翻兩張不同對的：蓋回去之後換機器人
+  const s = await puzzleState(page);
+  await page.getByTestId(`memory-card-${(s.pairs as number[]).indexOf(4)}`).click();
+  await page.getByTestId(`memory-card-${(s.pairs as number[]).indexOf(5)}`).click();
+  // 機器人用正常速度（每張約 1 秒），看得到換人
+  await expect(page.getByTestId('memory-turn')).toContainText('機器人');
+  await page.screenshot({ path: `${SHOTS}/09-memory-vs.png` });
+  await setBotDelay(page, 0.05);
+  // 機器人翻完（配到就繼續、翻錯換回孩子）；輪到孩子就把剩下的配完
+  for (let guard = 0; guard < 20; guard++) {
+    const now = await puzzleState(page);
+    if (!now || now.done) break;
+    if (now.turn === 'kid' && now.open.length === 0) {
+      const left = (now.pairs as number[]).filter((_, i) => now.owner[i] === null);
+      await flipPair(page, left[0]);
+    } else {
+      await page.waitForTimeout(300);
+    }
+  }
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toContainText('你 ');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+});

@@ -2170,3 +2170,95 @@ button {
     margin: 4px 6px 0 0;
   }
 }
+
+/* 記憶翻牌：卡片翻面（--cols 由元件依張數設定） */
+.memory-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+  gap: 10px;
+  width: 100%;
+  margin: 8px auto 0;
+}
+.memory-card {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  border: none;
+  padding: 0;
+  background: none;
+  perspective: 700px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.memory-card:disabled {
+  cursor: default;
+}
+.memory-card .inner {
+  position: absolute;
+  inset: 0;
+  transition: transform 0.35s;
+  transform-style: preserve-3d;
+}
+.memory-card.up .inner {
+  transform: rotateY(180deg);
+}
+.memory-card .side {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 0 4px 0 var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  overflow: hidden;
+}
+.memory-card .back {
+  background: repeating-linear-gradient(45deg, #2f6fde 0 10px, #4f86ec 10px 20px);
+  font-size: clamp(22px, 4vw, 34px);
+}
+.memory-card .front {
+  background: #fff;
+  transform: rotateY(180deg);
+  font-weight: 800;
+  font-size: clamp(15px, 2.6vw, 26px);
+  line-height: 1.25;
+  padding: 4px;
+  text-align: center;
+}
+.memory-card .front .emoji {
+  font-size: clamp(28px, 5.5vw, 52px);
+  line-height: 1.1;
+}
+.memory-card .front .en {
+  font-family: var(--font-en, inherit);
+}
+.memory-card.kid .front {
+  background: #d8f7e6;
+}
+.memory-card.bot .front {
+  background: #e9e0ff;
+}
+.memory-card .who {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 15px;
+}
+.memory-turn.kid {
+  background: #d8f7e6;
+}
+@media (prefers-reduced-motion: reduce) {
+  .memory-card .inner {
+    transition: none;
+  }
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .memory-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 7px;
+  }
+}
