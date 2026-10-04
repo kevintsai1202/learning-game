@@ -152,5 +152,35 @@
         "text": "經魚貼紙"
       }
     ]
+  },
+  {
+    "key": "zh-TW|數數看，共有幾個積木？",
+    "note": "積木大師的題目。兩個「數」都是動詞 ㄕㄨˇ（使用者 2026-10-04 指出現在有一個唸錯）。",
+    "variants": [
+      {
+        "label": "目前：原句不修正",
+        "text": "數數看，共有幾個積木？"
+      },
+      {
+        "label": "同音字「鼠鼠看」",
+        "text": "鼠鼠看，共有幾個積木？"
+      },
+      {
+        "label": "同音字「蜀蜀看」",
+        "text": "蜀蜀看，共有幾個積木？"
+      },
+      {
+        "label": "讀音標記：兩個都標 shu3",
+        "text": "<|phoneme_start|>shu3<|phoneme_end|><|phoneme_start|>shu3<|phoneme_end|>看，共有幾個積木？"
+      },
+      {
+        "label": "讀音標記：只標第一個",
+        "text": "<|phoneme_start|>shu3<|phoneme_end|>數看，共有幾個積木？"
+      },
+      {
+        "label": "讀音標記：只標第二個",
+        "text": "數<|phoneme_start|>shu3<|phoneme_end|>看，共有幾個積木？"
+      }
+    ]
   }
 ]
