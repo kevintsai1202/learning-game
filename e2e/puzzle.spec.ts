@@ -415,3 +415,51 @@ test('找不同和機器人：機器人找得很快就輸了，1 星 2 枚金幣
   await expect(page.getByTestId('puzzle-summary')).toHaveText('你 0：3 機器人');
   await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +2');
 });
+
+test('積木大師自己玩：8 題數積木，答錯時標出每一疊有幾個並列出加法', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-blocks').click();
+  await page.getByTestId('puzzle-solo-2').click();
+  await expect(page.getByTestId('blocks-game')).toHaveAttribute('data-mode', 'solo');
+  for (let k = 0; k < 8; k++) {
+    await expect.poll(async () => (await puzzleState(page))?.index).toBe(k);
+    if (k === 0) {
+      await answerCurrent(page, false);
+      await expect(page.getByTestId('blocks-sum')).toBeVisible();
+      await page.screenshot({ path: `${SHOTS}/12-blocks-reveal.png` });
+      await page.getByTestId('next').click();
+    } else {
+      await answerCurrent(page, true);
+      await expect(page.getByTestId('feedback-good')).toBeVisible();
+    }
+  }
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toHaveText('答對 7／8 題');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+  // 積木題不進錯題本（錯題複習畫不出積木圖）
+  expect((await profileOf(page)).wrongBook).toEqual({});
+});
+
+test('積木大師和機器人搶答：搶先答對 8 題贏了', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await setBotDelay(page, 1000);
+  await page.getByTestId('puzzle-blocks').click();
+  await page.getByTestId('puzzle-vs-3').click();
+  await expect(page.getByTestId('blocks-game')).toHaveAttribute('data-mode', 'vs');
+  await page.screenshot({ path: `${SHOTS}/13-blocks-vs.png` });
+  for (let k = 0; k < 8; k++) {
+    await expect.poll(async () => {
+      const s = await puzzleState(page);
+      return s?.index === k && s?.phase === 'open';
+    }).toBe(true);
+    await answerCurrent(page, true);
+    await expect.poll(async () => (await puzzleState(page))?.kid ?? 8).toBe(k + 1);
+  }
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toHaveText('你 8：0 機器人');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+});

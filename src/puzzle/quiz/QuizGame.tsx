@@ -4,7 +4,7 @@
  * - 和機器人：搶答 10 題，先答對的得分；答錯的人這一題不能再答。
  * 孩子作答的題目都記下來，結算時交給 PuzzleScreen 存檔（答錯的進錯題本）。
  */
-import { useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { AnswerRecord, ChoiceQuestion } from '../../core/types';
 import type { ActivityDef } from '../../activities/types';
 import type { Edition } from '../../content/editions/schema';
@@ -20,16 +20,12 @@ import {
   STREAK_MAX_QUESTIONS,
   botMove,
   buildQuizQuestions,
-  duelAnswer,
-  duelNext,
   duelOutcome,
   outcomeStars,
-  startDuel,
   startStreak,
   streakAnswer,
   streakStars,
   type BotLevel,
-  type DuelState,
 } from '../../engine/puzzle/quizBattle';
 import { ChoiceInput } from '../../quiz/inputs';
 import { VisualView } from '../../quiz/visuals';
@@ -42,6 +38,7 @@ import { prefetchSpeech, repeatSpeech, speak } from '../../audio/speech';
 import { sfx } from '../../audio/sfx';
 import { puzzleDebug } from '../debug';
 import type { PuzzleGameProps } from '../types';
+import { useDuel } from '../useDuel';
 
 /** 益智搶答可以出題的活動：各科的固定活動（挑戰塔與停用的除外），加上孩子目前課本的單元 */
 function quizActivities(editions: Edition[], curriculum: CurriculumChoice): ActivityDef[] {
@@ -214,27 +211,7 @@ function SoloQuiz({ questions, onFinish, onExit }: { questions: ChoiceQuestion[]
   );
 }
 
-// ---------- 和機器人搶答 ----------
-
-/** 搶答的畫面狀態：比賽進度，加上這一題孩子與機器人選了哪一個 */
-interface DuelView {
-  duel: DuelState;
-  kidPick: number | null;
-  botPick: number | null;
-}
-
-type DuelAction = { t: 'kid' | 'bot'; pick: number; correct: boolean } | { t: 'next'; total: number };
-
-function duelReducer(s: DuelView, a: DuelAction): DuelView {
-  if (a.t === 'next') {
-    const duel = duelNext(s.duel, a.total);
-    return duel === s.duel ? s : { duel, kidPick: null, botPick: null };
-  }
-  const duel = duelAnswer(s.duel, a.t, a.correct);
-  // 沒被接受的作答（這一題已經有結果、或已經答錯過）不改畫面
-  if (duel === s.duel) return s;
-  return a.t === 'kid' ? { ...s, duel, kidPick: a.pick } : { ...s, duel, botPick: a.pick };
-}
+// ---------- 和機器人搶答（流程在 ../useDuel.ts） ----------
 
 function DuelQuiz({
   questions,
@@ -249,53 +226,40 @@ function DuelQuiz({
   onFinish: PuzzleGameProps['onFinish'];
   onExit: () => void;
 }) {
-  const [view, dispatch] = useReducer(duelReducer, { duel: startDuel(), kidPick: null, botPick: null });
-  const { duel } = view;
   const answers = useRef<AnswerRecord[]>([]);
   /** 機器人用的亂數（同一局固定） */
   const rng = useMemo(() => createRng(seed ^ 0xb07), [seed]);
+  const { view, pick: duelPick } = useDuel({
+    total: questions.length,
+    botMove: (i) => botMove(questions[i], level, rng),
+    answer: (i) => questions[i].answer,
+    onResolve: (phase, i) => {
+      if (phase === 'kid') {
+        sfx.correct();
+        speak(PRAISE[i % PRAISE.length]);
+      } else {
+        sfx.oops();
+        speak(phase === 'bot' ? PUZZLE_LINES.botGotIt : PUZZLE_LINES.bothMissed);
+      }
+    },
+    onDone: (duel) => {
+      const outcome = duelOutcome(duel);
+      onFinish({ stars: outcomeStars(outcome), vs: outcome, summary: `你 ${duel.kid}：${duel.bot} 機器人`, answers: answers.current });
+    },
+  });
+  const { duel } = view;
   const q = questions[duel.index];
   useAsk(q);
   useEffect(() => {
     puzzleDebug.state = { game: 'quiz', mode: 'vs', ...duel };
   }, [duel]);
 
-  // 每一題開始時排好機器人什麼時候答、選哪一個（e2e 可以用 botDelayFactor 調速度）
-  useEffect(() => {
-    const move = botMove(q, level, rng);
-    const t = setTimeout(() => dispatch({ t: 'bot', pick: move.pick, correct: move.pick === q.answer }), move.delayMs * puzzleDebug.botDelayFactor);
-    return () => clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [duel.index]);
-
-  // 這一題有結果：音效與朗讀，停一下換下一題
-  useEffect(() => {
-    if (duel.phase === 'open' || duel.done) return;
-    if (duel.phase === 'kid') {
-      sfx.correct();
-      speak(PRAISE[duel.index % PRAISE.length]);
-    } else {
-      sfx.oops();
-      speak(duel.phase === 'bot' ? PUZZLE_LINES.botGotIt : PUZZLE_LINES.bothMissed);
-    }
-    const t = setTimeout(() => dispatch({ t: 'next', total: questions.length }), duel.phase === 'kid' ? 1400 : 2600);
-    return () => clearTimeout(t);
-  }, [duel.phase, duel.index, duel.done, questions.length]);
-
-  // 比完了就結算
-  useEffect(() => {
-    if (!duel.done) return;
-    const outcome = duelOutcome(duel);
-    onFinish({ stars: outcomeStars(outcome), vs: outcome, summary: `你 ${duel.kid}：${duel.bot} 機器人`, answers: answers.current });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [duel.done]);
-
+  /** 孩子作答：被接受才記錄（這一題已經有結果或已經答錯過就不算） */
   const pick = (i: number) => {
-    if (duel.phase !== 'open' || duel.kidOut) return;
     const correct = i === q.answer;
+    if (!duelPick(i)) return;
     answers.current.push({ question: q, correct, firstTry: correct });
     if (!correct) sfx.oops();
-    dispatch({ t: 'kid', pick: i, correct });
   };
 
   const resolved = duel.phase !== 'open';

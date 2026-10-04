@@ -2315,3 +2315,29 @@ button {
     margin: 4px 0 6px;
   }
 }
+
+/* 積木大師：等角投影的積木堆 */
+.blocks-view {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.blocks-view svg {
+  width: min(360px, 80vw);
+  max-height: 34vh;
+}
+.blocks-sum {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  background: #fff2c6;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  padding: 2px 14px 4px;
+}
+@media (orientation: portrait), (max-width: 760px) {
+  .blocks-view svg {
+    max-height: 28vh;
+  }
+}

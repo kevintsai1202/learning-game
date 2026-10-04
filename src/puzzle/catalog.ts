@@ -48,6 +48,15 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     vs: '和機器人一起找：誰先點到就是誰的，找到比較多處的贏',
     soloLevels: true,
   },
+  {
+    id: 'blocks',
+    title: '積木大師',
+    icon: '🧱',
+    description: '數數看，一堆積木共有幾個？被擋住看不到的也要算喔！',
+    solo: '數數看 8 題（簡單 3～7 個、普通 5～10 個、厲害 8～15 個）',
+    vs: '和機器人搶答 8 題：先答對的得分',
+    soloLevels: true,
+  },
 ];
 
 /** 依 id 找遊戲 */
