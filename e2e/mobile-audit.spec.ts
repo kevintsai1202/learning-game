@@ -210,6 +210,33 @@ for (const d of DEVICES) {
       await page.evaluate(() => (window as any).__game.ui.getState().goto('badges'));
       await check('26-badges');
 
+      // 益智遊戲館：選單、選玩法、各遊戲最擠的畫面（記憶翻牌 20 張牌、其他用和機器人的標題列）
+      const openPuzzle = async () => {
+        // 先回島上再進去：益智遊戲館的畫面會重新開始，停在選單
+        await page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
+        await page.evaluate(() => (window as any).__game.ui.getState().enterZone('puzzle'));
+        await expect(page.getByTestId('puzzle-menu')).toBeVisible();
+      };
+      await openPuzzle();
+      await check('27-puzzle-menu');
+      await page.getByTestId('puzzle-memory').click();
+      await check('28-puzzle-pick');
+      await page.getByTestId('puzzle-solo-3').click();
+      await expect(page.getByTestId('memory-game')).toBeVisible();
+      await check('29-puzzle-memory');
+      for (const [game, name] of [
+        ['quiz', '30-puzzle-quiz'],
+        ['spot', '31-puzzle-spot'],
+        ['blocks', '32-puzzle-blocks'],
+        ['tangram', '33-puzzle-tangram'],
+      ]) {
+        await openPuzzle();
+        await page.getByTestId(`puzzle-${game}`).click();
+        await page.getByTestId('puzzle-vs-3').click();
+        await check(name);
+      }
+      await page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
+
       writeFileSync(`${OUT}/${d.name}-report.json`, JSON.stringify({ unreachable, report }, null, 1));
       const problems = Object.entries(report).filter(([, r]) => r.pageScrollX || r.offenders.length);
       console.log(`${d.name}：${problems.length}／${Object.keys(report).length} 個畫面有超出`);

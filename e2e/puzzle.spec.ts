@@ -376,6 +376,10 @@ test('找不同自己玩：點錯扣 3 秒，左圖右圖都可以點；全部�
   await expect.poll(async () => (await puzzleState(page)).penalty).toBe(3);
   await tapScene(page, s.diffs[0].x, s.diffs[0].y, 'spot-left');
   await expect.poll(async () => (await puzzleState(page)).found[0]).toBe('kid');
+  // 再點一次已經圈起來的地方（在另一張圖上對照）：不算點錯、不扣秒
+  await tapScene(page, s.diffs[0].x, s.diffs[0].y);
+  await page.waitForTimeout(300);
+  expect((await puzzleState(page)).penalty).toBe(3);
   await page.screenshot({ path: `${SHOTS}/10-spot.png` });
   for (const i of [1, 2]) await tapScene(page, s.diffs[i].x, s.diffs[i].y);
   await expect(page.getByTestId('puzzle-result')).toBeVisible();
@@ -527,6 +531,16 @@ test('七巧板自己玩（簡單）：放錯的地方不會固定；轉方向�
   await page.mouse.move(corner.x, corner.y, { steps: 5 });
   await page.mouse.up();
   await expect.poll(async () => (await puzzleState(page)).pieces.square.placed).toBe(false);
+  // 把大三角形拖到畫面最上面（盤面外）：重心留在盤面裡，還抓得回來
+  const big = (await puzzleState(page)).pieces.big1;
+  const bigFrom = await boardToScreen(page, big.cx, big.cy);
+  await page.mouse.move(bigFrom.x, bigFrom.y);
+  await page.mouse.down();
+  await page.mouse.move(bigFrom.x, 2, { steps: 6 });
+  await page.mouse.up();
+  const moved = (await puzzleState(page)).pieces.big1;
+  expect(moved.cy).toBeGreaterThanOrEqual(0);
+  expect(moved.cy).toBeLessThan(big.cy);
   await solveTangram(page, 4);
   await page.screenshot({ path: `${SHOTS}/15-tangram-half.png` });
   await solveTangram(page);

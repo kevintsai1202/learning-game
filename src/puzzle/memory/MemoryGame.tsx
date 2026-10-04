@@ -150,7 +150,7 @@ export default function MemoryGame({ run, onFinish, onExit }: PuzzleGameProps) {
       </div>
       <div
         className="memory-grid"
-        style={{ ['--cols' as string]: cols, maxWidth: `calc((100dvh - 200px) * ${((cols / rows) * 0.8).toFixed(3)})` }}
+        style={{ ['--cols' as string]: cols, maxWidth: `max(340px, calc((100dvh - 200px) * ${((cols / rows) * 0.8).toFixed(3)}))` }}
         role="group"
         aria-label="牌"
       >
