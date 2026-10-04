@@ -1,6 +1,6 @@
 # Google 快速登入：建立 OAuth 用戶端 ID
 
-班級伺服器的「用 Google 登入」（備選的快速登入）需要一個 Google OAuth 用戶端 ID。目前只有家長用（綁在孩子的班級帳號上）；老師的 Google 快速登入在大人帳號改版（A1）時拿掉，A4 會改成 Google 綁大人帳號（`docs/plans/accounts.md`）。這一步要用你自己的 Google 帳號在 Google Cloud Console 建立，程式這邊沒辦法代勞。沒有設定時，遊戲照常運作，只是不會出現 Google 按鈕。
+班級伺服器的「用 Google 登入」（備選的快速登入）需要一個 Google OAuth 用戶端 ID。A4 起 Google 綁的是大人帳號（家長、老師）：在帳號頁用 Google 登入、用 Google 註冊，或在帳號設定綁定（`docs/plans/accounts.md` 第 9 節）。這一步要用你自己的 Google 帳號在 Google Cloud Console 建立，程式這邊沒辦法代勞。沒有設定時，遊戲照常運作，只是不會出現 Google 按鈕。
 
 設計說明見 `docs/plans/online.md` 3.1 節。
 
@@ -45,7 +45,7 @@ npm run server:build
 $env:GOOGLE_CLIENT_ID = '貼上你的用戶端 ID'; npm run server:start
 ```
 
-接著在瀏覽器打開 `http://localhost:4183`，在開發者工具的 Console 執行 `localStorage.setItem('learning-island-server-url', 'http://localhost:8787')` 後重新整理，班級畫面就會出現「使用 Google 帳戶登入」按鈕。
+接著在瀏覽器打開 `http://localhost:4183`，在開發者工具的 Console 執行 `localStorage.setItem('learning-island-server-url', 'http://localhost:8787')` 後重新整理，「老師／家長」帳號頁的登入分頁就會出現「使用 Google 帳戶登入」按鈕。
 
 正式環境（Zeabur）：在伺服器服務的環境變數加上 `GOOGLE_CLIENT_ID`（P4 部署時一起設定）。
 

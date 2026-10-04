@@ -10,8 +10,6 @@ import type {
   Classmate,
   ClassmatesResponse,
   GiftsResponse,
-  GoogleKidsResponse,
-  GoogleLinksResponse,
   OpsResponse,
   RoomInfo,
   SendGiftResponse,
@@ -151,22 +149,6 @@ export async function loginClass(deps: CloudDeps, server: string, input: LoginIn
   return profile;
 }
 
-/**
- * 用 Google 快速登入（備選）：這個 Google 帳號綁定的孩子全部登入到這台裝置，回傳這些角色。
- * 每一位都和代碼登入走同一條路：本機存檔＝伺服器版本＋這台裝置還沒送出的進度（不能直接覆蓋）。
- * 要不要切換目前角色由呼叫端決定（只有一位就直接進島，多位回選角畫面）。
- */
-export async function googleLogin(deps: CloudDeps, server: string, idToken: string): Promise<Profile[]> {
-  const res = await deps.call<GoogleKidsResponse>('POST', '/api/google/login', { base: server, body: { idToken } });
-  return res.kids.map((kid) => {
-    const cloud = cloudOf(server, kid);
-    deps.setToken(cloud.accountId, kid.token);
-    const profile = rebase(kid.profile, deps.loadOutbox(cloud.accountId), cloud, deps.now());
-    deps.putProfile(profile);
-    return profile;
-  });
-}
-
 /** 讀出雲端角色的伺服器位置與權杖；沒有登入就丟出錯誤 */
 function credentials(deps: CloudDeps, profileId: string): { cloud: CloudLink; token: string } {
   const cloud = deps.getProfile(profileId)?.cloud;
@@ -174,24 +156,6 @@ function credentials(deps: CloudDeps, profileId: string): { cloud: CloudLink; to
   const token = deps.getToken(cloud.accountId);
   if (!token) throw new Error('請先重新登入班級');
   return { cloud, token };
-}
-
-/** 把 Google 帳號綁到這位孩子（之後可以用 Google 快速登入）；回傳已綁定的帳號（email 已遮罩） */
-export async function linkGoogle(deps: CloudDeps, profileId: string, idToken: string): Promise<string[]> {
-  const { cloud, token } = credentials(deps, profileId);
-  return (await deps.call<GoogleLinksResponse>('POST', '/api/google/link', { base: cloud.server, token, body: { idToken } })).google;
-}
-
-/** 解除這位孩子的所有 Google 綁定 */
-export async function unlinkGoogle(deps: CloudDeps, profileId: string): Promise<string[]> {
-  const { cloud, token } = credentials(deps, profileId);
-  return (await deps.call<GoogleLinksResponse>('DELETE', '/api/google/link', { base: cloud.server, token })).google;
-}
-
-/** 讀出這位孩子已綁定的 Google 帳號（email 已遮罩） */
-export async function fetchGoogleLinks(deps: CloudDeps, profileId: string): Promise<string[]> {
-  const { cloud, token } = credentials(deps, profileId);
-  return (await deps.call<GoogleLinksResponse>('GET', '/api/me', { base: cloud.server, token })).google;
 }
 
 /** 登出這台裝置：伺服器端的權杖失效（連不上就算了），清掉本機權杖與佇列。移除本機角色由呼叫端處理 */

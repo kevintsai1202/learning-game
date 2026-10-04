@@ -8,7 +8,7 @@ import { api, ApiFailure } from './api';
 import { serverUrl } from './config';
 import { appUrlOf, type EmailLink } from './emailLinks';
 import { getUserSession, setUserSession, type UserSession } from './storage';
-import type { MailStatus, UserInfo, UserPatchResponse, UserSessionResponse } from './protocol';
+import type { MailStatus, UserGoogleLink, UserGoogleLinksResponse, UserInfo, UserPatchResponse, UserSessionResponse } from './protocol';
 
 /** 目前網頁的前端網址（信裡的連結指回這裡）；不在瀏覽器裡時沒有 */
 const currentAppUrl = (): string | undefined => (typeof location === 'undefined' ? undefined : appUrlOf(location.href));
@@ -53,6 +53,27 @@ interface AccountStore {
   forgotPassword: (login: string) => Promise<void>;
   /** 用重設連結設定新密碼；成功後那個帳號在所有裝置都登出（這台若登入的是同一個帳號也會登出） */
   resetPassword: (token: string, password: string) => Promise<void>;
+  /** 用 Google 登入（A4）：只能登入已經綁定這個 Google 的大人帳號 */
+  googleLogin: (idToken: string, remember: boolean) => Promise<void>;
+  /** 用 Google 註冊（A4）：帳號名稱、密碼、身分照樣要設；email 用 Google 的（算驗證過），同時綁好這個 Google */
+  googleRegister: (input: GoogleRegisterInput) => Promise<void>;
+  /** 這個帳號綁定的 Google（email 已遮罩） */
+  googleLinks: () => Promise<UserGoogleLink[]>;
+  /** 綁定一個 Google；回傳綁定後的清單 */
+  linkGoogle: (idToken: string) => Promise<UserGoogleLink[]>;
+  /** 解除一個 Google（id 是清單裡的 id）；回傳解除後的清單 */
+  unlinkGoogle: (id: string) => Promise<UserGoogleLink[]>;
+}
+
+/** 用 Google 註冊需要的資料（email 用 Google 的，不用填） */
+export interface GoogleRegisterInput {
+  idToken: string;
+  username: string;
+  password: string;
+  parent: boolean;
+  teacher: boolean;
+  /** 在這台裝置保持登入 */
+  remember: boolean;
 }
 
 export const useAccount = create<AccountStore>((set, get) => {
@@ -149,5 +170,23 @@ export const useAccount = create<AccountStore>((set, get) => {
       // 這台登入的如果是同一個帳號，權杖已經失效：讀一次帳號資料，401 時 call 會自動登出（登入的是別的帳號就不受影響）
       if (get().session) await get().refresh().catch(() => undefined);
     },
+
+    googleLogin: async (idToken, remember) => {
+      const base = server();
+      signedIn(base, await api<UserSessionResponse>('POST', '/api/users/google/login', { base, body: { idToken } }), remember);
+    },
+
+    googleRegister: async ({ remember, ...body }) => {
+      const base = server();
+      signedIn(base, await api<UserSessionResponse>('POST', '/api/users/google/register', { base, body }), remember);
+      // Google 的 email 已經驗證過，不用寄驗證信
+      set({ verifyMail: null });
+    },
+
+    googleLinks: async () => (await get().call<UserGoogleLinksResponse>('GET', '/api/users/me/google')).google,
+
+    linkGoogle: async (idToken) => (await get().call<UserGoogleLinksResponse>('POST', '/api/users/me/google', { idToken })).google,
+
+    unlinkGoogle: async (id) => (await get().call<UserGoogleLinksResponse>('DELETE', `/api/users/me/google/${encodeURIComponent(id)}`)).google,
   };
 });

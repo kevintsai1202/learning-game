@@ -18,9 +18,9 @@ export async function makeGoogleKeys(kid = 'test-key-1') {
   async function sign(
     sub: string,
     email: string | null,
-    overrides: { aud?: string; iss?: string; expiresIn?: string | number; iat?: number } = {},
+    overrides: { aud?: string; iss?: string; expiresIn?: string | number; iat?: number; emailVerified?: boolean } = {},
   ): Promise<string> {
-    const jwt = new SignJWT(email ? { email, email_verified: true } : {})
+    const jwt = new SignJWT(email ? { email, email_verified: overrides.emailVerified ?? true } : {})
       .setProtectedHeader({ alg: 'RS256', kid })
       .setIssuer(overrides.iss ?? 'https://accounts.google.com')
       .setAudience(overrides.aud ?? TEST_CLIENT_ID)

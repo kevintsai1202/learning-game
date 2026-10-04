@@ -25,6 +25,23 @@ declare global {
   }
 }
 
+/**
+ * 從 Google 的 ID token 讀出 email（A4：用 Google 註冊時顯示在註冊表單）。
+ * 只用來顯示，不檢查簽章；伺服器收到 token 會重新驗證。讀不到（不是 JWT、沒有 email）回傳 null
+ */
+export function emailOfIdToken(idToken: string): string | null {
+  const part = idToken.split('.')[1];
+  if (!part) return null;
+  try {
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(part.length / 4) * 4, '=');
+    const bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
+    const payload = JSON.parse(new TextDecoder().decode(bytes)) as { email?: unknown };
+    return typeof payload.email === 'string' ? payload.email : null;
+  } catch {
+    return null;
+  }
+}
+
 /** 是否為 e2e 的測試按鈕模式 */
 export function googleStubEnabled(): boolean {
   try {

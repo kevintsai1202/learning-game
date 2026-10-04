@@ -9,6 +9,8 @@ export interface GoogleIdentity {
   /** Google 帳號的固定識別碼（不會因為改 email 而變） */
   sub: string;
   email: string | null;
+  /** Google 驗證過這個 email（token 的 email_verified）；用 Google 註冊時才能把 email 當成驗證過的 */
+  emailVerified: boolean;
 }
 
 /** 驗證 ID token；失敗丟出例外 */
@@ -40,7 +42,10 @@ export function createGoogleVerifier(opts: { clientId: string; keys: JWTVerifyGe
       clockTolerance: 60,
     });
     if (!payload.sub) throw new Error('ID token 沒有 sub');
-    return { sub: payload.sub, email: typeof payload.email === 'string' ? payload.email : null };
+    const email = typeof payload.email === 'string' ? payload.email : null;
+    // Google 的 email_verified 有時是字串 "true"
+    const verified = payload.email_verified === true || payload.email_verified === 'true';
+    return { sub: payload.sub, email, emailVerified: !!email && verified };
   };
 }
 

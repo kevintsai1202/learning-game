@@ -19,7 +19,6 @@ import { useCloud } from '../../online/useCloud';
 import { onlineEnabled } from '../../online/config';
 import { getToken } from '../../online/storage';
 import { BADGES } from '../../store/badges';
-import { GoogleButton } from '../GoogleButton';
 
 const SUBJECT_NAME: Record<SubjectId, string> = { zh: '國語', math: '數學', en: '英語', life: '生活與健康' };
 
@@ -456,63 +455,6 @@ function BackupTab() {
   );
 }
 
-/**
- * 家長的 Google 快速登入（備選）：把 Google 帳號綁到這位孩子，之後任何裝置都能用 Google 一次登入綁定的孩子。
- * 只有雲端角色、而且這台裝置有登入時才能綁；伺服器沒開 Google 登入時不顯示。
- */
-function GoogleLinkSection({ profile }: { profile: Profile }) {
-  const clientId = useCloud((s) => s.googleClientId);
-  const linkGoogle = useCloud((s) => s.linkGoogle);
-  const unlinkGoogle = useCloud((s) => s.unlinkGoogle);
-  const fetchGoogleLinks = useCloud((s) => s.fetchGoogleLinks);
-  /** 已綁定的帳號（email 已遮罩）；null 表示讀不到（例如離線） */
-  const [linked, setLinked] = useState<string[] | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  const [confirmUnlink, setConfirmUnlink] = useState(false);
-  useEffect(() => {
-    let alive = true;
-    fetchGoogleLinks(profile.id)
-      .then((g) => alive && setLinked(g))
-      .catch(() => alive && setLinked(null));
-    return () => {
-      alive = false;
-    };
-  }, [profile.id, fetchGoogleLinks]);
-  if (!clientId) return null;
-  /** 執行綁定或解除，更新顯示 */
-  const run = (job: Promise<string[]>, done: string) =>
-    job
-      .then((g) => {
-        setLinked(g);
-        setMsg(done);
-        setConfirmUnlink(false);
-      })
-      .catch((err: unknown) => setMsg(err instanceof Error ? err.message : '發生錯誤，請再試一次'));
-  return (
-    <div style={{ marginTop: 18 }} data-testid="google-section">
-      <h4 style={{ margin: '0 0 6px' }}>Google 快速登入（備選）</h4>
-      <p data-testid="google-linked">{linked === null ? '目前讀不到綁定狀態（可能沒有網路）。' : linked.length ? `已綁定：${linked.join('、')}` : '還沒有綁定 Google 帳號。'}</p>
-      <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-        <GoogleButton clientId={clientId} label="綁定 Google 帳號" testId="google-link" onCredential={(t) => void run(linkGoogle(profile.id, t), '綁定好了！之後在班級畫面按「使用 Google 帳戶登入」就能快速登入。')} />
-        {!!linked?.length &&
-          (confirmUnlink ? (
-            <button className="btn small red" onClick={() => void run(unlinkGoogle(profile.id), '已解除 Google 綁定')} data-testid="google-unlink-confirm">
-              確定解除綁定
-            </button>
-          ) : (
-            <button className="btn small white" onClick={() => setConfirmUnlink(true)} data-testid="google-unlink">
-              解除綁定
-            </button>
-          ))}
-      </div>
-      {msg && <p data-testid="google-msg">{msg}</p>}
-      <p className="notice">
-        綁定後，在任何裝置的班級畫面按「使用 Google 帳戶登入」，就能一次登入這個 Google 帳號綁定的所有孩子（兄弟姊妹可以綁同一個帳號），不用輸入代碼和密碼；原本的代碼登入照樣可以用。伺服器只記 Google 帳號的識別碼與 email，只用在快速登入，老師看不到。
-      </p>
-    </div>
-  );
-}
-
 /** 班級帳號：雲端角色的同步狀態、立即同步、登出這台裝置 */
 function ClassTab({ profile }: { profile: Profile }) {
   const goto = useUi((s) => s.goto);
@@ -609,7 +551,6 @@ function ClassTab({ profile }: { profile: Profile }) {
           ? `登出後，這台裝置上的「${profile.name}」會移除；進度存在班級伺服器，用房間代碼＋暱稱＋密碼就能再登入。忘記密碼請老師重設。`
           : `登出後，這台裝置上的「${profile.name}」會移除；進度存在家長帳號，家長登入後選「在這台裝置玩」就能找回。`}
       </p>
-      {hasToken && cloud.room && <GoogleLinkSection profile={profile} />}
     </div>
   );
 }

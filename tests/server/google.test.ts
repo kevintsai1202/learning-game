@@ -16,7 +16,12 @@ const verifier = () => createGoogleVerifier({ clientId: TEST_CLIENT_ID, keys: cr
 describe('Google ID token 驗證', () => {
   it('Google 簽的、給這個 Client ID 的 token：取得帳號識別碼與 email', async () => {
     const token = await keys.sign('google-sub-1', 'parent@gmail.com');
-    await expect(verifier()(token)).resolves.toEqual({ sub: 'google-sub-1', email: 'parent@gmail.com' });
+    await expect(verifier()(token)).resolves.toEqual({ sub: 'google-sub-1', email: 'parent@gmail.com', emailVerified: true });
+  });
+
+  it('Google 沒有驗證過的 email：emailVerified 是 false（用 Google 註冊時不能拿來當驗證過的 email）', async () => {
+    const token = await keys.sign('google-sub-4', 'not.verified@example.com', { emailVerified: false });
+    await expect(verifier()(token)).resolves.toEqual({ sub: 'google-sub-4', email: 'not.verified@example.com', emailVerified: false });
   });
 
   it('發給別的網站（aud 不同）要拒絕', async () => {
@@ -43,7 +48,7 @@ describe('Google ID token 驗證', () => {
 
   it('沒有 email 的帳號也可以（只用識別碼登入）', async () => {
     const token = await keys.sign('google-sub-2', null);
-    await expect(verifier()(token)).resolves.toEqual({ sub: 'google-sub-2', email: null });
+    await expect(verifier()(token)).resolves.toEqual({ sub: 'google-sub-2', email: null, emailVerified: false });
   });
 
   it('發行者寫成不含 https 的 accounts.google.com 也接受（Google 文件列的兩種寫法）', async () => {

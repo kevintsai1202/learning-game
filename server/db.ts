@@ -86,7 +86,17 @@ async function openPglite(dataDir?: string): Promise<Db> {
 }
 
 /** 資料表結構的版本：每一版是一串 SQL（一句一個元素），只會往後加，不修改已發布的版本 */
-const MIGRATIONS: { version: number; statements: string[] }[] = [
+/**
+ * 一個資料表版本：statements 依序執行；before 在同一個交易裡、statements 之前執行
+ * （例如刪表前把筆數寫進記錄，部署後看記錄就知道刪了什麼）
+ */
+interface Migration {
+  version: number;
+  statements: string[];
+  before?: (tx: Queryable, log: (msg: string) => void) => Promise<void>;
+}
+
+const MIGRATIONS: Migration[] = [
   {
     version: 1,
     statements: [
@@ -235,18 +245,46 @@ const MIGRATIONS: { version: number; statements: string[] }[] = [
       `CREATE UNIQUE INDEX IF NOT EXISTS users_email_unique ON users (lower(email))`,
     ],
   },
+  {
+    // Google 改綁大人帳號（A4，docs/plans/accounts.md 第 9 節）：一個 Google 只能綁一個大人帳號（google_sub 是主鍵），
+    // 一個大人帳號可以綁多個 Google（爸爸、媽媽各綁一個）。拿掉「Google 直接綁孩子」（google_links）與
+    // 改版前「Google 綁房間」（teacher_google_links）：刪之前把筆數寫進記錄（A5 上線前也要先查正式環境）
+    version: 7,
+    before: async (tx, log) => {
+      for (const table of ['google_links', 'teacher_google_links']) {
+        const exists = (await tx.query<{ ok: boolean }>('SELECT to_regclass($1) IS NOT NULL AS ok', [table]))[0]?.ok;
+        if (!exists) continue;
+        const n = (await tx.query<{ n: number }>(`SELECT count(*)::int AS n FROM ${table}`))[0].n;
+        if (n > 0) log(`資料表第 7 版：刪除 ${table}（${n} 筆舊的 Google 綁定）`);
+      }
+    },
+    statements: [
+      `CREATE TABLE IF NOT EXISTS user_google_links (
+        google_sub text PRIMARY KEY,
+        user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        email text,
+        linked_at timestamptz NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS user_google_links_user ON user_google_links (user_id)`,
+      `DROP TABLE IF EXISTS google_links`,
+      `DROP TABLE IF EXISTS teacher_google_links`,
+    ],
+  },
 ];
 
 /**
  * 建表與升級（可以重複執行）。
  * upTo：只升到這一版（測試用，模擬「正式環境停在舊版、之後才升級」）；沒給就升到最新。
+ * log：升級過程要留下的訊息（例如刪了幾筆舊資料）；預設寫到 console.warn
  */
-export async function migrate(db: Db, opts: { upTo?: number } = {}): Promise<void> {
+export async function migrate(db: Db, opts: { upTo?: number; log?: (msg: string) => void } = {}): Promise<void> {
+  const log = opts.log ?? ((msg: string) => console.warn(msg));
   await db.query(`CREATE TABLE IF NOT EXISTS schema_migrations (version integer PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`);
   const done = new Set((await db.query<{ version: number }>('SELECT version FROM schema_migrations')).map((r) => r.version));
   for (const m of MIGRATIONS) {
     if (done.has(m.version) || (opts.upTo !== undefined && m.version > opts.upTo)) continue;
     await db.transaction(async (tx) => {
+      if (m.before) await m.before(tx, log);
       for (const sql of m.statements) await tx.query(sql);
       await tx.query('INSERT INTO schema_migrations (version) VALUES ($1)', [m.version]);
     });
@@ -255,7 +293,7 @@ export async function migrate(db: Db, opts: { upTo?: number } = {}): Promise<voi
 
 /** 清空所有資料（測試用；資料表結構保留） */
 export async function resetDb(db: Db): Promise<void> {
-  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, google_links, teacher_google_links, gifts, email_tokens, users CASCADE');
+  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, gifts, email_tokens, user_google_links, users CASCADE');
 }
 
 /** 刪掉 30 天前的操作去重紀錄（伺服器啟動時與每天執行一次） */

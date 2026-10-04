@@ -7,7 +7,7 @@
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
 - 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/engine/check.ts`（計分）
-- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「退出班級」的共用函式）；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
+- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「退出班級」的共用函式）；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
@@ -51,7 +51,7 @@ docker rm -f li-pg-test
   - `authenticate(c, 'kid')`：班級功能用，角色沒有班級時回 403 `no_class`（送禮、同學名單因此不用自己檢查）；`authenticateKidAny`：班級可以空，只給同步（`/api/ops`）、讀存檔（`/api/me`）與「帶權杖加入班級」用；`authenticateUser` 只收大人的。WebSocket 遇到沒有班級的角色用 4004（`CLOSE_NO_CLASS`）關閉，和權杖無效（4003）分開。
 - **家長的雲端角色與退出班級**（A2，`docs/plans/accounts.md` 第 6 節）：
   - 角色可以只有家長、沒有班級（`accounts` 的限制：班級與家長至少一個）；沒有班級就沒有孩子密碼。
-  - 退出班級（老師移出家長名下的角色、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts`（收到與送出的未收禮物都退款，送出的標成看過）＋`detachFromClass`（班級與孩子密碼清空、刪掉 `class` 來源的權杖與 Google 綁定，家長裝置上的權杖留著）；沒有家長的純班級角色照舊刪除。Google 綁定是用班級權杖建立的（知道孩子密碼就能綁），和 `class` 權杖同生命週期。
+  - 退出班級（老師移出家長名下的角色、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts`（收到與送出的未收禮物都退款，送出的標成看過）＋`detachFromClass`（班級與孩子密碼清空、刪掉 `class` 來源的權杖，家長裝置上的權杖留著）；沒有家長的純班級角色照舊刪除。
   - 老師重設孩子密碼只撤銷 `class` 來源的權杖，也只踢 `class` 來源的連線：中樞記每條連線的權杖來源（`JoinInfo.via`），`onKick(id, reason, 'class')`／`hub.kick(id, reason, via)`。移出、退出、刪除照舊全踢。
   - 收禮清單、送禮結果、收下與不用了都只算目前班級的禮物（`gifts.room_code`）：退出班級的交易在掃完禮物、鎖到帳號之前，同學剛好送出的那份會漏掉（真正的 PostgreSQL 才會發生），這種殘留的在新班級看不到也收不下，7 天後由 `expireGifts` 退款。
   - 老師移出成員（`removeMemberWithRefunds`）：交易開頭讀到的班級可能已經過期（家長讓他退出、又加入別的班級），結清禮物時鎖到帳號之後再確認一次，不是這個班的就丟出內部例外撤銷整個交易、回傳 null（路由回 404，不送撤銷前的退款通知）。老師只能移出自己班上的學生。
@@ -79,7 +79,8 @@ docker rm -f li-pg-test
   - 禮物 id 由裝置產生，同一個送禮人重送同一個 id 回傳原本那份（不重複扣款）。
   - `main.ts` 啟動時與每小時跑 `expireGifts`（7 天沒收下就退款），關機時清掉計時器。
 - **同時提供前端**（`static.ts`，只在 `STATIC_DIR` 有設時開）：註冊在所有路由之後，不蓋掉 `/api`；快取標頭在拿到回應之後補（`serveStatic` 的 `onFound` 在回應建立後才呼叫，那時設的標頭不會生效）。網頁與語音對照表不快取，`assets/` 與雜湊檔名的語音快取一年，其他一天。Docker 建置的前端用 `VITE_SERVER_URL=same-origin`（`src/online/config.ts` 的 `resolveServerUrl`），所以 `ALLOWED_ORIGINS` 要包含伺服器自己的網址（同網址的 WebSocket 也會送 Origin）。
-- Google 帳號只存 `sub` 與 email；回給前端的 email 一律遮罩（`maskEmail`），老師的 API 不回傳家長的 email。目前只有家長把 Google 綁到孩子的班級帳號；老師的 Google（綁在房間上）在 A1 拿掉，A4 改成 Google 綁大人帳號。
+- **Google 快速登入綁大人帳號**（A4，`userGoogle.ts`）：一個 Google 只能綁一個大人帳號（`user_google_links` 的主鍵是 `google_sub`），一個帳號可以綁多個。用 Google 登入只能登入已經綁定的帳號；用 Google 註冊時帳號名稱、密碼、身分照樣要設，email 用 Google 驗證過的（`GoogleIdentity.emailVerified`），算驗證過、不寄驗證信。驗證 token 的函式（`verifyGoogleToken`）在 `app.ts`，傳進路由模組共用。Google 的 token 猜不到，不用登入鎖定，只擋同一個 IP 的大量請求。孩子不綁 Google（「Google 綁孩子」與「Google 綁房間」的表在第 7 版拿掉）。
+- Google 帳號只存 `sub` 與 email；回給前端的 email 一律遮罩（`maskEmail`）。
 - Google 登入的測試一律用程式產生的金鑰（`tests/server/googleKeys.ts`）或 `e2e/fixtures/google-test-key.json`，不要連到真正的 Google。
 
 ## Zeabur 部署（2026-10-03）

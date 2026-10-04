@@ -1,14 +1,12 @@
 /**
  * 線上版 P1：老師註冊帳號、建立班級 → 孩子帶本機進度加入 → 換一台裝置登入看到進度與錯題本 →
  * 離線玩完、恢復連線後自動上傳 → 老師重設密碼後要重新登入；
- * 另一段測家長的 Google 快速登入（備選）：用 e2e/fixtures 的假金鑰簽 token，Google 按鈕換成測試按鈕。
- * 老師的 Google 綁定隨舊的管理密碼拿掉了，A4 改綁大人帳號時再補測試（docs/plans/accounts.md）。
+ * Google 快速登入在 A4 改綁大人帳號，測試在 e2e/google-account.spec.ts。
  * 伺服器由 playwright.config.ts 的 webServer 啟動（http://localhost:8787，PGlite 記憶體資料庫）。
  */
 import { expect, test, type Page } from '@playwright/test';
 import { answerCurrent, createKid, enterZone, finishQuiz, screen } from './helpers';
-import { prepareGoogleAccount, signTestIdToken } from './googleStub';
-import { SERVER, cloudState, createClassViaApi, flushDeviceLogs, openDevice, pageErrors, profileOf, registerTeacherAndCreateClass } from './onlineDevice';
+import { cloudState, flushDeviceLogs, openDevice, pageErrors, profileOf, registerTeacherAndCreateClass } from './onlineDevice';
 
 const SHOTS = 'e2e/screenshots/online';
 
@@ -133,65 +131,4 @@ test('班級：建立房間、帶進度加入、換裝置登入、離線同步�
   // 沒有頁面錯誤
   for (const d of [teacher, a, b]) expect(pageErrors(d.page)).toEqual([]);
   await Promise.all([teacher.context.close(), a.context.close(), b.context.close()]);
-});
-
-test('Google 快速登入（備選）：家長綁定後換裝置一次登入兩個孩子', async ({ browser, baseURL, request }) => {
-  test.setTimeout(600_000);
-  /** 直接呼叫伺服器 API（準備資料用，畫面流程另外測） */
-  const post = async (path: string, data: unknown, token?: string) => {
-    const res = await request.post(`${SERVER}${path}`, { data, headers: token ? { authorization: `Bearer ${token}` } : {} });
-    expect(res.ok(), `${path} ${res.status()}`).toBe(true);
-    return res.json();
-  };
-
-  // 班級用 API 準備（老師的畫面流程在上一個測試與 accounts.spec.ts）
-  const { code: codeA } = await createClassViaApi(request, '二年一班');
-
-  // ---------- 家長：哥哥用代碼加入，在家長專區綁定 Google ----------
-  const home = await openDevice(browser, baseURL!);
-  await home.page.evaluate(() => localStorage.setItem('learning-island-google-stub', '1'));
-  await home.page.reload();
-  await home.page.getByTestId('start').click();
-  await home.page.getByTestId('create-open-class').click();
-  await home.page.getByTestId('class-tab-join').click();
-  await home.page.getByTestId('class-code').fill(codeA);
-  await home.page.getByTestId('class-nickname').fill('哥哥');
-  await home.page.getByTestId('class-pin').fill('1111');
-  await home.page.getByTestId('class-submit').click();
-  await expect.poll(() => screen(home.page)).toBe('island');
-  await waitSynced(home.page);
-
-  await home.page.evaluate(() => (window as any).__game.ui.getState().goto('parent'));
-  for (const k of ['1', '2', '3', '4']) await home.page.getByTestId(`pin-${k}`).click();
-  await expect(home.page.getByText('請再輸入一次確認')).toBeVisible();
-  for (const k of ['1', '2', '3', '4']) await home.page.getByTestId(`pin-${k}`).click();
-  await home.page.getByTestId('tab-class').click();
-  await prepareGoogleAccount(home.page, 'mom-sub', 'mom.chen@gmail.com');
-  await home.page.getByTestId('google-link').click();
-  await expect(home.page.getByTestId('google-linked')).toContainText('mo***@gmail.com');
-  await home.page.screenshot({ path: `${SHOTS}/12-parent-google-linked.png` });
-
-  // 妹妹也綁同一個 Google（用 API 準備）
-  const sister = await post('/api/join', { code: codeA, nickname: '妹妹', pin: '2222', avatar: { animal: 'cat', color: '#ffffff', hat: null } });
-  await post('/api/google/link', { idToken: await signTestIdToken('mom-sub', 'mom.chen@gmail.com') }, sister.token);
-
-  // ---------- 新裝置：用 Google 一次登入兩個孩子 ----------
-  const tablet = await openDevice(browser, baseURL!);
-  await tablet.page.evaluate(() => localStorage.setItem('learning-island-google-stub', '1'));
-  await tablet.page.reload();
-  await tablet.page.getByTestId('start').click();
-  await tablet.page.getByTestId('create-open-class').click();
-  await prepareGoogleAccount(tablet.page, 'mom-sub', 'mom.chen@gmail.com');
-  await tablet.page.getByTestId('class-google-login').click();
-  // 兩個孩子：回選角畫面挑
-  await expect.poll(() => screen(tablet.page)).toBe('profiles');
-  await expect(tablet.page.getByTestId('profile-card')).toHaveCount(2);
-  await tablet.page.screenshot({ path: `${SHOTS}/13-tablet-google-two-kids.png` });
-  await tablet.page.getByTestId('profile-card').filter({ hasText: '哥哥' }).click();
-  await expect.poll(() => screen(tablet.page)).toBe('island');
-  await waitSynced(tablet.page);
-  expect((await profileOf(tablet.page)).name).toBe('哥哥');
-
-  for (const d of [home, tablet]) expect(pageErrors(d.page)).toEqual([]);
-  await Promise.all([home.context.close(), tablet.context.close()]);
 });

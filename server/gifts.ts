@@ -314,12 +314,11 @@ export async function settlePendingGifts(tx: Queryable, accountIds: string[], no
 
 /**
  * 讓一個角色退出班級（只在交易裡呼叫，禮物要先結清）：班級與孩子密碼清掉，用班級代碼登入的權杖失效；家長裝置上的權杖留著。
- * Google 綁定也拿掉：綁定是用班級權杖建立的（知道孩子密碼的人都能綁），留著的話退出班級後還能用 Google 拿到新權杖。
+ * （A4 起 Google 綁的是大人帳號，孩子身上沒有 Google 綁定可以拿掉）
  */
 export async function detachFromClass(tx: Queryable, accountId: string): Promise<void> {
   await tx.query('UPDATE accounts SET room_code = NULL, pin_hash = NULL WHERE id = $1', [accountId]);
   await tx.query("DELETE FROM tokens WHERE account_id = $1 AND via = 'class'", [accountId]);
-  await tx.query('DELETE FROM google_links WHERE account_id = $1', [accountId]);
 }
 
 /** 交易裡發現已經不是這個班的成員：丟出它撤銷整個交易（removeMemberWithRefunds 接住後回傳 null） */

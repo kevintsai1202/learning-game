@@ -16,8 +16,16 @@ export const joinRequest = z
   .object({ code: roomCodeSchema, nickname: z.string().max(40), pin: pinSchema, avatar: avatarSchema.optional(), profile: z.unknown().optional() })
   .refine((v) => v.avatar !== undefined || v.profile !== undefined, { message: '要選外觀或帶入角色' });
 export const loginRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40), pin: z.string().max(10) });
-/** Google 快速登入與綁定：前端從 Google Identity Services 拿到的 ID token */
+/** Google 快速登入與綁定（大人帳號，A4）：前端從 Google Identity Services 拿到的 ID token */
 export const googleTokenRequest = z.object({ idToken: z.string().min(1).max(4096) });
+/** 用 Google 註冊（A4）：帳號名稱、密碼、身分照樣要設；email 用 Google 驗證過的 email */
+export const googleRegisterRequest = z.object({
+  idToken: z.string().min(1).max(4096),
+  username: z.string().max(40),
+  password: z.string().max(200),
+  parent: z.boolean(),
+  teacher: z.boolean(),
+});
 /** 同步：每筆操作在伺服器端逐筆驗證，所以這裡只限制數量 */
 export const opsRequest = z.object({ ops: z.array(z.unknown()).max(20) });
 /** 送禮物：id 由裝置產生（重送同一個 id 不會扣兩次錢） */
@@ -178,15 +186,15 @@ export interface AttachResponse {
   room: RoomInfo;
 }
 
-/** 家長用 Google 登入的回應：綁定的每位孩子各一張權杖 */
-export interface GoogleKidsResponse {
-  kids: SessionResponse[];
+/** 大人帳號綁定的一個 Google（id 是 Google 帳號的識別碼，只回給帳號本人，解除綁定時用；email 已遮罩） */
+export interface UserGoogleLink {
+  id: string;
+  email: string;
 }
 
-
-/** 已綁定的 Google 帳號（email 已遮罩） */
-export interface GoogleLinksResponse {
-  google: string[];
+/** 大人帳號綁定的 Google 清單 */
+export interface UserGoogleLinksResponse {
+  google: UserGoogleLink[];
 }
 
 /** 伺服器設定（前端決定要不要顯示 Google 按鈕） */

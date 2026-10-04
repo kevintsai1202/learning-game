@@ -8,28 +8,26 @@ import { bodyLimit } from 'hono/body-limit';
 import type { Db, Queryable } from './db';
 import { ApiError, readBody, type Identity } from './http';
 import { LoginLimiter, RateLimiter, checkNickname, hashSecret, newAccountId, newRoomCode, newToken, tokenHash, verifySecret } from './auth';
-import { maskEmail, type GoogleConfig, type GoogleIdentity } from './google';
+import type { GoogleConfig, GoogleIdentity } from './google';
 import { lookupToken, type TokenVia } from './tokens';
 import { emitGiftEvents, registerGiftRoutes, removeMemberWithRefunds } from './gifts';
 import { registerStatic } from './static';
 import { registerUserRoutes } from './users';
 import { registerParentRoutes } from './parents';
 import { registerEmailRoutes } from './email';
+import { registerUserGoogleRoutes } from './userGoogle';
 import { createMailer, type Mailer } from './mail';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
   attachClassRequest,
   createClassRequest,
-  googleTokenRequest,
   joinRequest,
   loginRequest,
   opsRequest,
   resetPinRequest,
   roomPatchRequest,
   type AttachResponse,
-  type GoogleKidsResponse,
-  type GoogleLinksResponse,
   type MemberSummary,
   type OpsResponse,
   type RoomInfo,
@@ -215,23 +213,15 @@ export function createApp(opts: AppOptions) {
     if (ms > 0) throw new ApiError(423, 'locked', '錯太多次了，請過幾分鐘再試', Math.ceil(ms / 1000));
   };
 
-  /** 驗證請求裡的 Google ID token；伺服器沒開 Google 登入回 404，驗證失敗回 401 */
-  const verifyGoogle = async (c: Context): Promise<GoogleIdentity> => {
+  /** 驗證 Google ID token；伺服器沒開 Google 登入回 404，驗證失敗回 401 */
+  const verifyGoogleToken = async (idToken: string): Promise<GoogleIdentity> => {
     if (!opts.google) throw new ApiError(404, 'google_disabled', '班級伺服器沒有開啟 Google 登入');
-    const body = await readBody(c, googleTokenRequest);
     try {
-      return await opts.google.verify(body.idToken);
+      return await opts.google.verify(idToken);
     } catch {
       throw new ApiError(401, 'bad_google', '無法確認 Google 帳號，請再試一次');
     }
   };
-
-  /** 顯示用的 email（遮罩；沒有 email 的帳號顯示說明文字） */
-  const shownEmail = (email: string | null) => (email ? maskEmail(email) : '（沒有 email 的 Google 帳號）');
-
-  /** 某位孩子綁定的 Google 帳號（遮罩後） */
-  const kidGoogle = async (accountId: string): Promise<string[]> =>
-    (await db.query<{ email: string | null }>('SELECT email FROM google_links WHERE account_id = $1 ORDER BY linked_at', [accountId])).map((r) => shownEmail(r.email));
 
   const app = new Hono();
 
@@ -276,6 +266,9 @@ export function createApp(opts: AppOptions) {
 
   // ---------- Email 驗證與忘記密碼（A3） ----------
   registerEmailRoutes(app, { db, now, mailer, allowedOrigins: allowed, limiter, checkFlood, authenticateUser });
+
+  // ---------- Google 快速登入綁大人帳號（A4） ----------
+  registerUserGoogleRoutes(app, { db, now, checkFlood, verifyGoogleToken, issueUserToken: (userId) => issueToken(db, { kind: 'user', userId }), authenticateUser });
 
   // ---------- 家長的雲端角色（A2） ----------
   registerParentRoutes(app, {
@@ -507,45 +500,7 @@ export function createApp(opts: AppOptions) {
       room: await roomInfoOf(account.room_code),
       /** 有沒有家長帳號（有的話被移出班級時進度留著） */
       owned: account.parent_id !== null,
-      google: await kidGoogle(account.id),
     });
-  });
-
-  // ---------- 家長的 Google 快速登入 ----------
-
-  app.post('/api/google/link', async (c) => {
-    const who = await authenticate(c, 'kid');
-    const g = await verifyGoogle(c);
-    await db.query(
-      `INSERT INTO google_links (google_sub, account_id, email, linked_at) VALUES ($1, $2, $3, $4::timestamptz)
-       ON CONFLICT (google_sub, account_id) DO UPDATE SET email = EXCLUDED.email, linked_at = EXCLUDED.linked_at`,
-      [g.sub, who.accountId, g.email, now().toISOString()],
-    );
-    return c.json<GoogleLinksResponse>({ google: await kidGoogle(who.accountId!) });
-  });
-
-  app.delete('/api/google/link', async (c) => {
-    const who = await authenticate(c, 'kid');
-    await db.query('DELETE FROM google_links WHERE account_id = $1', [who.accountId]);
-    return c.json<GoogleLinksResponse>({ google: [] });
-  });
-
-  app.post('/api/google/login', async (c) => {
-    checkFlood(c);
-    const g = await verifyGoogle(c);
-    const accounts = await db.query<AccountRow>(
-      'SELECT a.* FROM accounts a JOIN google_links l ON l.account_id = a.id WHERE l.google_sub = $1 ORDER BY a.created_at, a.nickname',
-      [g.sub],
-    );
-    if (!accounts.length) {
-      throw new ApiError(404, 'google_not_linked', '這個 Google 帳號還沒有綁定任何孩子。請先用房間代碼、暱稱和密碼登入，再到家長專區的「班級帳號」綁定 Google。');
-    }
-    const result: GoogleKidsResponse = { kids: [] };
-    for (const a of accounts) {
-      await db.query('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1', [a.id, now().toISOString()]);
-      result.kids.push(await sessionResponse(a, a.room_code ? await loadRoom(db, a.room_code) : null, 'class'));
-    }
-    return c.json(result);
   });
 
   app.post('/api/ops', async (c) => {

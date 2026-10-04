@@ -13,20 +13,13 @@ import {
   declineGift,
   fetchClassmates,
   fetchGifts,
-  fetchGoogleLinks,
-  googleLogin,
   joinClass,
-  linkGoogle,
   loginClass,
   logoutClass,
   sendGift,
   syncProfile,
-  unlinkGoogle,
   type CloudDeps,
 } from '../../src/online/cloudSync';
-import { createLocalJWKSet } from 'jose';
-import { createGoogleVerifier } from '../../server/google';
-import { makeGoogleKeys, TEST_CLIENT_ID } from '../server/googleKeys';
 import { applyOp, type Op } from '../../src/online/ops';
 import { emptyOutbox, enqueue, type Outbox } from '../../src/online/sync';
 import { addProfile, createEmptySave, type Profile } from '../../src/store/save';
@@ -265,76 +258,6 @@ describe('同步', () => {
     expect(d.tokens.has(acc)).toBe(false);
     expect(d.outboxes.get(acc) ?? emptyOutbox()).toEqual(emptyOutbox());
     await expect(d.deps.call('GET', '/api/me', { base: SERVER, token })).rejects.toMatchObject({ status: 401 });
-  });
-});
-
-describe('Google 快速登入（備選）', () => {
-  let keys: Awaited<ReturnType<typeof makeGoogleKeys>>;
-  beforeAll(async () => {
-    keys = await makeGoogleKeys();
-  });
-  /** 開好 Google 登入的伺服器 app */
-  const googleApp = () =>
-    createApp({ db, google: { clientId: TEST_CLIENT_ID, verify: createGoogleVerifier({ clientId: TEST_CLIENT_ID, keys: createLocalJWKSet(keys.jwks) }), testMode: true } });
-
-  it('綁定後在新裝置用 Google 登入：綁定的孩子都登入到這台裝置，進度都在', async () => {
-    const app = googleApp();
-    const code = await newRoom(app);
-    const d1 = device(app);
-    const a = await joinClass(d1.deps, SERVER, { code, nickname: '哥哥', pin: '1111', avatar: { animal: 'bear', color: '#8b5a2b', hat: null } });
-    const b = await joinClass(d1.deps, SERVER, { code, nickname: '妹妹', pin: '2222', avatar: { animal: 'cat', color: '#ffffff', hat: null } });
-    d1.act(a.id, sessionOp('q1', 'q2'));
-    await syncProfile(d1.deps, a.id);
-    const token = await keys.sign('mom', 'mom@gmail.com');
-    expect(await linkGoogle(d1.deps, a.id, token)).toEqual(['mo***@gmail.com']);
-    await linkGoogle(d1.deps, b.id, token);
-    expect(await fetchGoogleLinks(d1.deps, b.id)).toEqual(['mo***@gmail.com']);
-
-    const d2 = device(app);
-    const kids = await googleLogin(d2.deps, SERVER, await keys.sign('mom', 'mom@gmail.com'));
-    expect(kids.map((k) => k.name).sort()).toEqual(['哥哥', '妹妹']);
-    expect(d2.profiles.size).toBe(2);
-    expect(d2.profiles.get(a.id)!.history).toHaveLength(1);
-    expect(d2.profiles.get(a.id)!.cloud).toMatchObject({ server: SERVER, room: code });
-    // 兩位都拿到自己的權杖，可以各自同步
-    expect((await syncProfile(d2.deps, a.id)).status).toBe('synced');
-    expect((await syncProfile(d2.deps, b.id)).status).toBe('synced');
-  });
-
-  it('這台裝置有還沒上傳的進度時用 Google 登入：進度不會遺失，之後照常上傳', async () => {
-    const app = googleApp();
-    const code = await newRoom(app);
-    const d = device(app);
-    const a = await joinClass(d.deps, SERVER, { code, nickname: '哥哥', pin: '1111', avatar: { animal: 'bear', color: '#8b5a2b', hat: null } });
-    await linkGoogle(d.deps, a.id, await keys.sign('mom', 'mom@gmail.com'));
-    // 離線玩一回合：進度留在佇列
-    d.state.offline = true;
-    d.act(a.id, sessionOp('q1'));
-    expect((await syncProfile(d.deps, a.id)).status).toBe('offline');
-    d.state.offline = false;
-    // 用 Google 重新登入：本機要是「伺服器版本＋還沒送出的進度」
-    const [kid] = await googleLogin(d.deps, SERVER, await keys.sign('mom', 'mom@gmail.com'));
-    expect(kid.history).toHaveLength(1);
-    expect(d.profiles.get(a.id)!.history).toHaveLength(1);
-    expect((await syncProfile(d.deps, a.id)).status).toBe('synced');
-    const me = await d.deps.call<{ profile: Profile }>('GET', '/api/me', { base: SERVER, token: d.tokens.get(a.cloud!.accountId) });
-    expect(me.profile.history).toHaveLength(1);
-  });
-
-  it('沒有綁定的 Google 帳號：丟出說明要先綁定的訊息', async () => {
-    const app = googleApp();
-    const d = device(app);
-    await expect(googleLogin(d.deps, SERVER, await keys.sign('nobody', 'x@gmail.com'))).rejects.toThrow('還沒有綁定');
-  });
-
-  it('解除綁定後不能再用 Google 登入', async () => {
-    const app = googleApp();
-    const code = await newRoom(app);
-    const d = device(app);
-    const a = await joinClass(d.deps, SERVER, { code, nickname: '哥哥', pin: '1111', avatar: { animal: 'bear', color: '#8b5a2b', hat: null } });
-    await linkGoogle(d.deps, a.id, await keys.sign('mom', 'mom@gmail.com'));
-    expect(await unlinkGoogle(d.deps, a.id)).toEqual([]);
-    await expect(googleLogin(device(app).deps, SERVER, await keys.sign('mom', 'mom@gmail.com'))).rejects.toThrow('還沒有綁定');
   });
 });
 

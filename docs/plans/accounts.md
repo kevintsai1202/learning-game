@@ -52,7 +52,7 @@
 | A1 大人帳號 | 註冊、登入、登出、改密碼、身分切換；老師用帳號管理多個班級，拿掉房間管理密碼 | （已完成） |
 | A2 家長的雲端角色 | 我的孩子、存到雲端、在這台裝置玩、刪除；雲端角色加入班級；老師移出改成退出班級；家長讓孩子退出班級；刪除自己的帳號 | （已完成） |
 | A3 Email | 註冊驗證信、忘記密碼寄重設連結；email 只能綁一個帳號 | （開發完成）上線前要你在 Zeabur 設寄信的三個變數（第 8 節） |
-| A4 Google 快速登入 | Google 改綁大人帳號，拿掉「Google 直接綁孩子」 | 無 |
+| A4 Google 快速登入 | Google 改綁大人帳號、用 Google 註冊，拿掉「Google 直接綁孩子」 | （已完成） |
 | A5 上線 | 隱私權政策、備份、合併 main、部署、上線後檢查 | Google 品牌驗證的結果（第 9 節的判準） |
 
 **A2～A4 只在 A5 一起上線**：A2 放寬了存檔格式（雲端角色可以沒有班級），舊版前端讀不了新存檔（例如從新版匯出的備份），所以 GitHub Pages 與 zeabur 網址要同一天換成新版，中間不單獨上線。
@@ -211,13 +211,21 @@ A3 開始前，你要做的（這幾步我不能替你做）：
 
 ### A4：Google 改綁大人帳號
 
+**2026-10-04 完成**：
+
+- 伺服器：`server/userGoogle.ts`（用 Google 登入、用 Google 註冊、列出、綁定、解除）、`server/google.ts`（多讀 `email_verified`）、資料表第 7 版（`user_google_links`；拿掉 `google_links`、`teacher_google_links`，刪之前把筆數寫進記錄）。拿掉 `/api/google/link`、`/api/google/login` 與 `/api/me` 的 `google` 欄位，`detachFromClass` 不再刪 Google 綁定。
+- 前端：帳號頁的「用 Google 登入」「用 Google 註冊」（email 從 token 讀出來顯示，`src/online/google.ts` 的 `emailOfIdToken`）、帳號設定的「Google 快速登入」；家長專區與班級畫面的 Google 按鈕拿掉，班級畫面改成「用家長帳號登入」連到帳號頁。
+- `scripts/deploy/check-google-origins.mjs` 先找帳號頁的按鈕，找不到再退回班級畫面（A5 上線前的正式環境還是舊版前端）；2026-10-04 對兩個正式網址跑過，走舊版路徑、都已授權。
+- 測試：`tests/server/user-google.test.ts`（取代 `google-login.test.ts`）、`tests/server/google.test.ts`、`tests/server/migrate.test.ts`（第 6→7 版）、`tests/online/googleToken.test.ts`、`e2e/google-account.spec.ts`（`online.spec.ts` 的舊 Google 測試拿掉）。Docker 的 PostgreSQL 跑過一次。
+
+
 - **資料表（第 7 版）**：`user_google_links`（Google 帳號 ↔ 大人帳號）。一個 Google 只能綁一個大人帳號（登入時才知道要登入哪一個），一個大人帳號可以綁多個 Google（爸爸、媽媽各綁一個）。拿掉 `google_links`（Google 直接綁孩子）與 `teacher_google_links`。
 - **伺服器**：`POST /api/users/google/login`（沒綁過回 404，說明要先用帳號密碼登入再綁定）；綁定、列出（email 遮罩）、解除。拿掉 `/api/google/link`、`/api/google/login`。
 - **前端**：帳號頁登入表單加 Google 按鈕；帳號設定加「綁定 Google」與已綁定清單。家長專區與班級畫面的 Google 按鈕拿掉，班級畫面改成「家長找回角色：用家長帳號登入」連到帳號頁。
 - `scripts/deploy/check-google-origins.mjs` 改走帳號頁的 Google 按鈕（A1 剛改成班級畫面的按鈕，A4 之後那裡沒有按鈕了，不改會在上線後靜默失敗）。
 - **用 Google 註冊**（使用者 2026-10-04 補充，第 10 節第 10 題）：註冊表單可以直接用 Google，email 自動帶入 Google 的 email 並算驗證過（Google 已經驗證）；用帳號密碼註冊時 email 照舊必填。Google 的 email 已經是別的帳號在用時（email 只能綁一個帳號），提示先登入那個帳號、再到帳號設定綁定 Google。
 - **測試**：伺服器用測試金鑰；e2e 用 Google 測試按鈕：綁定 → 登出 → 用 Google 登入 → 選孩子；用 Google 註冊 → email 自動帶入且已驗證。
-- **開始前要先做的**：跟使用者確認用 Google 註冊時，帳號名稱與密碼是不是還要設（使用者 2026-10-03 說過「老師或家長註冊時都可用自訂的帳號密碼登入」，Google 只是快速登入）。
+- **開始前要先做的**：無（用 Google 註冊時帳號名稱與密碼照樣要設，第 10 節第 11 題）。
 
 ### A5：上線
 
@@ -231,7 +239,7 @@ A3 開始前，你要做的（這幾步我不能替你做）：
 
 1. 隱私權政策改版：大人帳號（帳號名稱、email、密碼雜湊、身分）、email 只用於驗證與重設並經由 Gmail 寄出、家長名下的雲端角色與家長自行刪除、退出班級（取代「移出就刪除」）、Google 綁大人帳號；`e2e/privacy.spec.ts` 跟著更新。
 2. 用 Docker 的 PostgreSQL 跑全部伺服器測試（第 4～7 版升級與鎖定順序）。
-3. 看正式環境有沒有改版前用管理密碼建的房間（沒有擁有者，改版後沒有登入方式）；有的話先加認領流程。
+3. 看正式環境有沒有改版前用管理密碼建的房間（沒有擁有者，改版後沒有登入方式）；有的話先加認領流程。也查 `google_links` 有幾筆、對應哪些孩子：第 7 版會刪掉這張表（OAuth 還在測試模式時只有你的測試帳號能用 Google 登入，預期是 0 筆或只有測試資料）。
 4. `scripts/deploy/purge-test-rooms` 改成用 `e2e_` 開頭的大人帳號找測試資料。
 5. Zeabur 環境變數：有 SMTP 三個，沒有任何測試模式的變數（`GOOGLE_TEST_JWKS`、`ALLOW_TEST_GOOGLE`、`TEST_MAIL_OUTBOX`、`ALLOW_TEST_MAIL`）。
 6. 備份正式資料庫（`pg_dump`，經 `zeabur service exec`），再部署——伺服器啟動時會自動升級資料表。
@@ -252,3 +260,6 @@ A3 開始前，你要做的（這幾步我不能替你做）：
 8. **Google 品牌驗證的重送前檢查改用 Claude 的雲端排程**（claude.ai/code/routines 的「知識島：Google 品牌驗證重送前檢查」，2026-10-04 17:07 跑一次 curl 檢查）。cron 是每年 10/4，跑完可以刪除。
 9. **email 只能綁一個帳號**（A3 開始前的決定）：同一個 email 不分大小寫只能給一個大人帳號；忘記密碼用 email 找一定只對到一個帳號。
 10. **用帳號密碼註冊時 email 必填；直接用 Gmail 註冊時自動帶入 Google 的 email**：後者在 A4 做（第 9 節）。email 沒驗證不另外限制功能，只是不能用 email 重設密碼。
+11. **用 Google 註冊時，帳號名稱與密碼照樣要設**（A3 完成後的決定）：Google 只是快速登入，Google 帳號出問題或換手機時還能用帳號密碼登入。
+12. **「別人先填了你的 email 又不驗證」的已知限制先不處理**：一個班級的規模幾乎遇不到，遇到時人工處理。
+13. **真的寄信等 A5 上線時再測**（寄一封驗證信與重設信到使用者的信箱）。

@@ -12,15 +12,11 @@ import { api } from './api';
 import { serverUrl } from './config';
 import {
   attachToClass,
-  fetchGoogleLinks,
-  googleLogin,
   joinClass,
-  linkGoogle,
   loginClass,
   logoutClass,
   playOnThisDevice,
   syncProfile,
-  unlinkGoogle,
   uploadToCloud,
   type CloudDeps,
   type JoinInput,
@@ -55,21 +51,10 @@ interface CloudStore {
   syncNow: () => Promise<void>;
   /** 重新計算目前角色的待送筆數 */
   refresh: () => void;
-  /** 伺服器的 Google 登入 Client ID（沒開 Google 登入或還沒讀到時是 null） */
+  /** 伺服器的 Google 登入 Client ID（沒開 Google 登入或還沒讀到時是 null；帳號頁的 Google 按鈕用） */
   googleClientId: string | null;
   /** 向伺服器讀設定（決定要不要顯示 Google 按鈕）；讀不到就當作沒開 */
   loadConfig: () => Promise<void>;
-  /**
-   * 用 Google 快速登入：綁定的孩子全部登入到這台裝置。只有一位時直接成為目前角色；
-   * 多位時不切換（由畫面帶孩子回選角畫面挑）。回傳登入的角色。
-   */
-  googleLogin: (idToken: string) => Promise<Profile[]>;
-  /** 把 Google 帳號綁到這位孩子；回傳已綁定的帳號（email 已遮罩） */
-  linkGoogle: (profileId: string, idToken: string) => Promise<string[]>;
-  /** 解除這位孩子的 Google 綁定 */
-  unlinkGoogle: (profileId: string) => Promise<string[]>;
-  /** 讀出這位孩子已綁定的 Google 帳號 */
-  fetchGoogleLinks: (profileId: string) => Promise<string[]>;
   /** 家長把這台裝置上的角色存到雲端（server、userToken 是家長帳號的登入狀態；docs/plans/accounts.md 第 6 節） */
   uploadToCloud: (profileId: string, server: string, userToken: string) => Promise<Profile>;
   /**
@@ -168,20 +153,6 @@ export const useCloud = create<CloudStore>((set, get) => ({
       set({ googleClientId: null });
     }
   },
-
-  googleLogin: async (idToken) => {
-    const server = serverUrl();
-    if (!server) throw new Error('還沒有設定班級伺服器');
-    const kids = await googleLogin(cloudDeps, server, idToken);
-    if (kids.length === 1) useGame.getState().selectProfile(kids[0].id);
-    timer.failures = 0;
-    void get().syncNow();
-    return kids;
-  },
-
-  linkGoogle: (profileId, idToken) => linkGoogle(cloudDeps, profileId, idToken),
-  unlinkGoogle: (profileId) => unlinkGoogle(cloudDeps, profileId),
-  fetchGoogleLinks: (profileId) => fetchGoogleLinks(cloudDeps, profileId),
 
   uploadToCloud: async (profileId, server, userToken) => {
     const p = await uploadToCloud(cloudDeps, server, userToken, profileId);

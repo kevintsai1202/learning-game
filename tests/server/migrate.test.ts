@@ -150,4 +150,41 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       await d.close();
     }
   });
+
+  it('v6 → v7（A4）：Google 改綁大人帳號；舊的「Google 綁孩子」表拿掉，刪之前把筆數寫進記錄；一個 Google 只能綁一個大人帳號', async () => {
+    const d = await openDb({});
+    const logs: string[] = [];
+    try {
+      await migrate(d, { upTo: 6 });
+      await d.query("INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ('333333', '舊班', 'h', $1::timestamptz)", [T]);
+      await d.query(
+        `INSERT INTO accounts (id, room_code, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+         VALUES ('acc9', '333333', '小華', '小華', 'h', '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)`,
+        [T],
+      );
+      await d.query("INSERT INTO google_links (google_sub, account_id, email, linked_at) VALUES ('g-old', 'acc9', 'old@gmail.com', $1::timestamptz)", [T]);
+      for (const id of ['u1', 'u2']) {
+        await d.query(
+          "INSERT INTO users (id, username, username_key, password_hash, email, is_parent, is_teacher, created_at) VALUES ($1, $1, $1, 'h', $1 || '@example.com', true, false, $2::timestamptz)",
+          [id, T],
+        );
+      }
+
+      await migrate(d, { log: (m) => logs.push(m) });
+
+      expect(logs.join('\n')).toContain('google_links');
+      expect(logs.join('\n')).toContain('1');
+      await expect(d.query('SELECT 1 FROM google_links')).rejects.toThrow();
+      await expect(d.query('SELECT 1 FROM teacher_google_links')).rejects.toThrow();
+      await d.query("INSERT INTO user_google_links (google_sub, user_id, email, linked_at) VALUES ('g1', 'u1', 'a@gmail.com', $1::timestamptz)", [T]);
+      await d.query("INSERT INTO user_google_links (google_sub, user_id, email, linked_at) VALUES ('g2', 'u1', 'b@gmail.com', $1::timestamptz)", [T]);
+      // 同一個 Google 不能再綁第二個大人帳號
+      await expect(d.query("INSERT INTO user_google_links (google_sub, user_id, email, linked_at) VALUES ('g1', 'u2', 'a@gmail.com', $1::timestamptz)", [T])).rejects.toThrow();
+      // 帳號刪除時綁定跟著刪
+      await d.query("DELETE FROM users WHERE id = 'u1'");
+      expect(await d.query('SELECT * FROM user_google_links')).toEqual([]);
+    } finally {
+      await d.close();
+    }
+  });
 });

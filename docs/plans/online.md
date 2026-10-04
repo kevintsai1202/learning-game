@@ -46,29 +46,24 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 - **密碼與暴力破解**：4 位數密碼只有一萬種，所以**以「房間＋暱稱」計次**：連續錯 5 次鎖 5 分鐘。不用 IP 計次：同一間電腦教室 30 個孩子共用一個對外 IP，上課開頭一起登入就會被誤鎖；IP 層級只擋明顯的洪水（每分鐘 300 次以上）。密碼與管理密碼用 scrypt 加鹽雜湊。
 - **權杖**：隨機 32 bytes，資料庫只存雜湊，180 天到期，到期要重新輸入密碼。
 
-### 3.1 Google 快速登入（備選，使用者 2026-10-02 追加）
+### 3.1 Google 快速登入（備選；2026-10-04 A4 改成綁大人帳號）
 
-使用者先說「登入要請家長用 Gmail」，接著補充「Gmail 作為備選登入，只是方便登入」，並決定老師也可以用。所以**原本的登入方式全部保留**（孩子：代碼＋暱稱＋密碼；老師：代碼＋管理密碼），Google 只是綁定之後的快速登入。學校共用平板照樣用代碼登入，不受影響。
+使用者 2026-10-02 決定 Gmail 只是方便登入的備選，原本的登入方式全部保留。2026-10-03 改成大人帳號（`docs/plans/accounts.md`）之後，A4 把 Google 從「綁孩子」「綁房間」改成**綁大人帳號**（家長、老師）：
 
-- **家長**：孩子先用代碼加入班級 → 家長在家長專區「班級帳號」分頁按「綁定 Google 帳號」→ 之後任何裝置在班級畫面按「用 Google 登入」，這個 Google 帳號綁定的所有孩子（例如兄弟姊妹）一次登入到這台裝置。只有一個孩子就直接進島；多個就回選角畫面挑。
-  - 每一位孩子都和代碼登入走同一條路：本機存檔＝「伺服器版本＋這台裝置還沒送出的進度」（rebase），不能直接用伺服器版本覆蓋（這台裝置可能有那位孩子離線玩、還沒上傳的進度）。`googleLogin` 回傳 `Profile[]`，由呼叫端決定目前角色。
-  - 回應格式：`{ kids: SessionResponse[] }`（每位孩子一張權杖）。
-- **老師**：用代碼＋管理密碼登入管理頁後按「綁定 Google 帳號」→ 之後在管理頁按「用 Google 登入」。綁了多個房間就先選房間。
-  - 回應格式：`{ rooms: [{ code, name, token }] }`。只有一個房間就直接進管理頁；多個時管理頁多一個「選房間」步驟，選定後才存進老師的登入狀態。
-- 一個 Google 帳號可以綁多個孩子、多個房間；一個孩子也可以綁爸爸和媽媽兩個 Google 帳號。可以解除綁定。
-- 老師移除成員時，那位孩子的綁定一併刪除；老師重設孩子密碼時，Google 綁定保留（家長仍可以用 Google 登入）。
-- **個資**：伺服器只存 Google 帳號的識別碼（`sub`）與 email，用途只有快速登入；老師看不到家長的 email。畫面上顯示 email 時遮掉中間（`ke***@gmail.com`）。綁定按鈕旁說明用途。
+- **用 Google 登入**：帳號頁的登入分頁按「用 Google 登入」，只能登入已經綁定這個 Google 的大人帳號；沒綁定回 404，說明先用帳號名稱和密碼登入、到帳號設定綁定，或用 Google 註冊。家長登入後在家長模式選孩子「在這台裝置玩」（A2）。
+- **用 Google 註冊**：註冊分頁按「用 Google 註冊」，email 自動帶入 Google 驗證過的 email（算驗證過，不寄驗證信）；帳號名稱、密碼、身分照樣要設（Google 出問題或換手機時還能用帳號密碼登入）。Google 已經綁了別的帳號回 409 `google_taken`；Google 的 email 已經有帳號回 409 `email_taken`（先登入那個帳號再綁定）。
+- **綁定與解除**：帳號設定的「Google 快速登入」。一個 Google 只能綁一個大人帳號；一個大人帳號可以綁多個 Google（爸爸、媽媽各一個）。
+- 孩子不綁 Google：學校平板照樣用「班級代碼＋暱稱＋密碼」；家長要在新裝置找回孩子，用家長帳號登入（班級畫面有「用家長帳號登入」連到帳號頁）。
+- **個資**：伺服器只存 Google 帳號的識別碼（`sub`）與 email，用途只有快速登入；畫面上的 email 遮掉中間（`ke***@gmail.com`）。
 - **技術**：
-  - 前端用 Google Identity Services（`accounts.google.com/gsi/client`）的官方按鈕取得 ID token（不需要 client secret，靜態網站可用）；點了「用 Google 登入」才載入 Google 的程式。
-  - 伺服器用 `jose` 依 Google 的公開金鑰（JWKS）驗證 ID token 的簽章、`aud`（OAuth Client ID）、`iss`、到期時間。
-  - Client ID 只設定在伺服器（`GOOGLE_CLIENT_ID`），前端從 `GET /api/config` 取得；沒設定時 Google 按鈕不顯示。
-  - **需要使用者在 Google Cloud Console 建立 OAuth 用戶端 ID**（網頁應用程式；授權的 JavaScript 來源填 GitHub Pages 網址與本機測試網址），步驟寫在 `docs/google-login-setup.md`。
+  - 前端用 Google Identity Services（`accounts.google.com/gsi/client`）的官方按鈕取得 ID token（不需要 client secret）；有 Google 按鈕的畫面才載入 Google 的程式。用 Google 註冊時，表單從 token 讀出 email 顯示（只是顯示，伺服器會重新驗證）。
+  - 伺服器用 `jose` 依 Google 的公開金鑰（JWKS）驗證 ID token 的簽章、`aud`、`iss`、到期時間，並讀 `email_verified`（用 Google 註冊時 email 必須是 Google 驗證過的）。
+  - Client ID 只設定在伺服器（`GOOGLE_CLIENT_ID`），前端從 `GET /api/config` 取得；沒設定時 Google 按鈕不顯示。建立方式見 `docs/google-login-setup.md`。
 - **測試模式**（真實 Google 登入無法自動化）：
   - 單元測試在程式裡產生金鑰、簽測試用 ID token，走完整的驗證邏輯。
-  - e2e：伺服器設 `GOOGLE_TEST_JWKS`（測試公鑰）時改用這把公鑰驗證；前端設 localStorage `learning-island-google-stub` 時，Google 按鈕換成測試按鈕，按下去送出 e2e 事先簽好的 token，之後的流程與正式環境相同。
-  - **測試模式不能出現在正式環境**：沒有 `GOOGLE_TEST_JWKS` 時一律用 Google 的公開金鑰；設了 `GOOGLE_TEST_JWKS` 但沒有同時設 `ALLOW_TEST_GOOGLE=1` 就拒絕啟動（兩個變數都要故意設才會開，不依賴正式環境記得設 `NODE_ENV`）；開啟時啟動訊息印警告。前端的測試按鈕即使被打開也沒有用（伺服器只認 Google 簽的 token）。
-- 新增 API（第 10 節）：`GET /api/config`、`POST|DELETE /api/google/link`（孩子權杖）、`POST /api/google/login`、`POST|DELETE /api/teacher/google/link`（老師權杖）、`POST /api/teacher/google/login`；`GET /api/me` 與 `GET /api/teacher/room` 多回傳已綁定的 email（遮罩後）。
-- 新增資料表：`google_links(google_sub, account_id, email, linked_at)`、`teacher_google_links(google_sub, room_code, email, linked_at)`。
+  - e2e：伺服器設 `GOOGLE_TEST_JWKS`（測試公鑰）時改用這把公鑰驗證；前端設 localStorage `learning-island-google-stub` 時，Google 按鈕換成測試按鈕，按下去送出 e2e 事先簽好的 token（`e2e/googleStub.ts`）。
+  - **測試模式不能出現在正式環境**：設了 `GOOGLE_TEST_JWKS` 但沒有同時設 `ALLOW_TEST_GOOGLE=1` 就拒絕啟動；前端的測試按鈕即使被打開也沒有用（伺服器只認 Google 簽的 token）。
+- API（第 10 節）：`POST /api/users/google/login`、`POST /api/users/google/register`、`GET|POST /api/users/me/google`、`DELETE /api/users/me/google/:id`。資料表 `user_google_links`（第 7 版）；舊的 `google_links`（Google 綁孩子）、`teacher_google_links`（Google 綁房間）在第 7 版拿掉。
 
 ## 4. 雲端存檔與同步
 
@@ -165,7 +160,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 ### HTTP（JSON）
 
-2026-10-03 A1 改版後的介面：老師改用大人帳號（`docs/plans/accounts.md`）。改版前用「房間代碼＋管理密碼」建立與登入、老師的 Google 綁在房間上，這些 API 已經拿掉（見 git 歷史）；老師的 Google 快速登入在 A4 改成綁大人帳號。
+2026-10-03 A1 改版後的介面：老師改用大人帳號（`docs/plans/accounts.md`）。改版前用「房間代碼＋管理密碼」建立與登入、老師的 Google 綁在房間上，這些 API 已經拿掉（見 git 歷史）；A4 起 Google 快速登入綁大人帳號，「Google 綁孩子」的 API 也拿掉了。
 
 | 方法與路徑 | 用途 |
 | --- | --- |
@@ -183,7 +178,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/parent/kids` | 把這台裝置上的角色存到雲端 `{ profile }` → `{ token, account, profile, rev, room: null }`（孩子權杖，來源 `parent`）；同一個角色重複上傳回 409 `already_uploaded` |
 | `POST /api/parent/kids/:id/device` | 在這台裝置玩：發一張孩子權杖（來源 `parent`）並回傳存檔，格式同上；別人的角色和不存在的一樣回 404 `no_kid` |
 | `DELETE /api/parent/kids/:id` | 刪除角色（在班級裡的先結清禮物） |
-| `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖與 Google 綁定失效；不在班級回 409 `not_in_class` |
+| `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖失效；不在班級回 409 `not_in_class` |
 | `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
 | `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`；別人的班級和不存在的代碼一樣回 404 |
 | `POST /api/teacher/rooms/:code/members/:id/pin` | `{ pin }` 重設孩子密碼：只撤銷 `class` 來源的權杖、只踢 `class` 來源的即時連線，家長裝置上的不受影響 |
@@ -199,8 +194,10 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/gifts/:id/decline` | 不用了（退款給送禮人） |
 | `POST /api/gifts/notices/ack` | `{ ids }` 送禮結果看過了 |
 | `GET /api/config` | `{ googleClientId }`（沒開 Google 登入是 null） |
-| `POST /api/google/link`、`DELETE /api/google/link` | 家長把 Google 綁到孩子（孩子權杖）`{ idToken }` → `{ google: [遮罩後的 email] }` |
-| `POST /api/google/login` | `{ idToken }` → `{ kids: SessionResponse[] }`；沒綁定回 404 `google_not_linked` |
+| `POST /api/users/google/login` | 用 Google 登入大人帳號（A4）`{ idToken }` → `{ token, user }`；沒綁定回 404 `google_not_linked`，無效的 token 回 401 |
+| `POST /api/users/google/register` | 用 Google 註冊 `{ idToken, username, password, parent, teacher }` → `{ token, user }`：email 用 Google 驗證過的（算驗證過），同時綁好這個 Google；Google 沒有驗證過的 email 回 400 `google_no_email`，Google 已經綁別的帳號 409 `google_taken`，email 已經有帳號 409 `email_taken` |
+| `GET /api/users/me/google`、`POST /api/users/me/google` | 列出、綁定（`{ idToken }`）這個帳號的 Google → `{ google: [{ id, email }] }`（email 遮罩）；Google 已經綁別的帳號回 409 `google_taken` |
+| `DELETE /api/users/me/google/:id` | 解除一個 Google 綁定；不是自己的回 404 |
 | `GET /healthz` | Zeabur 健康檢查 |
 
 孩子權杖用在同學名單、送禮這些班級功能時，角色沒有班級回 403 `no_class`；同步（`/api/ops`）、讀存檔（`/api/me`）與帶權杖加入班級不需要班級。
@@ -215,6 +212,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 - `users(id, username, username_key, password_hash, email, email_verified, is_parent, is_teacher, created_at, last_login)`：大人帳號（第 4 版）；第 6 版起 email 不分大小寫只能用一次（`lower(email)` 唯一索引）
 - `email_tokens(token_hash, user_id, purpose, email, expires_at, used_at, created_at)`：驗證（`verify`）與重設密碼（`reset`）連結的權杖雜湊（第 6 版，A3）；`email` 記寄到哪個地址，帳號換了 email 之後舊連結失效；也用來算每個帳號的寄信頻率
+- `user_google_links(google_sub, user_id, email, linked_at)`：Google 快速登入綁的大人帳號（第 7 版，A4）；`google_sub` 是主鍵（一個 Google 只能綁一個大人帳號），一個帳號可以綁多個 Google
 - `rooms(code, name, owner_id, teacher_hash, join_open, chat_open, gifts_open, created_at)`：`owner_id` 是老師帳號；`teacher_hash` 只有改版前用管理密碼建的房間才有
 - `accounts(id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)`，`(room_code, nickname_key)` 唯一。第 5 版（A2）：`parent_id` 是家長帳號；`room_code` 可以空（家長名下、沒有班級的雲端角色），但和 `parent_id` 至少要有一個；沒有班級就沒有 `pin_hash`
 - `applied_ops(account_id, op_id, applied_at)`
