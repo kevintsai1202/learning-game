@@ -60,7 +60,9 @@ node scripts/deploy/check-google-origins.mjs
 ## 發布成正式版與品牌驗證（2026-10-03）
 
 - 只用 `openid`、`email`、`profile` 時，發布成正式版不必先通過驗證；上傳了標誌、要在同意畫面顯示標誌與名稱，才需要通過「品牌驗證」（Google Auth Platform → 驗證中心）。
-- 品牌頁：首頁 `https://kevintsai1202.github.io/learning-game/`、隱私權政策 `https://kevintsai1202.github.io/learning-game/privacy.html`、已授權網域 `kevintsai1202.github.io` 與 `learning-island.zeabur.app`（`github.io`、`zeabur.app` 都在 Public Suffix List 上，要填完整的子網域）。
+- 品牌頁（**2026-10-05 通過品牌驗證**）：首頁 `https://learning-island.zeabur.app/`、隱私權政策 `https://learning-island.zeabur.app/privacy.html`、已授權網域 `learning-island.zeabur.app` 與 `kevintsai1202.github.io`（`github.io`、`zeabur.app` 都在 Public Suffix List 上，要填完整的子網域）。
+  - 原本首頁填 GitHub Pages 的網址，兩次送審都被退「首頁網址未註冊給您」：Search Console 已用專案擁有者驗證 `https://kevintsai1202.github.io/` 超過 24 小時仍然一樣。改成 Zeabur 網域（同一份前端與隱私權政策，Search Console 也已驗證）就通過了。
+  - 首頁與隱私權政策的網址不要再改：改了要重新送審。隱私權政策的**內容**可以更新（`public/privacy.html`，GitHub Pages 與 Zeabur 是同一份）。
 - 首頁網域要在 Google Search Console 驗證擁有權，用 Cloud 專案擁有者的 Google 帳號：新增「網址前置字元」資源 `https://kevintsai1202.github.io/`，選「HTML 檔案」驗證，把 Google 給的 `google….html` 放到 `kevintsai1202.github.io` 儲存庫的根目錄。`learning-island.zeabur.app` 的驗證檔放這個專案的 `public/`（班級伺服器會放在網址根目錄）。驗證完要等 24 小時，再到驗證中心重新送審。
 - 隱私權政策（`public/privacy.html`）要逐項寫清楚：收集哪些資料、用途、存放位置與保存期限、誰看得到、Google 使用者資料的取用與刪除，以及有限使用（Limited Use）聲明。第一次送審被退「內容不足」，之後改成中英文對照的版本；`e2e/privacy.spec.ts` 會檢查這些內容還在。
 - 首頁的靜態 HTML（`index.html` 的 `#boot`）直接寫了遊戲名稱、說明與隱私權政策連結：Google 檢查首頁時不一定執行 JavaScript，標題畫面上的連結是 React 畫出來的。這段只在遊戲載入前看得到，React 掛載後就被取代（同一個 e2e 會檢查）。
