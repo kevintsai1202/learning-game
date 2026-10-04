@@ -408,12 +408,19 @@ export function recordPuzzle(save: SaveData, profileId: string, play: PuzzlePlay
   return updateProfile(save, profileId, (p) => {
     const stats = p.puzzle ?? { days: {}, best: {} };
     const day = stats.days[today] ?? { seconds: 0, coins: 0 };
-    const coins = puzzleCoinsFor(play.stars, day.coins);
+    let coins = puzzleCoinsFor(play.stars, day.coins);
+    let days = trimPuzzleDays({ ...stats.days, [today]: { ...day, coins: day.coins + coins } });
+    // 比留下的日期還舊（裝置時鐘調回去、補送很久以前的紀錄）：那天的紀錄留不下來，
+    // 給了金幣下一局又會從 0 開始算上限，所以這局不給
+    if (!days[today]) {
+      coins = 0;
+      days = stats.days;
+    }
     let updated: Profile = {
       ...p,
       coins: p.coins + coins,
       puzzle: {
-        days: trimPuzzleDays({ ...stats.days, [today]: { ...day, coins: day.coins + coins } }),
+        days,
         best: { ...stats.best, [play.game]: Math.max(stats.best[play.game] ?? 0, play.stars) },
       },
     };

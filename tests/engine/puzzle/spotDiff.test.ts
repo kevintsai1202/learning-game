@@ -13,6 +13,7 @@ import {
   hitDiff,
   makeSpotScene,
   spotStars,
+  spotTap,
   type SceneObject,
 } from '../../../src/engine/puzzle/spotDiff';
 
@@ -86,6 +87,13 @@ describe('找不同：點擊判定', () => {
   it('已經找到的不再算', () => {
     const d = scene.diffs[0];
     expect(hitDiff(scene, [0], d.x, d.y)).toBe(-1);
+  });
+
+  it('點的結果：找到新的一處、重複點已經圈起來的地方（不算點錯）、點錯', () => {
+    const d = scene.diffs[1];
+    expect(spotTap(scene, [], d.x, d.y)).toEqual({ kind: 'hit', index: 1 });
+    expect(spotTap(scene, [1], d.x, d.y)).toEqual({ kind: 'again' });
+    expect(spotTap(scene, [1], -50, -50)).toEqual({ kind: 'miss' });
   });
 });
 

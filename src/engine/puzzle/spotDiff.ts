@@ -160,6 +160,17 @@ export function hitDiff(scene: SpotScene, found: readonly number[], x: number, y
   return scene.diffs.findIndex((d, i) => !found.includes(i) && Math.hypot(d.x - x, d.y - y) <= d.r);
 }
 
+/** 點一下的結果：找到新的一處、點在已經圈起來的地方（不算點錯）、點錯 */
+export type SpotTap = { kind: 'hit'; index: number } | { kind: 'again' } | { kind: 'miss' };
+
+/** 判斷點在 (x, y) 的結果；found 是已經找到的不同處索引 */
+export function spotTap(scene: SpotScene, found: readonly number[], x: number, y: number): SpotTap {
+  const index = hitDiff(scene, found, x, y);
+  if (index >= 0) return { kind: 'hit', index };
+  const again = found.some((k) => Math.hypot(scene.diffs[k].x - x, scene.diffs[k].y - y) <= scene.diffs[k].r);
+  return again ? { kind: 'again' } : { kind: 'miss' };
+}
+
 /** 自己玩的星數：全部找到而且剩四成以上的時間 3 星、全部找到 2 星、沒找完 1 星 */
 export function spotStars(found: number, total: number, secondsLeft: number, limit: number): 1 | 2 | 3 {
   if (found < total) return 1;

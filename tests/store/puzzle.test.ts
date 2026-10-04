@@ -101,6 +101,19 @@ describe('益智遊戲：紀錄一局', () => {
     expect(kid(s).badges?.['correct-100']).toBe('2026-10-04');
   });
 
+  it('比留下的 14 天還舊的日期（裝置時鐘調回去、補送很久以前的離線紀錄）：紀錄留不下來，這局不給金幣，上限不會被繞過', () => {
+    let s = fresh();
+    // 10 月 1～14 日都玩過益智遊戲
+    for (let d = 1; d <= 14; d++) s = addPlayTime(s, kid(s).id, 30, new Date(2026, 9, d, 10), true);
+    const old = new Date(2026, 8, 20, 10);
+    for (let i = 0; i < 3; i++) s = recordPuzzle(s, kid(s).id, { game: 'memory', stars: 3 }, old);
+    expect(kid(s).coins).toBe(0);
+    expect(Object.keys(kid(s).puzzle!.days)).toHaveLength(14);
+    // 留下的日期照常給
+    s = recordPuzzle(s, kid(s).id, { game: 'memory', stars: 3 }, new Date(2026, 9, 14, 11));
+    expect(kid(s).coins).toBe(5);
+  });
+
   it('不改動傳入的舊存檔（不可變更新）', () => {
     const s = fresh();
     const before = JSON.stringify(s);

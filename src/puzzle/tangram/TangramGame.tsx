@@ -122,8 +122,11 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
   /** 機器人拼好了幾塊 */
   const [botDone, setBotDone] = useState(0);
   const [over, setOver] = useState(false);
+  /** 已經結算（機器人的計時器和放好最後一塊可能在同一瞬間發生，只結算一次） */
+  const finished = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
-  const drag = useRef<{ id: string; start: [number, number]; origin: [number, number]; moved: boolean } | null>(null);
+  /** 正在拖的板子：哪一塊、哪一根手指（別的手指或手掌不算）、起點與原本的位置 */
+  const drag = useRef<{ id: string; pointerId: number; start: [number, number]; origin: [number, number]; moved: boolean } | null>(null);
 
   const placedList = (except?: string): Placed[] =>
     Object.entries(pieces.current)
@@ -133,7 +136,8 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
 
   /** 結束這一局（只結算一次） */
   const end = (outcome: Parameters<PuzzleGameProps['onFinish']>[0]) => {
-    if (over) return;
+    if (finished.current) return;
+    finished.current = true;
     setOver(true);
     onFinish(outcome);
   };
@@ -216,34 +220,36 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
   };
 
   const down = (e: PointerEvent<SVGElement>, id: string) => {
-    if (over || !svgRef.current) return;
+    if (over || !svgRef.current || drag.current) return;
     e.stopPropagation();
     svgRef.current.setPointerCapture(e.pointerId);
     const pt = svgPoint(svgRef.current, e.clientX, e.clientY);
     const p = pieces.current[id];
-    drag.current = { id, start: [pt.x, pt.y], origin: [p.x, p.y], moved: false };
+    drag.current = { id, pointerId: e.pointerId, start: [pt.x, pt.y], origin: [p.x, p.y], moved: false };
     setSelected(id);
     setOrder((o) => [...o.filter((v) => v !== id), id]);
   };
   const move = (e: PointerEvent<SVGSVGElement>) => {
     const d = drag.current;
-    if (!d || !svgRef.current) return;
+    if (!d || d.pointerId !== e.pointerId || !svgRef.current) return;
     const pt = svgPoint(svgRef.current, e.clientX, e.clientY);
     const dx = pt.x - d.start[0];
     const dy = pt.y - d.start[1];
     if (!d.moved && Math.hypot(dx, dy) < 0.2) return;
     d.moved = true;
     const p = pieces.current[d.id];
-    // 不能拖出盤面
-    const x = Math.min(layout.w - 1, Math.max(-1, d.origin[0] + dx));
-    const y = Math.min(layout.h - 1, Math.max(-1, d.origin[1] + dy));
+    // 不能拖出盤面：板子的重心留在盤面裡（轉過方向的板子會往負的方向延伸，只看平移量會整塊拖出去、抓不回來）
+    const [ocx, ocy] = polygonCentroid(piecePolygon(pieceType(d.id), p, 0, 0));
+    const x = Math.min(layout.w - 0.3, Math.max(0.3, d.origin[0] + dx + ocx)) - ocx;
+    const y = Math.min(layout.h - 0.3, Math.max(0.3, d.origin[1] + dy + ocy)) - ocy;
     pieces.current = { ...pieces.current, [d.id]: { ...p, x, y, placed: false } };
     redraw();
   };
-  const up = () => {
+  const up = (e: PointerEvent<SVGSVGElement>) => {
     const d = drag.current;
+    if (!d || d.pointerId !== e.pointerId) return;
     drag.current = null;
-    if (!d || over) return;
+    if (over) return;
     if (d.moved) snap(d.id);
     // 點一下：轉 90 度（已經吸附的板子不轉，免得不小心碰到就鬆開）
     else if (!pieces.current[d.id].placed) {

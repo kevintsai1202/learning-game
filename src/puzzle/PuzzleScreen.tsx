@@ -3,7 +3,7 @@
  * 選單、遊戲、結算都在這個畫面（screen 'puzzle'），休息提醒依這個畫面累計益智遊戲的時間。
  * 今天的益智遊戲時間用完時不能開新局；正在玩的那一局可以玩完。
  */
-import { useEffect, useState, type ComponentType } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import { useUi } from '../store/useUi';
 import { useGame } from '../store/useGame';
 import { PUZZLE_DAILY_COIN_CAP, type PuzzleGameId } from '../store/puzzle';
@@ -53,6 +53,8 @@ export function PuzzleScreen() {
   const [view, setView] = useState<View>({ t: 'menu' });
   const [picking, setPicking] = useState<PuzzleGameInfo | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
+  /** 已經結算過的那一局（種子）：遊戲元件萬一回報兩次，也只存一次檔、只給一次金幣 */
+  const finishedSeed = useRef<number | null>(null);
   const zone = zoneById('puzzle');
 
   const now = new Date();
@@ -71,12 +73,16 @@ export function PuzzleScreen() {
     if (timeUp) return;
     sfx.tap();
     setPicking(null);
+    setConfirmExit(false);
     setView({ t: 'play', run: { game, mode, level, seed: Math.floor(Math.random() * 1e9) } });
   };
   /** 一局玩完：存檔（金幣由存檔規則依星數與每日上限算）並顯示結算 */
   const finish = (run: PuzzleRun, outcome: PuzzleOutcome) => {
+    if (finishedSeed.current === run.seed) return;
+    finishedSeed.current = run.seed;
     const { coins, newBadges } = finishPuzzle({ game: run.game, stars: outcome.stars, answers: outcome.answers });
     puzzleDebug.state = null;
+    setConfirmExit(false);
     setView({ t: 'result', run, outcome, coins, newBadges });
   };
   const backToMenu = () => {
@@ -168,7 +174,8 @@ export function PuzzleScreen() {
           </div>
         </div>
       </div>
-      {picking && <ModePicker game={picking} onPick={(mode, level) => begin(picking.id, mode, level)} onClose={() => setPicking(null)} />}
+      {/* 時間用完時不顯示選玩法（按了也不能開始） */}
+      {picking && !timeUp && <ModePicker game={picking} onPick={(mode, level) => begin(picking.id, mode, level)} onClose={() => setPicking(null)} />}
     </div>
   );
 }

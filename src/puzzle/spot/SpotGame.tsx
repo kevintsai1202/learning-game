@@ -6,7 +6,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createRng } from '../../core/rng';
 import { outcomeStars, vsOutcome } from '../../engine/puzzle/common';
-import { DIFFS_BY_LEVEL, MISS_PENALTY_SECONDS, SPOT_SECONDS, botFindDelay, hitDiff, makeSpotScene, spotStars } from '../../engine/puzzle/spotDiff';
+import { DIFFS_BY_LEVEL, MISS_PENALTY_SECONDS, SPOT_SECONDS, botFindDelay, makeSpotScene, spotStars, spotTap } from '../../engine/puzzle/spotDiff';
 import { PUZZLE_LINES } from '../../ui/lines';
 import { speak } from '../../audio/speech';
 import { sfx } from '../../audio/sfx';
@@ -97,13 +97,16 @@ export default function SpotGame({ run, onFinish, onExit }: PuzzleGameProps) {
   /** 孩子點了風景上的 (x, y) */
   const tap = (x: number, y: number) => {
     if (over || Date.now() < lockedUntil.current) return;
-    const i = hitDiff(
+    const result = spotTap(
       scene,
       found.map((f, k) => (f ? k : -1)).filter((k) => k >= 0),
       x,
       y,
     );
-    if (i >= 0) {
+    // 點在已經圈起來的地方（連點兩下、左右圖對照）：不算點錯
+    if (result.kind === 'again') return;
+    if (result.kind === 'hit') {
+      const i = result.index;
       sfx.correct();
       setFound((f) => {
         if (f[i]) return f;
