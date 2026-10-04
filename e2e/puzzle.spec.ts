@@ -463,3 +463,118 @@ test('積木大師和機器人搶答：搶先答對 8 題贏了', async ({ page 
   await expect(page.getByTestId('puzzle-summary')).toHaveText('你 8：0 機器人');
   await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
 });
+
+/** 七巧板：盤面座標換成畫面座標 */
+async function boardToScreen(page: Page, x: number, y: number): Promise<{ x: number; y: number }> {
+  return page.evaluate(
+    ({ x, y }) => {
+      const svg = document.querySelector('[data-testid="tangram-board"]') as SVGSVGElement;
+      const pt = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()!);
+      return { x: pt.x, y: pt.y };
+    },
+    { x, y },
+  );
+}
+
+/** 七巧板：用畫面操作把一塊板子轉成題庫的姿勢（翻面、點一下轉 90 度），再從重心拖到題庫的位置 */
+async function placeTangramPiece(page: Page, target: { piece: string; rot: number; flip: boolean; cx: number; cy: number }): Promise<void> {
+  const pieceNow = async () => (await puzzleState(page)).pieces[target.piece];
+  let s = await pieceNow();
+  if (s.flip !== target.flip) {
+    // 先點一下選起來（會順便轉一次），再按翻面
+    const c = await boardToScreen(page, s.cx, s.cy);
+    await page.mouse.click(c.x, c.y);
+    await page.getByTestId('tangram-flip').click();
+    s = await pieceNow();
+  }
+  const taps = (((target.rot - s.rot) % 4) + 4) % 4;
+  for (let i = 0; i < taps; i++) {
+    const c = await boardToScreen(page, s.cx, s.cy);
+    await page.mouse.click(c.x, c.y);
+    await expect.poll(async () => (await pieceNow()).rot).toBe((s.rot + 1) % 4);
+    s = await pieceNow();
+  }
+  const from = await boardToScreen(page, s.cx, s.cy);
+  const to = await boardToScreen(page, target.cx, target.cy);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  await page.mouse.up();
+  // 吸附固定；放完最後一塊時遊戲結束、狀態清成 null
+  await expect.poll(async () => (await puzzleState(page))?.pieces?.[target.piece]?.placed ?? true).toBe(true);
+}
+
+/** 七巧板：照題庫的擺法把七塊都放好（first 指定先放幾塊就停） */
+async function solveTangram(page: Page, first = 7): Promise<void> {
+  const targets = (await puzzleState(page)).targets as { piece: string; rot: number; flip: boolean; cx: number; cy: number }[];
+  for (const t of targets.slice(0, first)) await placeTangramPiece(page, t);
+}
+
+test('七巧板自己玩（簡單）：放錯的地方不會固定；轉方向、翻面、拖進剪影拼好，沒用提示 3 星', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-tangram').click();
+  await page.getByTestId('puzzle-solo-1').click();
+  await expect(page.getByTestId('tangram-game')).toHaveAttribute('data-mode', 'solo');
+  await page.screenshot({ path: `${SHOTS}/14-tangram-start.png` });
+  // 把正方形拖到剪影框的左上角（剪影外面）：不會固定
+  const sq = (await puzzleState(page)).pieces.square;
+  const from = await boardToScreen(page, sq.cx, sq.cy);
+  const corner = await boardToScreen(page, 0.3, 0.3);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(corner.x, corner.y, { steps: 5 });
+  await page.mouse.up();
+  await expect.poll(async () => (await puzzleState(page)).pieces.square.placed).toBe(false);
+  await solveTangram(page, 4);
+  await page.screenshot({ path: `${SHOTS}/15-tangram-half.png` });
+  await solveTangram(page);
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toContainText('沒有用提示');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+});
+
+test('七巧板自己玩（普通）：用一次提示會亮出一塊的位置，拼好拿 2 星', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await page.getByTestId('puzzle-tangram').click();
+  await page.getByTestId('puzzle-solo-2').click();
+  await page.getByTestId('tangram-hint').click();
+  await expect(page.getByTestId('tangram-hint-slot')).toBeVisible();
+  await page.screenshot({ path: `${SHOTS}/16-tangram-hint.png` });
+  await solveTangram(page);
+  await expect(page.getByTestId('puzzle-summary')).toContainText('用了 1 次提示');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +3');
+});
+
+test('七巧板和機器人：機器人先拼好就輸了，1 星 2 枚金幣', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await setBotDelay(page, 0.001);
+  await page.getByTestId('puzzle-tangram').click();
+  await page.getByTestId('puzzle-vs-1').click();
+  await expect(page.getByTestId('puzzle-result')).toBeVisible();
+  await expect(page.getByTestId('puzzle-summary')).toContainText('機器人先拼好了');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +2');
+});
+
+test('七巧板在直式手機上：剪影在上、板子在下，和機器人比賽先拼完就贏', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await freshStart(page);
+  await createKid(page);
+  await enterPuzzle(page);
+  await setBotDelay(page, 1000);
+  await page.getByTestId('puzzle-tangram').click();
+  await page.getByTestId('puzzle-vs-3').click();
+  await expect(page.getByTestId('tangram-game')).toHaveAttribute('data-mode', 'vs');
+  // 直式盤面：比寬還高
+  const box = (await page.getByTestId('tangram-board').boundingBox())!;
+  expect(box.height).toBeGreaterThan(box.width);
+  await page.screenshot({ path: `${SHOTS}/17-tangram-phone.png` });
+  await solveTangram(page);
+  await expect(page.getByTestId('puzzle-summary')).toContainText('你先拼好了');
+  await expect(page.getByTestId('puzzle-coins')).toHaveText('🪙 +5');
+});

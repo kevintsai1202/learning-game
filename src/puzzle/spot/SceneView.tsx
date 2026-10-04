@@ -1,10 +1,11 @@
 /**
  * 找不同的風景（SVG）：依物件清單畫出天空、海、草地與各種物件（圖案都是程式畫的，沒有授權問題）。
  * 每個物件以中心為原點、約 r 的大小畫，再依位置、大小倍率與左右翻轉擺上去。
- * 點擊位置用 getScreenCTM 換回風景座標，畫面怎麼縮放都對得上。
+ * 點擊位置用 svgPoint（getScreenCTM）換回風景座標，畫面怎麼縮放都對得上。
  */
 import type { PointerEvent, ReactNode } from 'react';
 import { SCENE_H, SCENE_W, type SceneKind, type SceneObject, type SpotDiff } from '../../engine/puzzle/spotDiff';
+import { svgPoint } from '../svgPoint';
 
 /** 外框線的顏色與粗細（卡通風格） */
 const INK = '#2b2a4c';
@@ -149,14 +150,6 @@ function Background() {
   );
 }
 
-/** 把畫面上的點換成風景座標 */
-export function scenePoint(svg: SVGSVGElement, clientX: number, clientY: number): { x: number; y: number } {
-  const m = svg.getScreenCTM();
-  if (!m) return { x: -1, y: -1 };
-  const p = new DOMPoint(clientX, clientY).matrixTransform(m.inverse());
-  return { x: p.x, y: p.y };
-}
-
 /** 一張風景：物件、找到的圈圈（孩子綠色、機器人紫色）、點錯的叉叉 */
 export function SceneView({
   objects,
@@ -176,7 +169,7 @@ export function SceneView({
   label: string;
 }) {
   const tap = (e: PointerEvent<SVGSVGElement>) => {
-    const p = scenePoint(e.currentTarget, e.clientX, e.clientY);
+    const p = svgPoint(e.currentTarget, e.clientX, e.clientY);
     onTap(p.x, p.y);
   };
   return (

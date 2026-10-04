@@ -57,6 +57,15 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     vs: '和機器人搶答 8 題：先答對的得分',
     soloLevels: true,
   },
+  {
+    id: 'tangram',
+    title: '七巧板',
+    icon: '🔷',
+    description: '把七塊板子拖進剪影裡，拼出帳篷、房子、貓咪……點一下板子可以轉方向。',
+    solo: '簡單有分割線、普通只有外框、厲害沒有提示',
+    vs: '和機器人比賽：機器人每隔幾秒拼好一塊，看誰先拼完',
+    soloLevels: true,
+  },
 ];
 
 /** 依 id 找遊戲 */

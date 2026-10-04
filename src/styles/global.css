@@ -2341,3 +2341,72 @@ button {
     max-height: 28vh;
   }
 }
+
+/* 七巧板：盤面（左邊或上面是剪影框，另一邊是收納區） */
+.tangram-tools {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 6px 0;
+}
+.tangram-tip {
+  font-size: 16px;
+  color: var(--ink-soft);
+}
+.tangram-board {
+  width: 100%;
+  max-height: calc(100dvh - 200px);
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tangram-frame {
+  fill: #fff8e6;
+  stroke: #e8dcc0;
+  stroke-width: 0.06;
+}
+.tangram-silhouette polygon {
+  fill: #3b3a5e;
+  stroke: #3b3a5e;
+  stroke-width: 0.05;
+  stroke-linejoin: round;
+}
+.tangram-lines polygon {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 0.05;
+  stroke-dasharray: 0.16 0.12;
+}
+.tangram-hint {
+  fill: rgba(255, 255, 255, 0.25);
+  stroke-width: 0.12;
+  stroke-dasharray: 0.25 0.15;
+  animation: bot-think 0.9s ease-in-out infinite;
+  pointer-events: none;
+}
+.tangram-piece {
+  stroke: #ffffff;
+  stroke-width: 0.07;
+  stroke-linejoin: round;
+  cursor: grab;
+}
+.tangram-piece.selected {
+  stroke: #2b2a4c;
+  stroke-width: 0.11;
+}
+.tangram-piece.placed {
+  cursor: move;
+}
+.tangram-bot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: 22px;
+}
+.tangram-bot svg {
+  width: 70px;
+  height: 70px;
+}

@@ -24,6 +24,7 @@ import QuizGame from './quiz/QuizGame';
 import MemoryGame from './memory/MemoryGame';
 import SpotGame from './spot/SpotGame';
 import BlocksGame from './blocks/BlocksGame';
+import TangramGame from './tangram/TangramGame';
 
 /** 各遊戲的元件（目錄 catalog.ts 是純資料，元件的對照放這裡） */
 const GAME_COMPONENTS: Partial<Record<PuzzleGameId, ComponentType<PuzzleGameProps>>> = {
@@ -31,6 +32,7 @@ const GAME_COMPONENTS: Partial<Record<PuzzleGameId, ComponentType<PuzzleGameProp
   memory: MemoryGame,
   spot: SpotGame,
   blocks: BlocksGame,
+  tangram: TangramGame,
 };
 
 /** 機器人的三種難度 */
