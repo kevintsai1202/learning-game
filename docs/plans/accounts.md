@@ -220,7 +220,6 @@ A3 開始前，你要做的（這幾步我不能替你做）：
 - `scripts/deploy/check-google-origins.mjs` 先找帳號頁的按鈕，找不到再退回班級畫面（A5 上線前的正式環境還是舊版前端）；2026-10-04 對兩個正式網址跑過，走舊版路徑、都已授權。
 - 測試：`tests/server/user-google.test.ts`（取代 `google-login.test.ts`）、`tests/server/google.test.ts`、`tests/server/migrate.test.ts`（第 6→7 版）、`tests/online/googleToken.test.ts`、`e2e/google-account.spec.ts`（`online.spec.ts` 的舊 Google 測試拿掉）。Docker 的 PostgreSQL 跑過一次。
 
-
 - **資料表（第 7 版）**：`user_google_links`（Google 帳號 ↔ 大人帳號）。一個 Google 只能綁一個大人帳號（登入時才知道要登入哪一個），一個大人帳號可以綁多個 Google（爸爸、媽媽各綁一個）。拿掉 `google_links`（Google 直接綁孩子）與 `teacher_google_links`。
 - **伺服器**：`POST /api/users/google/login`（沒綁過回 404，說明要先用帳號密碼登入再綁定）；綁定、列出（email 遮罩）、解除。拿掉 `/api/google/link`、`/api/google/login`。
 - **前端**：帳號頁登入表單加 Google 按鈕；帳號設定加「綁定 Google」與已綁定清單。家長專區與班級畫面的 Google 按鈕拿掉，班級畫面改成「家長找回角色：用家長帳號登入」連到帳號頁。
