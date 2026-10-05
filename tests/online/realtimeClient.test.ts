@@ -18,14 +18,14 @@ const self = { id: 'me', nickname: '小安', avatar: { animal: 'bear' as const, 
 
 describe('伺服器訊息寫進同島狀態', () => {
   it('welcome：放入其他成員、最近的公頻，以及自己（自己不畫在島上，但說話要有氣泡）', () => {
-    const s = applyServerMessage(emptyPresence(), { t: 'welcome', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [member('a', '阿寶')], chat: [{ id: 1, from: 'a', nickname: '阿寶', text: '你好！', at: 1 }] }, self, 100);
+    const s = applyServerMessage(emptyPresence(), { t: 'welcome', island: 'class', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [member('a', '阿寶')], chat: [{ id: 1, from: 'a', nickname: '阿寶', text: '你好！', at: 1 }] }, self, 100);
     expect(Object.keys(s.members).sort()).toEqual(['a', 'me']);
     expect(s.chat).toHaveLength(1);
     expect(onIsland(s, 'me').map((m) => m.id)).toEqual(['a']);
   });
 
   it('join、member、leave、moves（自己的位置不覆蓋）', () => {
-    let s = applyServerMessage(emptyPresence(), { t: 'welcome', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [], chat: [] }, self, 1);
+    let s = applyServerMessage(emptyPresence(), { t: 'welcome', island: 'class', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [], chat: [] }, self, 1);
     s = applyServerMessage(s, { t: 'join', member: member('a', '阿寶') }, self, 2);
     s = applyServerMessage(s, { t: 'member', member: member('a', '阿寶', { zone: 'math' }) }, self, 3);
     expect(s.members.a.zone).toBe('math');
@@ -37,7 +37,7 @@ describe('伺服器訊息寫進同島狀態', () => {
   });
 
   it('chat：公頻多一則、說話的人頭上有氣泡（包含自己）', () => {
-    let s = applyServerMessage(emptyPresence(), { t: 'welcome', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [], chat: [] }, self, 1);
+    let s = applyServerMessage(emptyPresence(), { t: 'welcome', island: 'class', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [], chat: [] }, self, 1);
     s = applyServerMessage(s, { t: 'chat', line: { id: 7, from: 'me', nickname: '小安', text: '一起玩吧！', at: 1000 } }, self, 1000);
     expect(s.chat.at(-1)?.text).toBe('一起玩吧！');
     expect(s.bubbles.me?.text).toBe('一起玩吧！');

@@ -181,7 +181,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `DELETE /api/parent/kids/:id` | 刪除角色（在班級裡的先結清禮物） |
 | `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖失效；不在班級回 409 `not_in_class` |
 | `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
-| `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`、班級教材版本 `{ curriculum? }`（`null` 是不統一；老師 GM 的 G0，`docs/plans/teacher-gm.md`）；別人的班級和不存在的代碼一樣回 404 |
+| `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`、班級名稱 `{ name? }`、班級教材版本 `{ curriculum? }`（`null` 是不統一；老師 GM 的 G0，`docs/plans/teacher-gm.md`）；別人的班級和不存在的代碼一樣回 404 |
 | `POST /api/teacher/rooms/:code/members/:id/pin` | `{ pin }` 重設孩子密碼：只撤銷 `class` 來源的權杖、只踢 `class` 來源的即時連線，家長裝置上的不受影響 |
 | `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 → `{ ok, left }`：家長名下的角色改成退出班級（`left: true`，進度留在家長名下），純班級角色照舊刪除。鎖到帳號之後再確認班級，已經換到別班就整個撤銷、回 404（老師只能移出自己班上的學生） |
 | `POST /api/join` | `{ code, nickname, pin, profile? }` → `{ token, account, profile, rev, room }`。帶孩子權杖時是「雲端角色加入班級」：同一個帳號掛進班級、沿用原本的權杖，回 `{ account, profile, rev, room }`；已經在班級裡回 409 `already_in_class` |
@@ -205,9 +205,10 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 ### WebSocket（`/ws`，連上後第一則訊息送權杖）
 
-- 裝置 → 伺服器：`hello { token }`、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
-- 伺服器 → 裝置：`welcome { self, room, members, chat }`、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`content`（老師改了班級教材版本：裝置同步一次，從回應的 `room.curriculum` 拿新的設定）、`kicked { reason }`
-- 關閉代碼：權杖無效 4003；角色沒有班級 4004（裝置不重連，同步一次讓本機的班級清掉）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
+- 裝置 → 伺服器：`hello { token, island? }`（`island` 是 `class`／`own`，沒給是班級島）、`go { island }`（換島，不斷線）、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
+- 伺服器 → 裝置：`welcome { self, island, room, members, chat }`（`island` 是進了哪一種島）、`friends { list }`（上線時的整份好友名單）、`friend { friend }`（某位朋友上線、下線、換島、換外觀）、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`content`（老師改了班級教材版本：裝置同步一次，從回應的 `room.curriculum` 拿新的設定）、`kicked { reason }`
+- 島嶼互訪 I1（`docs/plans/islands.md`）起中樞以「島」為單位：班級島與每個人自己的島；沒有班級的孩子進自己的島。
+- 關閉代碼：權杖無效 4003；角色沒有班級 4004（I1 起伺服器不再送，裝置保留處理）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
 
 ## 11. 資料表（PostgreSQL）
 

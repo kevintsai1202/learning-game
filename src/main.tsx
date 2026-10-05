@@ -14,6 +14,7 @@ import { useCloud } from './online/useCloud';
 import { usePresence } from './online/usePresence';
 import { startPresenceDemo } from './online/presenceDemo';
 import { useRealtime } from './online/realtimeClient';
+import { useFriends } from './online/useFriends';
 import { useGifts } from './online/useGifts';
 import { puzzleDebug } from './puzzle/debug';
 import './styles/global.css';
@@ -41,6 +42,8 @@ declare global {
       gifts: typeof useGifts;
       /** 益智遊戲館：機器人的速度、目前遊戲的狀態 */
       puzzle: typeof puzzleDebug;
+      /** 好友名單（島嶼互訪 I1） */
+      friends: typeof useFriends;
     };
   }
 }
@@ -59,6 +62,7 @@ window.__game = {
   realtime: useRealtime,
   gifts: useGifts,
   puzzle: puzzleDebug,
+  friends: useFriends,
 };
 
 createRoot(document.getElementById('root')!).render(

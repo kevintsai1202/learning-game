@@ -25,6 +25,7 @@ function hooked() {
     onRoomContent: vi.fn(),
     onKick: vi.fn(),
     isOnline: vi.fn((id: string) => id === online.id),
+    whereOf: vi.fn((id: string) => (id === online.id ? { island: 'own' as const, zone: null } : null)),
   };
   const online = { id: '' };
   return { ...makeClient(db, hooks), hooks, online };
@@ -50,6 +51,15 @@ describe('通知即時中樞', () => {
     expect(hooks.onRoomContent).not.toHaveBeenCalled();
   });
 
+  it('老師改班級名稱：通知班上的孩子重新同步（名稱沒變不通知）', async () => {
+    const { call, hooks } = hooked();
+    const { code, token } = await createRoom(call);
+    await call('PATCH', `/api/teacher/rooms/${code}`, { name: '二年一班' }, token);
+    expect(hooks.onRoomContent).not.toHaveBeenCalled();
+    await call('PATCH', `/api/teacher/rooms/${code}`, { name: '三年一班' }, token);
+    expect(hooks.onRoomContent).toHaveBeenCalledWith(code);
+  });
+
   it('老師改班級教材版本（設定或取消）：通知班上的孩子重新同步（G0）', async () => {
     const { call, hooks } = hooked();
     const { code, token } = await createRoom(call);
@@ -72,7 +82,7 @@ describe('通知即時中樞', () => {
     expect(hooks.onKick).toHaveBeenCalledWith(b.account.id, expect.stringContaining('移出'));
   });
 
-  it('老師的成員列表：在線上的狀態來自中樞', async () => {
+  it('老師的成員列表：在線上的狀態與在哪裡來自中樞', async () => {
     const { call, online } = hooked();
     const { code, token } = await createRoom(call);
     const a = await joinRoom(call, code, '小安');
@@ -83,5 +93,7 @@ describe('通知即時中樞', () => {
       ['小安', true],
       ['小美', false],
     ]);
+    // 在哪裡（島嶼互訪 I1）：島＋建築，離線是 null
+    expect(r.body.members.map((m: { where: unknown }) => m.where)).toEqual([{ island: 'own', zone: null }, null]);
   });
 });

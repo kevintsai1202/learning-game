@@ -221,3 +221,121 @@ describe('禮物通知（P3）', () => {
     expect(() => hub.notify('nobody', { t: 'gift' })).not.toThrow();
   });
 });
+
+describe('島嶼互訪 I1：每個人一座島、一直連線、好友的在線狀態（docs/plans/islands.md）', () => {
+  /** 讓一位孩子上線：room 是班級（null 是沒有班級）、island 是要去的島、friends 是朋友的帳號 id */
+  function online(accountId: string, nickname: string, opts: { room?: string | null; island?: 'class' | 'own'; friends?: string[]; via?: TokenVia } = {}) {
+    const conn = new FakeConn();
+    const room = opts.room === undefined ? '123456' : opts.room;
+    hub.join(conn, {
+      accountId,
+      roomCode: room,
+      nickname,
+      profile: profileOf(nickname),
+      flags: FLAGS,
+      via: opts.via ?? 'class',
+      island: opts.island,
+      friends: (opts.friends ?? []).map((id) => ({ id, nickname: `朋友${id}`, avatar: { animal: 'cat', color: '#ffffff', hat: null } })),
+    });
+    return conn;
+  }
+
+  it('沒給島：有班級進班級島（舊版網頁照舊）；在自己的島的人和班級島互相看不到', () => {
+    const a = online('a', '阿寶');
+    const b = online('b', '小美', { island: 'own' });
+    expect(a.of('welcome')[0]).toMatchObject({ island: 'class', members: [] });
+    expect(b.of('welcome')[0]).toMatchObject({ island: 'own', members: [] });
+    expect(a.of('join')).toEqual([]);
+    expect(hub.isOnline('b')).toBe(true);
+  });
+
+  it('沒有班級的孩子（家長名下）：要去班級島也進自己的島', () => {
+    const c = online('c', '小華', { room: null, island: 'class' });
+    expect(c.of('welcome')[0].island).toBe('own');
+    expect(hub.whereOf('c')).toEqual({ island: 'own', zone: null });
+  });
+
+  it('換島（go）：離開原本的島（大家收到 leave）、在新的島收到 welcome、回到出生點', () => {
+    const a = online('a', '阿寶');
+    const b = online('b', '小美');
+    hub.move(b, 3, 4, 0);
+    hub.goTo(b, 'own');
+    expect(a.of('leave')).toEqual([{ t: 'leave', id: 'b' }]);
+    expect(b.of('welcome').at(-1)).toMatchObject({ island: 'own', members: [] });
+    hub.goTo(b, 'class');
+    expect(b.of('welcome').at(-1)?.members.map((m) => m.id)).toEqual(['a']);
+    expect(a.of('join').at(-1)?.member).toMatchObject({ id: 'b', x: SPAWN.x, z: SPAWN.z, zone: null });
+  });
+
+  it('好友名單：上線時收到全部朋友（離線的也有）；朋友上線、換島、下線時收到 friend（只有在哪座島，不含建築）', () => {
+    const a = online('a', '阿寶', { friends: ['b', 'c'] });
+    expect(a.of('friends')[0].list).toEqual([
+      { id: 'b', nickname: '朋友b', avatar: { animal: 'cat', color: '#ffffff', hat: null }, online: false, island: null },
+      { id: 'c', nickname: '朋友c', avatar: { animal: 'cat', color: '#ffffff', hat: null }, online: false, island: null },
+    ]);
+    const b = online('b', '小美', { friends: ['a'] });
+    expect(b.of('friends')[0].list).toEqual([expect.objectContaining({ id: 'a', online: true, island: 'class' })]);
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', nickname: '小美', online: true, island: 'class' });
+    hub.where(b, 'math');
+    expect(JSON.stringify(a.of('friend'))).not.toContain('math');
+    hub.goTo(b, 'own');
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', online: true, island: 'own' });
+    hub.leave(b);
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', online: false, island: null });
+  });
+
+  it('朋友關係是雙向的：後上線的人名單裡有我，我的名單也會多出他（例如新加入的同學）', () => {
+    const a = online('a', '阿寶');
+    online('d', '新同學', { friends: ['a'] });
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'd', nickname: '新同學', online: true });
+    hub.kick('d', '老師把你移出班級了');
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'd', online: false });
+  });
+
+  it('不是朋友的人：上線、換島都不會通知', () => {
+    const a = online('a', '阿寶', { friends: ['b'] });
+    online('x', '別人', { room: '654321' });
+    expect(a.of('friend')).toEqual([]);
+  });
+
+  it('全班的通知照帳號送：在自己島上的同學也收到 content；老師改開關時更新，回班級島時拿到最新的開關', () => {
+    const a = online('a', '阿寶');
+    const b = online('b', '小美', { island: 'own' });
+    const other = online('x', '別班', { room: '654321', island: 'own' });
+    hub.roomContent('123456');
+    expect(a.of('content')).toHaveLength(1);
+    expect(b.of('content')).toHaveLength(1);
+    expect(other.of('content')).toHaveLength(0);
+    hub.roomSettings('123456', { chatOpen: false, giftsOpen: true });
+    hub.goTo(b, 'class');
+    expect(b.of('welcome').at(-1)?.room).toEqual({ chatOpen: false, giftsOpen: true });
+  });
+
+  it('同一個帳號在另一台裝置上線、去了不同的島：舊連線被踢，新連線從出生點開始；朋友收到新的島', () => {
+    const a = online('a', '阿寶', { friends: ['b'] });
+    const b1 = online('b', '小美', { friends: ['a'] });
+    hub.move(b1, 3, 4, 0);
+    const b2 = online('b', '小美', { friends: ['a'], island: 'own' });
+    expect(b1.of('kicked')).toHaveLength(1);
+    expect(b2.of('welcome')[0]).toMatchObject({ island: 'own' });
+    expect(a.of('leave')).toEqual([{ t: 'leave', id: 'b' }]);
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', online: true, island: 'own' });
+    // 舊連線關閉時不影響新連線
+    hub.leave(b1);
+    expect(hub.isOnline('b')).toBe(true);
+  });
+
+  it('在哪裡（老師的成員表用）：島＋建築；離線是 null', () => {
+    const a = online('a', '阿寶');
+    hub.where(a, 'math');
+    expect(hub.whereOf('a')).toEqual({ island: 'class', zone: 'math' });
+    expect(hub.whereOf('nobody')).toBeNull();
+  });
+
+  it('換外觀：朋友名單上的外觀跟著更新', () => {
+    const a = online('a', '阿寶', { friends: ['b'] });
+    online('b', '小美', { friends: ['a'] });
+    hub.profileChanged('b', 3, profileOf('小美', { avatar: { animal: 'panda', color: '#000000', hat: null } }));
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', avatar: { animal: 'panda' } });
+  });
+});

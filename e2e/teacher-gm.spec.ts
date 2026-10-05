@@ -1,7 +1,7 @@
 /**
  * 老師 GM 的 G0＋G1（docs/plans/teacher-gm.md 第 3、4 節）：
  * - G0 班級教材版本：老師在班級頁統一版本，線上的孩子馬上收到（content → 同步），班級島的課本單元跟著老師；取消統一就照孩子自己的設定。
- * - G1 我的島：孩子切到我的島，用自己的版本、看不到同學（即時連線斷開）；切回班級島又和同學同島。
+ * - G1 我的島：孩子切到我的島，用自己的版本、看不到同學（島嶼互訪 I1 起保持連線，在自己的島上）；切回班級島又和同學同島。
  * 截圖在 e2e/screenshots/teacher-gm/（不進版控）。
  */
 import { expect, test, type Page } from '@playwright/test';
@@ -27,6 +27,8 @@ const overlaps = (p: Box, q: Box) => p.x < q.x + q.width && q.x < p.x + p.width 
 
 /** 即時連線狀態 */
 const realtimeOf = (page: Page) => page.evaluate(() => (window as any).__game.realtime.getState().status as string);
+/** 即時連線說現在在哪一種島（島嶼互訪 I1） */
+const islandNow = (page: Page) => page.evaluate(() => (window as any).__game.realtime.getState().island as string | null);
 
 /** 進數學城堡看「跟著課本」用哪個版本，再回到島上 */
 async function mathBook(page: Page): Promise<string> {
@@ -78,7 +80,9 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   await a.page.getByTestId('hud-island').click();
   await expect(a.page.getByTestId('hud-island')).toHaveText('🏫 回班級島');
   await expect(a.page.getByRole('status').filter({ hasText: '來到你自己的島囉' })).toBeVisible();
-  await expect.poll(() => realtimeOf(a.page)).toBe('off');
+  // 島嶼互訪 I1 起在自己的島也保持連線（朋友看得到他在自己的島），只是島上沒有別人、公頻不顯示
+  await expect.poll(() => islandNow(a.page)).toBe('own');
+  expect(await realtimeOf(a.page)).toBe('online');
   await expect(a.page.getByTestId('chat-panel')).toHaveCount(0);
   await expect(a.page.getByTestId('name-tag')).toHaveCount(0);
   await expect.poll(() => memberByName(b.page, '阿寶')).toBeNull();
@@ -88,7 +92,7 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   await a.page.reload();
   await a.page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
   await expect(a.page.getByTestId('hud-island')).toHaveText('🏫 回班級島');
-  expect(await realtimeOf(a.page)).toBe('off');
+  await expect.poll(() => islandNow(a.page)).toBe('own');
 
   // ③ 切回班級島：又和小美同島，課本跟著老師
   await a.page.getByTestId('hud-island').click();

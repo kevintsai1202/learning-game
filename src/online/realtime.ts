@@ -8,16 +8,28 @@ import type { AvatarConfig } from '../store/save';
 import type { ZoneId } from '../store/useUi';
 import type { ChatLine } from './presence';
 
-/** WebSocket 關閉代碼：角色沒有班級（家長名下、還沒加入班級，或剛退出班級）；和權杖無效（4003）分開，裝置不再重連 */
+/**
+ * WebSocket 關閉代碼：角色沒有班級；和權杖無效（4003）分開，裝置不再重連。
+ * 島嶼互訪 I1 起伺服器不再送（沒有班級的孩子進自己的島）；裝置保留處理，部署途中連到舊版伺服器時用
+ */
 export const CLOSE_NO_CLASS = 4004;
 
 /** 島上的建築 id（和 useUi 的 ZoneId 相同；伺服器驗證 where 訊息用） */
 export const ZONE_IDS = ['tower', 'math', 'zh', 'life', 'en', 'shop'] as const satisfies readonly ZoneId[];
 
+/**
+ * 島的種類（島嶼互訪，docs/plans/islands.md）：班級島，或某個人自己的島。
+ * 裝置本機的「我的島」記成 CloudLink.island = 'mine'（G1 已上線的欄位），送到伺服器時一律寫成 'own'
+ */
+export const ISLAND_KINDS = ['class', 'own'] as const;
+export type IslandKind = (typeof ISLAND_KINDS)[number];
+
 /** 裝置 → 伺服器 */
 export const clientMessage = z.discriminatedUnion('t', [
-  /** 連上後第一則：登入權杖 */
-  z.object({ t: z.literal('hello'), token: z.string().min(10).max(200) }),
+  /** 連上後第一則：登入權杖；island 是要去的島（沒給是班級島，舊版網頁不會送；沒有班級的孩子一律進自己的島） */
+  z.object({ t: z.literal('hello'), token: z.string().min(10).max(200), island: z.enum(ISLAND_KINDS).optional() }),
+  /** 換島（不斷線）：班級島、自己的島 */
+  z.object({ t: z.literal('go'), island: z.enum(ISLAND_KINDS) }),
   /** 位置與朝向（zod 4 的 number 本身就拒絕 Infinity、NaN） */
   z.object({ t: z.literal('move'), x: z.number(), z: z.number(), h: z.number() }),
   /** 進出建築（null 表示回到島上） */
@@ -46,9 +58,24 @@ export interface MemberState {
   zone: ZoneId | null;
 }
 
+/** 好友名單上的一位朋友：只有在線上與在哪座島，不含建築（使用者決定，docs/plans/islands.md） */
+export interface FriendState {
+  id: string;
+  nickname: string;
+  avatar: AvatarConfig;
+  online: boolean;
+  /** 在哪座島（離線是 null）：班級島（不管是哪一班）、他自己的島 */
+  island: IslandKind | null;
+}
+
 /** 伺服器 → 裝置 */
 export type ServerMessage =
-  | { t: 'welcome'; self: string; room: RoomFlags; members: MemberState[]; chat: ChatLine[] }
+  /** 進到一座島：island 是進了哪一種島（舊版伺服器沒有這個欄位） */
+  | { t: 'welcome'; self: string; island: IslandKind; room: RoomFlags; members: MemberState[]; chat: ChatLine[] }
+  /** 上線時的完整好友名單（離線的朋友也在裡面） */
+  | { t: 'friends'; list: FriendState[] }
+  /** 某位朋友上線、下線、換島或換外觀（名單裡沒有的就加進去） */
+  | { t: 'friend'; friend: FriendState }
   | { t: 'join'; member: MemberState }
   | { t: 'leave'; id: string }
   /** 這 100 毫秒內有移動的人：[id, x, z, 朝向] */

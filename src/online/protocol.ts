@@ -9,12 +9,14 @@ import { avatarSchema, curriculumSchema } from './ops';
 export const roomCodeSchema = z.string().regex(/^\d{6}$/);
 /** 孩子的密碼：4 位數字 */
 export const pinSchema = z.string().regex(/^\d{4}$/);
-/** 老師改班級設定：開關，以及班級教材版本（null 是取消統一，班級島照各孩子自己的設定；老師 GM 的 G0） */
+/** 老師改班級設定：開關、班級教材版本（null 是取消統一，班級島照各孩子自己的設定；老師 GM 的 G0）、班級名稱 */
 export const roomPatchRequest = z.object({
   joinOpen: z.boolean().optional(),
   chatOpen: z.boolean().optional(),
   giftsOpen: z.boolean().optional(),
   curriculum: curriculumSchema.nullable().optional(),
+  /** 班級名稱（升級換年級時改；規則和建立班級相同，伺服器檢查） */
+  name: z.string().max(40).optional(),
 });
 export const resetPinRequest = z.object({ pin: pinSchema });
 /** 加入班級：avatar（建新角色）與 profile（帶本機進度）擇一 */
@@ -174,6 +176,8 @@ export interface MemberSummary {
   createdAt: string;
   lastSeen: string;
   online: boolean;
+  /** 在哪裡（島嶼互訪 I1）：班級島或自己的島＋建築；離線是 null */
+  where: { island: 'class' | 'own'; zone: string | null } | null;
 }
 
 /** 加入、登入、家長上傳或「在這台裝置玩」成功的回應 */

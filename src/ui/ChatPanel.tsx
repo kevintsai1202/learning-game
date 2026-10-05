@@ -2,7 +2,7 @@
  * 公頻：島上畫面角落的小面板，顯示線上人數、最近幾則對話、誰在哪棟建築裡；
  * 連上班級時有「💬 說話」短句盤（只能選短句，不能自由打字），點了先唸出來再送出；
  * 旁邊的「🎁 送禮」打開送禮視窗（老師關閉送禮時不顯示）。兩個按鈕同一列，面板不會變高。
- * 沒有其他人、也沒連上班級時不顯示。
+ * 沒有其他人、也沒連上班級時不顯示；在自己的島上不顯示（島嶼互訪 I1）。
  */
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
@@ -28,9 +28,12 @@ export function ChatPanel() {
   const giftsOpen = useRealtime((s) => s.flags.giftsOpen);
   const openGift = useGifts((s) => s.openDialog);
   const notice = useRealtime((s) => s.notice);
+  const island = useRealtime((s) => s.island);
   const [picking, setPicking] = useState(false);
   const online = status === 'online';
   if (!members.length && !online && status !== 'kicked') return null;
+  // 在自己的島上只有自己（島嶼互訪 I1；I2 開放朋友來玩時再顯示）；被踢的提示照樣要顯示
+  if (island === 'own' && status !== 'kicked') return null;
 
   const others = members.filter((m) => m.id !== selfId);
   // 線上人數含自己（真的連線時自己在成員裡；模擬時不在，要加一）

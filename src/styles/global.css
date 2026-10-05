@@ -2417,3 +2417,46 @@ button {
   width: 70px;
   height: 70px;
 }
+
+/* ---------- 好友名單（島嶼互訪 I1） ---------- */
+.friends-panel {
+  width: min(520px, 100%);
+}
+.friends-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.friends-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  font-size: 20px;
+  opacity: 0.6;
+}
+.friends-list li.online {
+  opacity: 1;
+}
+.friends-list .avatar-dot {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  border: 2px solid var(--ink);
+  flex: none;
+}
+.friends-list .friend-status {
+  margin-left: auto;
+  font-family: var(--font-plain);
+  font-size: 16px;
+  white-space: nowrap;
+}

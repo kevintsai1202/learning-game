@@ -50,6 +50,8 @@ export interface AppOptions {
   floodLimit?: number;
   /** 某個帳號目前是否在線上（P2 的即時連線提供；沒有時一律 false） */
   isOnline?: (accountId: string) => boolean;
+  /** 某個帳號在哪裡（島嶼互訪 I1，即時中樞提供；老師的成員表用）：哪一種島＋建築，離線是 null */
+  whereOf?: (accountId: string) => MemberSummary['where'];
   /** 某個帳號的存檔在伺服器端改變了：即時中樞更新別人看到的外觀，並通知他自己的裝置同步（帶上新的存檔，中樞不必再查資料庫） */
   onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
   /** 老師改了房間的聊天、送禮開關 */
@@ -348,6 +350,7 @@ export function createApp(opts: AppOptions) {
       createdAt: new Date(a.created_at).toISOString(),
       lastSeen: new Date(a.last_seen).toISOString(),
       online: isOnline(a.id),
+      where: opts.whereOf?.(a.id) ?? null,
     }));
     return c.json<TeacherRoomResponse>({ room: roomSettings(room), members });
   });
@@ -356,17 +359,20 @@ export function createApp(opts: AppOptions) {
     const owner = await authenticateTeacher(c);
     const room = await loadOwnRoom(db, c.req.param('code'), owner);
     const body = await readBody(c, roomPatchRequest);
+    // 班級名稱：規則和建立班級相同
+    const name = body.name === undefined ? null : body.name.trim();
+    if (name !== null && (!name || [...name].length > ROOM_NAME_MAX)) throw new ApiError(400, 'bad_name', `班級名稱要 1～${ROOM_NAME_MAX} 個字`);
     // curriculum：沒給是不變，null 是取消統一（COALESCE 分不出這兩種，另外用 $5 標記有沒有給）
     const setCurriculum = body.curriculum !== undefined;
     const rows = await db.query<RoomRow>(
       `UPDATE rooms SET join_open = COALESCE($2, join_open), chat_open = COALESCE($3, chat_open), gifts_open = COALESCE($4, gifts_open),
-              curriculum = CASE WHEN $5 THEN $6::jsonb ELSE curriculum END
+              curriculum = CASE WHEN $5 THEN $6::jsonb ELSE curriculum END, name = COALESCE($7, name)
        WHERE code = $1 RETURNING *`,
-      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null, setCurriculum, body.curriculum ? JSON.stringify(body.curriculum) : null],
+      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null, setCurriculum, body.curriculum ? JSON.stringify(body.curriculum) : null, name],
     );
     opts.onRoomChanged?.(room.code, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open });
-    // 班級版本變了：線上的孩子重新同步，拿到新的班級版本
-    if (setCurriculum) opts.onRoomContent?.(room.code);
+    // 班級版本或名稱變了：線上的孩子重新同步，拿到新的班級版本與名稱
+    if (setCurriculum || (name !== null && name !== room.name)) opts.onRoomContent?.(room.code);
     return c.json({ room: roomSettings(rows[0]) });
   });
 

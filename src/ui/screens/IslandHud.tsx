@@ -1,5 +1,5 @@
 /**
- * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、班級島與我的島的切換、門口提示泡泡、熊熊老師的話、觸控搖桿、公頻。
+ * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、班級島與我的島的切換、好友名單、門口提示泡泡、熊熊老師的話、觸控搖桿、公頻。
  */
 import { useEffect, useRef } from 'react';
 import { useGame } from '../../store/useGame';
@@ -17,6 +17,7 @@ import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 import { islandOf } from '../../store/island';
 import { ISLAND_LINES } from '../lines';
+import { FriendsButton, FriendsPanel } from '../FriendsPanel';
 
 /** 同步狀態的圖示與文字 */
 const CLOUD_LABEL: Record<CloudStatus, string> = {
@@ -194,6 +195,7 @@ export function IslandHud() {
           </span>
           {profile?.cloud && <CloudChip />}
           <IslandSwitch />
+          <FriendsButton />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn round white" onClick={() => goto('badges')} aria-label="獎章簿" data-testid="hud-badges">
@@ -232,6 +234,7 @@ export function IslandHud() {
       {/* 禮物卡片與送禮視窗：只在島上（不打斷答題） */}
       <GiftInbox />
       <GiftDialog />
+      <FriendsPanel />
     </>
   );
 }

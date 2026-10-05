@@ -54,6 +54,7 @@ async function main(): Promise<void> {
     google,
     mailer,
     isOnline: (id) => hub.isOnline(id),
+    whereOf: (id) => hub.whereOf(id),
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
     onRoomContent: (code) => hub.roomContent(code),

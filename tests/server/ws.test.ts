@@ -12,7 +12,6 @@ import { Hub } from '../../server/hub';
 import type { Db } from '../../server/db';
 import { createRoom, createUser, joinRoom, openTestDb, resetDb } from './helpers';
 import { addProfile, createEmptySave } from '../../src/store/save';
-import { CLOSE_NO_CLASS } from '../../src/online/realtime';
 import type { ServerMessage } from '../../src/online/realtime';
 
 let db: Db;
@@ -188,12 +187,11 @@ describe('家長名下的雲端角色', () => {
     return { mom, up };
   }
 
-  it('還沒加入班級：關閉（4004「沒有班級」，和權杖無效分開，裝置不再重連）', async () => {
+  it('還沒加入班級：連到自己的島（島嶼互訪 I1；改版前是關閉 4004「沒有班級」）', async () => {
     const { up } = await uploadKid();
-    const c = new Client();
-    await c.opened;
-    c.send({ t: 'hello', token: up.token });
-    expect(await c.closed).toBe(CLOSE_NO_CLASS);
+    const c = await connect(up.token);
+    expect((await c.waitFor('welcome')).island).toBe('own');
+    expect(c.msgs.map((m) => m.t)).not.toContain('kicked');
   });
 
   it('加入班級後可以連線；被老師移出時收到 kicked（進度都還在）', async () => {
@@ -221,5 +219,54 @@ describe('家長名下的雲端角色', () => {
     expect((await call('PATCH', `/api/teacher/rooms/${room.code}`, { chatOpen: false }, room.token)).status).toBe(200);
     await home.waitFor('room');
     expect(home.msgs.map((m) => m.t)).not.toContain('kicked');
+  });
+});
+
+describe('島嶼互訪 I1：選島、換島、好友名單（docs/plans/islands.md）', () => {
+  /** 連線並登入，指定要去的島 */
+  async function connectTo(token: string, island?: 'class' | 'own') {
+    const c = new Client();
+    await c.opened;
+    c.send({ t: 'hello', token, ...(island ? { island } : {}) });
+    await c.waitFor('welcome');
+    return c;
+  }
+
+  it('hello 帶 island：去自己的島，同學看不到；換島（go）回班級島就看得到', async () => {
+    const { a, b } = await setup();
+    const ca = await connectTo(a.token);
+    const cb = await connectTo(b.token, 'own');
+    expect((await cb.waitFor('welcome')).island).toBe('own');
+    expect(ca.msgs.some((m) => m.t === 'join')).toBe(false);
+    cb.send({ t: 'go', island: 'class' });
+    await cb.waitFor('welcome', (m) => m.island === 'class');
+    await ca.waitFor('join', (m) => m.member.nickname === '小美');
+  });
+
+  it('好友名單：同班同學與兄弟姊妹（同一位家長，不同班也算），離線的也列出；別班的人不在名單上', async () => {
+    const mom = await createUser(call, { parent: true, teacher: false });
+    const kidOf = (name: string) => addProfile(createEmptySave(), { name, avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, new Date()).profiles[0];
+    const big = (await call('POST', '/api/parent/kids', { profile: kidOf('哥哥') }, mom.token)).body;
+    const small = (await call('POST', '/api/parent/kids', { profile: kidOf('妹妹') }, mom.token)).body;
+    const room1 = await createRoom(call);
+    const room2 = await createRoom(call, '二年二班');
+    expect((await call('POST', '/api/join', { code: room1.code, nickname: '哥哥', pin: '1234' }, big.token)).status).toBe(200);
+    expect((await call('POST', '/api/join', { code: room2.code, nickname: '妹妹', pin: '1234' }, small.token)).status).toBe(200);
+    const mate = await joinRoom(call, room1.code, '同學', '1111');
+    await joinRoom(call, room2.code, '妹妹的同學', '2222');
+
+    const cBig = await connectTo(big.token);
+    const list = (await cBig.waitFor('friends')).list;
+    expect(list.map((f) => [f.nickname, f.online]).sort()).toEqual([
+      ['同學', false],
+      ['妹妹', false],
+    ]);
+    // 妹妹上線（在她自己的班級島）：哥哥收到「在班級島」
+    const cSmall = await connectTo(small.token);
+    await cBig.waitFor('friend', (m) => m.friend.nickname === '妹妹' && m.friend.online && m.friend.island === 'class');
+    expect((await cSmall.waitFor('friends')).list.map((f) => f.nickname).sort()).toEqual(['哥哥', '妹妹的同學']);
+    // 同學上線後去自己的島
+    await connectTo(mate.token, 'own');
+    await cBig.waitFor('friend', (m) => m.friend.id === mate.account.id && m.friend.island === 'own');
   });
 });

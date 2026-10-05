@@ -10,7 +10,8 @@
  */
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
-import { CLOSE_NO_CLASS, type MemberState, type RoomFlags, type ServerMessage } from './realtime';
+import { CLOSE_NO_CLASS, type IslandKind, type MemberState, type RoomFlags, type ServerMessage } from './realtime';
+import { useFriends } from './useFriends';
 import { usePresence } from './usePresence';
 import { getToken } from './storage';
 import { useCloud } from './useCloud';
@@ -107,9 +108,11 @@ interface RealtimeStore {
   flags: RoomFlags;
   /** 要給孩子看的訊息（被踢下線的原因、說太快了等） */
   notice: string | null;
+  /** 現在在哪一種島（伺服器的 welcome 說的；沒連線是 null）。島嶼互訪 I1 */
+  island: IslandKind | null;
 }
 
-export const useRealtime = create<RealtimeStore>(() => ({ status: 'off', flags: { chatOpen: true, giftsOpen: true }, notice: null }));
+export const useRealtime = create<RealtimeStore>(() => ({ status: 'off', flags: { chatOpen: true, giftsOpen: true }, notice: null, island: null }));
 
 /** 目前的連線（說短句用） */
 let socket: WebSocket | null = null;
@@ -135,14 +138,22 @@ export function startRealtime(): () => void {
   let last = { x: NaN, z: NaN, h: NaN, at: 0 };
   let lastZone: ZoneId | null | undefined;
 
-  /** 應該連到哪個帳號；不該連線時回傳 null */
+  /**
+   * 要去的島（送 hello 與 go 用）：連線途中換島時更新，welcome 回來時比對。
+   * 在 welcome 之前送的 go 會被伺服器忽略（還在驗證權杖），所以等 welcome 再補送
+   */
+  let desiredIsland: IslandKind = 'class';
+
+  /**
+   * 應該連到哪個帳號、去哪座島；不該連線時回傳 null。
+   * 雲端角色在島上就一直連線（島嶼互訪 I1）：在班級島或自己的島都連，家長名下沒有班級的角色也連（看得到兄弟姊妹）
+   */
   const wanted = () => {
     const p = useGame.getState().profile();
-    // 只有在班級島上的雲端角色才連線（家長名下、還沒加入班級的角色只同步進度）。
-    // 切到我的島就斷線：看不到同學、不能聊天和送禮（老師 GM 的 G1；G2 改成保持連線收老師的公告）
-    if (!p?.cloud?.room || islandOf(p) !== 'class' || OFFLINE_SCREENS.includes(useUi.getState().screen)) return null;
+    if (!p?.cloud || OFFLINE_SCREENS.includes(useUi.getState().screen)) return null;
     const token = getToken(p.cloud.accountId);
-    return token ? { profile: p, token, url: wsUrlOf(p.cloud.server) } : null;
+    const island: IslandKind = islandOf(p) === 'class' ? 'class' : 'own';
+    return token ? { profile: p, token, url: wsUrlOf(p.cloud.server), island } : null;
   };
 
   /** 送一則訊息 */
@@ -169,15 +180,18 @@ export function startRealtime(): () => void {
     s?.close();
     usePresence.getState().clear();
     useGifts.getState().clear();
+    useFriends.getState().clear();
+    useRealtime.setState({ island: null });
     if (useRealtime.getState().status !== 'kicked') useRealtime.setState({ status: 'off' });
   };
 
   const connect = (target: NonNullable<ReturnType<typeof wanted>>) => {
     accountId = target.profile.cloud!.accountId;
+    desiredIsland = target.island;
     useRealtime.setState({ status: 'connecting', notice: null });
     const ws = new WebSocket(target.url);
     socket = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token: target.token }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token: target.token, island: desiredIsland }));
     ws.onmessage = (ev) => {
       if (socket !== ws) return;
       const msg = JSON.parse(String(ev.data)) as ServerMessage;
@@ -187,10 +201,20 @@ export function startRealtime(): () => void {
       switch (msg.t) {
         case 'welcome':
           retry = 0;
-          useRealtime.setState({ status: 'online', flags: msg.room });
+          useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null });
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
           sendWhere(true);
           void useGifts.getState().load();
+          // 進的島和要去的不一樣：要去班級島卻進了自己的島，是伺服器說沒有班級（同步一次更新本機的班級）；
+          // 其他情況是連線途中換了島，補送 go。舊版伺服器的 welcome 沒有 island，不補送（舊版不認得 go）
+          if (msg.island && msg.island !== desiredIsland) {
+            if (desiredIsland === 'class' && msg.island === 'own') void useCloud.getState().syncNow();
+            else send({ t: 'go', island: desiredIsland });
+          }
+          break;
+        case 'friends':
+        case 'friend':
+          useFriends.getState().apply(msg);
           break;
         case 'chat':
           // 對話氣泡時間到就收起來
@@ -258,7 +282,17 @@ export function startRealtime(): () => void {
       if (socket || accountId) disconnect();
       return;
     }
-    if (accountId === id && (socket || retryTimer)) return;
+    if (accountId === id && (socket || retryTimer)) {
+      // 同一個帳號換島：連著的話送 go（不斷線），先清掉原本島上的人，免得新的島上還畫著舊同學
+      if (target.island !== desiredIsland) {
+        desiredIsland = target.island;
+        if (useRealtime.getState().status === 'online') {
+          usePresence.getState().clear();
+          send({ t: 'go', island: desiredIsland });
+        }
+      }
+      return;
+    }
     if (socket || accountId) disconnect();
     connect(target);
   };

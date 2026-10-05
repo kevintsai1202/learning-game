@@ -14,6 +14,8 @@ import { GoogleButton } from '../GoogleButton';
 import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
 import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from '../../content/editions';
 import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
+import { zoneName } from '../../world/layout';
+import type { ZoneId } from '../../store/useUi';
 import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
 
 /** 顯示「多久以前」 */
@@ -104,6 +106,48 @@ function ClassCurriculum({ value, onSave }: { value: CurriculumChoice | null; on
         </div>
       )}
     </div>
+  );
+}
+
+/** 成員表的「在哪裡」：班級島或自己的島＋建築（島嶼互訪 I1）；舊版伺服器只有 online 時顯示 🟢；離線空白 */
+function whereText(m: MemberSummary): string {
+  if (m.where) return `🟢 ${m.where.island === 'class' ? '班級島' : '自己的島'}${m.where.zone ? `・${zoneName(m.where.zone as ZoneId)}` : ''}`;
+  return m.online ? '🟢' : '';
+}
+
+/** 班級名稱與「改名稱」（升級換年級時用；規則和建立班級相同：1～20 個字） */
+function ClassName({ name, onSave }: { name: string; onSave: (name: string) => Promise<void> }) {
+  /** 正在改的名稱；null 表示沒在改 */
+  const [draft, setDraft] = useState<string | null>(null);
+  if (draft === null) {
+    return (
+      <>
+        <span className="plain" data-testid="room-name-display">
+          {name}
+        </span>
+        <button className="btn small white" onClick={() => setDraft(name)} data-testid="room-rename">
+          ✏️ 改名稱
+        </button>
+      </>
+    );
+  }
+  const ok = draft.trim().length > 0 && [...draft.trim()].length <= 20;
+  return (
+    <form
+      style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (ok) void onSave(draft.trim()).then(() => setDraft(null));
+      }}
+    >
+      <input className="text-input" maxLength={20} value={draft} onChange={(e) => setDraft(e.target.value)} aria-label="班級名稱" data-testid="room-rename-input" autoFocus />
+      <button type="submit" className="btn small green" disabled={!ok} data-testid="room-rename-save">
+        儲存
+      </button>
+      <button type="button" className="btn small white" onClick={() => setDraft(null)}>
+        取消
+      </button>
+    </form>
   );
 }
 
@@ -1026,7 +1070,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
             <strong className="room-code" data-testid="room-code-display">
               {room.code}
             </strong>
-            <span className="plain">{room.name}</span>
+            <ClassName name={room.name} onSave={(name) => act(() => call('PATCH', base, { name }), `班級名稱改成「${name}」`)} />
           </div>
           <Check checked={room.joinOpen} onChange={(v) => void act(() => call('PATCH', base, { joinOpen: v }), v ? '已開放加入' : '已停止加入')} testId="toggle-join">
             允許新的孩子加入（全班都加入後可以關掉，避免代碼外流後有陌生人加入）
@@ -1063,7 +1107,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
             <thead>
               <tr>
                 <th>暱稱</th>
-                <th>線上</th>
+                <th>在哪裡</th>
                 <th>最後上線</th>
                 <th>⭐</th>
                 <th>錯題</th>
@@ -1076,7 +1120,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
               {members.map((m) => (
                 <tr key={m.id} data-testid={`member-${m.nickname}`}>
                   <td>{m.nickname}</td>
-                  <td data-testid={`online-${m.nickname}`}>{m.online ? '🟢' : ''}</td>
+                  <td data-testid={`online-${m.nickname}`}>{whereText(m)}</td>
                   <td>{ago(m.lastSeen)}</td>
                   <td>{m.stars}</td>
                   <td>{m.wrongCount}</td>

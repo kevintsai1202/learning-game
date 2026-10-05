@@ -172,3 +172,29 @@ describe('班級教材版本（老師 GM 的 G0，docs/plans/teacher-gm.md 第 4
     expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0].room).toEqual({ code, name: '二年一班', curriculum: CLASS });
   });
 });
+
+describe('老師改班級名稱（升級換年級時用）', () => {
+  it('改名後管理頁、班級清單、孩子的同步與登入回應都是新名稱；前後空白去掉', async () => {
+    const { call } = makeClient(db);
+    const { code, token } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    const r = await call('PATCH', `/api/teacher/rooms/${code}`, { name: ' 三年一班 ' }, token);
+    expect(r.status).toBe(200);
+    expect(r.body.room.name).toBe('三年一班');
+    expect((await call('GET', '/api/teacher/rooms', undefined, token)).body.rooms[0].name).toBe('三年一班');
+    expect((await call('POST', '/api/ops', { ops: [] }, kid.token)).body.room).toMatchObject({ code, name: '三年一班' });
+    expect((await call('POST', '/api/login', { code, nickname: '小安', pin: '1234' })).body.room.name).toBe('三年一班');
+  });
+
+  it('名稱空白或超過 20 個字：400 bad_name，名稱不變；只改開關時名稱不變', async () => {
+    const { call } = makeClient(db);
+    const { code, token } = await createRoom(call);
+    for (const name of ['   ', '一'.repeat(21)]) {
+      const r = await call('PATCH', `/api/teacher/rooms/${code}`, { name }, token);
+      expect(r.status, name).toBe(400);
+      expect(r.body.code).toBe('bad_name');
+    }
+    await call('PATCH', `/api/teacher/rooms/${code}`, { chatOpen: false }, token);
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room.name).toBe('二年一班');
+  });
+});
