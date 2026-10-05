@@ -270,6 +270,12 @@ const MIGRATIONS: Migration[] = [
       `DROP TABLE IF EXISTS teacher_google_links`,
     ],
   },
+  {
+    // 班級教材版本（老師 GM 的 G0，docs/plans/teacher-gm.md 第 4 節）：老師統一全班在班級島用的國語、數學版本與學期。
+    // null 是沒有統一（既有班級升級後都是 null），班級島照各孩子自己的設定
+    version: 8,
+    statements: [`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS curriculum jsonb`],
+  },
 ];
 
 /**

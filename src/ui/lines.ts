@@ -59,6 +59,14 @@ export const PUZZLE_LINES = {
   bothMissed: '都答錯了，看看正確答案。',
 };
 
+/** 班級島與我的島切換時的提示（老師 GM 的 G1） */
+export const ISLAND_LINES = {
+  /** 切到我的島 */
+  toMine: '來到你自己的島囉！這裡可以自己練習，星星和金幣一樣會存起來。',
+  /** 切回班級島 */
+  toClass: '回到班級島囉！可以和同學一起玩。',
+};
+
 /** 在百寶屋買到帽子 */
 export const boughtLine = (name: string): string => `買到${name}了！`;
 

@@ -161,6 +161,18 @@ describe('公頻', () => {
 });
 
 describe('存檔改變與老師管理', () => {
+  it('班級內容更新（老師改了教材版本）：同班的人收到 content，別班的人不會（G0）', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    const other = join('c', '別班', '654321');
+    hub.roomContent('123456');
+    expect(a.of('content')).toEqual([{ t: 'content' }]);
+    expect(b.of('content')).toEqual([{ t: 'content' }]);
+    expect(other.of('content')).toEqual([]);
+    // 沒有人在線上的班級：什麼都不做
+    expect(() => hub.roomContent('999999')).not.toThrow();
+  });
+
   it('其他人看到的外觀經過擁有檢查（沒擁有的道具不顯示），稱號也一起帶上', () => {
     const a = join('a', '阿寶');
     const b = join('b', '小美', '123456', { avatar: { animal: 'cat', color: '#ffffff', hat: 'hat.crown' } });

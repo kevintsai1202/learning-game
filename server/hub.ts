@@ -193,6 +193,12 @@ export class Hub {
     this.broadcast(room, { t: 'room', room: { ...flags } });
   }
 
+  /** 老師改了班級內容（班級教材版本）：班上線上的孩子收到 content，重新同步拿新的設定 */
+  roomContent(roomCode: string): void {
+    const room = this.rooms.get(roomCode);
+    if (room) this.broadcast(room, { t: 'content' });
+  }
+
   /**
    * 踢某位孩子下線（老師移除成員或重設密碼、家長刪除角色或讓他退出班級）。
    * 給了 via 就只踢那種來源的連線：重設密碼只撤銷 class 權杖，家長裝置（parent）的連線留著。

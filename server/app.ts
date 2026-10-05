@@ -37,7 +37,7 @@ import {
   type TeacherRoomResponse,
   type TeacherRoomsResponse,
 } from '../src/online/protocol';
-import { addProfile, createEmptySave, parseProfile, type Profile } from '../src/store/save';
+import { addProfile, createEmptySave, parseProfile, type CurriculumChoice, type Profile } from '../src/store/save';
 
 /** createApp 的設定 */
 export interface AppOptions {
@@ -54,6 +54,8 @@ export interface AppOptions {
   onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
   /** 老師改了房間的聊天、送禮開關 */
   onRoomChanged?: (roomCode: string, flags: RoomFlags) => void;
+  /** 老師改了班級內容（目前是班級教材版本）：通知班上線上的孩子重新同步 */
+  onRoomContent?: (roomCode: string) => void;
   /** 某位孩子要被踢下線（老師移除成員或重設密碼），reason 會顯示給孩子；給了 via 就只踢那種權杖來源的連線 */
   onKick?: (accountId: string, reason: string, via?: TokenVia) => void;
   /** 某位孩子的禮物狀態有變（收到新禮物，或送出的禮物有結果）：即時中樞通知他的裝置重新讀取 */
@@ -100,6 +102,8 @@ interface RoomRow {
   join_open: boolean;
   chat_open: boolean;
   gifts_open: boolean;
+  /** 老師設定的班級教材版本；null 是沒有統一（第 8 版新增） */
+  curriculum: CurriculumChoice | null;
 }
 
 /**
@@ -113,9 +117,14 @@ function clientIp(c: Context): string {
   return env?.incoming?.socket?.remoteAddress ?? 'unknown';
 }
 
+/** 回應給孩子裝置的班級資訊（代碼、名稱、班級教材版本） */
+function roomInfo(r: RoomRow): RoomInfo {
+  return { code: r.code, name: r.name, curriculum: r.curriculum ?? null };
+}
+
 /** 房間設定的回應格式 */
 function roomSettings(r: RoomRow): RoomSettings {
-  return { code: r.code, name: r.name, joinOpen: r.join_open, chatOpen: r.chat_open, giftsOpen: r.gifts_open };
+  return { ...roomInfo(r), joinOpen: r.join_open, chatOpen: r.chat_open, giftsOpen: r.gifts_open };
 }
 
 /** 建立 Hono app */
@@ -188,7 +197,7 @@ export function createApp(opts: AppOptions) {
   const roomInfoOf = async (code: string | null): Promise<RoomInfo | null> => {
     if (!code) return null;
     const room = (await db.query<RoomRow>('SELECT * FROM rooms WHERE code = $1', [code]))[0];
-    return room ? { code: room.code, name: room.name } : null;
+    return room ? roomInfo(room) : null;
   };
 
   /** 讀房間；不存在回 404 */
@@ -204,7 +213,7 @@ export function createApp(opts: AppOptions) {
     account: { id: account.id, nickname: account.nickname },
     profile: account.profile,
     rev: account.rev,
-    room: room ? { code: room.code, name: room.name } : null,
+    room: room ? roomInfo(room) : null,
   });
 
   /** 鎖定中就回 423 */
@@ -347,12 +356,17 @@ export function createApp(opts: AppOptions) {
     const owner = await authenticateTeacher(c);
     const room = await loadOwnRoom(db, c.req.param('code'), owner);
     const body = await readBody(c, roomPatchRequest);
+    // curriculum：沒給是不變，null 是取消統一（COALESCE 分不出這兩種，另外用 $5 標記有沒有給）
+    const setCurriculum = body.curriculum !== undefined;
     const rows = await db.query<RoomRow>(
-      `UPDATE rooms SET join_open = COALESCE($2, join_open), chat_open = COALESCE($3, chat_open), gifts_open = COALESCE($4, gifts_open)
+      `UPDATE rooms SET join_open = COALESCE($2, join_open), chat_open = COALESCE($3, chat_open), gifts_open = COALESCE($4, gifts_open),
+              curriculum = CASE WHEN $5 THEN $6::jsonb ELSE curriculum END
        WHERE code = $1 RETURNING *`,
-      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null],
+      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null, setCurriculum, body.curriculum ? JSON.stringify(body.curriculum) : null],
     );
     opts.onRoomChanged?.(room.code, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open });
+    // 班級版本變了：線上的孩子重新同步，拿到新的班級版本
+    if (setCurriculum) opts.onRoomContent?.(room.code);
     return c.json({ room: roomSettings(rows[0]) });
   });
 
@@ -422,7 +436,7 @@ export function createApp(opts: AppOptions) {
       }
     });
     opts.onProfileChanged?.(row.id, row.rev, row.profile);
-    return c.json<AttachResponse>({ account: { id: row.id, nickname: row.nickname }, profile: row.profile, rev: row.rev, room: { code: room.code, name: room.name } });
+    return c.json<AttachResponse>({ account: { id: row.id, nickname: row.nickname }, profile: row.profile, rev: row.rev, room: roomInfo(room) });
   };
 
   app.post('/api/join', async (c) => {

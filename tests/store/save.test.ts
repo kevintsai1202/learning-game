@@ -291,6 +291,14 @@ describe('存檔：雲端角色', () => {
     expect(loadSave(JSON.stringify(base)).profiles[0].cloud).toBeUndefined();
   });
 
+  it('班級版本與我的島（老師 GM 的 G0＋G1）也存得回來；格式不對的整份不收', () => {
+    const more = { ...cloud, roomCurriculum: { zh: 'nani-zh', math: 'hanlin-math', term: '上' as const }, island: 'mine' as const };
+    const linked = replaceProfile(base, { ...base.profiles[0], cloud: more });
+    expect(loadSave(JSON.stringify(linked)).profiles[0].cloud).toEqual(more);
+    expect(profileSchema.safeParse({ ...base.profiles[0], cloud: { ...cloud, island: 'class' } }).success).toBe(false);
+    expect(profileSchema.safeParse({ ...base.profiles[0], cloud: { ...cloud, roomCurriculum: { zh: 'nani-zh' } } }).success).toBe(false);
+  });
+
   it('profileSchema 可以單獨驗證一位小朋友的資料（伺服器收上傳的進度用）', () => {
     expect(profileSchema.safeParse(base.profiles[0]).success).toBe(true);
     expect(profileSchema.safeParse({ ...base.profiles[0], coins: -1 }).success).toBe(false);

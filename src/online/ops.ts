@@ -64,6 +64,9 @@ const base = { id: z.string().min(1).max(64), at: z.string().max(40) };
 /** 回合裡的題目：與錯題本相同的寬鬆檢查，另外要有科目（課綱統計的鍵會用到） */
 const opQuestion = storedQuestion.extend({ subject: subjectSchema });
 /** 角色外觀格式（加入班級的請求也用這份） */
+/** 教材版本設定（孩子自己的設定，以及老師設定的班級版本共用） */
+export const curriculumSchema = z.object({ zh: z.string().max(60), math: z.string().max(60), term: z.enum(['上', '下', 'auto']) });
+
 export const avatarSchema = z.object({
   animal: z.enum(ANIMAL_IDS),
   color: z.string().regex(/^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/),
@@ -100,7 +103,7 @@ export const opSchema = z.discriminatedUnion('kind', [
   z.object({
     ...base,
     kind: z.literal('curriculum'),
-    curriculum: z.object({ zh: z.string().max(60), math: z.string().max(60), term: z.enum(['上', '下', 'auto']) }),
+    curriculum: curriculumSchema,
   }),
   z.object({ ...base, kind: z.literal('title'), badge: z.string().max(40).nullable() }),
   z.object({

@@ -58,7 +58,7 @@ describe('唯讀檢查正式資料庫', () => {
   it('改版後（第 7 版）：老師帳號的班級另外算，Google 綁孩子的表已經沒有了，多一個大人帳號數', async () => {
     const d = await openDb({});
     try {
-      await migrate(d, { log: () => undefined });
+      await migrate(d, { upTo: 7, log: () => undefined });
       await d.query("INSERT INTO users (id, username, username_key, password_hash, email, is_parent, is_teacher, created_at) VALUES ('u1', 'teacher_lin', 'teacher_lin', 'h', 'lin@example.com', false, true, $1::timestamptz)", [T]);
       await d.query("INSERT INTO rooms (code, name, owner_id, created_at) VALUES ('333333', '二年二班', 'u1', $1::timestamptz)", [T]);
       await d.query("INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ('444444', '舊的班', $1, $2::timestamptz)", [await hashSecret('real-admin-pass'), T]);

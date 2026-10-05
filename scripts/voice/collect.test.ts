@@ -123,6 +123,8 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
   STICKERS.forEach((st) => addSpoken(giftName(st.id), 'zh-TW', 'ui:gift'));
   ZONES.forEach((z) => addSpoken(z.intro, 'zh-TW', 'ui:zone'));
   Object.values(LINES.PUZZLE_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:puzzle'));
+  // 班級島與我的島切換的提示
+  Object.values(LINES.ISLAND_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:island'));
   PUZZLE_GAMES.forEach((g) => addSpoken(g.title, 'zh-TW', 'ui:puzzle'));
   // 選單上的活動名稱（含三家版本的課本單元與期中期末模擬）
   const menu: ActivityDef[] = [...ALL_ACTIVITIES];

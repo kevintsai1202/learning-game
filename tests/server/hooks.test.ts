@@ -22,6 +22,7 @@ function hooked() {
   const hooks = {
     onProfileChanged: vi.fn(),
     onRoomChanged: vi.fn(),
+    onRoomContent: vi.fn(),
     onKick: vi.fn(),
     isOnline: vi.fn((id: string) => id === online.id),
   };
@@ -45,6 +46,18 @@ describe('通知即時中樞', () => {
     const { code, token } = await createRoom(call);
     await call('PATCH', `/api/teacher/rooms/${code}`, { chatOpen: false }, token);
     expect(hooks.onRoomChanged).toHaveBeenCalledWith(code, { chatOpen: false, giftsOpen: true });
+    // 只改開關：班級內容（教材版本）沒變，不通知孩子重新下載
+    expect(hooks.onRoomContent).not.toHaveBeenCalled();
+  });
+
+  it('老師改班級教材版本（設定或取消）：通知班上的孩子重新同步（G0）', async () => {
+    const { call, hooks } = hooked();
+    const { code, token } = await createRoom(call);
+    await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: { zh: 'nani-zh', math: 'hanlin-math', term: '上' } }, token);
+    expect(hooks.onRoomContent).toHaveBeenCalledTimes(1);
+    expect(hooks.onRoomContent).toHaveBeenLastCalledWith(code);
+    await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: null }, token);
+    expect(hooks.onRoomContent).toHaveBeenCalledTimes(2);
   });
 
   it('老師移除成員、重設密碼：那位孩子被踢下線（附原因）', async () => {

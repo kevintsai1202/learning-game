@@ -61,10 +61,21 @@ function cloudOf(server: string, res: SessionResponse): CloudLink {
   return withRoom({ server, accountId: res.account.id }, res.room);
 }
 
-/** 雲端標記換成伺服器說的目前班級（加入、退出、被移出班級都靠這裡更新本機） */
-function withRoom(cloud: CloudLink, room: RoomInfo | null): CloudLink {
-  const { room: _code, roomName: _name, ...rest } = cloud;
-  return room ? { ...rest, room: room.code, roomName: room.name } : rest;
+/**
+ * 雲端標記換成伺服器說的目前班級（加入、退出、被移出班級都靠這裡更新本機）。
+ * - 班級教材版本跟著伺服器：老師取消統一（null，或舊版伺服器沒有這個欄位）就拿掉本機記住的。
+ * - 「我的島」只在同一個班級裡保留；退出或換到別的班級就回到班級島。
+ */
+export function withRoom(cloud: CloudLink, room: RoomInfo | null): CloudLink {
+  const { room: oldCode, roomName: _name, roomCurriculum: _cur, island, ...rest } = cloud;
+  if (!room) return rest;
+  return {
+    ...rest,
+    room: room.code,
+    roomName: room.name,
+    ...(room.curriculum ? { roomCurriculum: room.curriculum } : {}),
+    ...(island && oldCode === room.code ? { island } : {}),
+  };
 }
 
 /**

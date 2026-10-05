@@ -24,7 +24,7 @@ describe('孩子加入班級', () => {
     expect(r.account.nickname).toBe('小安');
     expect(r.profile).toMatchObject({ name: '小安', coins: 0, avatar: AVATAR });
     expect(r.rev).toBe(1);
-    expect(r.room).toEqual({ code, name: '二年一班' });
+    expect(r.room).toEqual({ code, name: '二年一班', curriculum: null });
   });
 
   it('帶本機的進度加入：保留角色 id 與進度，名字改成暱稱，不存本機的雲端標記', async () => {
@@ -81,7 +81,7 @@ describe('孩子登入', () => {
     const ok = await call('POST', '/api/login', { code, nickname: '小安', pin: '1234' });
     expect(ok.status).toBe(200);
     expect(ok.body.profile.name).toBe('小安');
-    expect(ok.body.room).toEqual({ code, name: '二年一班' });
+    expect(ok.body.room).toEqual({ code, name: '二年一班', curriculum: null });
     expect((await call('POST', '/api/login', { code, nickname: '小安', pin: '0000' })).status).toBe(401);
     expect((await call('POST', '/api/login', { code, nickname: '沒有這個人', pin: '1234' })).status).toBe(401);
   });

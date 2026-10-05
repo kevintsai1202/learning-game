@@ -577,11 +577,16 @@ button {
   font-size: 22px;
   padding: 8px 16px 10px;
 }
+/*
+ * 熊熊老師的對話泡泡：上方置中。和「進去玩」泡泡一樣用 left／right＋margin: auto 置中，不用 transform：
+ * pop-in 動畫會改 transform，translateX(-50%) 被蓋掉時泡泡從畫面中線往右長、長句子被切掉（2026-10-05 修正）
+ */
 .speech {
   position: absolute;
   top: 84px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
   width: min(720px, calc(100% - 24px));
   display: flex;
   gap: 12px;

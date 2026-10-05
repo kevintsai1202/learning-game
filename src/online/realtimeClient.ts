@@ -18,6 +18,7 @@ import { useGifts } from './useGifts';
 import { useGame } from '../store/useGame';
 import { useUi, type Screen, type ZoneId } from '../store/useUi';
 import { equippedOf } from '../store/catalog';
+import { islandOf } from '../store/island';
 import type { AvatarConfig } from '../store/save';
 import { player } from '../world/input';
 
@@ -137,8 +138,9 @@ export function startRealtime(): () => void {
   /** 應該連到哪個帳號；不該連線時回傳 null */
   const wanted = () => {
     const p = useGame.getState().profile();
-    // 只有在班級裡的雲端角色才連線（家長名下、還沒加入班級的角色只同步進度）
-    if (!p?.cloud?.room || OFFLINE_SCREENS.includes(useUi.getState().screen)) return null;
+    // 只有在班級島上的雲端角色才連線（家長名下、還沒加入班級的角色只同步進度）。
+    // 切到我的島就斷線：看不到同學、不能聊天和送禮（老師 GM 的 G1；G2 改成保持連線收老師的公告）
+    if (!p?.cloud?.room || islandOf(p) !== 'class' || OFFLINE_SCREENS.includes(useUi.getState().screen)) return null;
     const token = getToken(p.cloud.accountId);
     return token ? { profile: p, token, url: wsUrlOf(p.cloud.server) } : null;
   };
@@ -198,6 +200,8 @@ export function startRealtime(): () => void {
           useRealtime.setState({ flags: msg.room });
           break;
         case 'profile':
+        // 老師改了班級教材版本：同步一次，從回應拿新的班級版本（老師 GM 的 G0）
+        case 'content':
           void useCloud.getState().syncNow();
           break;
         case 'gift':

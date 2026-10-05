@@ -16,6 +16,7 @@ import { usePacks } from '../../store/usePacks';
 import { useEditions } from '../../store/useEditions';
 import { curriculumActivities, currentBook } from '../../activities/resolve';
 import { DEFAULT_CURRICULUM } from '../../store/save';
+import { activeCurriculum, devicePacksVisible } from '../../store/island';
 
 const LEVELS = [
   { level: 1 as const, name: '簡單', stars: '⭐', color: 'green' },
@@ -31,9 +32,12 @@ export function ZoneMenu() {
   const goto = useUi((s) => s.goto);
   const startActivity = useUi((s) => s.startActivity);
   const profile = useGame((s) => s.profile());
-  const packs = usePacks((s) => s.activities);
+  const allPacks = usePacks((s) => s.activities);
   const editions = useEditions((s) => s.all);
-  const curriculum = profile?.curriculum ?? DEFAULT_CURRICULUM;
+  // 班級島用老師設定的版本、不顯示裝置上匯入的題庫；我的島與單機角色用自己的設定（老師 GM 的 G0＋G1）
+  const curriculum = profile ? activeCurriculum(profile) : DEFAULT_CURRICULUM;
+  const showPacks = devicePacksVisible(profile);
+  const packs = useMemo(() => (showPacks ? allPacks : []), [showPacks, allPacks]);
   const [picking, setPicking] = useState<ActivityDef | null>(null);
   const zone = zoneId ? zoneById(zoneId) : null;
 
@@ -84,7 +88,11 @@ export function ZoneMenu() {
           </span>
           <h2 style={{ fontSize: 20, fontWeight: 600 }}>
             {zone.intro}
-            {bookLabel && <span className="hud-chip" style={{ fontSize: 16, marginLeft: 8, padding: '2px 12px' }}>📚 {bookLabel}</span>}
+            {bookLabel && (
+              <span className="hud-chip" style={{ fontSize: 16, marginLeft: 8, padding: '2px 12px' }} data-testid="book-label">
+                📚 {bookLabel}
+              </span>
+            )}
           </h2>
           <button className="btn small white" onClick={leave} data-testid="leave-zone">
             回島上

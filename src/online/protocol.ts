@@ -2,14 +2,20 @@
  * 班級伺服器的 HTTP 格式（前端與伺服器共用的純模組）：請求用 zod 驗證，回應用 TypeScript 型別描述。
  */
 import { z } from 'zod';
-import type { AvatarConfig, Profile } from '../store/save';
-import { avatarSchema } from './ops';
+import type { AvatarConfig, CurriculumChoice, Profile } from '../store/save';
+import { avatarSchema, curriculumSchema } from './ops';
 
 /** 房間代碼：6 位數字 */
 export const roomCodeSchema = z.string().regex(/^\d{6}$/);
 /** 孩子的密碼：4 位數字 */
 export const pinSchema = z.string().regex(/^\d{4}$/);
-export const roomPatchRequest = z.object({ joinOpen: z.boolean().optional(), chatOpen: z.boolean().optional(), giftsOpen: z.boolean().optional() });
+/** 老師改班級設定：開關，以及班級教材版本（null 是取消統一，班級島照各孩子自己的設定；老師 GM 的 G0） */
+export const roomPatchRequest = z.object({
+  joinOpen: z.boolean().optional(),
+  chatOpen: z.boolean().optional(),
+  giftsOpen: z.boolean().optional(),
+  curriculum: curriculumSchema.nullable().optional(),
+});
 export const resetPinRequest = z.object({ pin: pinSchema });
 /** 加入班級：avatar（建新角色）與 profile（帶本機進度）擇一 */
 export const joinRequest = z
@@ -144,6 +150,8 @@ export interface UserPatchResponse {
 export interface RoomInfo {
   code: string;
   name: string;
+  /** 老師設定的班級教材版本（班級島用）；null 是沒有統一，班級島照各孩子自己的設定（老師 GM 的 G0） */
+  curriculum: CurriculumChoice | null;
 }
 
 /** 房間設定（老師可以切換） */

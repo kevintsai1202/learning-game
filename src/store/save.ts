@@ -123,6 +123,10 @@ export interface CloudLink {
   roomName?: string;
   /** 伺服器上的帳號 id（與 Profile.id 不同） */
   accountId: string;
+  /** 老師設定的班級教材版本（班級島用；伺服器每次同步都會更新）；沒有表示老師沒有統一（老師 GM 的 G0） */
+  roomCurriculum?: CurriculumChoice;
+  /** 孩子切到「我的島」（只記在這台裝置；沒有表示在班級島）。換班級或退出班級時拿掉（老師 GM 的 G1） */
+  island?: 'mine';
 }
 
 /** 收禮紀錄的一筆（雲端角色才有；只有伺服器會寫入） */
@@ -505,6 +509,9 @@ const int = z.number().int();
 /** 錯題本裡的題目只檢查基本欄位，避免日後新增題型時舊存檔整份讀不進來 */
 export const storedQuestion = z.looseObject({ id: z.string(), type: z.string(), prompt: z.string(), skill: z.string(), indicators: z.array(z.string()) });
 /** 一位小朋友的資料格式（伺服器驗證上傳的進度也用這份） */
+/** 教材版本設定的格式（孩子自己的設定與本機記住的班級版本共用） */
+const curriculumShape = z.object({ zh: z.string(), math: z.string(), term: z.enum(['上', '下', 'auto']) });
+
 export const profileSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -531,10 +538,20 @@ export const profileSchema = z.object({
   playLog: z.record(z.string(), z.number()),
   inventory: z.array(z.string()),
   recent: z.record(z.string(), z.array(z.string())),
-  curriculum: z.object({ zh: z.string(), math: z.string(), term: z.enum(['上', '下', 'auto']) }),
+  curriculum: curriculumShape,
   // 2026-10 新增：可省略，舊存檔不必升級版本
   // 2026-10 A2：班級可以沒有（家長名下的雲端角色）；舊版前端讀不了沒有班級的雲端角色，所以 A2～A4 只在 A5 一起上線
-  cloud: z.object({ server: z.string(), room: z.string().optional(), roomName: z.string().optional(), accountId: z.string() }).optional(),
+  // 2026-10 老師 GM 的 G0＋G1：班級版本與「我的島」（只存在本機）
+  cloud: z
+    .object({
+      server: z.string(),
+      room: z.string().optional(),
+      roomName: z.string().optional(),
+      accountId: z.string(),
+      roomCurriculum: curriculumShape.optional(),
+      island: z.literal('mine').optional(),
+    })
+    .optional(),
   stats: z.object({ wrongCleared: int.min(0), written: int.min(0) }).optional(),
   badges: z.record(z.string(), z.string()).optional(),
   title: z.string().nullable().optional(),

@@ -187,4 +187,25 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       await d.close();
     }
   });
+  it('v7 → v8（老師 GM 的 G0）：既有班級沒有統一版本（null）；可以存班級版本', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 7 });
+      await d.query(
+        "INSERT INTO users (id, username, username_key, password_hash, is_parent, is_teacher, created_at) VALUES ('t1', 't1', 't1', 'h', false, true, $1::timestamptz)",
+        [T],
+      );
+      await d.query("INSERT INTO rooms (code, name, teacher_hash, owner_id, created_at) VALUES ('444444', '二年四班', NULL, 't1', $1::timestamptz)", [T]);
+
+      await migrate(d);
+
+      expect((await d.query("SELECT curriculum FROM rooms WHERE code = '444444'"))[0].curriculum).toBeNull();
+      await d.query("UPDATE rooms SET curriculum = $1::jsonb WHERE code = '444444'", [JSON.stringify({ zh: 'nani-zh', math: 'hanlin-math', term: '上' })]);
+      expect((await d.query("SELECT curriculum FROM rooms WHERE code = '444444'"))[0].curriculum).toEqual({ zh: 'nani-zh', math: 'hanlin-math', term: '上' });
+      // 可以重複執行
+      await migrate(d);
+    } finally {
+      await d.close();
+    }
+  });
 });

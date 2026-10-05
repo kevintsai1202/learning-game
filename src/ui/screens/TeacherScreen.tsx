@@ -12,6 +12,8 @@ import { getToken } from '../../online/storage';
 import { emailOfIdToken } from '../../online/google';
 import { GoogleButton } from '../GoogleButton';
 import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
+import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from '../../content/editions';
+import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
 import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
 
 /** 顯示「多久以前」 */
@@ -44,6 +46,64 @@ function Check({ checked, onChange, testId, children }: { checked: boolean; onCh
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} data-testid={testId} />
       {children}
     </label>
+  );
+}
+
+/**
+ * 班級教材版本（老師 GM 的 G0，docs/plans/teacher-gm.md 第 4 節）：統一全班在班級島用的國語、數學版本與學期。
+ * 不統一（null）時班級島照各孩子在家長專區的設定；孩子自己的設定留給「我的島」。
+ * 只列內建版本：老師這台裝置匯入的版本包，孩子的裝置上沒有。
+ */
+function ClassCurriculum({ value, onSave }: { value: CurriculumChoice | null; onSave: (c: CurriculumChoice | null) => void }) {
+  /**
+   * 畫面上的設定：改了馬上顯示並送出，伺服器回應後再跟著伺服器的值。
+   * 不直接用 value：連續改兩個下拉時，第二次會拿到還沒更新的舊值，把第一次的修改蓋掉
+   */
+  // 舊版伺服器的回應沒有這個欄位（部署途中前端先更新時）：當作沒有統一
+  const [local, setLocal] = useState<CurriculumChoice | null>(value ?? null);
+  useEffect(() => setLocal(value ?? null), [value]);
+  /** 下拉選單顯示的值（還沒統一時先用預設版本，打勾就用它） */
+  const cur = local ?? DEFAULT_CURRICULUM;
+  const save = (c: CurriculumChoice | null) => {
+    setLocal(c);
+    onSave(c);
+  };
+  const set = (patch: Partial<CurriculumChoice>) => save({ ...cur, ...patch });
+  /** 某科的版本下拉 */
+  const select = (subject: 'zh' | 'math', name: string) => (
+    <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+      <b style={{ minWidth: 48 }}>{name}</b>
+      <select value={cur[subject]} onChange={(e) => set({ [subject]: e.target.value } as Partial<CurriculumChoice>)} data-testid={`class-edition-${subject}`}>
+        {editionsFor(BUILT_IN_EDITIONS, subject).map((e) => (
+          <option key={e.id} value={e.id}>
+            {e.publisher}
+          </option>
+        ))}
+        <option value={GENERIC_EDITION}>依 108 課綱通用（不跟課本）</option>
+      </select>
+    </label>
+  );
+  return (
+    <div style={{ margin: '12px 0' }} data-testid="class-curriculum">
+      <h3 style={{ margin: '6px 0' }}>班級教材版本</h3>
+      <Check checked={local !== null} onChange={(v) => save(v ? cur : null)} testId="class-curriculum-toggle">
+        統一全班在班級島用的課本版本（不統一時，照各孩子在家長專區的設定；孩子自己的設定會用在「我的島」）
+      </Check>
+      {local && (
+        <div className="plain" style={{ display: 'grid', gap: 8, marginLeft: 24 }}>
+          {select('zh', '國語')}
+          {select('math', '數學')}
+          <label style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <b style={{ minWidth: 48 }}>學期</b>
+            <select value={cur.term} onChange={(e) => set({ term: e.target.value as CurriculumChoice['term'] })} data-testid="class-edition-term">
+              <option value="auto">自動（8～1 月為上學期，2～7 月為下學期）</option>
+              <option value="上">二年級上學期</option>
+              <option value="下">二年級下學期</option>
+            </select>
+          </label>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -977,6 +1037,15 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
           <Check checked={room.giftsOpen} onChange={(v) => void act(() => call('PATCH', base, { giftsOpen: v }), v ? '已開放送禮' : '已關閉送禮')} testId="toggle-gifts">
             允許送禮物（用金幣買貼紙或外觀送同學；關掉後不能送新的，已送出的還是可以收下）
           </Check>
+          <ClassCurriculum
+            value={room.curriculum}
+            onSave={(c) =>
+              void act(
+                () => call('PATCH', base, { curriculum: c }),
+                c ? `班級島的教材版本：${curriculumText(BUILT_IN_EDITIONS, c)}` : '已取消統一，班級島照各孩子自己的設定',
+              )
+            }
+          />
         </>
       )}
       <ErrorNote text={error} testId="teacher-error" />

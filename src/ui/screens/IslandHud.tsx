@@ -1,5 +1,5 @@
 /**
- * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、門口提示泡泡、熊熊老師的話、觸控搖桿、公頻。
+ * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、班級島與我的島的切換、門口提示泡泡、熊熊老師的話、觸控搖桿、公頻。
  */
 import { useEffect, useRef } from 'react';
 import { useGame } from '../../store/useGame';
@@ -15,6 +15,8 @@ import { ChatPanel } from '../ChatPanel';
 import { GiftInbox } from '../GiftInbox';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
+import { islandOf } from '../../store/island';
+import { ISLAND_LINES } from '../lines';
 
 /** 同步狀態的圖示與文字 */
 const CLOUD_LABEL: Record<CloudStatus, string> = {
@@ -48,6 +50,31 @@ function CloudChip() {
       data-status={status}
     >
       {label}
+    </button>
+  );
+}
+
+/**
+ * 班級角色才顯示：切換班級島與我的島（老師 GM 的 G1）。按鈕寫要去的島。
+ * 我的島看不到同學、用家長選的版本與裝置上的題庫；切回班級島時同步一次，拿老師最新的班級版本。
+ */
+function IslandSwitch() {
+  const profile = useGame((s) => s.profile());
+  const setIsland = useGame((s) => s.setIsland);
+  if (!profile?.cloud?.room) return null;
+  const island = islandOf(profile);
+  const toggle = () => {
+    const next = island === 'class' ? 'mine' : 'class';
+    sfx.tap();
+    setIsland(profile.id, next);
+    const line = next === 'mine' ? ISLAND_LINES.toMine : ISLAND_LINES.toClass;
+    useUi.getState().say(line);
+    speak(line);
+    if (next === 'class') void useCloud.getState().syncNow();
+  };
+  return (
+    <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={toggle} data-testid="hud-island" data-island={island}>
+      {island === 'class' ? '🏝️ 去我的島' : '🏫 回班級島'}
     </button>
   );
 }
@@ -166,6 +193,7 @@ export function IslandHud() {
             ⭐ {totalStars}
           </span>
           {profile?.cloud && <CloudChip />}
+          <IslandSwitch />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn round white" onClick={() => goto('badges')} aria-label="獎章簿" data-testid="hud-badges">

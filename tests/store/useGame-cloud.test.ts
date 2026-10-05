@@ -138,3 +138,20 @@ describe('useGame：益智遊戲館', () => {
     expect(Object.values(p.puzzle!.days)).toEqual([{ seconds: 30, coins: 0 }]);
   });
 });
+
+describe('useGame：切換班級島與我的島（老師 GM 的 G1）', () => {
+  it('只記在這台裝置（不產生操作、進度不變）；切回班級島就拿掉標記', () => {
+    const before = makeKid(true);
+    useGame.getState().setIsland(before.id, 'mine');
+    expect(useGame.getState().profile()!.cloud).toEqual({ ...cloud, island: 'mine' });
+    expect(recorded).toEqual([]);
+    useGame.getState().setIsland(before.id, 'class');
+    expect(useGame.getState().profile()).toEqual(before);
+  });
+
+  it('沒有班級的角色：不能切（只有自己的島）', () => {
+    const local = makeKid(false);
+    useGame.getState().setIsland(local.id, 'mine');
+    expect(useGame.getState().profile()).toEqual(local);
+  });
+});

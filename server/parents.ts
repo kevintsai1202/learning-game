@@ -8,7 +8,7 @@ import { ApiError, readBody } from './http';
 import { newAccountId } from './auth';
 import { detachFromClass, emitGiftEvents, settlePendingGifts, type Events } from './gifts';
 import { uploadKidRequest, type KidSummary, type ParentKidsResponse, type SessionResponse } from '../src/online/protocol';
-import { parseProfile, type Profile } from '../src/store/save';
+import { parseProfile, type CurriculumChoice, type Profile } from '../src/store/save';
 import type { AccountRow } from './app';
 
 /** 家長讓孩子退出班級時，孩子裝置上顯示的原因 */
@@ -58,8 +58,8 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
 
   app.get('/api/parent/kids', async (c) => {
     const parent = await authenticateParent(c);
-    const rows = await db.query<AccountRow & { room_name: string | null }>(
-      `SELECT a.*, r.name AS room_name FROM accounts a LEFT JOIN rooms r ON r.code = a.room_code
+    const rows = await db.query<AccountRow & { room_name: string | null; room_curriculum: CurriculumChoice | null }>(
+      `SELECT a.*, r.name AS room_name, r.curriculum AS room_curriculum FROM accounts a LEFT JOIN rooms r ON r.code = a.room_code
        WHERE a.parent_id = $1 ORDER BY a.created_at, a.id`,
       [parent],
     );
@@ -68,7 +68,7 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
       profileId: a.profile.id,
       name: a.profile.name,
       avatar: a.profile.avatar,
-      room: a.room_code ? { code: a.room_code, name: a.room_name ?? '' } : null,
+      room: a.room_code ? { code: a.room_code, name: a.room_name ?? '', curriculum: a.room_curriculum ?? null } : null,
       coins: a.profile.coins,
       stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),
       lastSeen: new Date(a.last_seen).toISOString(),

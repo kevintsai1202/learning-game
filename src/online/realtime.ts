@@ -59,6 +59,8 @@ export type ServerMessage =
   /** 自己的存檔在伺服器端變了（例如收到禮物），裝置要同步 */
   | { t: 'profile'; rev: number }
   | { t: 'room'; room: RoomFlags }
+  /** 班級內容更新了（老師改了班級教材版本）：裝置重新同步，從回應拿新的設定（老師 GM 的 G0；舊版網頁不認得，會忽略） */
+  | { t: 'content' }
   /** 被踢下線（另一台裝置登入、老師移除或重設密碼） */
   | { t: 'kicked'; reason: string }
   /** 禮物狀態有變（收到新禮物，或送出的禮物有結果）：裝置重新讀 GET /api/gifts */

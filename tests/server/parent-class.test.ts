@@ -60,7 +60,7 @@ describe('雲端角色加入班級', () => {
     expect(r.status).toBe(200);
     expect(r.body).toMatchObject({ account: { id: up.account.id, nickname: '小安' }, room: { code: room.code, name: '二年一班' }, profile: { id: up.profile.id, name: '小安', coins: 30 }, rev: 2 });
     expect(r.body.token).toBeUndefined();
-    expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0].room).toEqual({ code: room.code, name: '二年一班' });
+    expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0].room).toEqual({ code: room.code, name: '二年一班', curriculum: null });
     const school = await call('POST', '/api/login', { code: room.code, nickname: '小安', pin: '1234' });
     expect(school.body.account.id).toBe(up.account.id);
     expect((await call('GET', `/api/teacher/rooms/${room.code}`, undefined, room.token)).body.members.map((m: { nickname: string }) => m.nickname)).toEqual(['小安']);

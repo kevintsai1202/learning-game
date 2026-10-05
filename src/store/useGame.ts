@@ -9,6 +9,7 @@ import { applyOp, newOpId, type Op, type OpBody } from '../online/ops';
 import { recordOp } from '../online/storage';
 import { findItem } from './catalog';
 import { newlyEarned } from './badges';
+import { withIsland, type Island } from './island';
 import {
   addPlayTime,
   addProfile,
@@ -88,6 +89,8 @@ interface GameStore {
   exportBackup: () => string;
   /** 寫入一位角色（同 id 取代、沒有就新增）；雲端同步套用伺服器版本時用 */
   putProfile: (profile: Profile) => void;
+  /** 班級角色切換班級島與我的島（只記在這台裝置；老師 GM 的 G1） */
+  setIsland: (profileId: string, island: Island) => void;
 }
 
 export const useGame = create<GameStore>((set, get) => {
@@ -180,6 +183,12 @@ export const useGame = create<GameStore>((set, get) => {
     },
     exportBackup: () => JSON.stringify(get().save, null, 2),
     putProfile: (profile) => commit(replaceProfile(get().save, profile)),
+    setIsland: (profileId, island) => {
+      const p = get().save.profiles.find((x) => x.id === profileId);
+      if (!p) return;
+      const next = withIsland(p, island);
+      if (next !== p) commit(replaceProfile(get().save, next));
+    },
   };
 });
 

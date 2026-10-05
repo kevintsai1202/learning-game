@@ -3,7 +3,8 @@
  * 不透露代碼存在）；只有老師身分能用；舊的「房間代碼＋管理密碼」API 已拿掉。規格見 docs/plans/accounts.md。
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { createRoom, createUser, joinRoom, makeClient, openTestDb, resetDb } from './helpers';
+import { AVATAR, createRoom, createUser, joinRoom, makeClient, openTestDb, resetDb } from './helpers';
+import { addProfile, createEmptySave } from '../../src/store/save';
 import type { Db } from '../../server/db';
 
 let db: Db;
@@ -23,7 +24,7 @@ describe('建立與列出班級', () => {
     const t = await createUser(call);
     const a = await call('POST', '/api/teacher/rooms', { name: ' 二年一班 ' }, t.token);
     expect(a.status).toBe(200);
-    expect(a.body.room).toEqual({ code: expect.stringMatching(/^[1-9]\d{5}$/), name: '二年一班', joinOpen: true, chatOpen: true, giftsOpen: true });
+    expect(a.body.room).toEqual({ code: expect.stringMatching(/^[1-9]\d{5}$/), name: '二年一班', joinOpen: true, chatOpen: true, giftsOpen: true, curriculum: null });
     await call('POST', '/api/teacher/rooms', { name: '安親班' }, t.token);
     await joinRoom(call, a.body.room.code, '小安');
     const list = await call('GET', '/api/teacher/rooms', undefined, t.token);
@@ -106,5 +107,68 @@ describe('舊的管理密碼 API 已拿掉', () => {
     expect((await call('POST', '/api/teacher/login', { code, password: 'teach123' })).status).toBe(404);
     expect((await call('GET', '/api/teacher/room', undefined, token)).status).toBe(404);
     expect((await call('POST', '/api/teacher/google/login', { idToken: 'x' })).status).toBe(404);
+  });
+});
+
+describe('班級教材版本（老師 GM 的 G0，docs/plans/teacher-gm.md 第 4 節）', () => {
+  /** 老師設定的班級版本 */
+  const CLASS = { zh: 'nani-zh', math: 'hanlin-math', term: '上' };
+
+  it('新班級沒有統一版本（null）；老師設定後，管理頁、孩子的同步與登入回應都帶班級版本；設 null 取消統一', async () => {
+    const { call } = makeClient(db);
+    const { code, token } = await createRoom(call);
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room.curriculum).toBeNull();
+    const kid = await joinRoom(call, code);
+    expect(kid.room).toEqual({ code, name: '二年一班', curriculum: null });
+
+    const set = await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: CLASS }, token);
+    expect(set.status).toBe(200);
+    expect(set.body.room.curriculum).toEqual(CLASS);
+    expect((await call('POST', '/api/ops', { ops: [] }, kid.token)).body.room).toEqual({ code, name: '二年一班', curriculum: CLASS });
+    expect((await call('POST', '/api/login', { code, nickname: '小安', pin: '1234' })).body.room.curriculum).toEqual(CLASS);
+
+    // 只改開關時版本不變
+    await call('PATCH', `/api/teacher/rooms/${code}`, { chatOpen: false }, token);
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room).toMatchObject({ chatOpen: false, curriculum: CLASS });
+
+    const cleared = await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: null }, token);
+    expect(cleared.body.room.curriculum).toBeNull();
+    expect((await call('POST', '/api/ops', { ops: [] }, kid.token)).body.room.curriculum).toBeNull();
+  });
+
+  it('班級版本不改孩子自己的設定（孩子的設定留給我的島）', async () => {
+    const { call } = makeClient(db);
+    const { code, token } = await createRoom(call);
+    const kid = await joinRoom(call, code);
+    const own = kid.profile.curriculum;
+    await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: CLASS }, token);
+    const after = await call('POST', '/api/ops', { ops: [] }, kid.token);
+    expect(after.body.profile.curriculum).toEqual(own);
+    expect(after.body.rev).toBe(kid.rev);
+  });
+
+  it('版本格式不對回 400，設定不變', async () => {
+    const { call } = makeClient(db);
+    const { code, token } = await createRoom(call);
+    for (const curriculum of [{ ...CLASS, term: '中' }, { zh: 'nani-zh', term: '上' }, { ...CLASS, zh: 'x'.repeat(61) }, 'nani-zh']) {
+      const r = await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum }, token);
+      expect(r.status, JSON.stringify(curriculum)).toBe(400);
+    }
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room.curriculum).toBeNull();
+  });
+
+  it('家長的孩子清單：在班級裡的孩子也帶班級版本', async () => {
+    const { call } = makeClient(db);
+    const { code, token } = await createRoom(call);
+    await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: CLASS }, token);
+    const mom = await createUser(call, { parent: true, teacher: false });
+    // 家長把裝置上的角色上傳成雲端角色，再用那個角色的權杖加入班級
+    const local = { ...addProfile(createEmptySave(), { name: '安安', avatar: AVATAR }, new Date()).profiles[0] };
+    const up = await call('POST', '/api/parent/kids', { profile: local }, mom.token);
+    expect(up.status).toBe(200);
+    const attach = await call('POST', '/api/join', { code, nickname: '小美', pin: '5678' }, up.body.token);
+    expect(attach.status, JSON.stringify(attach.body)).toBe(200);
+    expect(attach.body.room).toEqual({ code, name: '二年一班', curriculum: CLASS });
+    expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0].room).toEqual({ code, name: '二年一班', curriculum: CLASS });
   });
 });

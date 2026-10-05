@@ -14,6 +14,7 @@ import { createRng } from '../../core/rng';
 import { useGame } from '../../store/useGame';
 import { useEditions } from '../../store/useEditions';
 import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
+import { activeCurriculum } from '../../store/island';
 import {
   DUEL_QUESTIONS,
   STREAK_MAX_MISSES,
@@ -40,7 +41,7 @@ import { puzzleDebug } from '../debug';
 import type { PuzzleGameProps } from '../types';
 import { useDuel } from '../useDuel';
 
-/** 益智搶答可以出題的活動：各科的固定活動（挑戰塔與停用的除外），加上孩子目前課本的單元 */
+/** 益智搶答可以出題的活動：各科的固定活動（挑戰塔與停用的除外），加上孩子目前課本的單元（班級島用班級版本） */
 function quizActivities(editions: Edition[], curriculum: CurriculumChoice): ActivityDef[] {
   return [
     ...ALL_ACTIVITIES.filter((a) => a.zone !== 'tower' && !a.disabledReason),
@@ -56,7 +57,7 @@ export default function QuizGame({ run, onFinish, onExit }: PuzzleGameProps) {
   const questions = useMemo(
     () =>
       buildQuizQuestions(
-        quizActivities(editions, profile?.curriculum ?? DEFAULT_CURRICULUM),
+        quizActivities(editions, profile ? activeCurriculum(profile) : DEFAULT_CURRICULUM),
         solo ? STREAK_MAX_QUESTIONS : DUEL_QUESTIONS,
         run.seed,
         profile?.recent['puzzle.quiz'] ?? [],

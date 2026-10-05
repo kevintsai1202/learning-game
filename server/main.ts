@@ -56,6 +56,7 @@ async function main(): Promise<void> {
     isOnline: (id) => hub.isOnline(id),
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
+    onRoomContent: (code) => hub.roomContent(code),
     onKick: (id, reason, via) => hub.kick(id, reason, via),
     onGift: (id) => hub.notify(id, { t: 'gift' }),
     staticDir: process.env.STATIC_DIR || undefined,
