@@ -55,10 +55,11 @@ describe('家長讓雲端角色加入班級（不用密碼）', () => {
     expect(r.status).toBe(200);
     expect(r.body.kid).toMatchObject({ id: kid.account.id, name: '小安', room: { code, name: '二年一班' } });
     expect((await call('GET', '/api/me', undefined, kid.token)).body.profile.name).toBe('小安');
-    // 沒有密碼：班級登入一律失敗（錯誤訊息和密碼錯一樣，不透露暱稱存不存在）
+    // 沒有密碼：班級登入失敗，直接說還沒有設定密碼（使用者決定）
     const denied = await call('POST', '/api/login', { code, nickname: '小安', pin: '0000' });
     expect(denied.status).toBe(401);
-    expect(denied.body.code).toBe('bad_login');
+    expect(denied.body.code).toBe('no_pin');
+    expect(denied.body.error).toContain('請老師');
     // 老師成員表：沒有密碼；設定密碼後可以登入
     const room = await call('GET', `/api/teacher/rooms/${code}`, undefined, teacher);
     expect(room.body.members.map((m: { nickname: string; hasPin: boolean }) => [m.nickname, m.hasPin])).toEqual([['小安', false]]);

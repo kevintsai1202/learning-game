@@ -194,11 +194,6 @@ export function ClassScreen() {
             </button>
           </div>
           {mode === 'login' && (
-            <p className="plain" style={{ margin: '12px 0 0' }} data-testid="class-no-pin-hint">
-              是家長用家長帳號幫你加入班級的？要先請老師在管理頁幫你設定密碼，才能用班級代碼登入。
-            </p>
-          )}
-          {mode === 'login' && (
             <div style={{ marginTop: 16 }}>
               <span className="label">家長要找回孩子的角色（雲端角色）？</span>
               <button type="button" className="btn small white" onClick={() => goto('teacher')} data-testid="class-parent-login">

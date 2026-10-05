@@ -512,7 +512,10 @@ export function createApp(opts: AppOptions) {
     const account = nick.ok
       ? (await db.query<AccountRow>('SELECT * FROM accounts WHERE room_code = $1 AND nickname_key = $2', [body.code, nick.key]))[0]
       : undefined;
-    if (!account || !account.pin_hash || !(await verifySecret(body.pin, account.pin_hash))) {
+    // 家長用家長帳號幫他加入、還沒有密碼：直接說清楚（使用者決定：登入畫面不能設密碼，被試出來也沒有風險；
+    // 密碼只在加入時自己設，或由老師在管理頁設），不算猜錯
+    if (account && !account.pin_hash) throw new ApiError(401, 'no_pin', '還沒有設定班級密碼，請老師在管理頁幫你設定');
+    if (!account || !(await verifySecret(body.pin, account.pin_hash!))) {
       limiter.fail(key);
       throw new ApiError(401, 'bad_login', '房間代碼、暱稱或密碼不對');
     }

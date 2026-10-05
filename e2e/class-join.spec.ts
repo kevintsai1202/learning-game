@@ -1,7 +1,7 @@
 /**
  * 掃 QR code 加入班級（docs/plans/class-join.md）：老師班級頁有 QR code 與加入連結；家長打開連結 → 登入家長帳號 →
  * 選雲端角色加入（不用密碼）→ 在這台裝置玩，進到班級島；也可以新建角色加入；
- * 沒有密碼的孩子在老師成員表顯示「設定密碼」，老師設定後可以用班級代碼登入。
+ * 沒有密碼的孩子在老師成員表顯示「設定密碼」，老師設定後可以用班級代碼登入；還沒設定時登入畫面直接說還沒有密碼。
  * 截圖在 e2e/screenshots/class-join/（不進版控）。
  */
 import { expect, test } from '@playwright/test';
@@ -87,6 +87,15 @@ test('家長掃 QR code：登入家長帳號、選雲端角色加入、在這台
   await expect(t.page.getByTestId('reset-pin-哥哥')).toHaveText('重設密碼');
   await expect(t.page.getByTestId('reset-pin-妹妹')).toHaveText('設定密碼');
   expect((await api('POST', '/api/login', { code: room.code, nickname: '哥哥', pin: '2468' })).room.code).toBe(room.code);
+
+  // ⑦ 還沒有密碼的妹妹用班級代碼登入：畫面直接說還沒有設定密碼（使用者決定）
+  await p.page.evaluate(() => (window as any).__game.ui.getState().goto('class'));
+  await p.page.getByTestId('class-tab-login').click();
+  await p.page.getByTestId('class-code').fill(room.code);
+  await p.page.getByTestId('class-nickname').fill('妹妹');
+  await p.page.getByTestId('class-pin').fill('1111');
+  await p.page.getByTestId('class-submit').click();
+  await expect(p.page.getByTestId('class-error')).toContainText('還沒有設定班級密碼');
 
   for (const d of [t, p]) expect(pageErrors(d.page)).toEqual([]);
   await Promise.all([t.context.close(), p.context.close()]);
