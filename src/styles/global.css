@@ -2581,3 +2581,42 @@ button {
 .join-color.on {
   box-shadow: 0 0 0 3px #4caf50;
 }
+
+/* ---------- 老師／家長帳號頁（大人用） ----------
+ * 整頁一起捲動：裡面的 .panel-body 不縮、不各自捲動（2026-10-05 使用者回報：重設密碼與登入表單各自捲動，
+ * 按鈕被虛線切掉、多出捲軸）。字比孩子的畫面小一號，筆電一個畫面放得下登入表單。
+ */
+.account-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 8px;
+}
+.account-scroll .panel-body {
+  flex: none;
+  min-height: auto;
+  overflow: visible;
+}
+.account-scroll .text-input {
+  font-size: 20px;
+  padding: 8px 14px;
+  border-width: 2px;
+  border-radius: 12px;
+}
+.account-scroll .btn.big {
+  font-size: 22px;
+  padding: 10px 26px 12px;
+  border-radius: 18px;
+}
+.account-scroll .label {
+  font-size: 18px;
+}
+.email-link-panel {
+  border-bottom: 2px dashed var(--line, #ccc);
+}
+.email-link-panel form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

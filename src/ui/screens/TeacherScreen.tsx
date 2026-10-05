@@ -467,7 +467,7 @@ function EmailLinkPanel() {
   };
 
   return (
-    <div className="panel-body plain" style={{ borderBottom: '2px dashed var(--line, #ccc)' }} data-testid="email-link-panel">
+    <div className="panel-body plain email-link-panel" data-testid="email-link-panel">
       <h3 style={{ margin: '0 0 8px' }}>{link.kind === 'verify' ? '驗證 email' : '設定新密碼'}</h3>
       {done ? (
         <p className="notice" data-testid="email-link-result">
@@ -497,9 +497,14 @@ function EmailLinkPanel() {
             aria-label="再輸入一次新密碼"
             data-testid="reset-confirm"
           />
-          <button type="submit" className="btn big green" style={{ marginTop: 10 }} disabled={busy || !password} data-testid="reset-submit">
-            {busy ? '連線中…' : '設定新密碼'}
-          </button>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 10 }}>
+            <button type="submit" className="btn big green" disabled={busy || !password} data-testid="reset-submit">
+              {busy ? '連線中…' : '設定新密碼'}
+            </button>
+            <button type="button" className="btn small white" onClick={close} data-testid="reset-cancel">
+              取消，回到登入
+            </button>
+          </div>
         </form>
       )}
       <ErrorNote text={error} testId="email-link-error" />
@@ -1274,6 +1279,8 @@ function AccountHome() {
 export function TeacherScreen() {
   const goto = useUi((s) => s.goto);
   const session = useAccount((s) => s.session);
+  /** 打開重設密碼的連結時：先只顯示設定新密碼，改好按「知道了」才出現登入表單（兩個表單疊在一起容易填錯） */
+  const resetting = useAccount((s) => s.emailLink?.kind === 'reset');
   return (
     <div className="panel-screen">
       <div className="panel card" role="dialog" aria-label="老師／家長帳號">
@@ -1286,8 +1293,11 @@ export function TeacherScreen() {
             返回
           </button>
         </div>
-        <EmailLinkPanel />
-        {session ? <AccountHome /> : <AccountGate />}
+        {/* 整頁一起捲動：裡面的區塊不各自捲動（不然區塊被壓扁、按鈕被切掉、多出捲軸）；大人用的頁面字小一號 */}
+        <div className="account-scroll">
+          <EmailLinkPanel />
+          {session ? <AccountHome /> : resetting ? null : <AccountGate />}
+        </div>
       </div>
     </div>
   );

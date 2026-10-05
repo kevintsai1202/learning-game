@@ -69,6 +69,24 @@ test('忘記密碼：收到重設信，設定新密碼後要重新登入；舊�
   expect(reset, '收到重設信').toBeTruthy();
   await d.page.goto(linkIn(reset!.text, 'reset'));
   await expect(d.page.getByTestId('email-link-panel')).toContainText('設定新密碼');
+  // 版面（2026-10-05 使用者回報按鈕被切掉、多出捲軸）：設定新密碼時先不顯示登入表單；按鈕完整在捲動區裡；
+  // 帳號頁只有一個捲動區（裡面的區塊不各自捲動）
+  await expect(d.page.getByTestId('account-username')).toHaveCount(0);
+  for (const [w, h] of [
+    [1280, 800],
+    [390, 844],
+  ]) {
+    await d.page.setViewportSize({ width: w, height: h });
+    const area = (await d.page.locator('.account-scroll').boundingBox())!;
+    const btn = (await d.page.getByTestId('reset-submit').boundingBox())!;
+    expect(btn.y >= area.y && btn.y + btn.height <= area.y + area.height, `${w}x${h} 設定新密碼按鈕被切掉`).toBe(true);
+    const inner = await d.page.evaluate(() =>
+      [...document.querySelectorAll('.account-scroll .panel-body')].filter((el) => el.scrollHeight > el.clientHeight + 1).length,
+    );
+    expect(inner, `${w}x${h} 帳號頁裡面還有自己捲動的區塊`).toBe(0);
+    await d.page.screenshot({ path: `${SHOTS}/02a-reset-form-${w}.png` });
+  }
+  await d.page.setViewportSize({ width: 1280, height: 800 });
   const NEW_PASSWORD = 'brandnew2026';
   await d.page.getByTestId('reset-password').fill(NEW_PASSWORD);
   await d.page.getByTestId('reset-confirm').fill(NEW_PASSWORD);
@@ -76,6 +94,9 @@ test('忘記密碼：收到重設信，設定新密碼後要重新登入；舊�
   await expect(d.page.getByTestId('email-link-result')).toContainText('密碼改好了');
   await d.page.screenshot({ path: `${SHOTS}/02-password-reset.png` });
   await d.page.getByTestId('email-link-close').click();
+  // 登入表單：筆電畫面一頁放得下，不另外捲動
+  await expect(d.page.getByTestId('account-submit')).toBeInViewport();
+  await d.page.screenshot({ path: `${SHOTS}/02b-login-form.png` });
   // 舊密碼不能登入
   await d.page.getByTestId('account-username').fill(username);
   await d.page.getByTestId('account-password').fill(TEST_PASSWORD);
