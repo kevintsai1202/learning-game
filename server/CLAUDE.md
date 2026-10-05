@@ -71,7 +71,7 @@ docker rm -f li-pg-test
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。中樞以「島」為單位（班級島 `class:<代碼>`、自己的島 `kid:<帳號 id>`，`docs/plans/islands.md`）：移動、聊天、外觀只送同島的人；好友的在線狀態（只有在哪座島）送給朋友；全班的通知（`roomContent`、`roomSettings`）照帳號的班級送，不管在哪座島。
 - 伺服器只保證位置在島的圓形範圍內，不做障礙物碰撞（信任模型，見 `docs/plans/online.md` 第 5 節）。
-- HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onRoomContent`／`onKick` 通知即時中樞；老師成員表的在線與在哪裡來自 `isOnline`／`whereOf`（`main.ts` 串接；`onKick` 的第三個參數是只踢哪種權杖來源的連線）。
+- HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onRoomContent`／`onClassChanged`（加入班級，中樞以 4005 讓那個帳號重新上線）／`onKick` 通知即時中樞；老師成員表的在線與在哪裡來自 `isOnline`／`whereOf`（`main.ts` 串接；`onKick` 的第三個參數是只踢哪種權杖來源的連線）。
 - **送禮物**（`gifts.ts`，規格見 `docs/plans/online.md` 第 7 節）：
   - 鎖定順序固定，避免真正的 PostgreSQL 互相等待：送禮只鎖帳號（送禮人與收禮人用一句 `WHERE id = ANY(…) ORDER BY id FOR UPDATE` 一起鎖）；收下、不用了、過期、移出成員先鎖禮物，再依 id 順序鎖帳號。新增會同時鎖禮物與帳號的路由也要照這個順序。
   - 交易裡不能丟 `ApiError` 卻期待前面的寫入保留（整個交易會撤銷）：例如收下過期的禮物，要先回傳結果讓退款提交，交易結束後再回 409。

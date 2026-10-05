@@ -2496,7 +2496,10 @@ button {
   padding: 4px 8px;
   border-radius: 8px;
 }
+/* 不縮也不自己捲動（不然直式手機上會和帳號列一起被壓扁、各自捲動，標題與帳號按鈕被切掉）：要捲就整張卡片一起捲 */
 .join-class {
+  flex: none !important;
+  overflow: visible !important;
   margin: 0 16px 12px;
   padding: 10px 12px !important;
   border: 3px solid var(--ink);

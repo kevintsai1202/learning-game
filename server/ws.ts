@@ -2,7 +2,8 @@
  * WebSocket 連線層：掛在同一個 HTTP 伺服器的 /ws，負責檢查來源、登入（第一則 hello 帶權杖）、
  * 心跳、格式驗證，然後把訊息交給即時中樞（server/hub.ts）。
  *
- * 關閉代碼：4001 被踢（另一台裝置登入、老師移除或重設密碼）、4002 逾時沒有 hello、4003 權杖不對、1008 格式錯誤。
+ * 關閉代碼：4001 被踢（另一台裝置登入、老師移除或重設密碼）、4002 逾時沒有 hello、4003 權杖不對、
+ * 4005 換了班級要重新上線（家長掃 QR code 讓孩子加入班級）、1008 格式錯誤。
  */
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';

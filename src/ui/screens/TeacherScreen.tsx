@@ -1224,7 +1224,8 @@ function AccountHome() {
   const current = mode && user[mode] ? mode : user.teacher ? 'teacher' : 'parent';
   return (
     <>
-      <div className="panel-body" style={{ paddingBottom: 0 }}>
+      {/* 帳號列不縮（下面有加入班級面板時，直式手機上不會被壓扁切掉按鈕） */}
+      <div className="panel-body" style={{ paddingBottom: 0, flex: 'none' }}>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <span className="plain" data-testid="account-name">
             已登入：<strong>{user.username}</strong>

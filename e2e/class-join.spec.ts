@@ -55,6 +55,20 @@ test('家長掃 QR code：登入家長帳號、選雲端角色加入、在這台
   await p.page.getByTestId('join-kid-哥哥').click();
   await expect(p.page.getByTestId('join-nickname')).toHaveValue('哥哥');
   await p.page.screenshot({ path: `${SHOTS}/02-parent-pick.png` });
+  // 家長多半用手機掃描：直式手機上面板完整、「加入」按鈕在畫面寬度內、沒有橫向捲動
+  await p.page.setViewportSize({ width: 390, height: 844 });
+  await expect(p.page.getByTestId('join-class')).toBeVisible();
+  // 面板標題（班級名稱、取消）與帳號列的按鈕不能被切掉或蓋住
+  const title = (await p.page.getByTestId('join-class-title').boundingBox())!;
+  const logout = (await p.page.getByTestId('account-logout').boundingBox())!;
+  expect(logout.y + logout.height <= title.y, `帳號按鈕和面板標題重疊：${JSON.stringify({ logout, title })}`).toBe(true);
+  await p.page.screenshot({ path: `${SHOTS}/03a-parent-phone-top.png` });
+  await p.page.getByTestId('join-submit').scrollIntoViewIfNeeded();
+  const submit = (await p.page.getByTestId('join-submit').boundingBox())!;
+  expect(submit.x >= 0 && submit.x + submit.width <= 390, `加入按鈕超出畫面：${JSON.stringify(submit)}`).toBe(true);
+  expect(await p.page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await p.page.screenshot({ path: `${SHOTS}/03-parent-pick-phone.png` });
+  await p.page.setViewportSize({ width: 1280, height: 800 });
   await p.page.getByTestId('join-submit').click();
   await expect(p.page.getByTestId('join-done')).toContainText('已經加入「二年一班」');
 
