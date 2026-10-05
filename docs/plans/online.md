@@ -199,6 +199,8 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/users/google/register` | 用 Google 註冊 `{ idToken, username, password, parent, teacher }` → `{ token, user }`：email 用 Google 驗證過的（算驗證過），同時綁好這個 Google；Google 沒有驗證過的 email 回 400 `google_no_email`，Google 已經綁別的帳號 409 `google_taken`，email 已經有帳號 409 `email_taken` |
 | `GET /api/users/me/google`、`POST /api/users/me/google` | 列出、綁定（`{ idToken }`）這個帳號的 Google → `{ google: [{ id, email }] }`（email 遮罩）；Google 已經綁別的帳號回 409 `google_taken` |
 | `DELETE /api/users/me/google/:id` | 解除一個 Google 綁定；不是自己的回 404 |
+| `GET /api/parent/classes/:code` | 查班級名稱與是否開放加入（任何大人帳號、擋大量請求；掃 QR code 加入，`docs/plans/class-join.md`）→ `{ room: { code, name }, joinOpen }` |
+| `POST /api/parent/kids/:id/class` | 家長讓名下的雲端角色加入班級 `{ code, nickname }`，不設密碼 → `{ kid }`；錯誤同帶孩子權杖加入 |
 | `GET /healthz` | Zeabur 健康檢查 |
 
 孩子權杖用在同學名單、送禮這些班級功能時，角色沒有班級回 403 `no_class`；同步（`/api/ops`）、讀存檔（`/api/me`）與帶權杖加入班級不需要班級。

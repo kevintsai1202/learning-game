@@ -1,6 +1,6 @@
 # 掃 QR code 加入班級（家長帳號、不用密碼）
 
-> 狀態：**實作中（2026-10-05）**，總分期的批次 1.5（`docs/plans/roadmap.md`），做完就上線；之後接教師指引與家長指引。
+> 狀態：**實作完成（2026-10-05），待上線**，總分期的批次 1.5（`docs/plans/roadmap.md`），做完就上線；之後接教師指引與家長指引。
 > 相關文件：`docs/plans/accounts.md`（家長帳號、雲端角色）、`docs/plans/islands.md`（I1 一直連線）。
 
 ## 1. 使用者的需求（2026-10-05）
@@ -48,7 +48,7 @@
 - `GET /api/parent/classes/:code`（家長權杖）：`{ room: { code, name }, joinOpen }`；找不到回 404 `no_room`。
 - `POST /api/parent/kids/:id/class`（家長權杖、自己名下的角色）：`{ code, nickname }` → 加入班級，**不設密碼**（`pin_hash` 留空），存檔裡的名字改成暱稱。檢查和現有的加入相同：已經在班級裡 409、找不到班級 404、不開放加入 403、暱稱格式 400、暱稱重複 409。回傳 `{ kid: KidSummary }`。
 - 和「帶孩子權杖加入」（`POST /api/join`）共用同一段加入邏輯，只差有沒有密碼。
-- 班級登入：帳號存在但還沒有密碼時，回 401 `no_pin`「還沒有設定班級密碼，請老師幫你設定」（原本一律是「代碼、暱稱或密碼不對」）。
+- 班級登入：還沒有密碼的帳號照樣回「代碼、暱稱或密碼不對」（`bad_login`），不另外說「沒有密碼」——不然知道班級代碼的人可以用來試出班上有哪些暱稱。改在班級登入畫面放一行提示「家長幫你加入的，要先請老師設定密碼」。
 - 加入班級後通知即時中樞 `onClassChanged(帳號)`：那個帳號線上的連線收到 `content`（同步拿到班級）並以 4005 關閉；裝置看到 4005 馬上重連，用新的班級與朋友上線。兩種加入都通知。
 
 ## 4. 隱私權政策
@@ -63,4 +63,11 @@
 
 ## 6. 實作紀錄
 
-（完成後補）
+### 2026-10-05 完成，待上線
+
+- **伺服器**：`joinExisting`（`server/app.ts`）是兩種加入共用的一段：檢查班級、開放加入、暱稱，交易裡鎖住帳號再確認沒有班級，暱稱撞到唯一鍵時回 `nickname_taken`；`pin` 是 null 時不設密碼。加入後呼叫 `onProfileChanged` 與 `onClassChanged`。家長的兩個路由在 `server/parents.ts`。
+- **即時連線**：`hub.reconnect(帳號)` 以 4005（`CLOSE_RECONNECT`）關閉；裝置看到 4005 不算斷線、不封鎖，同步一次後馬上重新上線，換成新的班級島與朋友。
+- **畫面**：`src/ui/screens/JoinQr.tsx`（老師班級頁的 QR code，`qrcode` 套件動態載入，建置時分成獨立的檔案）、`src/ui/screens/JoinClassPanel.tsx`（家長的加入面板）、`src/online/joinLink.ts`（加入連結的網址參數）。正在加入的班級存在 `useAccount.joining`，也放在 sessionStorage：註冊途中重新整理還在，關掉分頁就沒了。
+- **新建角色**：直接建在家長帳號下（`POST /api/parent/kids`），不放進家長這台裝置的存檔；要在這台裝置玩時才下載。
+- **測試**：`tests/server/class-join.test.ts`、`tests/server/ws.test.ts`（在自己的島上連線中的孩子被家長加入班級後，重新上線就在班級島）、`tests/server/hub.test.ts`（reconnect）、`tests/online/joinLink.test.ts`、`e2e/class-join.spec.ts`。
+- **元素 id**：QR code 區塊與加入面板都有 `data-testid`，之後的教師指引、家長指引用來定位。
