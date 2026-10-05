@@ -7,7 +7,15 @@ import type { Db, Queryable } from './db';
 import { ApiError, readBody } from './http';
 import { newAccountId } from './auth';
 import { detachFromClass, emitGiftEvents, settlePendingGifts, type Events } from './gifts';
-import { uploadKidRequest, type KidSummary, type ParentKidsResponse, type SessionResponse } from '../src/online/protocol';
+import {
+  parentJoinClassRequest,
+  uploadKidRequest,
+  type ClassLookupResponse,
+  type KidSummary,
+  type ParentJoinClassResponse,
+  type ParentKidsResponse,
+  type SessionResponse,
+} from '../src/online/protocol';
 import { parseProfile, type CurriculumChoice, type Profile } from '../src/store/save';
 import type { AccountRow } from './app';
 
@@ -29,6 +37,12 @@ export interface ParentRouteDeps {
   onKick?: (accountId: string, reason: string) => void;
   onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
   onGift?: (accountId: string) => void;
+  /** 擋同一個 IP 的大量請求（查班級名稱用，避免一直猜代碼） */
+  checkFlood: (c: Context) => void;
+  /** 已有的雲端角色加入班級、不設密碼（和帶孩子權杖加入共用同一段邏輯，會通知即時中樞） */
+  joinClass: (accountId: string, code: string, nickname: string) => Promise<{ row: AccountRow; room: { code: string; name: string } }>;
+  /** 讀班級；找不到回 404 */
+  loadRoom: (code: string) => Promise<{ code: string; name: string; join_open: boolean }>;
 }
 
 /** 去掉已經刪除的帳號再送出通知（被刪的角色沒有人可以收） */
@@ -56,24 +70,50 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     return row;
   };
 
+  /** 家長名下的角色（含班級名稱與班級版本） */
+  const kidRows = (where: string, params: unknown[]) =>
+    db.query<AccountRow & { room_name: string | null; room_curriculum: CurriculumChoice | null }>(
+      `SELECT a.*, r.name AS room_name, r.curriculum AS room_curriculum FROM accounts a LEFT JOIN rooms r ON r.code = a.room_code
+       WHERE ${where} ORDER BY a.created_at, a.id`,
+      params,
+    );
+  /** 一個角色的摘要（家長帳號頁的孩子清單） */
+  const kidSummary = (a: AccountRow & { room_name: string | null; room_curriculum: CurriculumChoice | null }): KidSummary => ({
+    id: a.id,
+    profileId: a.profile.id,
+    name: a.profile.name,
+    avatar: a.profile.avatar,
+    room: a.room_code ? { code: a.room_code, name: a.room_name ?? '', curriculum: a.room_curriculum ?? null } : null,
+    coins: a.profile.coins,
+    stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),
+    lastSeen: new Date(a.last_seen).toISOString(),
+  });
+
   app.get('/api/parent/kids', async (c) => {
     const parent = await authenticateParent(c);
-    const rows = await db.query<AccountRow & { room_name: string | null; room_curriculum: CurriculumChoice | null }>(
-      `SELECT a.*, r.name AS room_name, r.curriculum AS room_curriculum FROM accounts a LEFT JOIN rooms r ON r.code = a.room_code
-       WHERE a.parent_id = $1 ORDER BY a.created_at, a.id`,
-      [parent],
-    );
-    const kids: KidSummary[] = rows.map((a) => ({
-      id: a.id,
-      profileId: a.profile.id,
-      name: a.profile.name,
-      avatar: a.profile.avatar,
-      room: a.room_code ? { code: a.room_code, name: a.room_name ?? '', curriculum: a.room_curriculum ?? null } : null,
-      coins: a.profile.coins,
-      stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),
-      lastSeen: new Date(a.last_seen).toISOString(),
-    }));
+    const kids = (await kidRows('a.parent_id = $1', [parent])).map(kidSummary);
     return c.json<ParentKidsResponse>({ kids });
+  });
+
+  // ---------- 掃 QR code 加入班級（docs/plans/class-join.md） ----------
+
+  /** 查班級名稱與是否開放加入（加入連結打開時顯示）：任何大人帳號都可以查（只有老師身分時畫面提示勾選家長）；擋大量請求 */
+  app.get('/api/parent/classes/:code', async (c) => {
+    deps.checkFlood(c);
+    await deps.authenticateUser(c);
+    const room = await deps.loadRoom(c.req.param('code'));
+    return c.json<ClassLookupResponse>({ room: { code: room.code, name: room.name }, joinOpen: room.join_open });
+  });
+
+  /** 家長讓名下的雲端角色加入班級：不用密碼（孩子要用班級代碼登入時老師再設） */
+  app.post('/api/parent/kids/:id/class', async (c) => {
+    const parent = await authenticateParent(c);
+    const kid = await loadOwnKid(db, c.req.param('id'), parent);
+    const body = await readBody(c, parentJoinClassRequest);
+    if (kid.room_code) throw new ApiError(409, 'already_in_class', '已經在班級裡了，要先退出原本的班級');
+    await deps.joinClass(kid.id, body.code, body.nickname);
+    const row = (await kidRows('a.id = $1', [kid.id]))[0];
+    return c.json<ParentJoinClassResponse>({ kid: kidSummary(row) });
   });
 
   app.post('/api/parent/kids', async (c) => {

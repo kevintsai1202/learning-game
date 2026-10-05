@@ -15,6 +15,8 @@ import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../on
 import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from '../../content/editions';
 import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
 import { zoneName } from '../../world/layout';
+import { JoinClassPanel } from './JoinClassPanel';
+import { JoinQr } from './JoinQr';
 import type { ZoneId } from '../../store/useUi';
 import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
 
@@ -163,7 +165,9 @@ function AccountGate() {
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [email, setEmail] = useState('');
-  const [parent, setParent] = useState(false);
+  /** 掃 QR code 打開的加入連結（docs/plans/class-join.md）：登入或註冊後讓孩子加入班級；註冊時預先勾「家長」 */
+  const joining = useAccount((s) => s.joining);
+  const [parent, setParent] = useState(!!joining);
   const [teacher, setTeacher] = useState(false);
   /** 在這台裝置保持登入（預設不勾：教室共用電腦） */
   const [remember, setRemember] = useState(false);
@@ -235,6 +239,11 @@ function AccountGate() {
   if (forgot) return <ForgotPassword onClose={() => setForgot(false)} />;
   return (
     <>
+      {joining && (
+        <p className="notice" style={{ margin: '0 16px 8px' }} data-testid="join-login-note">
+          🏫 要讓孩子加入班級（代碼 {joining.code}）：請登入家長帳號，還沒有帳號的話按「註冊新帳號」。登入後選孩子就能加入，不用輸入密碼。
+        </p>
+      )}
       <div className="tabs">
         <button className={`btn small white ${mode === 'login' ? 'on' : ''}`} onClick={() => switchMode('login')} data-testid="account-tab-login">
           登入
@@ -343,7 +352,7 @@ function AccountGate() {
             <GoogleButton clientId={googleClientId} label="用 Google 登入" testId="account-google-login" onCredential={(t) => void onGoogleLogin(t)} />
           </div>
         )}
-        <p className="notice">孩子不用註冊：孩子用老師給的「班級代碼＋暱稱＋自己設的 4 位數密碼」加入班級。</p>
+        <p className="notice">孩子不用註冊：家長掃老師給的 QR code、用家長帳號選孩子加入（不用密碼）；或孩子用「班級代碼＋暱稱＋自己設的 4 位數密碼」加入。</p>
       </form>
     </>
   );
@@ -731,6 +740,9 @@ function ParentHome() {
   const [note, setNote] = useState<string | null>(null);
   /** 等待第二次確認刪除的孩子 */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** 正在輸入班級代碼的角色（孩子清單的「🏫 加入班級」） */
+  const [joinFor, setJoinFor] = useState<string | null>(null);
+  const [joinCodeInput, setJoinCodeInput] = useState('');
   /** 等待確認「用雲端的進度取代這台裝置上的同一個角色」的孩子 */
   const [confirmReplace, setConfirmReplace] = useState<string | null>(null);
   /** 動作進行中：按鈕停用，避免連按兩下送出兩次（例如存到雲端變成兩個分身） */
@@ -828,6 +840,41 @@ function ParentHome() {
                     在這台裝置玩
                   </button>
                 )}
+                {!k.room &&
+                  (joinFor === k.id ? (
+                    // 輸入老師給的班級代碼（不用掃描），下一步在上面的「加入班級」面板選暱稱
+                    <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
+                      <input
+                        className="text-input"
+                        style={{ width: 110, padding: '4px 8px' }}
+                        inputMode="numeric"
+                        placeholder="班級代碼"
+                        value={joinCodeInput}
+                        onChange={(e) => setJoinCodeInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        aria-label={`${k.name} 要加入的班級代碼`}
+                        data-testid={`kid-join-code-${k.name}`}
+                      />
+                      <button
+                        className="btn small green"
+                        disabled={joinCodeInput.length !== 6}
+                        onClick={() => {
+                          useAccount.getState().setJoining({ code: joinCodeInput, kidId: k.id });
+                          setJoinFor(null);
+                          setJoinCodeInput('');
+                        }}
+                        data-testid={`kid-join-next-${k.name}`}
+                      >
+                        下一步
+                      </button>
+                      <button className="btn small white" onClick={() => setJoinFor(null)}>
+                        取消
+                      </button>
+                    </span>
+                  ) : (
+                    <button className="btn small white" onClick={() => setJoinFor(k.id)} data-testid={`kid-join-${k.name}`}>
+                      🏫 加入班級
+                    </button>
+                  ))}
                 {k.room && (
                   <button
                     className="btn small white"
@@ -903,7 +950,7 @@ function ParentHome() {
   );
 }
 
-/** 一位成員的操作：重設密碼、移除（兩段式確認，不用瀏覽器的 confirm 對話框） */
+/** 一位成員的操作：設定或重設密碼（家長掃 QR code 加入的孩子沒有密碼）、移除（兩段式確認，不用瀏覽器的 confirm 對話框） */
 function MemberActions({ member, onReset, onRemove }: { member: MemberSummary; onReset: (pin: string) => Promise<void>; onRemove: () => Promise<void> }) {
   const [mode, setMode] = useState<'idle' | 'pin' | 'remove'>('idle');
   const [pin, setPin] = useState('');
@@ -944,7 +991,7 @@ function MemberActions({ member, onReset, onRemove }: { member: MemberSummary; o
   return (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
       <button className="btn small white" onClick={() => setMode('pin')} data-testid={`reset-pin-${member.nickname}`}>
-        重設密碼
+        {member.hasPin === false ? '設定密碼' : '重設密碼'}
       </button>
       <button className="btn small white" onClick={() => setMode('remove')} data-testid={`remove-${member.nickname}`}>
         移除
@@ -1062,7 +1109,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
       <button className="btn small white" onClick={onBack} data-testid="class-back">
         ← 我的班級
       </button>
-      {justCreated && <p className="notice">班級建好了！把下面的班級代碼告訴孩子：孩子在選角畫面點「🏫 班級」→「第一次加入」，輸入代碼就能加入。</p>}
+      {justCreated && <p className="notice">班級建好了！請家長掃下面的 QR code（或把連結傳給家長），用家長帳號選孩子加入；也可以把班級代碼告訴孩子，孩子在選角畫面點「🏫 班級」→「第一次加入」。</p>}
       {room && (
         <>
           <div className="room-code-box">
@@ -1081,6 +1128,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
           <Check checked={room.giftsOpen} onChange={(v) => void act(() => call('PATCH', base, { giftsOpen: v }), v ? '已開放送禮' : '已關閉送禮')} testId="toggle-gifts">
             允許送禮物（用金幣買貼紙或外觀送同學；關掉後不能送新的，已送出的還是可以收下）
           </Check>
+          <JoinQr code={room.code} name={room.name} joinOpen={room.joinOpen} />
           <ClassCurriculum
             value={room.curriculum}
             onSave={(c) =>
@@ -1129,7 +1177,12 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
                   <td>
                     <MemberActions
                       member={m}
-                      onReset={(pin) => act(() => call('POST', `${base}/members/${m.id}/pin`, { pin }), `已把「${m.nickname}」的密碼改成新密碼，請告訴孩子`)}
+                      onReset={(pin) =>
+                        act(
+                          () => call('POST', `${base}/members/${m.id}/pin`, { pin }),
+                          m.hasPin === false ? `已幫「${m.nickname}」設定密碼，請告訴孩子：之後可以用班級代碼＋暱稱＋密碼登入` : `已把「${m.nickname}」的密碼改成新密碼，請告訴孩子`,
+                        )
+                      }
                       onRemove={() => act(() => call('DELETE', `${base}/members/${m.id}`), `已移除「${m.nickname}」`)}
                     />
                   </td>
@@ -1203,6 +1256,7 @@ function AccountHome() {
         )}
       </div>
       {showSettings && <AccountSettings />}
+      <JoinClassPanel />
       {current === 'teacher' ? (
         openClass ? (
           <RoomDashboard key={openClass.code} code={openClass.code} justCreated={openClass.created} onBack={() => setOpenClass(null)} />

@@ -12,7 +12,7 @@ import { Hub } from '../../server/hub';
 import type { Db } from '../../server/db';
 import { createRoom, createUser, joinRoom, openTestDb, resetDb } from './helpers';
 import { addProfile, createEmptySave } from '../../src/store/save';
-import type { ServerMessage } from '../../src/online/realtime';
+import { CLOSE_RECONNECT, type ServerMessage } from '../../src/online/realtime';
 
 let db: Db;
 let hub: Hub;
@@ -36,6 +36,7 @@ beforeEach(async () => {
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
     onKick: (id, reason, via) => hub.kick(id, reason, via),
+    onClassChanged: (id) => hub.reconnect(id),
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
     const s = serve({ fetch: app.fetch, port: 0, hostname: '127.0.0.1' }, () => resolve(s));
@@ -268,5 +269,26 @@ describe('島嶼互訪 I1：選島、換島、好友名單（docs/plans/islands.
     // 同學上線後去自己的島
     await connectTo(mate.token, 'own');
     await cBig.waitFor('friend', (m) => m.friend.id === mate.account.id && m.friend.island === 'own');
+  });
+});
+
+describe('家長掃 QR code 讓孩子加入班級時，孩子線上的裝置重新上線', () => {
+  it('在自己的島上連線中的家長名下孩子：加入後收到 profile、連線以 4005 關閉；重新上線就在班級島、同學在好友名單上', async () => {
+    const mom = await createUser(call, { parent: true, teacher: false });
+    const local = addProfile(createEmptySave(), { name: '安安', avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, new Date()).profiles[0];
+    const up = (await call('POST', '/api/parent/kids', { profile: local }, mom.token)).body;
+    const room = await createRoom(call);
+    await joinRoom(call, room.code, '同學', '1111');
+    const c = await connect(up.token);
+    expect((await c.waitFor('welcome')).island).toBe('own');
+    expect((await call('POST', `/api/parent/kids/${up.account.id}/class`, { code: room.code, nickname: '安安' }, mom.token)).status).toBe(200);
+    await c.waitFor('profile');
+    expect(await c.closed).toBe(CLOSE_RECONNECT);
+    expect(c.msgs.map((m) => m.t)).not.toContain('kicked');
+    const again = new Client();
+    await again.opened;
+    again.send({ t: 'hello', token: up.token, island: 'class' });
+    expect((await again.waitFor('welcome')).island).toBe('class');
+    expect((await again.waitFor('friends')).list.map((f) => f.nickname)).toEqual(['同學']);
   });
 });

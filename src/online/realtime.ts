@@ -13,6 +13,11 @@ import type { ChatLine } from './presence';
  * 島嶼互訪 I1 起伺服器不再送（沒有班級的孩子進自己的島）；裝置保留處理，部署途中連到舊版伺服器時用
  */
 export const CLOSE_NO_CLASS = 4004;
+/**
+ * WebSocket 關閉代碼：帳號換了班級（家長掃 QR code 讓孩子加入班級等），要重新上線拿新的班級與朋友。
+ * 裝置同步一次後馬上重連（不算斷線、不封鎖）；舊版網頁不認得，照一般斷線幾秒後重連
+ */
+export const CLOSE_RECONNECT = 4005;
 
 /** 島上的建築 id（和 useUi 的 ZoneId 相同；伺服器驗證 where 訊息用） */
 export const ZONE_IDS = ['tower', 'math', 'zh', 'life', 'en', 'shop'] as const satisfies readonly ZoneId[];

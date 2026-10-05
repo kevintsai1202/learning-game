@@ -58,6 +58,7 @@ async function main(): Promise<void> {
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
     onRoomContent: (code) => hub.roomContent(code),
+    onClassChanged: (id) => hub.reconnect(id),
     onKick: (id, reason, via) => hub.kick(id, reason, via),
     onGift: (id) => hub.notify(id, { t: 'gift' }),
     staticDir: process.env.STATIC_DIR || undefined,

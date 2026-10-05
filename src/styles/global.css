@@ -2460,3 +2460,121 @@ button {
   font-size: 16px;
   white-space: nowrap;
 }
+
+/* ---------- 掃 QR code 加入班級（docs/plans/class-join.md） ---------- */
+.join-qr {
+  margin: 12px 0;
+  padding: 10px 12px;
+  border: 2px dashed var(--ink);
+  border-radius: 14px;
+  background: #fff;
+}
+.join-qr-body {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.join-qr img,
+.join-qr-placeholder {
+  width: 160px;
+  height: 160px;
+  flex: none;
+  image-rendering: pixelated;
+}
+.join-qr-placeholder {
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--ink);
+  border-radius: 8px;
+}
+.join-url {
+  display: block;
+  word-break: break-all;
+  font-size: 14px;
+  background: #f6f1e7;
+  padding: 4px 8px;
+  border-radius: 8px;
+}
+.join-class {
+  margin: 0 16px 12px;
+  padding: 10px 12px !important;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  background: #fffaf0;
+}
+.join-class-head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.join-choices {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+}
+.join-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border: 2px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  font: inherit;
+  color: var(--ink);
+  cursor: pointer;
+}
+.join-choice.on {
+  background: #d9f2d0;
+  box-shadow: 0 0 0 3px #4caf50;
+}
+.join-choice:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.join-choice small {
+  font-size: 13px;
+  text-align: center;
+}
+.join-choice .avatar-dot {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 24px;
+  border: 2px solid var(--ink);
+  background: #fff;
+}
+.join-new,
+.join-nickname {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+.join-animals {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.join-animal,
+.join-color {
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--ink);
+  border-radius: 50%;
+  background: #fff;
+  font-size: 22px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+}
+.join-animal.on,
+.join-color.on {
+  box-shadow: 0 0 0 3px #4caf50;
+}

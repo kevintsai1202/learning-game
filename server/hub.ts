@@ -8,7 +8,7 @@
  * 全班的通知（班級內容更新、老師改開關）照帳號的班級送，不管他現在在哪座島。
  */
 import type { ChatLine } from '../src/online/presence';
-import type { FriendState, IslandKind, MemberState, RoomFlags, ServerMessage } from '../src/online/realtime';
+import { CLOSE_RECONNECT, type FriendState, type IslandKind, type MemberState, type RoomFlags, type ServerMessage } from '../src/online/realtime';
 import { CHAT_PHRASES } from '../src/ui/lines';
 import { equippedOf } from '../src/store/catalog';
 import { shownTitle } from '../src/store/badges';
@@ -336,6 +336,14 @@ export class Hub {
     if (!m || (via && m.via !== via)) return;
     m.conn.send({ t: 'kicked', reason });
     m.conn.close(CLOSE_KICKED, 'kicked');
+    this.remove(m);
+  }
+
+  /** 某個帳號換了班級（家長掃 QR code 讓孩子加入班級）：連線以 4005 關閉，裝置重新上線時拿到新的班級與朋友 */
+  reconnect(accountId: string): void {
+    const m = this.accounts.get(accountId);
+    if (!m) return;
+    m.conn.close(CLOSE_RECONNECT, 'class changed');
     this.remove(m);
   }
 

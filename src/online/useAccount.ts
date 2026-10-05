@@ -24,6 +24,26 @@ export interface RegisterInput {
   remember: boolean;
 }
 
+/** 正在加入的班級：班級代碼與預先選好的角色（雲端角色的帳號 id） */
+export interface JoiningClass {
+  code: string;
+  kidId?: string;
+}
+
+/** sessionStorage 的鍵：正在加入的班級 */
+const JOINING_KEY = 'learning-island-joining';
+
+/** 讀回這個分頁正在加入的班級（讀不到或格式不對就是沒有） */
+function readJoining(): JoiningClass | null {
+  try {
+    const raw = typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(JOINING_KEY);
+    const v = raw ? (JSON.parse(raw) as JoiningClass) : null;
+    return v && /^\d{6}$/.test(v.code) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
 interface AccountStore {
   /** 登入狀態（權杖）；沒登入是 null */
   session: UserSession | null;
@@ -47,6 +67,12 @@ interface AccountStore {
   /** 網址帶來的信件連結（驗證 email、重設密碼）：帳號頁處理，處理完清掉 */
   emailLink: EmailLink | null;
   setEmailLink: (link: EmailLink | null) => void;
+  /**
+   * 正在加入的班級（掃 QR code 打開的加入連結，或家長在孩子清單按「加入班級」；docs/plans/class-join.md）：
+   * 帳號頁顯示加入班級面板，完成或取消時清掉。kidId 是預先選好的角色。存在 sessionStorage，註冊途中重新整理也還在
+   */
+  joining: JoiningClass | null;
+  setJoining: (joining: JoiningClass | null) => void;
   /** 打開驗證連結：驗證 email（不用登入；這台有登入時順便更新帳號資料） */
   verifyEmail: (token: string) => Promise<void>;
   /** 忘記密碼：帳號名稱或 email；伺服器一律回同一句話 */
@@ -100,6 +126,7 @@ export const useAccount = create<AccountStore>((set, get) => {
     user: null,
     verifyMail: null,
     emailLink: null,
+    joining: readJoining(),
 
     register: async ({ remember, ...body }) => {
       const base = server();
@@ -154,6 +181,16 @@ export const useAccount = create<AccountStore>((set, get) => {
     },
 
     setEmailLink: (link) => set({ emailLink: link }),
+
+    setJoining: (joining) => {
+      try {
+        if (joining) sessionStorage.setItem(JOINING_KEY, JSON.stringify(joining));
+        else sessionStorage.removeItem(JOINING_KEY);
+      } catch {
+        // 無痕模式等不能存：只在這次開著的頁面裡有效
+      }
+      set({ joining });
+    },
 
     verifyEmail: async (token) => {
       await api('POST', '/api/users/email/verify', { base: server(), body: { token } });

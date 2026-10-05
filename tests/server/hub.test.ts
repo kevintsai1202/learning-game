@@ -3,6 +3,7 @@
  */
 import { beforeEach, describe, expect, it } from 'vitest';
 import { Hub, type HubConn } from '../../server/hub';
+import { CLOSE_RECONNECT } from '../../src/online/realtime';
 import type { TokenVia } from '../../server/tokens';
 import type { ServerMessage } from '../../src/online/realtime';
 import { addProfile, createEmptySave, type Profile } from '../../src/store/save';
@@ -337,5 +338,17 @@ describe('島嶼互訪 I1：每個人一座島、一直連線、好友的在線�
     online('b', '小美', { friends: ['a'] });
     hub.profileChanged('b', 3, profileOf('小美', { avatar: { animal: 'panda', color: '#000000', hat: null } }));
     expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', avatar: { animal: 'panda' } });
+  });
+});
+
+describe('加入班級後重新上線（掃 QR code 加入，docs/plans/class-join.md）', () => {
+  it('reconnect：那個帳號的連線以 4005 關閉、離開所在的島；不在線上不會出錯', () => {
+    const conn = new FakeConn();
+    hub.join(conn, { accountId: 'k', roomCode: null, nickname: '安安', profile: profileOf('安安'), flags: FLAGS, via: 'parent' });
+    hub.reconnect('k');
+    expect(conn.closed?.code).toBe(CLOSE_RECONNECT);
+    expect(hub.isOnline('k')).toBe(false);
+    expect(conn.of('kicked')).toEqual([]);
+    expect(() => hub.reconnect('nobody')).not.toThrow();
   });
 });

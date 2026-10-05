@@ -81,6 +81,8 @@ export const deleteAccountRequest = z.object({ password: z.string().max(200) });
 export const uploadKidRequest = z.object({ profile: z.unknown() });
 /** 已有的雲端角色加入班級（帶孩子權杖） */
 export const attachClassRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40), pin: pinSchema });
+/** 家長讓名下的雲端角色加入班級（掃 QR code 加入，不用密碼；docs/plans/class-join.md） */
+export const parentJoinClassRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40) });
 
 /** 家長名下的一個雲端角色 */
 export interface KidSummary {
@@ -178,6 +180,19 @@ export interface MemberSummary {
   online: boolean;
   /** 在哪裡（島嶼互訪 I1）：班級島或自己的島＋建築；離線是 null */
   where: { island: 'class' | 'own'; zone: string | null } | null;
+  /** 有沒有班級密碼（家長掃 QR code 加入的孩子沒有，老師要設了孩子才能用班級代碼登入） */
+  hasPin: boolean;
+}
+
+/** 查班級（加入連結打開時顯示班級名稱） */
+export interface ClassLookupResponse {
+  room: { code: string; name: string };
+  joinOpen: boolean;
+}
+
+/** 家長讓雲端角色加入班級的回應 */
+export interface ParentJoinClassResponse {
+  kid: KidSummary;
 }
 
 /** 加入、登入、家長上傳或「在這台裝置玩」成功的回應 */

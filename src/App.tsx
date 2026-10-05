@@ -27,6 +27,7 @@ import { startCloudSync } from './online/useCloud';
 import { startRealtime } from './online/realtimeClient';
 import { useAccount } from './online/useAccount';
 import { readEmailLink, stripEmailLink } from './online/emailLinks';
+import { readJoinCode, stripJoinCode } from './online/joinLink';
 
 /** 各畫面的配樂 */
 const SCREEN_MUSIC: Record<Screen, Track> = {
@@ -59,6 +60,15 @@ export function App() {
   // 雲端角色的同步排程與即時連線（沒有雲端角色時什麼都不做）
   useEffect(() => startCloudSync(), []);
   useEffect(() => startRealtime(), []);
+
+  // 掃老師的 QR code 打開（?join=班級代碼）：先從網址拿掉，到帳號頁讓家長登入並選孩子加入（docs/plans/class-join.md）
+  useEffect(() => {
+    const code = readJoinCode(window.location.search);
+    if (!code) return;
+    window.history.replaceState(window.history.state, '', stripJoinCode(window.location.href));
+    useAccount.getState().setJoining({ code });
+    useUi.getState().goto('teacher');
+  }, []);
 
   // 從信裡的連結打開（?verify=／?reset=）：先從網址拿掉（重新整理不會再送一次），交給帳號頁處理
   useEffect(() => {

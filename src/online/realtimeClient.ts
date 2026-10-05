@@ -10,7 +10,7 @@
  */
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
-import { CLOSE_NO_CLASS, type IslandKind, type MemberState, type RoomFlags, type ServerMessage } from './realtime';
+import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type RoomFlags, type ServerMessage } from './realtime';
 import { useFriends } from './useFriends';
 import { usePresence } from './usePresence';
 import { getToken } from './storage';
@@ -247,6 +247,13 @@ export function startRealtime(): () => void {
       socket = null;
       usePresence.getState().clear();
       if (useRealtime.getState().status === 'kicked') return;
+      // 換了班級（家長掃 QR code 讓孩子加入班級）：不算斷線，同步一次拿到新的班級後馬上重新上線
+      if (ev.code === CLOSE_RECONNECT) {
+        accountId = null;
+        useRealtime.setState({ status: 'connecting' });
+        void useCloud.getState().syncNow().finally(evaluate);
+        return;
+      }
       // 伺服器說這個角色沒有班級（剛退出班級、本機還沒同步到）：不重連，同步一次更新本機的班級
       if (ev.code === CLOSE_NO_CLASS) {
         blocked = blockNow();
