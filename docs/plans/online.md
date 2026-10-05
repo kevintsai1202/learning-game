@@ -181,7 +181,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `DELETE /api/parent/kids/:id` | 刪除角色（在班級裡的先結清禮物） |
 | `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖失效；不在班級回 409 `not_in_class` |
 | `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
-| `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`；別人的班級和不存在的代碼一樣回 404 |
+| `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`、班級教材版本 `{ curriculum? }`（`null` 是不統一；老師 GM 的 G0，`docs/plans/teacher-gm.md`）；別人的班級和不存在的代碼一樣回 404 |
 | `POST /api/teacher/rooms/:code/members/:id/pin` | `{ pin }` 重設孩子密碼：只撤銷 `class` 來源的權杖、只踢 `class` 來源的即時連線，家長裝置上的不受影響 |
 | `DELETE /api/teacher/rooms/:code/members/:id` | 移除成員 → `{ ok, left }`：家長名下的角色改成退出班級（`left: true`，進度留在家長名下），純班級角色照舊刪除。鎖到帳號之後再確認班級，已經換到別班就整個撤銷、回 404（老師只能移出自己班上的學生） |
 | `POST /api/join` | `{ code, nickname, pin, profile? }` → `{ token, account, profile, rev, room }`。帶孩子權杖時是「雲端角色加入班級」：同一個帳號掛進班級、沿用原本的權杖，回 `{ account, profile, rev, room }`；已經在班級裡回 409 `already_in_class` |
@@ -206,7 +206,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 ### WebSocket（`/ws`，連上後第一則訊息送權杖）
 
 - 裝置 → 伺服器：`hello { token }`、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
-- 伺服器 → 裝置：`welcome { self, room, members, chat }`、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`kicked { reason }`
+- 伺服器 → 裝置：`welcome { self, room, members, chat }`、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`content`（老師改了班級教材版本：裝置同步一次，從回應的 `room.curriculum` 拿新的設定）、`kicked { reason }`
 - 關閉代碼：權杖無效 4003；角色沒有班級 4004（裝置不重連，同步一次讓本機的班級清掉）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
 
 ## 11. 資料表（PostgreSQL）
@@ -214,7 +214,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 - `users(id, username, username_key, password_hash, email, email_verified, is_parent, is_teacher, created_at, last_login)`：大人帳號（第 4 版）；第 6 版起 email 不分大小寫只能用一次（`lower(email)` 唯一索引）
 - `email_tokens(token_hash, user_id, purpose, email, expires_at, used_at, created_at)`：驗證（`verify`）與重設密碼（`reset`）連結的權杖雜湊（第 6 版，A3）；`email` 記寄到哪個地址，帳號換了 email 之後舊連結失效；也用來算每個帳號的寄信頻率
 - `user_google_links(google_sub, user_id, email, linked_at)`：Google 快速登入綁的大人帳號（第 7 版，A4）；`google_sub` 是主鍵（一個 Google 只能綁一個大人帳號），一個帳號可以綁多個 Google
-- `rooms(code, name, owner_id, teacher_hash, join_open, chat_open, gifts_open, created_at)`：`owner_id` 是老師帳號；`teacher_hash` 只有改版前用管理密碼建的房間才有
+- `rooms(code, name, owner_id, teacher_hash, join_open, chat_open, gifts_open, curriculum, created_at)`：`owner_id` 是老師帳號；`teacher_hash` 只有改版前用管理密碼建的房間才有；`curriculum`（第 8 版，老師 GM 的 G0）是老師統一的班級教材版本，`null` 是不統一（班級島照各孩子自己的設定）
 - `accounts(id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)`，`(room_code, nickname_key)` 唯一。第 5 版（A2）：`parent_id` 是家長帳號；`room_code` 可以空（家長名下、沒有班級的雲端角色），但和 `parent_id` 至少要有一個；沒有班級就沒有 `pin_hash`
 - `applied_ops(account_id, op_id, applied_at)`
 - `tokens(token_hash, kind, account_id, user_id, room_code, via, expires_at)`：`kind` 是 `kid`（孩子，`account_id`）或 `user`（大人，`user_id`）。孩子權杖的 `via` 是 `class`（用班級代碼登入）或 `parent`（家長「在這台裝置玩」），退出班級與老師重設密碼只撤銷 `class` 的；孩子目前的班級從 `accounts.room_code` 讀，`tokens.room_code` 只是保留寫入

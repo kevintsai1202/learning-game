@@ -59,7 +59,8 @@ async function playSoloQuiz(page: Page, correct: number): Promise<void> {
     await expect.poll(async () => (await puzzleState(page))?.index).toBe(k);
     if (k < correct) {
       await answerCurrent(page, true);
-      await expect(page.getByTestId('feedback-good')).toBeVisible();
+      // 等「最多連對」變成 k+1（不會消失的狀態）。「答對了！」只顯示 1.2 秒就換題，機器忙的時候輪詢會錯過而誤判失敗（2026-10-05）
+      await expect.poll(async () => (await puzzleState(page))?.best).toBe(k + 1);
     } else {
       await answerCurrent(page, false);
       await page.getByTestId('next').click();
