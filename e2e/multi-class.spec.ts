@@ -47,31 +47,20 @@ test('哥哥在學校與安親班：家長掃兩個 QR code 加入、換島選�
   await tmp.context().close();
   await api('POST', '/api/parent/kids', { profile }, mom.token);
 
-  // ① 掃學校的 QR code：登入家長帳號、選哥哥加入、在這台裝置玩 → 學校的班級島
+  // ① 掃學校的 QR code：登入家長帳號 → 只有哥哥一個孩子，自動加入並在這台裝置進學校的班級島（L2，不用按按鈕）
   const p = await openDevice(browser, baseURL!);
   await p.page.goto(`./?join=${school.code}`);
   await p.page.getByTestId('account-username').fill(momName);
   await p.page.getByTestId('account-password').fill(TEST_PASSWORD);
   await p.page.getByTestId('account-submit').click();
-  await p.page.getByTestId('join-kid-哥哥').click();
-  await p.page.getByTestId('join-submit').click();
-  await p.page.getByTestId('join-play').click();
-  await expect.poll(() => screenOf(p.page)).toBe('island');
+  await expect.poll(() => screenOf(p.page), { timeout: 30_000 }).toBe('island');
   await expect.poll(() => whereSeenBy(request, school)).toBe('class');
   // 只有一個班級：和以前一樣一顆按鈕
   await expect(p.page.getByTestId('hud-island')).toHaveText('🏝️ 去我的島');
 
-  // ② 再掃安親班的 QR code（已經登入）：在別班的哥哥也能選；加入後在這台裝置玩 → 安親班的班級島
+  // ② 再掃安親班的 QR code（已經登入）：在別班的哥哥也能加入，一樣自動 → 安親班的班級島
   await p.page.goto(`./?join=${after.code}`);
-  await expect(p.page.getByTestId('join-class-title')).toContainText('安親班');
-  await expect(p.page.getByTestId('join-kid-哥哥')).toBeEnabled();
-  await expect(p.page.getByTestId('join-kid-哥哥')).toContainText('也在「二年三班」');
-  await p.page.getByTestId('join-kid-哥哥').click();
-  await p.page.screenshot({ path: `${SHOTS}/01-join-second-class.png` });
-  await p.page.getByTestId('join-submit').click();
-  await expect(p.page.getByTestId('join-done')).toContainText('已經加入「安親班」');
-  await p.page.getByTestId('join-play').click();
-  await expect.poll(() => screenOf(p.page)).toBe('island');
+  await expect.poll(() => screenOf(p.page), { timeout: 30_000 }).toBe('island');
   await expect.poll(() => whereSeenBy(request, after)).toBe('class');
   await expect.poll(() => whereSeenBy(request, school)).toBe('otherClass');
   // 本機記得兩個班級（學校是第一個）、現在在安親班

@@ -92,6 +92,8 @@ test('掃 QR code 進來用 Google：不用選身分，直接成為家長、出�
   await expect(d.page.getByTestId('google-role-pick')).toHaveCount(0);
   await expect(d.page.getByTestId('join-not-parent')).toHaveCount(0);
   await expect(d.page.getByTestId('parent-home')).toBeVisible();
+  // 新家長還沒有孩子：加入面板直接出現新建角色的表單（L2）
+  await expect(d.page.getByTestId('join-new-form')).toBeVisible();
   await d.page.screenshot({ path: `${SHOTS}/04-join-with-google.png` });
   expect(pageErrors(d.page)).toEqual([]);
   await d.context.close();
