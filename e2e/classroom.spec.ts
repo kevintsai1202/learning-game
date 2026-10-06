@@ -88,6 +88,8 @@ test('教室密碼：老師設定、平板掃碼解鎖看名單、新增學生�
   await tablet.page.getByTestId('open-class').click();
   await expect(tablet.page.getByTestId('classroom-password')).toBeVisible();
   await expect(tablet.page.getByTestId('classroom-error')).toContainText('重新輸入教室密碼');
+  // 班級代碼留著（不用再掃一次 QR code）
+  await expect(tablet.page.getByTestId('classroom-code')).toHaveValue(room.code);
   // 舊密碼不行，新密碼可以
   await tablet.page.getByTestId('classroom-password').fill(PASSWORD);
   await tablet.page.getByTestId('classroom-unlock').click();

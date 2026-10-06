@@ -13,7 +13,7 @@ import { useAccount } from '../../online/useAccount';
 import { useCloud } from '../../online/useCloud';
 import { api, ApiFailure } from '../../online/api';
 import { LocalConflictError } from '../../online/cloudSync';
-import { loadClassroom, saveClassroom, type ClassroomSession } from '../../online/classroom';
+import { lastClassroomCode, loadClassroom, saveClassroom, type ClassroomSession } from '../../online/classroom';
 import type { ClassroomCreateResponse, ClassroomMember, ClassroomMembersResponse, ClassroomUnlockResponse } from '../../online/protocol';
 import type { AvatarConfig } from '../../store/save';
 import { ANIMALS, COLORS } from './ProfilesScreen';
@@ -38,7 +38,8 @@ export function ClassroomScreen() {
     const kept = loadClassroom();
     return kept && (!joining || joining.code === kept.code) ? kept : null;
   });
-  const [code, setCode] = useState(joining?.code ?? session?.code ?? '');
+  /** 班級代碼：掃碼進來的、記住的教室權杖的、或最近解鎖過的（過期後不用再掃一次） */
+  const [code, setCode] = useState(joining?.code ?? session?.code ?? lastClassroomCode() ?? '');
   const [password, setPassword] = useState('');
   /** 班上名單（還沒讀到是 null） */
   const [roster, setRoster] = useState<ClassroomMembersResponse | null>(null);

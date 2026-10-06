@@ -16,6 +16,8 @@ export interface ClassroomSession {
 
 /** localStorage 的鍵 */
 const KEY = 'learning-island-classroom';
+/** 最近解鎖過的班級代碼（教室權杖過期後也留著：老師只要再輸入密碼，不用再掃一次 QR code） */
+const CODE_KEY = 'learning-island-classroom-code';
 
 const local = () => (typeof localStorage === 'undefined' ? undefined : localStorage);
 
@@ -42,12 +44,24 @@ export function loadClassroom(now = new Date()): ClassroomSession | null {
   }
 }
 
-/** 記住教室權杖（null 是清掉：老師按「換班級」或權杖已失效） */
+/** 記住教室權杖（null 是清掉：老師按「換班級」或權杖已失效；最近的班級代碼留著） */
 export function saveClassroom(session: ClassroomSession | null): void {
   try {
-    if (session) local()?.setItem(KEY, JSON.stringify(session));
-    else local()?.removeItem(KEY);
+    if (session) {
+      local()?.setItem(KEY, JSON.stringify(session));
+      local()?.setItem(CODE_KEY, session.code);
+    } else local()?.removeItem(KEY);
   } catch {
     /* 儲存空間不足或被封鎖：這次只留在記憶體 */
+  }
+}
+
+/** 這台平板最近解鎖過的班級代碼（6 位數）；沒有回 null */
+export function lastClassroomCode(): string | null {
+  try {
+    const v = local()?.getItem(CODE_KEY);
+    return v && /^\d{6}$/.test(v) ? v : null;
+  } catch {
+    return null;
   }
 }

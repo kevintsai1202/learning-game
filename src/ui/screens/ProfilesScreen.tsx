@@ -13,7 +13,7 @@ import { teleport } from '../../world/input';
 import { SPAWN } from '../../world/layout';
 import { onlineEnabled } from '../../online/config';
 import { autoUploadNewProfile } from '../../online/autoUpload';
-import { loadClassroom } from '../../online/classroom';
+import { lastClassroomCode, loadClassroom } from '../../online/classroom';
 import { AnimalIcon } from '../AnimalIcon';
 
 /** 動物選項 */
@@ -154,9 +154,9 @@ export function ProfilesScreen() {
                 {p.cloud?.rooms?.length ? <span className="cloud-badge">🏫 {p.cloud.rooms.map((r) => r.name).join('・')}</span> : null}
               </button>
             ))}
-            {/* 班級卡片：學校平板 8 小時內解鎖過（L3 教室密碼）直接到班上名單，否則到班級登入畫面 */}
+            {/* 班級卡片：學校平板解鎖過（L3 教室密碼；8 小時內直接到名單，過期也留著代碼只要再輸入密碼）到教室密碼畫面，否則到班級登入畫面 */}
             {onlineEnabled() && (
-              <button className="profile-card add" onClick={() => goto(loadClassroom() ? 'classroom' : 'class')} data-testid="open-class">
+              <button className="profile-card add" onClick={() => goto(loadClassroom() || lastClassroomCode() ? 'classroom' : 'class')} data-testid="open-class">
                 <span className="face">🏫</span>
                 班級
                 <span className="meta">登入</span>
