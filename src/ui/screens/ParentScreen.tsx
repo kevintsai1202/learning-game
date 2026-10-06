@@ -47,36 +47,53 @@ function download(filename: string, text: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-/** PIN 輸入（設定時要輸入兩次） */
+/**
+ * PIN 輸入（設定時要輸入兩次）。第 4 個數字按下就立刻判斷並清空，下一下直接算新的一輪：
+ * 以前等 150 毫秒才判斷，這段時間按的數字會接在舊的 4 碼後面被吃掉（家長按得快、e2e 連點時會卡住）。
+ */
 function PinGate({ onPass }: { onPass: () => void }) {
   const hasPin = useGame((s) => s.save.parent.pinHash !== null);
   const setParentPin = useGame((s) => s.setParentPin);
   const checkParentPin = useGame((s) => s.checkParentPin);
+  /** 畫面上的圓點（輸入了幾碼） */
   const [pin, setPin] = useState('');
-  const [first, setFirst] = useState<string | null>(null);
   const [msg, setMsg] = useState(hasPin ? '請輸入家長 PIN' : '第一次使用：請設定 4 位數家長 PIN');
+  /** 輸入中的 PIN 與設定時第一次輸入的 PIN：用 ref 同步記錄，連按時下一下要接在最新的值上，不能等重畫 */
+  const entry = useRef<{ pin: string; first: string | null }>({ pin: '', first: null });
+  /** 剛輸入滿 4 碼：圓點全亮一下（只是畫面，不擋下一次輸入） */
+  const [flash, setFlash] = useState(false);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(flashTimer.current), []);
   const press = (k: string) => {
-    if (k === '⌫') return setPin((p) => p.slice(0, -1));
-    const next = (pin + k).slice(0, 4);
-    setPin(next);
-    if (next.length < 4) return;
-    setTimeout(() => {
-      setPin('');
-      if (hasPin) {
-        if (checkParentPin(next)) onPass();
-        else setMsg('PIN 不正確，請再試一次');
-      } else if (first === null) {
-        setFirst(next);
-        setMsg('請再輸入一次確認');
-      } else if (first === next) {
-        setParentPin(next);
-        onPass();
-      } else {
-        setFirst(null);
-        setMsg('兩次不一樣，請重新設定');
-      }
-    }, 150);
+    const e = entry.current;
+    if (k === '⌫') {
+      e.pin = e.pin.slice(0, -1);
+      return setPin(e.pin);
+    }
+    e.pin += k;
+    if (e.pin.length < 4) return setPin(e.pin);
+    const done = e.pin;
+    e.pin = '';
+    setPin('');
+    setFlash(true);
+    clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(false), 150);
+    if (hasPin) {
+      if (checkParentPin(done)) onPass();
+      else setMsg('PIN 不正確，請再試一次');
+    } else if (e.first === null) {
+      e.first = done;
+      setMsg('請再輸入一次確認');
+    } else if (e.first === done) {
+      setParentPin(done);
+      onPass();
+    } else {
+      e.first = null;
+      setMsg('兩次不一樣，請重新設定');
+    }
   };
+  /** 亮幾個圓點：剛輸入滿 4 碼、還沒按下一碼時全亮 */
+  const lit = flash && pin.length === 0 ? 4 : pin.length;
   return (
     <div className="panel-body plain" style={{ textAlign: 'center' }}>
       <p style={{ fontSize: 20 }} data-testid="pin-msg">
@@ -84,7 +101,7 @@ function PinGate({ onPass }: { onPass: () => void }) {
       </p>
       <div className="pin-dots">
         {[0, 1, 2, 3].map((i) => (
-          <i key={i} className={i < pin.length ? 'on' : ''} />
+          <i key={i} className={i < lit ? 'on' : ''} />
         ))}
       </div>
       <div className="pin-pad">
