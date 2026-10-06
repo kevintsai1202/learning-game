@@ -204,3 +204,21 @@ test('「這台裝置上有○○，是你的孩子嗎？」按「不是」：�
   expect(pageErrors(d.page)).toEqual([]);
   await d.context.close();
 });
+
+test('家長帳號登入中，在選角畫面新建的角色自動存到家長帳號（不用再問）', async ({ browser, baseURL }) => {
+  test.setTimeout(240_000);
+  const d = await openDevice(browser, baseURL!);
+  await registerParent(d.page);
+  await d.page.getByTestId('teacher-back').click();
+  await d.page.getByTestId('start').click();
+  await d.page.getByTestId('name-input').fill('小新');
+  await d.page.getByTestId('create-profile').click();
+  await expect.poll(() => d.page.evaluate(() => (window as any).__game.ui.getState().screen)).toBe('island');
+  // 背景存好：這台裝置上的角色變成家長名下的角色
+  await expect.poll(async () => (await profileOf(d.page)).cloud?.accountId ?? null, { timeout: 20_000 }).not.toBeNull();
+  await d.page.evaluate(() => (window as any).__game.ui.getState().goto('teacher'));
+  await expect(d.page.getByTestId('kid-here-小新')).toBeVisible();
+  await expect(d.page.getByTestId('upload-offer')).toHaveCount(0);
+  expect(pageErrors(d.page)).toEqual([]);
+  await d.context.close();
+});

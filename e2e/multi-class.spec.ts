@@ -102,6 +102,7 @@ test('哥哥在學校與安親班：家長掃兩個 QR code 加入、換島選�
 
   // ⑤ 家長讓哥哥退出安親班：只剩學校；回到島上只有一個班級的按鈕
   await p.page.evaluate(() => (window as any).__game.ui.getState().goto('teacher'));
+  await p.page.getByTestId('kid-more-哥哥').click();
   await p.page.getByTestId(`kid-leave-哥哥-${after.code}`).click();
   await expect(p.page.getByTestId('parent-note')).toContainText('已經退出「安親班」');
   await expect(p.page.getByTestId('kid-哥哥')).not.toContainText('安親班');

@@ -12,6 +12,7 @@ import { enterIslandLine } from '../lines';
 import { teleport } from '../../world/input';
 import { SPAWN } from '../../world/layout';
 import { onlineEnabled } from '../../online/config';
+import { autoUploadNewProfile } from '../../online/autoUpload';
 import { AnimalIcon } from '../AnimalIcon';
 
 /** 動物選項 */
@@ -96,6 +97,9 @@ export function ProfilesScreen() {
               disabled={!name.trim()}
               onClick={() => {
                 createProfile(name, avatar);
+                // 家長帳號登入中：新建的角色在背景自動存到家長帳號（L2，存到雲端的決定 A）
+                const created = useGame.getState().save.activeProfileId;
+                if (created) void autoUploadNewProfile(created);
                 sfx.fanfare();
                 enterIsland(name.trim());
               }}

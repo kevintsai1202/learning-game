@@ -884,6 +884,8 @@ function ParentHome() {
   const [note, setNote] = useState<string | null>(null);
   /** 等待第二次確認刪除的孩子 */
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
+  /** 打開「⋯ 更多」的孩子（L2：不常用、會改變狀態的「退出班級」「刪除」收在裡面） */
+  const [moreFor, setMoreFor] = useState<string | null>(null);
   /** 正在輸入班級代碼的角色（孩子清單的「🏫 加入班級」） */
   const [joinFor, setJoinFor] = useState<string | null>(null);
   const [joinCodeInput, setJoinCodeInput] = useState('');
@@ -1056,8 +1058,19 @@ function ParentHome() {
                       🏫 加入班級
                     </button>
                   ))}
-                {/* 退出班級：每一班各一顆（多班級；只有一個班級時照舊寫「退出班級」） */}
-                {kidRooms(k).map((r) => (
+                <button
+                  className="btn small white"
+                  aria-expanded={moreFor === k.id}
+                  onClick={() => {
+                    setMoreFor(moreFor === k.id ? null : k.id);
+                    setConfirmDelete(null);
+                  }}
+                  data-testid={`kid-more-${k.name}`}
+                >
+                  ⋯ 更多
+                </button>
+                {/* 退出班級：每一班各一顆（多班級；只有一個班級時照舊寫「退出班級」）；刪除。都收在「⋯ 更多」裡 */}
+                {moreFor === k.id && kidRooms(k).map((r) => (
                   <button
                     key={r.code}
                     className="btn small white"
@@ -1074,7 +1087,7 @@ function ParentHome() {
                     {kidRooms(k).length === 1 ? '退出班級' : `退出「${r.name}」`}
                   </button>
                 ))}
-                {confirmDelete === k.id ? (
+                {moreFor !== k.id ? null : confirmDelete === k.id ? (
                   <>
                     <button
                       className="btn small red"
