@@ -282,6 +282,29 @@ const MIGRATIONS: Migration[] = [
     version: 9,
     statements: [`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`],
   },
+  {
+    // 多班級（docs/plans/multi-class.md）：一個孩子可以同時在好幾個班級（例如學校的班級＋安親班），最多 5 個（程式檢查）。
+    // 每一班各自的暱稱（班上不能重複）與孩子密碼放在 class_members。既有資料搬過來（加入時間用帳號建立時間代替）。
+    // accounts.room_code、pin_hash 先保留不清空（換版時舊的伺服器還會讀），之後不再讀也不再寫；
+    // 「班級與家長至少一個」改由程式保證（最後一個班級被移出、又沒有家長的角色刪除），所以拿掉這個限制
+    version: 10,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS class_members (
+        account_id text NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        room_code text NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        nickname text NOT NULL,
+        nickname_key text NOT NULL,
+        pin_hash text,
+        joined_at timestamptz NOT NULL,
+        PRIMARY KEY (account_id, room_code),
+        UNIQUE (room_code, nickname_key)
+      )`,
+      `INSERT INTO class_members (account_id, room_code, nickname, nickname_key, pin_hash, joined_at)
+       SELECT id, room_code, nickname, nickname_key, pin_hash, created_at FROM accounts WHERE room_code IS NOT NULL
+       ON CONFLICT DO NOTHING`,
+      `ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_class_or_parent`,
+    ],
+  },
 ];
 
 /**

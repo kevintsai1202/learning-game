@@ -51,14 +51,14 @@ async function classWithGifts(call: Call) {
 }
 
 describe('雲端角色加入班級', () => {
-  it('帶孩子權杖加入：同一個帳號掛進班級、名字改成班上的暱稱；學校平板用代碼登入是同一個角色', async () => {
+  it('帶孩子權杖加入：同一個帳號掛進班級（多班級起存檔名字不改，班上用這一班的暱稱）；學校平板用代碼登入是同一個角色', async () => {
     const { call } = makeClient(db);
     const mom = await parentOf(call);
     const up = (await call('POST', '/api/parent/kids', { profile: localKid('安安', 30) }, mom.token)).body;
     const room = await createRoom(call);
     const r = await call('POST', '/api/join', { code: room.code, nickname: '小安', pin: '1234' }, up.token);
     expect(r.status).toBe(200);
-    expect(r.body).toMatchObject({ account: { id: up.account.id, nickname: '小安' }, room: { code: room.code, name: '二年一班' }, profile: { id: up.profile.id, name: '小安', coins: 30 }, rev: 2 });
+    expect(r.body).toMatchObject({ account: { id: up.account.id, nickname: '小安' }, room: { code: room.code, name: '二年一班' }, profile: { id: up.profile.id, name: '安安', coins: 30 }, rev: 1 });
     expect(r.body.token).toBeUndefined();
     expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0].room).toEqual({ code: room.code, name: '二年一班', curriculum: null });
     const school = await call('POST', '/api/login', { code: room.code, nickname: '小安', pin: '1234' });
@@ -68,7 +68,7 @@ describe('雲端角色加入班級', () => {
     expect((await call('GET', '/api/classmates', undefined, up.token)).status).toBe(200);
   });
 
-  it('已經在班級裡回 409；暱稱重複 409；班級不開放加入 403；代碼不存在 404', async () => {
+  it('已經在這一班回 409 already_member；暱稱重複 409；班級不開放加入 403；代碼不存在 404', async () => {
     const { call } = makeClient(db);
     const mom = await parentOf(call);
     const a = await createRoom(call);
@@ -82,13 +82,13 @@ describe('雲端角色加入班級', () => {
     expect((await call('POST', '/api/join', { code: a.code, nickname: '安安', pin: '1234' }, up.token)).status).toBe(200);
     const again = await call('POST', '/api/join', { code: a.code, nickname: '安安二號', pin: '1234' }, up.token);
     expect(again.status).toBe(409);
-    expect(again.body.code).toBe('already_in_class');
+    expect(again.body.code).toBe('already_member');
   });
 });
 
 describe('退出班級', () => {
   it('老師移出家長名下的角色：退出班級、兩份禮物都退款；班級權杖失效、家長權杖照常、送禮回 403', async () => {
-    const hooks = { onKick: vi.fn(), onProfileChanged: vi.fn(), onGift: vi.fn() };
+    const hooks = { onKick: vi.fn(), onLeftClass: vi.fn(), onProfileChanged: vi.fn(), onGift: vi.fn() };
     const { call } = makeClient(db, hooks);
     const s = await classWithGifts(call);
     const anBefore = await coinsOf(call, s.up.token);
@@ -96,7 +96,8 @@ describe('退出班級', () => {
     const r = await call('DELETE', `/api/teacher/rooms/${s.room.code}/members/${s.up.account.id}`, undefined, s.room.token);
     expect(r.status).toBe(200);
     expect(r.body.left).toBe(true);
-    expect(hooks.onKick).toHaveBeenCalledWith(s.up.account.id, '老師把你移出班級了，進度都還在');
+    // 多班級起：離開這一班用 onLeftClass（用這一班代碼登入的踢下線，家長裝置重新上線）
+    expect(hooks.onLeftClass).toHaveBeenCalledWith(s.up.account.id, s.room.code, '老師把你移出班級了，進度都還在');
     expect((await call('GET', '/api/me', undefined, s.school.token)).status).toBe(401);
     const me = await call('GET', '/api/me', undefined, s.up.token);
     expect(me.body.room).toBeNull();
@@ -119,12 +120,12 @@ describe('退出班級', () => {
   });
 
   it('家長讓孩子退出班級：和老師移出一樣結清、保留進度；已經沒有班級時回 409', async () => {
-    const hooks = { onKick: vi.fn() };
+    const hooks = { onKick: vi.fn(), onLeftClass: vi.fn() };
     const { call } = makeClient(db, hooks);
     const s = await classWithGifts(call);
     const anBefore = await coinsOf(call, s.up.token);
     expect((await call('POST', `/api/parent/kids/${s.up.account.id}/leave-class`, {}, s.mom.token)).status).toBe(200);
-    expect(hooks.onKick).toHaveBeenCalledWith(s.up.account.id, '已經退出班級，進度都還在');
+    expect(hooks.onLeftClass).toHaveBeenCalledWith(s.up.account.id, s.room.code, '已經退出班級，進度都還在');
     expect(await coinsOf(call, s.up.token)).toBe(anBefore + STICKER_PRICE);
     expect((await call('GET', '/api/me', undefined, s.school.token)).status).toBe(401);
     const again = await call('POST', `/api/parent/kids/${s.up.account.id}/leave-class`, {}, s.mom.token);
@@ -165,7 +166,12 @@ describe('老師只能移出自己班上的學生', () => {
       ({
         query: async (sql: string, params?: unknown[]) => {
           if (sql.includes('FROM accounts WHERE id = ANY') && sql.includes('FOR UPDATE')) {
-            await tx.query('UPDATE accounts SET room_code = $2 WHERE id = $1', [s.up.account.id, other.code]);
+            // 多班級：成員資格在 class_members（退出原本的班級、加入別的班級）
+            await tx.query('DELETE FROM class_members WHERE account_id = $1 AND room_code = $2', [s.up.account.id, s.room.code]);
+            await tx.query(
+              "INSERT INTO class_members (account_id, room_code, nickname, nickname_key, joined_at) VALUES ($1, $2, '安安', '安安', now()) ON CONFLICT DO NOTHING",
+              [s.up.account.id, other.code],
+            );
           }
           return tx.query(sql, params);
         },
@@ -175,9 +181,9 @@ describe('老師只能移出自己班上的學生', () => {
     // 整個交易撤銷：兩份禮物還是 pending，帳號的班級與孩子密碼都還在
     const gifts = await db.query<{ status: string }>("SELECT status FROM gifts WHERE id IN ('gift-an-to-mei', 'gift-mei-to-an')");
     expect(gifts.map((g) => g.status)).toEqual(['pending', 'pending']);
-    const acc = (await db.query<{ room_code: string; pin_hash: string | null }>('SELECT room_code, pin_hash FROM accounts WHERE id = $1', [s.up.account.id]))[0];
-    expect(acc.room_code).toBe(s.room.code);
-    expect(acc.pin_hash).not.toBeNull();
+    const acc = await db.query<{ room_code: string; pin_hash: string | null }>('SELECT room_code, pin_hash FROM class_members WHERE account_id = $1', [s.up.account.id]);
+    expect(acc.map((m) => m.room_code)).toEqual([s.room.code]);
+    expect(acc[0].pin_hash).not.toBeNull();
   });
 });
 

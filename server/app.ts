@@ -17,6 +17,7 @@ import { registerParentRoutes } from './parents';
 import { registerEmailRoutes } from './email';
 import { registerUserGoogleRoutes } from './userGoogle';
 import { createMailer, type Mailer } from './mail';
+import { MAX_CLASSES, classInfos, membershipsOf, revokeClassTokens } from './classes';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
@@ -28,6 +29,7 @@ import {
   resetPinRequest,
   roomPatchRequest,
   type AttachResponse,
+  type ClassInfo,
   type MemberSummary,
   type OpsResponse,
   type RoomInfo,
@@ -50,8 +52,11 @@ export interface AppOptions {
   floodLimit?: number;
   /** 某個帳號目前是否在線上（P2 的即時連線提供；沒有時一律 false） */
   isOnline?: (accountId: string) => boolean;
-  /** 某個帳號在哪裡（島嶼互訪 I1，即時中樞提供；老師的成員表用）：哪一種島＋建築，離線是 null */
-  whereOf?: (accountId: string) => MemberSummary['where'];
+  /**
+   * 某個帳號在哪裡（島嶼互訪 I1，即時中樞提供；老師的成員表用）：哪一種島＋建築，離線是 null。
+   * roomCode 是老師看的那一班：孩子在別班的班級島時回 otherClass（多班級，不寫是哪一班）
+   */
+  whereOf?: (accountId: string, roomCode: string) => MemberSummary['where'];
   /** 某個帳號的存檔在伺服器端改變了：即時中樞更新別人看到的外觀，並通知他自己的裝置同步（帶上新的存檔，中樞不必再查資料庫） */
   onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
   /** 老師改了房間的聊天、送禮開關 */
@@ -60,8 +65,16 @@ export interface AppOptions {
   onRoomContent?: (roomCode: string) => void;
   /** 某個帳號加入了班級（掃 QR code 由家長加入、或帶孩子權杖加入）：即時中樞讓他重新上線，換成新的班級與朋友 */
   onClassChanged?: (accountId: string) => void;
-  /** 某位孩子要被踢下線（老師移除成員或重設密碼），reason 會顯示給孩子；給了 via 就只踢那種權杖來源的連線 */
-  onKick?: (accountId: string, reason: string, via?: TokenVia) => void;
+  /**
+   * 某位孩子要被踢下線（刪除角色、老師重設密碼），reason 會顯示給孩子；給了 via 就只踢那種權杖來源的連線，
+   * 再給 roomCode 就只踢用那一班代碼登入的連線（多班級：重設某一班的密碼不影響另一班的平板）
+   */
+  onKick?: (accountId: string, reason: string, via?: TokenVia, roomCode?: string) => void;
+  /**
+   * 某位孩子離開了某一班（老師移出、家長讓他退出；多班級）：用那一班代碼登入的連線踢下線，
+   * 其他連線（家長裝置、別班登入的）重新上線拿新的班級與朋友，並顯示 reason
+   */
+  onLeftClass?: (accountId: string, roomCode: string, reason: string) => void;
   /** 某位孩子的禮物狀態有變（收到新禮物，或送出的禮物有結果）：即時中樞通知他的裝置重新讀取 */
   onGift?: (accountId: string) => void;
   /** Google 快速登入（備選）；沒有時 Google 相關 API 回 404 */
@@ -82,12 +95,13 @@ const ROOM_NAME_MAX = 20;
 /** 資料表 accounts 的一列 */
 export interface AccountRow {
   id: string;
-  /** 目前的班級；家長名下、還沒加入班級的雲端角色是 null */
+  /** 舊欄位（多班級之前的班級）：第 10 版起不再讀也不再寫，班級在 class_members */
   room_code: string | null;
   /** 家長帳號；純班級角色（孩子用代碼自己加入的）是 null */
   parent_id: string | null;
+  /** 舊欄位（多班級之前的班上暱稱）：只當角色的備用名字，各班的暱稱在 class_members */
   nickname: string;
-  /** 孩子密碼；沒加入班級時是 null */
+  /** 舊欄位（多班級之前的孩子密碼）：第 10 版起不再讀也不再寫，各班的密碼在 class_members */
   pin_hash: string | null;
   profile: Profile;
   rev: number;
@@ -147,7 +161,10 @@ export function createApp(opts: AppOptions) {
     if (!flood.hit(clientIp(c))) throw new ApiError(429, 'too_many', '請求太頻繁，請稍後再試');
   };
 
-  /** 發一張權杖並存進資料庫：孩子的權杖屬於某個房間的帳號；大人（家長、老師）的權杖屬於大人帳號 */
+  /**
+   * 發一張權杖並存進資料庫：孩子的權杖屬於某個帳號；大人（家長、老師）的權杖屬於大人帳號。
+   * 孩子的 roomCode 是「用哪一班的代碼登入」（class 權杖；移出、重設密碼時只撤銷那一班的），家長來源的權杖是 null
+   */
   const issueToken = async (
     q: Queryable,
     who: { kind: 'kid'; roomCode: string | null; accountId: string; via: TokenVia } | { kind: 'user'; userId: string },
@@ -179,8 +196,8 @@ export function createApp(opts: AppOptions) {
   const authenticate = async (c: Context, _kind: 'kid' = 'kid'): Promise<Identity> => {
     const found = await bearer(c);
     if (found.kind !== 'kid') throw new ApiError(401, 'unauthorized', '請重新登入');
-    if (found.roomCode === null) throw new ApiError(403, 'no_class', '還沒加入班級');
-    return { roomCode: found.roomCode, accountId: found.accountId, hash: found.hash };
+    if (!found.rooms.length) throw new ApiError(403, 'no_class', '還沒加入班級');
+    return { rooms: found.rooms, accountId: found.accountId, hash: found.hash };
   };
 
   /** 驗證孩子的權杖，班級可以是空的（同步、讀存檔、帶權杖加入班級用） */
@@ -197,11 +214,13 @@ export function createApp(opts: AppOptions) {
     return { userId: found.userId, hash: found.hash };
   };
 
-  /** 班級代碼 → 回應用的班級資訊；沒有班級回傳 null */
-  const roomInfoOf = async (code: string | null): Promise<RoomInfo | null> => {
-    if (!code) return null;
-    const room = (await db.query<RoomRow>('SELECT * FROM rooms WHERE code = $1', [code]))[0];
-    return room ? roomInfo(room) : null;
+  /**
+   * 一個角色的所有班級（多班級）：rooms 是全部（第一個班級在前面），room 是第一個班級（給部署途中的舊版網頁）
+   */
+  const classesOf = async (q: Queryable, accountId: string): Promise<{ room: RoomInfo | null; rooms: ClassInfo[] }> => {
+    const rooms = classInfos(await membershipsOf(q, accountId));
+    const first = rooms[0];
+    return { room: first ? { code: first.code, name: first.name, curriculum: first.curriculum } : null, rooms };
   };
 
   /** 讀房間；不存在回 404 */
@@ -211,13 +230,16 @@ export function createApp(opts: AppOptions) {
     return room;
   };
 
-  /** 加入、登入、家長上傳或「在這台裝置玩」成功的回應：發一張孩子權杖（via 記來源） */
-  const sessionResponse = async (account: AccountRow, room: RoomRow | null, via: TokenVia): Promise<SessionResponse> => ({
-    token: await issueToken(db, { kind: 'kid', roomCode: room?.code ?? null, accountId: account.id, via }),
-    account: { id: account.id, nickname: account.nickname },
+  /**
+   * 加入、登入、家長上傳或「在這台裝置玩」成功的回應：發一張孩子權杖（via 記來源；class 權杖記用哪一班登入）。
+   * nickname 是這次登入用的名字：班級登入是那一班的暱稱，家長裝置是角色的名字
+   */
+  const sessionResponse = async (account: AccountRow, via: TokenVia, opts: { nickname: string; loginRoom?: string }): Promise<SessionResponse> => ({
+    token: await issueToken(db, { kind: 'kid', roomCode: via === 'class' ? (opts.loginRoom ?? null) : null, accountId: account.id, via }),
+    account: { id: account.id, nickname: opts.nickname },
     profile: account.profile,
     rev: account.rev,
-    room: room ? roomInfo(room) : null,
+    ...(await classesOf(db, account.id)),
   });
 
   /** 鎖定中就回 423 */
@@ -289,8 +311,9 @@ export function createApp(opts: AppOptions) {
     db,
     now,
     authenticateUser,
-    session: async (account, roomCode) => sessionResponse(account, roomCode ? await loadRoom(db, roomCode) : null, 'parent'),
+    session: async (account) => sessionResponse(account, 'parent', { nickname: account.profile.name }),
     onKick: opts.onKick,
+    onLeftClass: opts.onLeftClass,
     onProfileChanged: opts.onProfileChanged,
     onGift: opts.onGift,
     checkFlood: (c) => checkFlood(c),
@@ -320,7 +343,7 @@ export function createApp(opts: AppOptions) {
   app.get('/api/teacher/rooms', async (c) => {
     const owner = await authenticateTeacher(c);
     const rows = await db.query<RoomRow & { members: number }>(
-      `SELECT r.*, (SELECT count(*)::int FROM accounts a WHERE a.room_code = r.code) AS members
+      `SELECT r.*, (SELECT count(*)::int FROM class_members m WHERE m.room_code = r.code) AS members
        FROM rooms r WHERE r.owner_id = $1 ORDER BY r.created_at, r.code`,
       [owner],
     );
@@ -346,19 +369,24 @@ export function createApp(opts: AppOptions) {
   app.get('/api/teacher/rooms/:code', async (c) => {
     const owner = await authenticateTeacher(c);
     const room = await loadOwnRoom(db, c.req.param('code'), owner);
-    const rows = await db.query<AccountRow>('SELECT * FROM accounts WHERE room_code = $1 ORDER BY created_at, nickname', [room.code]);
+    // 這一班的成員：暱稱與密碼是這一班的（多班級，各班各自的）；加入時間是加入這一班的時間
+    const rows = await db.query<AccountRow & { member_nickname: string; member_pin: string | null; joined_at: Date }>(
+      `SELECT a.*, m.nickname AS member_nickname, m.pin_hash AS member_pin, m.joined_at
+       FROM class_members m JOIN accounts a ON a.id = m.account_id WHERE m.room_code = $1 ORDER BY m.joined_at, m.nickname`,
+      [room.code],
+    );
     const members: MemberSummary[] = rows.map((a) => ({
       id: a.id,
-      nickname: a.nickname,
+      nickname: a.member_nickname,
       coins: a.profile.coins,
       stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),
       wrongCount: Object.keys(a.profile.wrongBook).length,
       sessions: a.profile.history.length,
-      createdAt: new Date(a.created_at).toISOString(),
+      createdAt: new Date(a.joined_at).toISOString(),
       lastSeen: new Date(a.last_seen).toISOString(),
       online: isOnline(a.id),
-      where: opts.whereOf?.(a.id) ?? null,
-      hasPin: a.pin_hash !== null,
+      where: opts.whereOf?.(a.id, room.code) ?? null,
+      hasPin: a.member_pin !== null,
     }));
     return c.json<TeacherRoomResponse>({ room: roomSettings(room), members });
   });
@@ -389,17 +417,18 @@ export function createApp(opts: AppOptions) {
     const room = await loadOwnRoom(db, c.req.param('code'), owner);
     const body = await readBody(c, resetPinRequest);
     const pinHash = await hashSecret(body.pin);
-    const rows = await db.query<{ nickname_key: string }>('UPDATE accounts SET pin_hash = $3 WHERE id = $1 AND room_code = $2 RETURNING nickname_key', [
+    // 密碼是這一班的（多班級：各班各自的密碼）
+    const rows = await db.query<{ nickname_key: string }>('UPDATE class_members SET pin_hash = $3 WHERE account_id = $1 AND room_code = $2 RETURNING nickname_key', [
       c.req.param('id'),
       room.code,
       pinHash,
     ]);
     if (!rows.length) throw new ApiError(404, 'no_member', '找不到這位成員');
-    // 舊密碼可能被別人知道了：用班級代碼登入的裝置一併失效；家長裝置上的不受影響（家長登入不靠孩子密碼）
-    await db.query("DELETE FROM tokens WHERE account_id = $1 AND via = 'class'", [c.req.param('id')]);
+    // 舊密碼可能被別人知道了：用這一班代碼登入的裝置一併失效；家長裝置與用別班代碼登入的不受影響
+    await revokeClassTokens(db, c.req.param('id'), room.code);
     limiter.reset(`kid:${room.code}:${rows[0].nickname_key}`);
-    // 只踢用班級代碼登入的連線：家長裝置的權杖沒有撤銷，連線也留著
-    opts.onKick?.(c.req.param('id'), '老師重設了你的密碼，請用新密碼重新登入', 'class');
+    // 只踢用這一班代碼登入的連線：家長裝置、別班登入的連線留著
+    opts.onKick?.(c.req.param('id'), '老師重設了你的密碼，請用新密碼重新登入', 'class', room.code);
     return c.json({ ok: true });
   });
 
@@ -410,58 +439,67 @@ export function createApp(opts: AppOptions) {
     const removed = await removeMemberWithRefunds(db, c.req.param('id'), room.code, now());
     if (!removed) throw new ApiError(404, 'no_member', '找不到這位成員');
     emitGiftEvents(opts, removed.events);
-    opts.onKick?.(c.req.param('id'), removed.left ? LEFT_CLASS_REASON : '老師把你移出房間了');
+    // 角色刪除了（沒有家長、也沒有其他班級）：踢下線；只是離開這一班：用這一班代碼登入的踢下線，其他連線重新上線
+    if (removed.left) opts.onLeftClass?.(c.req.param('id'), room.code, LEFT_CLASS_REASON);
+    else opts.onKick?.(c.req.param('id'), '老師把你移出房間了');
     return c.json({ ok: true, left: removed.left });
   });
 
   // ---------- 孩子 ----------
 
   /**
-   * 已有的雲端角色加入班級（帶孩子權杖加入、家長掃 QR code 加入共用）：設定班級、班上的暱稱與孩子密碼，
-   * 存檔裡的名字改成暱稱。pin 是 null 時不設密碼（家長加入；孩子要用班級代碼登入時老師再設）。
-   * 加入後通知即時中樞（存檔變了、換了班級）。回傳更新後的帳號與班級
+   * 已有的雲端角色加入一個班級（帶孩子權杖加入、家長掃 QR code 加入共用；多班級，docs/plans/multi-class.md）：
+   * 新增一筆成員資格（這一班的暱稱與孩子密碼），存檔裡的名字不改（角色的名字；班上顯示這一班的暱稱）。
+   * pin 是 null 時不設密碼（家長加入；孩子要用班級代碼登入時老師再設）。已經是這一班的成員 409 already_member，
+   * 已經有 MAX_CLASSES 個班級 409 too_many_classes（鎖住帳號後再數一次：兩台裝置同時加入也不會超過）。
+   * 加入後通知即時中樞讓那個帳號重新上線（拿新的班級與朋友）。回傳帳號與班級
    */
-  const joinExisting = async (accountId: string, code: string, nickname: string, pin: string | null): Promise<{ row: AccountRow; room: RoomRow }> => {
+  const joinExisting = async (accountId: string, code: string, nickname: string, pin: string | null): Promise<{ row: AccountRow; room: RoomRow; nickname: string }> => {
     const room = await loadRoom(db, code);
     if (!room.join_open) throw new ApiError(403, 'join_closed', '這個房間目前不開放加入，請問老師');
     const nick = checkNickname(nickname);
     if (!nick.ok) throw new ApiError(400, 'bad_nickname', nick.reason);
-    const taken = await db.query('SELECT 1 FROM accounts WHERE room_code = $1 AND nickname_key = $2', [room.code, nick.key]);
-    if (taken.length) throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
     const pinHash = pin === null ? null : await hashSecret(pin);
     const t = now().toISOString();
     const row = await db.transaction(async (tx) => {
       const account = (await tx.query<AccountRow>('SELECT * FROM accounts WHERE id = $1 FOR UPDATE', [accountId]))[0];
       if (!account) throw new ApiError(401, 'unauthorized', '請重新登入');
-      // 鎖住之後再確認一次：兩台裝置同時加入不同班級時，只有一個成功
-      if (account.room_code) throw new ApiError(409, 'already_in_class', '已經在班級裡了，要先退出原本的班級');
-      const profile = { ...account.profile, name: nick.nickname };
+      // 鎖住之後再數：兩台裝置同時加入時，上限與重複加入都算得準
+      const mine = await tx.query<{ room_code: string }>('SELECT room_code FROM class_members WHERE account_id = $1', [account.id]);
+      if (mine.some((m) => m.room_code === room.code)) throw new ApiError(409, 'already_member', '已經在這個班級裡了');
+      if (mine.length >= MAX_CLASSES) throw new ApiError(409, 'too_many_classes', `一個孩子最多加入 ${MAX_CLASSES} 個班級，要先退出其中一個`);
+      const taken = await tx.query('SELECT 1 FROM class_members WHERE room_code = $1 AND nickname_key = $2', [room.code, nick.key]);
+      if (taken.length) throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
       try {
-        return (
-          await tx.query<AccountRow>(
-            `UPDATE accounts SET room_code = $2, nickname = $3, nickname_key = $4, pin_hash = $5, profile = $6::jsonb, rev = rev + 1, last_seen = $7::timestamptz
-             WHERE id = $1 RETURNING *`,
-            [account.id, room.code, nick.nickname, nick.key, pinHash, JSON.stringify(profile), t],
-          )
-        )[0];
+        await tx.query(
+          'INSERT INTO class_members (account_id, room_code, nickname, nickname_key, pin_hash, joined_at) VALUES ($1, $2, $3, $4, $5, $6::timestamptz)',
+          [account.id, room.code, nick.nickname, nick.key, pinHash, t],
+        );
       } catch (err) {
         // 兩個人同時用同一個暱稱加入：唯一鍵衝突
         if ((err as { code?: string }).code === '23505') throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
         throw err;
       }
+      return (await tx.query<AccountRow>('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1 RETURNING *', [account.id, t]))[0];
     });
-    opts.onProfileChanged?.(row.id, row.rev, row.profile);
     opts.onClassChanged?.(row.id);
-    return { row, room };
+    return { row, room, nickname: nick.nickname };
   };
 
-  /** 帶孩子權杖加入班級：孩子自己設密碼；裝置沿用原本的權杖 */
+  /**
+   * 帶孩子權杖加入班級：孩子自己設密碼；裝置沿用原本的權杖。
+   * 沒有家長帳號、已經有班級的角色要加入第二個班級：回 409 need_parent，請家長用家長帳號掃 QR code（使用者決定，multi-class.md 第 8 節第 3 點）
+   */
   const attachToClass = async (c: Context) => {
     const who = await authenticateKidAny(c);
     const body = await readBody(c, attachClassRequest);
-    if (who.roomCode) throw new ApiError(409, 'already_in_class', '已經在班級裡了，要先退出原本的班級');
-    const { row, room } = await joinExisting(who.accountId, body.code, body.nickname, body.pin);
-    return c.json<AttachResponse>({ account: { id: row.id, nickname: row.nickname }, profile: row.profile, rev: row.rev, room: roomInfo(room) });
+    if (who.rooms.length) {
+      const owner = (await db.query<{ parent_id: string | null }>('SELECT parent_id FROM accounts WHERE id = $1', [who.accountId]))[0];
+      if (!owner?.parent_id) throw new ApiError(409, 'need_parent', '要加入第二個班級，請家長用家長帳號掃老師給的 QR code');
+    }
+    const { row, room, nickname } = await joinExisting(who.accountId, body.code, body.nickname, body.pin);
+    const { rooms } = await classesOf(db, row.id);
+    return c.json<AttachResponse>({ account: { id: row.id, nickname }, profile: row.profile, rev: row.rev, room: roomInfo(room), rooms });
   };
 
   app.post('/api/join', async (c) => {
@@ -485,23 +523,32 @@ export function createApp(opts: AppOptions) {
       profile = addProfile(createEmptySave(), { name: nick.nickname, avatar: body.avatar! }, now()).profiles[0];
     }
 
-    const taken = await db.query('SELECT 1 FROM accounts WHERE room_code = $1 AND nickname_key = $2', [room.code, nick.key]);
+    const taken = await db.query('SELECT 1 FROM class_members WHERE room_code = $1 AND nickname_key = $2', [room.code, nick.key]);
     if (taken.length) throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
     const id = newAccountId();
     const t = now().toISOString();
-    let rows: AccountRow[];
+    const pinHash = await hashSecret(body.pin);
+    let account: AccountRow;
     try {
-      rows = await db.query<AccountRow>(
-        `INSERT INTO accounts (id, room_code, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb, 1, $7::timestamptz, $7::timestamptz) RETURNING *`,
-        [id, room.code, nick.nickname, nick.key, await hashSecret(body.pin), JSON.stringify(profile), t],
-      );
+      // 新的純班級角色：帳號本身不記班級（舊欄位留空），成員資格記在 class_members
+      account = await db.transaction(async (tx) => {
+        const rows = await tx.query<AccountRow>(
+          `INSERT INTO accounts (id, room_code, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+           VALUES ($1, NULL, $2, $3, NULL, $4::jsonb, 1, $5::timestamptz, $5::timestamptz) RETURNING *`,
+          [id, nick.nickname, nick.key, JSON.stringify(profile), t],
+        );
+        await tx.query(
+          'INSERT INTO class_members (account_id, room_code, nickname, nickname_key, pin_hash, joined_at) VALUES ($1, $2, $3, $4, $5, $6::timestamptz)',
+          [id, room.code, nick.nickname, nick.key, pinHash, t],
+        );
+        return rows[0];
+      });
     } catch (err) {
       // 兩個人同時用同一個暱稱加入：唯一鍵衝突
       if ((err as { code?: string }).code === '23505') throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
       throw err;
     }
-    return c.json(await sessionResponse(rows[0], room, 'class'));
+    return c.json(await sessionResponse(account, 'class', { nickname: nick.nickname, loginRoom: room.code }));
   });
 
   app.post('/api/login', async (c) => {
@@ -510,19 +557,26 @@ export function createApp(opts: AppOptions) {
     const nick = checkNickname(body.nickname);
     const key = `kid:${body.code}:${nick.ok ? nick.key : body.nickname}`;
     assertNotLocked(key);
+    // 找這一班的成員（暱稱與密碼是這一班的；多班級）
     const account = nick.ok
-      ? (await db.query<AccountRow>('SELECT * FROM accounts WHERE room_code = $1 AND nickname_key = $2', [body.code, nick.key]))[0]
+      ? (
+          await db.query<AccountRow & { member_nickname: string; member_pin: string | null }>(
+            `SELECT a.*, m.nickname AS member_nickname, m.pin_hash AS member_pin
+             FROM class_members m JOIN accounts a ON a.id = m.account_id WHERE m.room_code = $1 AND m.nickname_key = $2`,
+            [body.code, nick.key],
+          )
+        )[0]
       : undefined;
     // 家長用家長帳號幫他加入、還沒有密碼：直接說清楚（使用者決定：登入畫面不能設密碼，被試出來也沒有風險；
     // 密碼只在加入時自己設，或由老師在管理頁設），不算猜錯
-    if (account && !account.pin_hash) throw new ApiError(401, 'no_pin', '還沒有設定班級密碼，請老師在管理頁幫你設定');
-    if (!account || !(await verifySecret(body.pin, account.pin_hash!))) {
+    if (account && !account.member_pin) throw new ApiError(401, 'no_pin', '還沒有設定班級密碼，請老師在管理頁幫你設定');
+    if (!account || !(await verifySecret(body.pin, account.member_pin!))) {
       limiter.fail(key);
       throw new ApiError(401, 'bad_login', '房間代碼、暱稱或密碼不對');
     }
     limiter.reset(key);
     await db.query('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1', [account.id, now().toISOString()]);
-    return c.json(await sessionResponse(account, await loadRoom(db, account.room_code!), 'class'));
+    return c.json(await sessionResponse(account, 'class', { nickname: account.member_nickname, loginRoom: body.code }));
   });
 
   app.post('/api/logout', async (c) => {
@@ -535,11 +589,13 @@ export function createApp(opts: AppOptions) {
     const who = await authenticateKidAny(c);
     const account = (await db.query<AccountRow>('SELECT * FROM accounts WHERE id = $1', [who.accountId]))[0];
     if (!account) throw new ApiError(401, 'unauthorized', '請重新登入');
+    const classes = await classesOf(db, account.id);
     return c.json({
-      account: { id: account.id, nickname: account.nickname },
+      account: { id: account.id, nickname: classes.rooms[0]?.nickname ?? account.profile.name },
       profile: account.profile,
       rev: account.rev,
-      room: await roomInfoOf(account.room_code),
+      // room 是第一個班級（給舊版網頁），rooms 是所有班級（多班級）
+      ...classes,
       /** 有沒有家長帳號（有的話被移出班級時進度留著） */
       owned: account.parent_id !== null,
     });
@@ -549,7 +605,7 @@ export function createApp(opts: AppOptions) {
     const who = await authenticateKidAny(c);
     const body = await readBody(c, opsRequest);
     const t = now();
-    const result = await db.transaction<Omit<OpsResponse, 'room'> & { changed: boolean; roomCode: string | null }>(async (tx) => {
+    const result = await db.transaction<Omit<OpsResponse, 'room' | 'rooms'> & { changed: boolean }>(async (tx) => {
       // 鎖住這個帳號的那一列，同時來的請求排隊套用
       const row = (await tx.query<AccountRow>('SELECT * FROM accounts WHERE id = $1 FOR UPDATE', [who.accountId]))[0];
       if (!row) throw new ApiError(401, 'unauthorized', '請重新登入');
@@ -591,11 +647,12 @@ export function createApp(opts: AppOptions) {
             t.toISOString(),
           ])
         : await tx.query<{ rev: number }>('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1 RETURNING rev', [row.id, t.toISOString()]);
-      return { profile, rev: updated[0].rev, rejected, changed, roomCode: row.room_code };
+      return { profile, rev: updated[0].rev, rejected, changed };
     });
     if (result.changed) opts.onProfileChanged?.(who.accountId!, result.rev, result.profile);
-    const { changed: _changed, roomCode, ...rest } = result;
-    return c.json<OpsResponse>({ ...rest, room: await roomInfoOf(roomCode) });
+    const { changed: _changed, ...rest } = result;
+    // 班級跟著回應：在別台裝置加入、退出班級，或被老師移出時，這台裝置靠它更新本機（room 給舊版網頁）
+    return c.json<OpsResponse>({ ...rest, ...(await classesOf(db, who.accountId)) });
   });
 
   // ---------- 送禮物（P3） ----------

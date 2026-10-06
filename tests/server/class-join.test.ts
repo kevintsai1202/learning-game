@@ -53,8 +53,9 @@ describe('家長讓雲端角色加入班級（不用密碼）', () => {
     const kid = await uploadKid(call, mom.token, '安安');
     const r = await call('POST', `/api/parent/kids/${kid.account.id}/class`, { code, nickname: '小安' }, mom.token);
     expect(r.status).toBe(200);
-    expect(r.body.kid).toMatchObject({ id: kid.account.id, name: '小安', room: { code, name: '二年一班' } });
-    expect((await call('GET', '/api/me', undefined, kid.token)).body.profile.name).toBe('小安');
+    // 多班級起：角色的名字不改成班上的暱稱，暱稱記在這一班（rooms）
+    expect(r.body.kid).toMatchObject({ id: kid.account.id, name: '安安', room: { code, name: '二年一班' }, rooms: [{ code, name: '二年一班', curriculum: null, nickname: '小安' }] });
+    expect((await call('GET', '/api/me', undefined, kid.token)).body.profile.name).toBe('安安');
     // 沒有密碼：班級登入失敗，直接說還沒有設定密碼（使用者決定）
     const denied = await call('POST', '/api/login', { code, nickname: '小安', pin: '0000' });
     expect(denied.status).toBe(401);
@@ -75,7 +76,7 @@ describe('家長讓雲端角色加入班級（不用密碼）', () => {
     expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, teacher)).body.members[0].hasPin).toBe(true);
   });
 
-  it('不能加入的情況：別人的角色 404、已經在班級裡 409、找不到班級 404、不開放加入 403、暱稱格式 400、暱稱重複 409', async () => {
+  it('不能加入的情況：別人的角色 404、已經在這一班 409、找不到班級 404、不開放加入 403、暱稱格式 400、暱稱重複 409', async () => {
     const { call } = makeClient(db);
     const { code, token: teacher } = await createRoom(call);
     const mom = await createUser(call, { parent: true, teacher: false });
@@ -97,7 +98,7 @@ describe('家長讓雲端角色加入班級（不用密碼）', () => {
     expect((await call('POST', path, { code, nickname: '安安' }, mom.token)).status).toBe(200);
     const again = await call('POST', path, { code, nickname: '安安2' }, mom.token);
     expect(again.status).toBe(409);
-    expect(again.body.code).toBe('already_in_class');
+    expect(again.body.code).toBe('already_member');
   });
 
   it('新建角色加入：家長先建雲端角色（不經過裝置上的存檔）再加入', async () => {
@@ -122,7 +123,8 @@ describe('加入班級後通知即時中樞重新上線', () => {
     const b = await uploadKid(call, mom.token, '寶寶');
     await call('POST', `/api/parent/kids/${a.account.id}/class`, { code, nickname: '安安' }, mom.token);
     expect(onClassChanged).toHaveBeenLastCalledWith(a.account.id);
-    expect(onProfileChanged).toHaveBeenLastCalledWith(a.account.id, expect.any(Number), expect.objectContaining({ name: '安安' }));
+    // 多班級起加入班級不改存檔（名字不改成暱稱），裝置靠重新上線後的同步拿到新的班級
+    expect(onProfileChanged).not.toHaveBeenCalled();
     await call('POST', '/api/join', { code, nickname: '寶寶', pin: '1234' }, b.token);
     expect(onClassChanged).toHaveBeenLastCalledWith(b.account.id);
   });

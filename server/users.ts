@@ -246,8 +246,9 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
     if (classes.length) throw new ApiError(409, 'has_classes', '這個帳號還有班級，要先移除班級才能刪除帳號（不然班上同學的角色會跟著不見）');
     const events: Events = { profiles: [], gifts: [] };
     const kidIds = await db.transaction(async (tx) => {
-      const kids = await tx.query<{ id: string; room_code: string | null }>('SELECT id, room_code FROM accounts WHERE parent_id = $1', [row.id]);
-      await settlePendingGifts(tx, kids.filter((k) => k.room_code).map((k) => k.id), now(), events, { includeOutgoing: true });
+      // 名下所有角色和所有班級結清禮物（沒有班級的角色沒有待收的禮物，結清不做事；多班級起不看舊的 room_code 欄位）
+      const kids = await tx.query<{ id: string }>('SELECT id FROM accounts WHERE parent_id = $1', [row.id]);
+      await settlePendingGifts(tx, kids.map((k) => k.id), now(), events, { includeOutgoing: true });
       // 名下的角色、權杖跟著刪（外鍵 CASCADE）
       await tx.query('DELETE FROM users WHERE id = $1', [row.id]);
       return kids.map((k) => k.id);

@@ -30,9 +30,9 @@ export async function readBody<T extends z.ZodType>(c: Context, schema: T): Prom
   return r.data;
 }
 
-/** 權杖驗證後的身分 */
+/** 孩子權杖驗證後的身分（班級功能用：送禮、同學名單）；多班級起是所有班級，第一個班級在前面，至少一個 */
 export interface Identity {
-  roomCode: string;
+  rooms: string[];
   accountId: string | null;
   hash: string;
 }

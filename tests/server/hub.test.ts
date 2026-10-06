@@ -39,10 +39,17 @@ function profileOf(name: string, patch: Partial<Profile> = {}): Profile {
 
 const FLAGS = { chatOpen: true, giftsOpen: true };
 
-/** 讓一位孩子加入房間（via：權杖來源，預設用班級代碼登入） */
+/** 讓一位孩子加入房間（via：權杖來源，預設用班級代碼登入那一班） */
 function join(accountId: string, nickname: string, room = '123456', patch: Partial<Profile> = {}, via: TokenVia = 'class') {
   const conn = new FakeConn();
-  hub.join(conn, { accountId, roomCode: room, nickname, profile: profileOf(nickname, patch), flags: FLAGS, via });
+  hub.join(conn, {
+    accountId,
+    name: nickname,
+    classes: [{ code: room, nickname, flags: FLAGS }],
+    profile: profileOf(nickname, patch),
+    via,
+    tokenRoom: via === 'class' ? room : null,
+  });
   return conn;
 }
 
@@ -228,13 +235,14 @@ describe('島嶼互訪 I1：每個人一座島、一直連線、好友的在線�
   function online(accountId: string, nickname: string, opts: { room?: string | null; island?: 'class' | 'own'; friends?: string[]; via?: TokenVia } = {}) {
     const conn = new FakeConn();
     const room = opts.room === undefined ? '123456' : opts.room;
+    const via = opts.via ?? 'class';
     hub.join(conn, {
       accountId,
-      roomCode: room,
-      nickname,
+      name: nickname,
+      classes: room ? [{ code: room, nickname, flags: FLAGS }] : [],
       profile: profileOf(nickname),
-      flags: FLAGS,
-      via: opts.via ?? 'class',
+      via,
+      tokenRoom: via === 'class' ? room : null,
       island: opts.island,
       friends: (opts.friends ?? []).map((id) => ({ id, nickname: `朋友${id}`, avatar: { animal: 'cat', color: '#ffffff', hat: null } })),
     });
@@ -276,7 +284,8 @@ describe('島嶼互訪 I1：每個人一座島、一直連線、好友的在線�
     ]);
     const b = online('b', '小美', { friends: ['a'] });
     expect(b.of('friends')[0].list).toEqual([expect.objectContaining({ id: 'a', online: true, island: 'class' })]);
-    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', nickname: '小美', online: true, island: 'class' });
+    // 名字照我名單上記的（共同班級的暱稱；多班級起不換成他現在所在那一班的暱稱）
+    expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', nickname: '朋友b', online: true, island: 'class' });
     hub.where(b, 'math');
     expect(JSON.stringify(a.of('friend'))).not.toContain('math');
     hub.goTo(b, 'own');
@@ -344,11 +353,153 @@ describe('島嶼互訪 I1：每個人一座島、一直連線、好友的在線�
 describe('加入班級後重新上線（掃 QR code 加入，docs/plans/class-join.md）', () => {
   it('reconnect：那個帳號的連線以 4005 關閉、離開所在的島；不在線上不會出錯', () => {
     const conn = new FakeConn();
-    hub.join(conn, { accountId: 'k', roomCode: null, nickname: '安安', profile: profileOf('安安'), flags: FLAGS, via: 'parent' });
+    hub.join(conn, { accountId: 'k', name: '安安', classes: [], profile: profileOf('安安'), via: 'parent' });
     hub.reconnect('k');
     expect(conn.closed?.code).toBe(CLOSE_RECONNECT);
     expect(hub.isOnline('k')).toBe(false);
     expect(conn.of('kicked')).toEqual([]);
     expect(() => hub.reconnect('nobody')).not.toThrow();
+  });
+});
+
+describe('多班級：一個孩子在學校的班級與安親班（docs/plans/multi-class.md）', () => {
+  const SCHOOL = '111111';
+  const AFTER = '222222';
+  const CLOSED = { chatOpen: false, giftsOpen: false };
+
+  /** 安安：學校叫小安、安親班叫安安（學校先加入，是第一個班級）；via 預設家長裝置 */
+  function an(opts: { island?: 'class' | 'own'; room?: string; via?: TokenVia; tokenRoom?: string | null; afterFlags?: typeof FLAGS } = {}) {
+    const conn = new FakeConn();
+    hub.join(conn, {
+      accountId: 'an',
+      name: '安安',
+      classes: [
+        { code: SCHOOL, nickname: '小安', flags: FLAGS },
+        { code: AFTER, nickname: '安安', flags: opts.afterFlags ?? FLAGS },
+      ],
+      profile: profileOf('安安'),
+      via: opts.via ?? 'parent',
+      tokenRoom: opts.tokenRoom ?? null,
+      island: opts.island,
+      room: opts.room,
+    });
+    return conn;
+  }
+
+  it('沒說哪一班：進第一個班級（最早加入的）的班級島；welcome 帶回是哪一班；說了就進那一班', () => {
+    const mei = join('mei', '小美', SCHOOL);
+    const bo = join('bo', '阿寶', AFTER);
+    const a = an();
+    expect(a.of('welcome')[0]).toMatchObject({ island: 'class', classCode: SCHOOL });
+    expect(mei.of('join').map((m) => m.member.nickname)).toEqual(['小安']);
+    expect(bo.of('join')).toEqual([]);
+    hub.leave(a);
+    const b = an({ room: AFTER });
+    expect(b.of('welcome').at(-1)).toMatchObject({ island: 'class', classCode: AFTER });
+    // 在安親班的班級島上，大家看到的是安親班的暱稱
+    expect(bo.of('join').map((m) => m.member.nickname)).toEqual(['安安']);
+  });
+
+  it('換到另一班的班級島（不斷線）：學校的同學看到離開，安親班的同學看到用安親班暱稱進來；不是成員的班級進第一個班級', () => {
+    const mei = join('mei', '小美', SCHOOL);
+    const bo = join('bo', '阿寶', AFTER);
+    const a = an();
+    hub.goTo(a, 'class', AFTER);
+    expect(mei.of('leave').map((m) => m.id)).toEqual(['an']);
+    expect(bo.of('join').map((m) => m.member.nickname)).toEqual(['安安']);
+    expect(a.of('welcome').at(-1)).toMatchObject({ island: 'class', classCode: AFTER, members: [expect.objectContaining({ nickname: '阿寶' })] });
+    hub.goTo(a, 'class', '999999');
+    expect(a.of('welcome').at(-1)).toMatchObject({ classCode: SCHOOL });
+    hub.goTo(a, 'own');
+    expect(a.of('welcome').at(-1)).toMatchObject({ island: 'own', classCode: null });
+  });
+
+  it('老師改安親班的開關：在學校班級島上的安安不受影響，換到安親班時拿到新的開關；班級內容更新兩班都收得到', () => {
+    const a = an();
+    hub.roomSettings(AFTER, CLOSED);
+    expect(a.of('room')).toEqual([]);
+    hub.goTo(a, 'class', AFTER);
+    expect(a.of('welcome').at(-1)?.room).toEqual(CLOSED);
+    hub.goTo(a, 'class', SCHOOL);
+    expect(a.of('welcome').at(-1)?.room).toEqual(FLAGS);
+    hub.roomContent(AFTER);
+    hub.roomContent(SCHOOL);
+    expect(a.of('content')).toHaveLength(2);
+  });
+
+  it('老師看到的位置：在自己這班的班級島是 class、在別班的是 otherClass、在自己的島是 own', () => {
+    const a = an();
+    hub.where(a, 'math');
+    expect(hub.whereOf('an', SCHOOL)).toEqual({ island: 'class', zone: 'math' });
+    expect(hub.whereOf('an', AFTER)).toEqual({ island: 'otherClass', zone: 'math' });
+    hub.goTo(a, 'own');
+    expect(hub.whereOf('an', AFTER)).toEqual({ island: 'own', zone: null });
+  });
+
+  it('重設某一班的密碼：只踢用那一班代碼登入的連線', () => {
+    const a = an({ via: 'class', tokenRoom: AFTER });
+    hub.kick('an', '老師重設了你的密碼', 'class', SCHOOL);
+    expect(a.closed).toBeNull();
+    hub.kick('an', '老師重設了你的密碼', 'class', AFTER);
+    expect(a.of('kicked')).toHaveLength(1);
+    expect(hub.isOnline('an')).toBe(false);
+  });
+
+  it('離開某一班：用那一班代碼登入的連線踢下線；家長裝置收到提示後以 4005 重新上線（不封鎖）', () => {
+    const tablet = an({ via: 'class', tokenRoom: AFTER });
+    hub.leftClass('an', AFTER, '老師把你移出班級了，進度都還在');
+    expect(tablet.of('kicked')).toHaveLength(1);
+    const device = an();
+    hub.leftClass('an', AFTER, '老師把你移出班級了，進度都還在');
+    expect(device.of('kicked')).toEqual([]);
+    expect(device.of('notice').map((m) => m.message)).toEqual(['老師把你移出班級了，進度都還在']);
+    expect(device.closed?.code).toBe(CLOSE_RECONNECT);
+    expect(hub.isOnline('an')).toBe(false);
+    expect(() => hub.leftClass('nobody', AFTER, '')).not.toThrow();
+  });
+
+  it('好友名單的名字照各自看到的：小美的名單上安安叫小安（共同班級的暱稱），不是安安現在所在那一班的暱稱', () => {
+    const conn = new FakeConn();
+    hub.join(conn, {
+      accountId: 'mei',
+      name: '小美',
+      classes: [{ code: SCHOOL, nickname: '小美', flags: FLAGS }],
+      profile: profileOf('小美'),
+      via: 'class',
+      tokenRoom: SCHOOL,
+      friends: [{ id: 'an', nickname: '小安', avatar: { animal: 'cat', color: '#ffffff', hat: null } }],
+    });
+    const a = new FakeConn();
+    hub.join(a, {
+      accountId: 'an',
+      name: '安安',
+      classes: [
+        { code: SCHOOL, nickname: '小安', flags: FLAGS },
+        { code: AFTER, nickname: '安安', flags: FLAGS },
+      ],
+      profile: profileOf('安安'),
+      via: 'parent',
+      room: AFTER,
+      friends: [{ id: 'mei', nickname: '小美', avatar: { animal: 'cat', color: '#ffffff', hat: null }, myName: '小安' }],
+    });
+    // 安安在安親班的班級島，小美收到的上線通知照樣寫小安
+    expect(conn.of('friend').at(-1)?.friend).toMatchObject({ id: 'an', nickname: '小安', online: true, island: 'class' });
+    hub.goTo(a, 'own');
+    expect(conn.of('friend').at(-1)?.friend).toMatchObject({ id: 'an', nickname: '小安', island: 'own' });
+  });
+
+  it('還不在對方名單上的朋友上線（例如剛加入同一班）：用 myName 加進對方的名單', () => {
+    const conn = new FakeConn();
+    hub.join(conn, { accountId: 'mei', name: '小美', classes: [{ code: SCHOOL, nickname: '小美', flags: FLAGS }], profile: profileOf('小美'), via: 'class', tokenRoom: SCHOOL });
+    const a = new FakeConn();
+    hub.join(a, {
+      accountId: 'an',
+      name: '安安',
+      classes: [{ code: SCHOOL, nickname: '小安', flags: FLAGS }],
+      profile: profileOf('安安'),
+      via: 'parent',
+      friends: [{ id: 'mei', nickname: '小美', avatar: { animal: 'cat', color: '#ffffff', hat: null }, myName: '小安' }],
+    });
+    expect(conn.of('friend').at(-1)?.friend).toMatchObject({ id: 'an', nickname: '小安', online: true });
   });
 });

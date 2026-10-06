@@ -38,8 +38,16 @@ export const googleRegisterRequest = z.object({
 });
 /** 同步：每筆操作在伺服器端逐筆驗證，所以這裡只限制數量 */
 export const opsRequest = z.object({ ops: z.array(z.unknown()).max(20) });
-/** 送禮物：id 由裝置產生（重送同一個 id 不會扣兩次錢） */
-export const sendGiftRequest = z.object({ id: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/), to: z.string().max(64), itemId: z.string().max(64) });
+/**
+ * 送禮物：id 由裝置產生（重送同一個 id 不會扣兩次錢）。
+ * room（多班級）：現在所在的班級島，只能送給那一班的同學、禮物記在那一班；沒給時（舊版網頁）記在兩人最早建立的共同班級
+ */
+export const sendGiftRequest = z.object({
+  id: z.string().regex(/^[A-Za-z0-9_-]{8,64}$/),
+  to: z.string().max(64),
+  itemId: z.string().max(64),
+  room: roomCodeSchema.optional(),
+});
 /** 送禮結果看過了 */
 export const ackGiftNoticesRequest = z.object({ ids: z.array(z.string().max(64)).max(50) });
 
@@ -94,6 +102,8 @@ export const uploadKidRequest = z.object({ profile: z.unknown() });
 export const attachClassRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40), pin: pinSchema });
 /** 家長讓名下的雲端角色加入班級（掃 QR code 加入，不用密碼；docs/plans/class-join.md） */
 export const parentJoinClassRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40) });
+/** 家長讓孩子退出班級：code 是要退出哪一班（多班級）；舊版網頁不給，只有一個班級時退出那一班 */
+export const parentLeaveClassRequest = z.object({ code: roomCodeSchema.optional() });
 
 /** 家長名下的一個雲端角色 */
 export interface KidSummary {
@@ -102,8 +112,10 @@ export interface KidSummary {
   profileId: string;
   name: string;
   avatar: AvatarConfig;
-  /** 目前的班級；沒有班級是 null */
+  /** 第一個班級（最早加入的；給部署途中的舊版網頁）；沒有班級是 null */
   room: RoomInfo | null;
+  /** 所有班級與各班的暱稱（多班級，docs/plans/multi-class.md），第一個班級在前面 */
+  rooms: ClassInfo[];
   coins: number;
   /** 各活動最佳星數加總 */
   stars: number;
@@ -171,6 +183,11 @@ export interface RoomInfo {
   curriculum: CurriculumChoice | null;
 }
 
+/** 孩子所在的一個班級：班級資訊＋他在那一班的暱稱（多班級，每一班各自的暱稱） */
+export interface ClassInfo extends RoomInfo {
+  nickname: string;
+}
+
 /** 房間設定（老師可以切換） */
 export interface RoomSettings extends RoomInfo {
   joinOpen: boolean;
@@ -191,8 +208,11 @@ export interface MemberSummary {
   createdAt: string;
   lastSeen: string;
   online: boolean;
-  /** 在哪裡（島嶼互訪 I1）：班級島或自己的島＋建築；離線是 null */
-  where: { island: 'class' | 'own'; zone: string | null } | null;
+  /**
+   * 在哪裡（島嶼互訪 I1）：這一班的班級島、自己的島、別的班級島（多班級；不寫是哪一班）＋建築；離線是 null。
+   * 舊版伺服器只有 class、own
+   */
+  where: { island: 'class' | 'own' | 'otherClass'; zone: string | null } | null;
   /** 有沒有班級密碼（家長掃 QR code 加入的孩子沒有，老師要設了孩子才能用班級代碼登入） */
   hasPin: boolean;
 }
@@ -214,8 +234,10 @@ export interface SessionResponse {
   account: { id: string; nickname: string };
   profile: Profile;
   rev: number;
-  /** 目前的班級；家長名下、還沒加入班級的雲端角色是 null */
+  /** 第一個班級（最早加入的；給部署途中的舊版網頁）；家長名下、還沒加入班級的雲端角色是 null */
   room: RoomInfo | null;
+  /** 所有班級與各班的暱稱（多班級），第一個班級在前面；舊版伺服器沒有 */
+  rooms?: ClassInfo[];
 }
 
 /** 已有的雲端角色帶著自己的權杖加入班級（裝置沿用原本的權杖，所以回應沒有權杖） */
@@ -223,7 +245,10 @@ export interface AttachResponse {
   account: { id: string; nickname: string };
   profile: Profile;
   rev: number;
+  /** 剛加入的班級 */
   room: RoomInfo;
+  /** 加入後的所有班級（多班級）；舊版伺服器沒有 */
+  rooms?: ClassInfo[];
 }
 
 /** 大人帳號綁定的一個 Google（id 是 Google 帳號的識別碼，只回給帳號本人，解除綁定時用；email 已遮罩） */
@@ -247,8 +272,10 @@ export interface OpsResponse {
   profile: Profile;
   rev: number;
   rejected: { id: string; reason: string }[];
-  /** 這個角色目前的班級（退出班級、被移出時裝置靠它更新本機的雲端標記）；沒有班級是 null */
+  /** 第一個班級（給部署途中的舊版網頁；退出、被移出時舊版裝置靠它更新本機）；沒有班級是 null */
   room: RoomInfo | null;
+  /** 所有班級與各班的暱稱（多班級；裝置靠它更新本機的班級清單），第一個班級在前面；舊版伺服器沒有 */
+  rooms?: ClassInfo[];
 }
 
 /** 同學名單的一位（選送禮對象用） */

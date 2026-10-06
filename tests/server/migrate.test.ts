@@ -42,7 +42,8 @@ describe('升級到第 4 版', () => {
       expect(room).toEqual({ name: '舊班級', teacher_hash: 'scrypt$aaa$bbb', owner_id: null });
       expect((await d.query("SELECT 1 FROM accounts WHERE id = 'acc1'")).length).toBe(1);
       const who = await lookupToken(d, 'kid-token-0000000000', new Date('2026-10-04T00:00:00Z'));
-      expect(who).toMatchObject({ kind: 'kid', roomCode: '123456', accountId: 'acc1' });
+      // 多班級（第 10 版）：班級從成員資格讀；舊權杖算用這一班代碼登入的
+      expect(who).toMatchObject({ kind: 'kid', rooms: ['123456'], tokenRoom: '123456', accountId: 'acc1' });
     } finally {
       await d.close();
     }
@@ -88,7 +89,8 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
         tokenHash('kid-token-1111111111'),
       ]);
 
-      await migrate(d);
+      // 升到第 9 版：「班級與家長至少一個」的限制在第 5～9 版；第 10 版（多班級）拿掉，見 v9 → v10 的測試
+      await migrate(d, { upTo: 9 });
 
       expect((await d.query<{ via: string }>("SELECT via FROM tokens WHERE account_id = 'acc2'"))[0].via).toBe('class');
       expect((await d.query<{ parent_id: string | null }>("SELECT parent_id FROM accounts WHERE id = 'acc2'"))[0].parent_id).toBeNull();
@@ -204,6 +206,50 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       expect((await d.query("SELECT curriculum FROM rooms WHERE code = '444444'"))[0].curriculum).toEqual({ zh: 'nani-zh', math: 'hanlin-math', term: '上' });
       // 可以重複執行
       await migrate(d);
+    } finally {
+      await d.close();
+    }
+  });
+  it('v9 → v10（多班級）：既有的班級、暱稱、孩子密碼搬進 class_members；沒有班級的不搬；舊欄位保留；角色可以沒有班級也沒有家長（由程式保證）', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 9 });
+      await d.query(
+        "INSERT INTO users (id, username, username_key, password_hash, is_parent, is_teacher, created_at) VALUES ('t1', 't1', 't1', 'h', false, true, $1::timestamptz), ('p1', 'p1', 'p1', 'h', true, false, $1::timestamptz)",
+        [T],
+      );
+      await d.query("INSERT INTO rooms (code, name, owner_id, created_at) VALUES ('555555', '二年五班', 't1', $1::timestamptz)", [T]);
+      await d.query(
+        `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen) VALUES
+         ('k1', '555555', NULL, '小安', '小安', 'pin-hash', '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz),
+         ('k2', '555555', 'p1', '小明', '小明', NULL, '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz),
+         ('k3', NULL, 'p1', '妹妹', '妹妹', NULL, '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)`,
+        [T],
+      );
+
+      await migrate(d);
+
+      const members = await d.query<{ account_id: string; room_code: string; nickname: string; nickname_key: string; pin_hash: string | null; joined_at: Date }>(
+        'SELECT account_id, room_code, nickname, nickname_key, pin_hash, joined_at FROM class_members ORDER BY account_id',
+      );
+      expect(members.map((m) => [m.account_id, m.room_code, m.nickname, m.nickname_key, m.pin_hash])).toEqual([
+        ['k1', '555555', '小安', '小安', 'pin-hash'],
+        ['k2', '555555', '小明', '小明', null],
+      ]);
+      expect(new Date(members[0].joined_at).toISOString()).toBe(new Date(T).toISOString());
+      // 舊欄位保留（換版時舊的伺服器還在讀）
+      expect((await d.query("SELECT room_code, pin_hash FROM accounts WHERE id = 'k1'"))[0]).toEqual({ room_code: '555555', pin_hash: 'pin-hash' });
+      // 同一班的暱稱不能重複；同一個角色不能重複加入同一班
+      await expect(d.query("INSERT INTO class_members (account_id, room_code, nickname, nickname_key, joined_at) VALUES ('k3', '555555', '小安', '小安', $1::timestamptz)", [T])).rejects.toThrow();
+      await expect(d.query("INSERT INTO class_members (account_id, room_code, nickname, nickname_key, joined_at) VALUES ('k1', '555555', '別名', '別名', $1::timestamptz)", [T])).rejects.toThrow();
+      // 「班級與家長至少一個」的限制拿掉了（多班級之後由程式保證）
+      await d.query("INSERT INTO accounts (id, nickname, nickname_key, profile, rev, created_at, last_seen) VALUES ('k4', '新', '新', '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)", [T]);
+      // 刪掉角色時成員資格跟著刪
+      await d.query("DELETE FROM accounts WHERE id = 'k2'");
+      expect((await d.query("SELECT 1 FROM class_members WHERE account_id = 'k2'")).length).toBe(0);
+      // 可以重複執行
+      await migrate(d);
+      expect((await d.query('SELECT count(*)::int AS n FROM class_members'))[0].n).toBe(1);
     } finally {
       await d.close();
     }

@@ -29,12 +29,18 @@ export const ZONE_IDS = ['tower', 'math', 'zh', 'life', 'en', 'shop'] as const s
 export const ISLAND_KINDS = ['class', 'own'] as const;
 export type IslandKind = (typeof ISLAND_KINDS)[number];
 
+/** 班級代碼（6 位數字；多班級時說要去哪一班的班級島） */
+const roomCode = z.string().regex(/^\d{6}$/);
+
 /** 裝置 → 伺服器 */
 export const clientMessage = z.discriminatedUnion('t', [
-  /** 連上後第一則：登入權杖；island 是要去的島（沒給是班級島，舊版網頁不會送；沒有班級的孩子一律進自己的島） */
-  z.object({ t: z.literal('hello'), token: z.string().min(10).max(200), island: z.enum(ISLAND_KINDS).optional() }),
-  /** 換島（不斷線）：班級島、自己的島 */
-  z.object({ t: z.literal('go'), island: z.enum(ISLAND_KINDS) }),
+  /**
+   * 連上後第一則：登入權杖；island 是要去的島（沒給是班級島，舊版網頁不會送；沒有班級的孩子一律進自己的島）；
+   * room 是要去哪一班的班級島（多班級，docs/plans/multi-class.md；沒給或不是成員是第一個班級）
+   */
+  z.object({ t: z.literal('hello'), token: z.string().min(10).max(200), island: z.enum(ISLAND_KINDS).optional(), room: roomCode.optional() }),
+  /** 換島（不斷線）：班級島（room 是哪一班，沒給是第一個班級）、自己的島 */
+  z.object({ t: z.literal('go'), island: z.enum(ISLAND_KINDS), room: roomCode.optional() }),
   /** 位置與朝向（zod 4 的 number 本身就拒絕 Infinity、NaN） */
   z.object({ t: z.literal('move'), x: z.number(), z: z.number(), h: z.number() }),
   /** 進出建築（null 表示回到島上） */
@@ -75,8 +81,11 @@ export interface FriendState {
 
 /** 伺服器 → 裝置 */
 export type ServerMessage =
-  /** 進到一座島：island 是進了哪一種島（舊版伺服器沒有這個欄位） */
-  | { t: 'welcome'; self: string; island: IslandKind; room: RoomFlags; members: MemberState[]; chat: ChatLine[] }
+  /**
+   * 進到一座島：island 是進了哪一種島（舊版伺服器沒有這個欄位）；classCode 是哪一班的班級島（自己的島是 null；
+   * 多班級之前的伺服器沒有這個欄位）
+   */
+  | { t: 'welcome'; self: string; island: IslandKind; classCode?: string | null; room: RoomFlags; members: MemberState[]; chat: ChatLine[] }
   /** 上線時的完整好友名單（離線的朋友也在裡面） */
   | { t: 'friends'; list: FriendState[] }
   /** 某位朋友上線、下線、換島或換外觀（名單裡沒有的就加進去） */
@@ -95,6 +104,10 @@ export type ServerMessage =
   | { t: 'content' }
   /** 被踢下線（另一台裝置登入、老師移除或重設密碼） */
   | { t: 'kicked'; reason: string }
+  /**
+   * 一則提示（熊熊老師的泡泡；多班級：離開了其中一班時，緊接著以 4005 重新上線，不封鎖）。舊版網頁不認得，會忽略
+   */
+  | { t: 'notice'; message: string }
   /** 禮物狀態有變（收到新禮物，或送出的禮物有結果）：裝置重新讀 GET /api/gifts */
   | { t: 'gift' }
   | { t: 'error'; message: string };

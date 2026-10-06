@@ -6,6 +6,8 @@
  *
  * 島：班級島（id 是 class:<班級代碼>）或某個人自己的島（kid:<帳號 id>）。一條連線同一時間只在一座島上。
  * 全班的通知（班級內容更新、老師改開關）照帳號的班級送，不管他現在在哪座島。
+ * 多班級（docs/plans/multi-class.md）：一個孩子可以在好幾個班級，每一班一座班級島；在班級島上顯示那一班的暱稱，
+ * 好友名單上的名字照「各自看到的」（同學是共同班級的暱稱，ws.ts 算好放在 FriendSeed）。
  */
 import type { ChatLine } from '../src/online/presence';
 import { CLOSE_RECONNECT, type FriendState, type IslandKind, type MemberState, type RoomFlags, type ServerMessage } from '../src/online/realtime';
@@ -23,27 +25,41 @@ export interface HubConn {
   close(code: number, reason: string): void;
 }
 
-/** 好友名單的一位朋友（ws.ts 從資料庫讀出來：同班同學、兄弟姊妹） */
+/** 好友名單的一位朋友（ws.ts 從資料庫讀出來：有共同班級的同學、兄弟姊妹） */
 export interface FriendSeed {
   id: string;
+  /** 我看到的他的名字（共同班級的暱稱；只是兄弟姊妹時是角色名字） */
   nickname: string;
   avatar: AvatarConfig;
+  /** 他看到的我的名字（同一個共同班級裡我的暱稱）；沒給時用我現在的暱稱 */
+  myName?: string;
+}
+
+/** 孩子所在的一個班級（多班級）：這一班的暱稱與開關 */
+export interface JoinClass {
+  code: string;
+  nickname: string;
+  /** 這一班的聊天、送禮開關 */
+  flags: RoomFlags;
 }
 
 /** 上線需要的資料（ws.ts 驗證權杖後從資料庫讀出來） */
 export interface JoinInfo {
   accountId: string;
-  /** 班級代碼；家長名下、沒有班級的孩子是 null（只有自己的島） */
-  roomCode: string | null;
-  nickname: string;
+  /** 角色自己的名字（自己的島上用） */
+  name: string;
+  /** 所在的班級，第一個班級（最早加入的）在前面；家長名下、沒有班級的孩子是空的（只有自己的島） */
+  classes: JoinClass[];
   profile: Profile;
-  /** 班級的聊天、送禮開關（沒有班級時不會用到） */
-  flags: RoomFlags;
   /** 這條連線的權杖來源：class（用班級代碼登入）或 parent（家長「在這台裝置玩」）；重設密碼只踢 class 的 */
   via: TokenVia;
+  /** class 權杖是用哪一班的代碼登入的（重設那一班的密碼、離開那一班時只踢這種連線）；家長權杖是 null */
+  tokenRoom?: string | null;
   /** 要去的島（沒給是班級島；沒有班級時一律是自己的島） */
   island?: IslandKind;
-  /** 朋友（同班同學、兄弟姊妹）；沒給是沒有朋友 */
+  /** 要去哪一班的班級島（沒給、或不是成員時是第一個班級） */
+  room?: string;
+  /** 朋友（有共同班級的同學、兄弟姊妹）；沒給是沒有朋友 */
   friends?: FriendSeed[];
 }
 
@@ -68,14 +84,21 @@ interface Member {
   sayAt: number;
   /** 權杖來源（見 JoinInfo.via） */
   via: TokenVia;
-  /** 他的班級（全班的通知照這個送）；沒有班級是 null */
-  roomCode: string | null;
-  /** 班級的開關（回到班級島、班級島還沒有人時用；老師改開關時一起更新） */
-  classFlags: RoomFlags;
+  /** class 權杖是用哪一班的代碼登入的；家長權杖是 null */
+  tokenRoom: string | null;
+  /** 角色自己的名字（自己的島上顯示） */
+  name: string;
+  /**
+   * 他的班級：代碼 → 這一班的暱稱與開關（全班的通知照這個送；開關在回到那一班的班級島、班級島還沒有人時用，
+   * 老師改開關時一起更新）。Map 保持加入順序，第一個是第一個班級
+   */
+  classes: Map<string, { nickname: string; flags: RoomFlags }>;
   /** 現在在哪座島（島的 id） */
   islandId: string;
-  /** 朋友：帳號 id → 名單上顯示的暱稱與外觀（朋友上線後換成他現在的） */
+  /** 朋友：帳號 id → 我看到的他的名字與外觀（名字照共同班級，外觀在朋友上線後換成他現在的） */
   friends: Map<string, { nickname: string; avatar: AvatarConfig }>;
+  /** 朋友看到的我的名字：帳號 id → 名字（還不在對方名單上時，用它加進去） */
+  myNames: Map<string, string>;
 }
 
 /** 一座島 */
@@ -92,6 +115,8 @@ const classIsland = (code: string) => `class:${code}`;
 const ownIsland = (accountId: string) => `kid:${accountId}`;
 /** 島的 id → 種類 */
 const kindOf = (islandId: string): IslandKind => (islandId.startsWith('class:') ? 'class' : 'own');
+/** 島的 id → 班級代碼（自己的島是 null） */
+const codeOf = (islandId: string): string | null => (islandId.startsWith('class:') ? islandId.slice('class:'.length) : null);
 
 export class Hub {
   /** 有人的島（自己的島沒人時拿掉；班級島留著公頻紀錄） */
@@ -111,28 +136,39 @@ export class Hub {
     for (const [id, m] of island.members) if (id !== except) m.conn.send(msg);
   }
 
-  /** 這個成員要去的島的 id：班級島要有班級，不然是自己的島 */
-  private islandIdFor(m: Pick<Member, 'roomCode' | 'state'>, kind: IslandKind): string {
-    return kind === 'class' && m.roomCode ? classIsland(m.roomCode) : ownIsland(m.state.id);
+  /**
+   * 這個成員要去的島的 id：班級島要有班級（room 是哪一班；沒給或不是成員時是第一個班級），不然是自己的島
+   */
+  private islandIdFor(m: Pick<Member, 'classes' | 'state'>, kind: IslandKind, room?: string): string {
+    if (kind !== 'class' || !m.classes.size) return ownIsland(m.state.id);
+    const code = room !== undefined && m.classes.has(room) ? room : m.classes.keys().next().value!;
+    return classIsland(code);
   }
 
-  /** 取得（或建立）一座島 */
+  /** 取得（或建立）一座島：班級島的開關用這位成員記得的那一班的開關 */
   private islandOf(id: string, m: Member): Island {
     let island = this.islands.get(id);
     if (!island) {
-      island = { flags: kindOf(id) === 'class' ? { ...m.classFlags } : { ...OWN_ISLAND_FLAGS }, members: new Map(), chat: [], nextChatId: 1 };
+      const code = codeOf(id);
+      const flags = code !== null ? (m.classes.get(code)?.flags ?? OWN_ISLAND_FLAGS) : OWN_ISLAND_FLAGS;
+      island = { flags: { ...flags }, members: new Map(), chat: [], nextChatId: 1 };
       this.islands.set(id, island);
     }
     return island;
   }
 
-  /** 把成員放上一座島：送 welcome 給他、join（或 member）給島上其他人 */
+  /**
+   * 把成員放上一座島：送 welcome 給他、join（或 member）給島上其他人。
+   * 島上顯示的名字：班級島用那一班的暱稱，自己的島用角色的名字（多班級）
+   */
   private enter(m: Member, islandId: string, replaced: boolean): void {
     const island = this.islandOf(islandId, m);
+    const code = codeOf(islandId);
     m.islandId = islandId;
+    m.state.nickname = code !== null ? (m.classes.get(code)?.nickname ?? m.name) : m.name;
     island.members.set(m.state.id, m);
     const others = [...island.members.values()].filter((x) => x !== m).map((x) => x.state);
-    m.conn.send({ t: 'welcome', self: m.state.id, island: kindOf(islandId), room: { ...island.flags }, members: others, chat: [...island.chat] });
+    m.conn.send({ t: 'welcome', self: m.state.id, island: kindOf(islandId), classCode: code, room: { ...island.flags }, members: others, chat: [...island.chat] });
     this.broadcast(island, replaced ? { t: 'member', member: m.state } : { t: 'join', member: m.state }, m.state.id);
   }
 
@@ -150,9 +186,12 @@ export class Hub {
     return { id: m.state.id, nickname: m.state.nickname, avatar: m.state.avatar, online: true, island: kindOf(m.islandId) };
   }
 
-  /** 把一則好友狀態送給這位成員線上的朋友 */
+  /** 把一則好友狀態送給這位成員線上的朋友：名字照每位朋友看到的（他名單上記的名字） */
   private tellFriends(m: Member, friend: FriendState): void {
-    for (const id of m.friends.keys()) this.accounts.get(id)?.conn.send({ t: 'friend', friend });
+    for (const id of m.friends.keys()) {
+      const f = this.accounts.get(id);
+      if (f) f.conn.send({ t: 'friend', friend: { ...friend, nickname: f.friends.get(m.state.id)?.nickname ?? friend.nickname } });
+    }
   }
 
   /**
@@ -162,11 +201,12 @@ export class Hub {
    */
   join(conn: HubConn, info: JoinInfo): void {
     const old = this.accounts.get(info.accountId);
+    const seeds = (info.friends ?? []).filter((f) => f.id !== info.accountId);
     const m: Member = {
       conn,
       state: {
         id: info.accountId,
-        nickname: info.nickname,
+        nickname: info.name,
         avatar: equippedOf(info.profile),
         title: shownTitle(info.profile),
         x: SPAWN.x,
@@ -178,12 +218,14 @@ export class Hub {
       sayTokens: SAY_BURST,
       sayAt: this.now(),
       via: info.via,
-      roomCode: info.roomCode,
-      classFlags: { ...info.flags },
+      tokenRoom: info.tokenRoom ?? null,
+      name: info.name,
+      classes: new Map(info.classes.map((c) => [c.code, { nickname: c.nickname, flags: { ...c.flags } }])),
       islandId: '',
-      friends: new Map((info.friends ?? []).filter((f) => f.id !== info.accountId).map((f) => [f.id, { nickname: f.nickname, avatar: f.avatar }])),
+      friends: new Map(seeds.map((f) => [f.id, { nickname: f.nickname, avatar: f.avatar }])),
+      myNames: new Map(seeds.filter((f) => f.myName !== undefined).map((f) => [f.id, f.myName!])),
     };
-    const islandId = this.islandIdFor(m, info.island ?? 'class');
+    const islandId = this.islandIdFor(m, info.island ?? 'class', info.room);
     const sameIsland = old?.islandId === islandId;
     if (old) {
       if (sameIsland) Object.assign(m.state, { x: old.state.x, z: old.state.z, h: old.state.h, zone: old.state.zone });
@@ -196,19 +238,20 @@ export class Hub {
     this.conns.set(conn, m);
     this.enter(m, islandId, sameIsland);
 
-    // 完整的好友名單：線上的朋友用他現在的暱稱、外觀與所在的島
+    // 完整的好友名單：名字照我看到的（共同班級的暱稱）；線上的朋友用他現在的外觀與所在的島
     const list: FriendState[] = [...m.friends].map(([id, seed]) => {
       const f = this.accounts.get(id);
-      return f ? this.friendStateOf(f) : { id, nickname: seed.nickname, avatar: seed.avatar, online: false, island: null };
+      return f ? { ...this.friendStateOf(f), nickname: seed.nickname } : { id, nickname: seed.nickname, avatar: seed.avatar, online: false, island: null };
     });
     conn.send({ t: 'friends', list });
-    // 朋友關係是雙向的：線上的朋友名單裡沒有他就加進去
+    // 朋友關係是雙向的：線上的朋友名單裡沒有他就加進去（名字用他看到的我的名字）
     const me = this.friendStateOf(m);
     for (const id of m.friends.keys()) {
       const f = this.accounts.get(id);
       if (!f) continue;
-      f.friends.set(m.state.id, { nickname: me.nickname, avatar: me.avatar });
-      f.conn.send({ t: 'friend', friend: me });
+      const name = f.friends.get(m.state.id)?.nickname ?? m.myNames.get(f.state.id) ?? me.nickname;
+      f.friends.set(m.state.id, { nickname: name, avatar: me.avatar });
+      f.conn.send({ t: 'friend', friend: { ...me, nickname: name } });
     }
   }
 
@@ -229,12 +272,12 @@ export class Hub {
 
   /**
    * 換島（不斷線）：離開原本的島、從新的島的出生點開始，朋友收到他在哪座島。
-   * 要去班級島但沒有班級時去自己的島；已經在那座島上就不做事。
+   * 要去班級島但沒有班級時去自己的島；room 是哪一班的班級島（沒給或不是成員時是第一個班級）；已經在那座島上就不做事。
    */
-  goTo(conn: HubConn, kind: IslandKind): void {
+  goTo(conn: HubConn, kind: IslandKind, room?: string): void {
     const m = this.conns.get(conn);
     if (!m) return;
-    const islandId = this.islandIdFor(m, kind);
+    const islandId = this.islandIdFor(m, kind, room);
     if (islandId === m.islandId) return;
     this.exit(m);
     Object.assign(m.state, { x: SPAWN.x, z: SPAWN.z, h: Math.PI, zone: null });
@@ -308,14 +351,14 @@ export class Hub {
     this.tellFriends(m, this.friendStateOf(m));
   }
 
-  /** 班上線上的每個人（不管在哪座島） */
+  /** 班上線上的每個人（不管在哪座島；多班級：只要是這一班的成員） */
   private classmates(roomCode: string): Member[] {
-    return [...this.accounts.values()].filter((m) => m.roomCode === roomCode);
+    return [...this.accounts.values()].filter((m) => m.classes.has(roomCode));
   }
 
-  /** 老師改了班級的開關：更新班級島，班級島上的人收到 room；在別座島的同學回班級島時拿到新的 */
+  /** 老師改了班級的開關：更新這一班的班級島，島上的人收到 room；在別座島的同學回這一班的班級島時拿到新的 */
   roomSettings(roomCode: string, flags: RoomFlags): void {
-    for (const m of this.classmates(roomCode)) m.classFlags = { ...flags };
+    for (const m of this.classmates(roomCode)) m.classes.get(roomCode)!.flags = { ...flags };
     const island = this.islands.get(classIsland(roomCode));
     if (!island) return;
     island.flags = { ...flags };
@@ -328,15 +371,28 @@ export class Hub {
   }
 
   /**
-   * 踢某位孩子下線（老師移除成員或重設密碼、家長刪除角色或讓他退出班級）。
-   * 給了 via 就只踢那種來源的連線：重設密碼只撤銷 class 權杖，家長裝置（parent）的連線留著。
+   * 踢某位孩子下線（刪除角色、老師重設密碼）。
+   * 給了 via 就只踢那種來源的連線：重設密碼只撤銷 class 權杖，家長裝置（parent）的連線留著；
+   * 再給 room 就只踢用那一班代碼登入的連線（多班級：重設某一班的密碼不影響用別班代碼登入的平板）。
    */
-  kick(accountId: string, reason: string, via?: TokenVia): void {
+  kick(accountId: string, reason: string, via?: TokenVia, room?: string): void {
     const m = this.accounts.get(accountId);
-    if (!m || (via && m.via !== via)) return;
+    if (!m || (via && m.via !== via) || (room !== undefined && m.tokenRoom !== room)) return;
     m.conn.send({ t: 'kicked', reason });
     m.conn.close(CLOSE_KICKED, 'kicked');
     this.remove(m);
+  }
+
+  /**
+   * 某位孩子離開了某一班（老師移出、家長讓他退出；多班級）：用那一班代碼登入的連線踢下線（那張權杖已經撤銷）；
+   * 其他連線（家長裝置、用別班代碼登入的）先收到提示，再以 4005 重新上線，拿新的班級與朋友（不封鎖）
+   */
+  leftClass(accountId: string, room: string, reason: string): void {
+    const m = this.accounts.get(accountId);
+    if (!m) return;
+    if (m.via === 'class' && m.tokenRoom === room) return this.kick(accountId, reason);
+    m.conn.send({ t: 'notice', message: reason });
+    this.reconnect(accountId);
   }
 
   /** 某個帳號換了班級（家長掃 QR code 讓孩子加入班級）：連線以 4005 關閉，裝置重新上線時拿到新的班級與朋友 */
@@ -357,9 +413,15 @@ export class Hub {
     return this.accounts.has(accountId);
   }
 
-  /** 某個帳號在哪裡（老師的成員表用）：哪一種島＋建築；離線是 null */
-  whereOf(accountId: string): { island: IslandKind; zone: ZoneId | null } | null {
+  /**
+   * 某個帳號在哪裡（老師的成員表用）：哪一種島＋建築；離線是 null。
+   * room 是老師看的那一班：在別班的班級島時是 otherClass（不寫是哪一班）；沒給時任何班級島都算 class
+   */
+  whereOf(accountId: string, room?: string): { island: IslandKind | 'otherClass'; zone: ZoneId | null } | null {
     const m = this.accounts.get(accountId);
-    return m ? { island: kindOf(m.islandId), zone: m.state.zone } : null;
+    if (!m) return null;
+    const code = codeOf(m.islandId);
+    const island = code === null ? 'own' : room === undefined || code === room ? 'class' : 'otherClass';
+    return { island, zone: m.state.zone };
   }
 }

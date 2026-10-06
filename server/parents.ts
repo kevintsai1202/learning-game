@@ -1,15 +1,19 @@
 /**
  * 家長的雲端角色（A2，docs/plans/accounts.md 第 6 節）：把裝置上的角色上傳成雲端角色、列出名下的角色、
  * 「在這台裝置玩」、刪除、讓孩子退出班級。大人權杖＋家長身分；不是自己名下的角色和不存在的一樣回 404。
+ * 多班級（docs/plans/multi-class.md）：一個孩子可以在好幾個班級，孩子摘要列出所有班級與各班的暱稱；退出時指定哪一班。
  */
 import type { Context, Hono } from 'hono';
 import type { Db, Queryable } from './db';
 import { ApiError, readBody } from './http';
 import { newAccountId } from './auth';
-import { detachFromClass, emitGiftEvents, settlePendingGifts, type Events } from './gifts';
+import { emitGiftEvents, settlePendingGifts, type Events } from './gifts';
+import { leaveClass } from './classes';
 import {
   parentJoinClassRequest,
+  parentLeaveClassRequest,
   uploadKidRequest,
+  type ClassInfo,
   type ClassLookupResponse,
   type KidSummary,
   type ParentJoinClassResponse,
@@ -32,9 +36,11 @@ export interface ParentRouteDeps {
   now: () => Date;
   /** 驗證大人權杖 */
   authenticateUser: (c: Context) => Promise<{ userId: string; hash: string }>;
-  /** 發一張孩子權杖（家長來源）並組成回應；roomCode 是角色目前的班級 */
-  session: (account: AccountRow, roomCode: string | null) => Promise<SessionResponse>;
+  /** 發一張孩子權杖（家長來源）並組成回應（帶角色所有的班級） */
+  session: (account: AccountRow) => Promise<SessionResponse>;
   onKick?: (accountId: string, reason: string) => void;
+  /** 孩子離開了某一班（家長讓他退出）：即時中樞讓他重新上線並顯示原因 */
+  onLeftClass?: (accountId: string, roomCode: string, reason: string) => void;
   onProfileChanged?: (accountId: string, rev: number, profile: Profile) => void;
   onGift?: (accountId: string) => void;
   /** 擋同一個 IP 的大量請求（查班級名稱用，避免一直猜代碼） */
@@ -70,29 +76,40 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     return row;
   };
 
-  /** 家長名下的角色（含班級名稱與班級版本） */
-  const kidRows = (where: string, params: unknown[]) =>
-    db.query<AccountRow & { room_name: string | null; room_curriculum: CurriculumChoice | null }>(
-      `SELECT a.*, r.name AS room_name, r.curriculum AS room_curriculum FROM accounts a LEFT JOIN rooms r ON r.code = a.room_code
-       WHERE ${where} ORDER BY a.created_at, a.id`,
-      params,
+  /**
+   * 家長名下的角色的摘要（家長帳號頁的孩子清單）：每個角色的所有班級與各班的暱稱（第一個班級在前面），
+   * room 是第一個班級（給部署途中的舊版網頁）。where 篩選角色（一位家長的全部，或某一個）
+   */
+  const kidSummaries = async (where: string, params: unknown[]): Promise<KidSummary[]> => {
+    const rows = await db.query<AccountRow>(`SELECT a.* FROM accounts a WHERE ${where} ORDER BY a.created_at, a.id`, params);
+    if (!rows.length) return [];
+    const members = await db.query<{ account_id: string; room_code: string; nickname: string; name: string; curriculum: CurriculumChoice | null }>(
+      `SELECT m.account_id, m.room_code, m.nickname, r.name, r.curriculum FROM class_members m JOIN rooms r ON r.code = m.room_code
+       WHERE m.account_id = ANY($1) ORDER BY m.joined_at, m.room_code`,
+      [rows.map((a) => a.id)],
     );
-  /** 一個角色的摘要（家長帳號頁的孩子清單） */
-  const kidSummary = (a: AccountRow & { room_name: string | null; room_curriculum: CurriculumChoice | null }): KidSummary => ({
-    id: a.id,
-    profileId: a.profile.id,
-    name: a.profile.name,
-    avatar: a.profile.avatar,
-    room: a.room_code ? { code: a.room_code, name: a.room_name ?? '', curriculum: a.room_curriculum ?? null } : null,
-    coins: a.profile.coins,
-    stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),
-    lastSeen: new Date(a.last_seen).toISOString(),
-  });
+    return rows.map((a) => {
+      const rooms: ClassInfo[] = members
+        .filter((m) => m.account_id === a.id)
+        .map((m) => ({ code: m.room_code, name: m.name, curriculum: m.curriculum ?? null, nickname: m.nickname }));
+      const first = rooms[0];
+      return {
+        id: a.id,
+        profileId: a.profile.id,
+        name: a.profile.name,
+        avatar: a.profile.avatar,
+        room: first ? { code: first.code, name: first.name, curriculum: first.curriculum } : null,
+        rooms,
+        coins: a.profile.coins,
+        stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),
+        lastSeen: new Date(a.last_seen).toISOString(),
+      };
+    });
+  };
 
   app.get('/api/parent/kids', async (c) => {
     const parent = await authenticateParent(c);
-    const kids = (await kidRows('a.parent_id = $1', [parent])).map(kidSummary);
-    return c.json<ParentKidsResponse>({ kids });
+    return c.json<ParentKidsResponse>({ kids: await kidSummaries('a.parent_id = $1', [parent]) });
   });
 
   // ---------- 掃 QR code 加入班級（docs/plans/class-join.md） ----------
@@ -105,15 +122,16 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     return c.json<ClassLookupResponse>({ room: { code: room.code, name: room.name }, joinOpen: room.join_open });
   });
 
-  /** 家長讓名下的雲端角色加入班級：不用密碼（孩子要用班級代碼登入時老師再設） */
+  /**
+   * 家長讓名下的雲端角色加入班級：不用密碼（孩子要用班級代碼登入時老師再設）。
+   * 多班級：在別班也可以再加入（已經是這一班的成員、超過上限由 joinClass 回 409）
+   */
   app.post('/api/parent/kids/:id/class', async (c) => {
     const parent = await authenticateParent(c);
     const kid = await loadOwnKid(db, c.req.param('id'), parent);
     const body = await readBody(c, parentJoinClassRequest);
-    if (kid.room_code) throw new ApiError(409, 'already_in_class', '已經在班級裡了，要先退出原本的班級');
     await deps.joinClass(kid.id, body.code, body.nickname);
-    const row = (await kidRows('a.id = $1', [kid.id]))[0];
-    return c.json<ParentJoinClassResponse>({ kid: kidSummary(row) });
+    return c.json<ParentJoinClassResponse>({ kid: (await kidSummaries('a.id = $1', [kid.id]))[0] });
   });
 
   app.post('/api/parent/kids', async (c) => {
@@ -140,13 +158,13 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
       );
       return rows[0];
     });
-    return c.json(await deps.session(row, null));
+    return c.json(await deps.session(row));
   });
 
   app.post('/api/parent/kids/:id/device', async (c) => {
     const parent = await authenticateParent(c);
     const kid = await loadOwnKid(db, c.req.param('id'), parent);
-    return c.json(await deps.session(kid, kid.room_code));
+    return c.json(await deps.session(kid));
   });
 
   app.delete('/api/parent/kids/:id', async (c) => {
@@ -154,8 +172,8 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     const events: Events = { profiles: [], gifts: [] };
     const kidId = await db.transaction(async (tx) => {
       const kid = await loadOwnKid(tx, c.req.param('id'), parent);
-      // 在班級裡的先和班上結清禮物（兩個方向），再刪
-      if (kid.room_code) await settlePendingGifts(tx, [kid.id], now(), events, { includeOutgoing: true });
+      // 先和所有班級結清禮物（兩個方向），再刪；沒有班級時沒有待收的禮物，結清不做事
+      await settlePendingGifts(tx, [kid.id], now(), events, { includeOutgoing: true });
       await tx.query('DELETE FROM accounts WHERE id = $1', [kid.id]);
       return kid.id;
     });
@@ -164,19 +182,27 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     return c.json({ ok: true });
   });
 
+  /**
+   * 讓孩子退出某一班（多班級：body.code 指定哪一班；舊版網頁不給，只有一個班級時退出那一班，好幾個班級回 400 which_class）。
+   * 只結清那一班的禮物（兩個方向）、只撤銷那一班發的 class 權杖；其他班級與家長裝置照常
+   */
   app.post('/api/parent/kids/:id/leave-class', async (c) => {
     const parent = await authenticateParent(c);
+    const body = await readBody(c, parentLeaveClassRequest);
     const events: Events = { profiles: [], gifts: [] };
-    const kidId = await db.transaction(async (tx) => {
+    const left = await db.transaction(async (tx) => {
       const kid = await loadOwnKid(tx, c.req.param('id'), parent);
-      if (!kid.room_code) return null;
-      await settlePendingGifts(tx, [kid.id], now(), events, { includeOutgoing: true });
-      await detachFromClass(tx, kid.id);
-      return kid.id;
+      const mine = (await tx.query<{ room_code: string }>('SELECT room_code FROM class_members WHERE account_id = $1 ORDER BY joined_at, room_code', [kid.id])).map((m) => m.room_code);
+      if (body.code === undefined && mine.length > 1) throw new ApiError(400, 'which_class', '這個孩子在好幾個班級，請選要退出哪一班');
+      const code = body.code ?? mine[0];
+      if (!code || !mine.includes(code)) return null;
+      await settlePendingGifts(tx, [kid.id], now(), events, { includeOutgoing: true, roomCode: code });
+      await leaveClass(tx, kid.id, code);
+      return { kidId: kid.id, code };
     });
-    if (!kidId) throw new ApiError(409, 'not_in_class', '這個孩子沒有加入班級');
+    if (!left) throw new ApiError(409, 'not_in_class', '這個孩子沒有在這個班級');
     emitGiftEvents(deps, events);
-    deps.onKick?.(kidId, PARENT_LEFT_REASON);
+    deps.onLeftClass?.(left.kidId, left.code, PARENT_LEFT_REASON);
     return c.json({ ok: true });
   });
 }

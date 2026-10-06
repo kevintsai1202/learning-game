@@ -11,6 +11,7 @@ import { WebSocketServer, type WebSocket } from 'ws';
 import type { Db } from './db';
 import type { Hub, HubConn, JoinInfo } from './hub';
 import { lookupToken } from './tokens';
+import { flagsOf, membershipsOf, sharedClassNames, sharedMembershipsOf } from './classes';
 import { parseClientMessage, type IslandKind } from '../src/online/realtime';
 import { equippedOf } from '../src/store/catalog';
 import type { Profile } from '../src/store/save';
@@ -80,33 +81,37 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
   /**
    * 用權杖查出上線需要的資料；不是有效的孩子權杖回傳 'bad'。
    * 沒有班級的孩子（家長名下）也能上線，進自己的島（島嶼互訪 I1；改版前回 4004「沒有班級」）。
-   * 朋友：同班同學、兄弟姊妹（同一位家長名下的雲端角色）。
+   * 多班級（docs/plans/multi-class.md）：所有班級與各班的暱稱、開關（第一個班級在前面）；room 是要去哪一班的班級島。
+   * 朋友：有共同班級的同學（名字是最早建立的共同班級裡的暱稱，兩邊一致）、兄弟姊妹（同一位家長名下，名字是角色名字；
+   * 同時是同學的照班級暱稱）。
    */
-  async function joinInfoOf(token: string, island: IslandKind | undefined): Promise<JoinInfo | 'bad'> {
+  async function joinInfoOf(token: string, island: IslandKind | undefined, room: string | undefined): Promise<JoinInfo | 'bad'> {
     const who = await lookupToken(db, token, now());
     if (!who || who.kind !== 'kid') return 'bad';
-    const row = (
-      await db.query<{ id: string; nickname: string; profile: Profile; room_code: string | null; parent_id: string | null; chat_open: boolean | null; gifts_open: boolean | null }>(
-        'SELECT a.id, a.nickname, a.profile, a.room_code, a.parent_id, r.chat_open, r.gifts_open FROM accounts a LEFT JOIN rooms r ON r.code = a.room_code WHERE a.id = $1',
-        [who.accountId],
-      )
-    )[0];
+    const row = (await db.query<{ id: string; profile: Profile; parent_id: string | null }>('SELECT id, profile, parent_id FROM accounts WHERE id = $1', [who.accountId]))[0];
     if (!row) return 'bad';
-    const friends = await db.query<{ id: string; nickname: string; profile: Profile }>(
-      `SELECT id, nickname, profile FROM accounts
-       WHERE id <> $1 AND ((room_code IS NOT NULL AND room_code = $2) OR (parent_id IS NOT NULL AND parent_id = $3))
-       ORDER BY created_at, id`,
-      [row.id, row.room_code, row.parent_id],
-    );
+    const classes = (await membershipsOf(db, row.id)).map((m) => ({ code: m.room_code, nickname: m.nickname, flags: flagsOf(m) }));
+    const names = sharedClassNames(await sharedMembershipsOf(db, row.id));
+    const siblings = row.parent_id
+      ? (await db.query<{ id: string }>('SELECT id FROM accounts WHERE parent_id = $1 AND id <> $2', [row.parent_id, row.id])).map((r) => r.id)
+      : [];
+    const ids = [...new Set([...names.keys(), ...siblings])];
+    const friends = ids.length
+      ? await db.query<{ id: string; profile: Profile }>('SELECT id, profile FROM accounts WHERE id = ANY($1) ORDER BY created_at, id', [ids])
+      : [];
     return {
       accountId: row.id,
-      roomCode: row.room_code,
-      nickname: row.nickname,
+      name: row.profile.name,
+      classes,
       profile: row.profile,
-      flags: { chatOpen: row.chat_open ?? true, giftsOpen: row.gifts_open ?? true },
       via: who.via,
+      tokenRoom: who.tokenRoom,
       island,
-      friends: friends.map((f) => ({ id: f.id, nickname: f.nickname, avatar: equippedOf(f.profile) })),
+      room,
+      friends: friends.map((f) => {
+        const shared = names.get(f.id);
+        return { id: f.id, nickname: shared?.nickname ?? f.profile.name, avatar: equippedOf(f.profile), myName: shared?.myName ?? row.profile.name };
+      }),
     };
   }
 
@@ -140,7 +145,7 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
           return;
         }
         authing = true;
-        void joinInfoOf(msg.token, msg.island)
+        void joinInfoOf(msg.token, msg.island, msg.room)
           .then((info) => {
             if (ws.readyState !== ws.OPEN) return;
             if (info === 'bad') {
@@ -165,7 +170,7 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
           hub.say(conn, msg.phrase);
           break;
         case 'go':
-          hub.goTo(conn, msg.island);
+          hub.goTo(conn, msg.island, msg.room);
           break;
         case 'hello':
           ws.close(1008, 'already logged in');

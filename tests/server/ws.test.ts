@@ -35,7 +35,8 @@ beforeEach(async () => {
     isOnline: (id) => hub.isOnline(id),
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
-    onKick: (id, reason, via) => hub.kick(id, reason, via),
+    onKick: (id, reason, via, room) => hub.kick(id, reason, via, room),
+    onLeftClass: (id, room, reason) => hub.leftClass(id, room, reason),
     onClassChanged: (id) => hub.reconnect(id),
   });
   const server = await new Promise<ReturnType<typeof serve>>((resolve) => {
@@ -195,14 +196,16 @@ describe('家長名下的雲端角色', () => {
     expect(c.msgs.map((m) => m.t)).not.toContain('kicked');
   });
 
-  it('加入班級後可以連線；被老師移出時收到 kicked（進度都還在）', async () => {
+  it('加入班級後可以連線；被老師移出時：家長裝置收到提示（進度都還在）並以 4005 重新上線，不封鎖（多班級）', async () => {
     const { up } = await uploadKid();
     const room = await createRoom(call);
     expect((await call('POST', '/api/join', { code: room.code, nickname: '安安', pin: '1234' }, up.token)).status).toBe(200);
     const c = await connect(up.token);
     await call('DELETE', `/api/teacher/rooms/${room.code}/members/${up.account.id}`, undefined, room.token);
-    const kicked = await c.waitFor('kicked');
-    expect(kicked.reason).toContain('進度都還在');
+    const notice = await c.waitFor('notice');
+    expect(notice.message).toContain('進度都還在');
+    expect(await c.closed).toBe(CLOSE_RECONNECT);
+    expect(c.msgs.map((m) => m.t)).not.toContain('kicked');
   });
 
   it('老師重設孩子密碼：用班級代碼登入的裝置被踢；家長裝置（parent 權杖）照常連線', async () => {
@@ -273,7 +276,7 @@ describe('島嶼互訪 I1：選島、換島、好友名單（docs/plans/islands.
 });
 
 describe('家長掃 QR code 讓孩子加入班級時，孩子線上的裝置重新上線', () => {
-  it('在自己的島上連線中的家長名下孩子：加入後收到 profile、連線以 4005 關閉；重新上線就在班級島、同學在好友名單上', async () => {
+  it('在自己的島上連線中的家長名下孩子：加入後連線以 4005 關閉（多班級起存檔不變，不送 profile）；重新上線就在班級島、同學在好友名單上', async () => {
     const mom = await createUser(call, { parent: true, teacher: false });
     const local = addProfile(createEmptySave(), { name: '安安', avatar: { animal: 'rabbit', color: '#ffffff', hat: null } }, new Date()).profiles[0];
     const up = (await call('POST', '/api/parent/kids', { profile: local }, mom.token)).body;
@@ -282,7 +285,6 @@ describe('家長掃 QR code 讓孩子加入班級時，孩子線上的裝置重�
     const c = await connect(up.token);
     expect((await c.waitFor('welcome')).island).toBe('own');
     expect((await call('POST', `/api/parent/kids/${up.account.id}/class`, { code: room.code, nickname: '安安' }, mom.token)).status).toBe(200);
-    await c.waitFor('profile');
     expect(await c.closed).toBe(CLOSE_RECONNECT);
     expect(c.msgs.map((m) => m.t)).not.toContain('kicked');
     const again = new Client();
