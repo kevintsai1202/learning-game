@@ -74,6 +74,15 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
 1. `.github/workflows/deploy.yml` 的建置步驟寫入 `VITE_SERVER_URL=https://<名稱>.zeabur.app`（伺服器網址是公開的，前端本來就看得到）。
 2. 把 `feature/online` 合併到 `main` 並 push，GitHub Pages 自動部署，網站出現「班級登入」。
 3. 合併到 main 並 push 之後，Zeabur 會自動重新部署伺服器（與它提供的前端）。
+4. 之後每一批上線（`feature/online` 快轉合併 main 並 push）：用監看腳本等兩邊都換成新版，再唯讀檢查正式資料庫：
+
+   ```powershell
+   node scripts/deploy/watch-deploy.cjs <提交前 7 碼> <這次新版主程式才有的字串>   # 例：node scripts/deploy/watch-deploy.cjs 0767763 成以
+   .\scripts\deploy\inspect-prod-data.ps1
+   ```
+
+   監看腳本每 30 秒查 Pages 的部署工作、Zeabur 的部署狀態、兩個網址的主程式是否含那個字串與 `/healthz`，狀態改變才印一行；全部完成印「完成」，Pages 部署失敗、Zeabur FAILED／CRASHED 或超過 20 分鐘以非零結束。「新版」只能比對內容：本機、Pages、Zeabur 各自建置，主程式檔名的雜湊都不同。
+   `inspect-prod-data` 從第 10 版起多印班級成員筆數，以及舊欄位 `accounts.room_code` 有班級、`class_members` 卻沒有那一班的孩子數（應為 0）。
 
 ## 7. 交給孩子之前
 

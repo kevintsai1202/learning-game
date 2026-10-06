@@ -63,7 +63,7 @@ describe('唯讀檢查正式資料庫', () => {
       await d.query("INSERT INTO rooms (code, name, owner_id, created_at) VALUES ('333333', '二年二班', 'u1', $1::timestamptz)", [T]);
       await d.query("INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ('444444', '舊的班', $1, $2::timestamptz)", [await hashSecret('real-admin-pass'), T]);
       const r = await inspect((sql, params) => d.query(sql, params), () => undefined);
-      expect(r).toMatchObject({ version: 7, rooms: { total: 2, test: 0, legacyReal: 1, owned: 1 }, googleLinks: null, teacherGoogleLinks: null, users: 1 });
+      expect(r).toMatchObject({ version: 7, rooms: { total: 2, test: 0, legacyReal: 1, owned: 1 }, googleLinks: null, teacherGoogleLinks: null, users: 1, classMembers: null });
     } finally {
       await d.close();
     }
@@ -81,8 +81,15 @@ describe('唯讀檢查正式資料庫', () => {
         [T],
       );
       await d.query("INSERT INTO class_members (account_id, room_code, nickname, nickname_key, joined_at) VALUES ('a1', '444444', '小美', '小美', $1::timestamptz)", [T]);
-      const r = await inspect((sql, params) => d.query(sql, params), () => undefined);
+      const logs: string[] = [];
+      const r = await inspect((sql, params) => d.query(sql, params), (m) => logs.push(m));
       expect(r.legacyRealRooms).toEqual([{ code: '444444', name: '舊的班', members: 1 }]);
+      // 第 10 版的搬遷檢查：a2 的舊欄位有班級、class_members 沒有那一班（升級時漏搬就會出現在這裡）
+      expect(r.classMembers).toEqual({ rows: 1, missingFromLegacy: 1, orphans: 0 });
+      const out = logs.join('\n');
+      expect(out).toContain('班級成員（class_members）1 筆');
+      expect(out).toContain('舊欄位有班級、class_members 沒有那一班的孩子 1 個（應為 0）');
+      expect(out).not.toContain('小安');
     } finally {
       await d.close();
     }

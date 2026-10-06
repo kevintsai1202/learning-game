@@ -4,6 +4,7 @@
  * - 班級：改版前用管理密碼 teach123 建的測試房間、改版前沒有擁有者的真房間（改版後沒有登入方式，要先加認領流程）、老師帳號的班級
  * - 孩子帳號數；Google 綁孩子（google_links）、Google 綁房間（teacher_google_links）的筆數（第 7 版會刪掉這兩張表）
  * - 大人帳號數（改版後才有）
+ * - 多班級（第 10 版起）：班級成員筆數，以及舊欄位 accounts.room_code 的成員資格有沒有都搬到 class_members
  * 整段在 READ ONLY 交易裡執行，不會改任何東西；只印筆數、班級代碼與名稱、日期，不印孩子的暱稱與 email。
  * 改版前（第 3 版）與改版後（第 7 版）都能用。
  *
@@ -91,6 +92,26 @@ async function inspect(query, log) {
   const users = (await has('users')) ? (await query('SELECT count(*)::int AS n FROM users'))[0].n : null;
   log(users === null ? '大人帳號：資料表還沒有（A5 上線後才有）' : `大人帳號 ${users} 個`);
 
+  // 多班級（第 10 版）的搬遷檢查：舊欄位 accounts.room_code 的成員資格都要在 class_members 裡，class_members 不能指到不存在的班級。
+  // 舊欄位之後刪掉時只印筆數
+  let classMembers = null;
+  if (await has('class_members')) {
+    const one = async (sql) => (await query(sql))[0].n;
+    const legacy = await hasColumn('accounts', 'room_code');
+    classMembers = {
+      rows: await one('SELECT count(*)::int AS n FROM class_members'),
+      missingFromLegacy: legacy
+        ? await one(
+            'SELECT count(*)::int AS n FROM accounts a WHERE a.room_code IS NOT NULL AND NOT EXISTS (SELECT 1 FROM class_members m WHERE m.account_id = a.id AND m.room_code = a.room_code)',
+          )
+        : null,
+      orphans: await one('SELECT count(*)::int AS n FROM class_members m WHERE NOT EXISTS (SELECT 1 FROM rooms r WHERE r.code = m.room_code)'),
+    };
+    log(`班級成員（class_members）${classMembers.rows} 筆`);
+    if (legacy) log(`  舊欄位有班級、class_members 沒有那一班的孩子 ${classMembers.missingFromLegacy} 個（應為 0）`);
+    log(`  指到不存在班級的成員 ${classMembers.orphans} 筆（應為 0）`);
+  }
+
   return {
     version,
     rooms: { total: rooms.length, test: test.length, legacyReal: legacyReal.length, owned: owned.length },
@@ -99,6 +120,7 @@ async function inspect(query, log) {
     googleLinks,
     teacherGoogleLinks,
     users,
+    classMembers,
   };
 }
 

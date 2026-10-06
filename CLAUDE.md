@@ -19,6 +19,7 @@ npx playwright test  # e2e（需先 build；班級伺服器由 playwright 自動
 npx vitest run --config vitest.puzzle.config.ts --silent=false   # 七巧板剪影設計工具：預覽題庫的擺法、給外框讓解題器找擺法
 npm run server:build; npm run server:start   # 本機啟動班級伺服器（port 8787，PGlite 記憶體資料庫）
 # 部署：合併到 main 並 push → GitHub Pages 與 Zeabur（班級伺服器＋同一份前端）都會自動部署；步驟與注意事項見 docs/deploy-zeabur.md
+node scripts/deploy/watch-deploy.cjs <提交前 7 碼> <新版主程式才有的字串>   # push 後等兩個網址都換新版；之後 .\scripts\deploy\inspect-prod-data.ps1 唯讀檢查正式資料庫
 $env:E2E_SERVER_URL = 'https://learning-island.zeabur.app'; npx playwright test --config playwright.remote.config.ts e2e/realtime.spec.ts --grep-invert Google   # 對外部伺服器跑線上 e2e（再設 BASE_URL 就連前端也用外部的）
 .\.venv\Scripts\python scripts\build-font.py   # 內容新增字之後重產注音字型子集
 # 預錄語音（改了題目文字或 src/ui/lines.ts 之後；金鑰在 .env）
