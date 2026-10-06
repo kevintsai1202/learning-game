@@ -1,6 +1,7 @@
 /**
- * Google 快速登入綁大人帳號（A4，docs/plans/accounts.md 第 9 節）：用 Google 註冊（email 自動帶入、算驗證過，
- * 帳號名稱與密碼照樣要設）、登入後綁定與解除、用 Google 登入；一個 Google 只能綁一個大人帳號。
+ * Google 快速登入綁大人帳號（A4，docs/plans/accounts.md 第 9 節）：用 Google 註冊（email 自動帶入、算驗證過；
+ * L1 起不用設帳號名稱與密碼，docs/plans/login-ux-review.md 第 6 節）、登入後綁定與解除、用 Google 登入；一個 Google 只能綁一個大人帳號。
+ * 沒有密碼的帳號：改密碼、刪除帳號用綁定的 Google 再確認一次身分；不能解除最後一個 Google。
  * 舊的「Google 直接綁孩子」路由（/api/google/link、/api/google/login）已經拿掉。
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -32,39 +33,57 @@ function client() {
   return { ...makeClient(db, { google, mailer }), mailer };
 }
 
-let seq = 0;
-/** 用 Google 註冊的請求內容 */
+/** 用 Google 註冊的請求內容（L1 起不用帳號名稱與密碼，只要身分） */
 async function googleRegisterBody(sub: string, email: string | null, extra: Record<string, unknown> = {}, emailVerified = true) {
-  return { idToken: await keys.sign(sub, email, { emailVerified }), username: `gg_user_${++seq}`, password: 'teach1234', parent: true, teacher: false, ...extra };
+  return { idToken: await keys.sign(sub, email, { emailVerified }), parent: true, teacher: false, ...extra };
 }
 
-describe('伺服器設定', () => {
-  it('有開 Google 登入時回傳 Client ID；沒開回傳 null', async () => {
-    expect((await client().call('GET', '/api/config')).body).toEqual({ googleClientId: TEST_CLIENT_ID });
-    expect((await makeClient(db).call('GET', '/api/config')).body).toEqual({ googleClientId: null });
-  });
-});
+/** 從信件內文取出連結裡的權杖 */
+function tokenIn(text: string, kind: 'verify' | 'reset'): string {
+  const url = text.match(/https?:\/\/\S+/)?.[0];
+  const token = url ? new URL(url).searchParams.get(kind) : null;
+  if (!token) throw new Error(`信裡找不到 ${kind} 連結：${text}`);
+  return token;
+}
 
-describe('用 Google 註冊', () => {
-  it('email 自動帶入 Google 的 email 而且算驗證過、不寄驗證信；同時綁好 Google，之後用 Google 或帳號密碼都能登入', async () => {
+describe('用 Google 註冊（L1：不用設帳號名稱與密碼，docs/plans/login-ux-review.md 第 6 節第 1 點）', () => {
+  it('帳號名稱從 email 產生、沒有密碼；email 自動帶入而且算驗證過、不寄驗證信；同時綁好 Google，之後用 Google 登入', async () => {
     const { call, mailer } = client();
-    const body = await googleRegisterBody('g-mom', 'Mom.Chen@gmail.com');
-    const r = await call('POST', '/api/users/google/register', body);
+    const r = await call('POST', '/api/users/google/register', await googleRegisterBody('g-mom', 'Mom.Chen@gmail.com'));
     expect(r.status).toBe(200);
-    expect(r.body.user).toMatchObject({ username: body.username, email: 'Mom.Chen@gmail.com', emailVerified: true, parent: true, teacher: false });
+    expect(r.body.user).toMatchObject({ username: 'MomChen', email: 'Mom.Chen@gmail.com', emailVerified: true, hasPassword: false, parent: true, teacher: false });
     expect(mailer.outbox).toEqual([]);
     const viaGoogle = await call('POST', '/api/users/google/login', { idToken: await keys.sign('g-mom', 'Mom.Chen@gmail.com') });
     expect(viaGoogle.status).toBe(200);
     expect(viaGoogle.body.user.id).toBe(r.body.user.id);
-    expect((await call('GET', '/api/users/me', undefined, viaGoogle.body.token)).body.user.username).toBe(body.username);
-    expect((await call('POST', '/api/users/login', { username: body.username, password: 'teach1234' })).status).toBe(200);
+    expect((await call('GET', '/api/users/me', undefined, viaGoogle.body.token)).body.user).toMatchObject({ username: 'MomChen', hasPassword: false });
     expect((await call('GET', '/api/users/me/google', undefined, r.body.token)).body.google).toEqual([{ id: 'g-mom', email: 'Mo***@gmail.com' }]);
   });
 
-  it('帳號名稱、密碼、身分照樣要檢查；Google 沒有驗證過的 email（或沒有 email）不能用 Google 註冊', async () => {
+  it('沒有密碼的帳號不能用密碼登入：和帳號不存在、密碼錯一樣回 bad_login（不透露帳號存在），也算猜錯次數', async () => {
     const { call } = client();
-    expect((await call('POST', '/api/users/google/register', await googleRegisterBody('g1', 'a@gmail.com', { username: 'x' }))).body.code).toBe('bad_username');
-    expect((await call('POST', '/api/users/google/register', await googleRegisterBody('g1', 'a@gmail.com', { password: 'short' }))).body.code).toBe('bad_password');
+    await call('POST', '/api/users/google/register', await googleRegisterBody('g-mom', 'mom.chen@gmail.com'));
+    const r = await call('POST', '/api/users/login', { username: 'momchen', password: 'whatever123' });
+    const nobody = await call('POST', '/api/users/login', { username: 'nobody_here', password: 'whatever123' });
+    expect(r.status).toBe(401);
+    expect(r.body).toEqual(nobody.body);
+    for (let i = 0; i < 4; i++) await call('POST', '/api/users/login', { username: 'momchen', password: 'whatever123' });
+    expect((await call('POST', '/api/users/login', { username: 'momchen', password: 'whatever123' })).status).toBe(423);
+  });
+
+  it('帳號名稱撞名時加數字（不分大小寫，也會避開用帳號密碼註冊的帳號）；舊版網頁多送的帳號名稱與密碼會被忽略', async () => {
+    const { call } = client();
+    await call('POST', '/api/users', { username: 'momchen', password: 'teach1234', email: 'someone@example.com', parent: true, teacher: false });
+    const a = await call('POST', '/api/users/google/register', await googleRegisterBody('g-a', 'Mom.Chen@gmail.com'));
+    const b = await call('POST', '/api/users/google/register', await googleRegisterBody('g-b', 'momchen@yahoo.com', { username: 'chosen_name', password: 'teach1234' }));
+    expect(a.body.user.username).toBe('MomChen2');
+    expect(b.body.user.username).toBe('momchen3');
+    expect(b.body.user.hasPassword).toBe(false);
+    expect((await call('POST', '/api/users/login', { username: 'chosen_name', password: 'teach1234' })).status).toBe(401);
+  });
+
+  it('身分照樣要選；Google 沒有驗證過的 email（或沒有 email）不能用 Google 註冊', async () => {
+    const { call } = client();
     expect((await call('POST', '/api/users/google/register', await googleRegisterBody('g1', 'a@gmail.com', { parent: false, teacher: false }))).body.code).toBe('no_role');
     const unverified = await call('POST', '/api/users/google/register', await googleRegisterBody('g2', 'b@example.com', {}, false));
     expect(unverified.status).toBe(400);
@@ -83,6 +102,80 @@ describe('用 Google 註冊', () => {
     expect(taken.status).toBe(409);
     expect(taken.body.code).toBe('email_taken');
     expect(taken.body.error).toContain('綁定');
+  });
+});
+
+describe('沒有密碼的帳號（用 Google 註冊）：用 Google 再確認一次身分', () => {
+  /** 用 Google 註冊一位家長，回傳權杖與帳號名稱 */
+  async function googleOnly(call: ReturnType<typeof client>['call'], sub = 'g-mom', email = 'mom.chen@gmail.com') {
+    const r = await call('POST', '/api/users/google/register', await googleRegisterBody(sub, email));
+    expect(r.status).toBe(200);
+    return { token: r.body.token as string, username: r.body.user.username as string };
+  }
+
+  it('設定密碼：用綁定的 Google 確認身分就能設定，之後帳號名稱＋密碼也能登入；別人的 Google、沒有密碼卻填目前的密碼都不行', async () => {
+    const { call } = client();
+    const me = await googleOnly(call);
+    const stranger = await call('POST', '/api/users/me/password', { idToken: await keys.sign('g-other', 'x@gmail.com'), next: 'brandnew99' }, me.token);
+    expect(stranger.status).toBe(401);
+    expect(stranger.body.code).toBe('bad_google');
+    const guess = await call('POST', '/api/users/me/password', { current: 'whatever123', next: 'brandnew99' }, me.token);
+    expect(guess.status).toBe(401);
+    expect(guess.body.code).toBe('bad_password');
+    expect((await call('POST', '/api/users/me/password', { next: 'brandnew99' }, me.token)).status).toBe(400);
+    const ok = await call('POST', '/api/users/me/password', { idToken: await keys.sign('g-mom', 'mom.chen@gmail.com'), next: 'brandnew99' }, me.token);
+    expect(ok.status).toBe(200);
+    expect((await call('GET', '/api/users/me', undefined, me.token)).body.user.hasPassword).toBe(true);
+    expect((await call('POST', '/api/users/login', { username: me.username, password: 'brandnew99' })).status).toBe(200);
+  });
+
+  it('有密碼的帳號也可以改用綁定的 Google 確認身分改密碼', async () => {
+    const { call } = client();
+    const me = await createUser(call, { parent: true, teacher: false });
+    await call('POST', '/api/users/me/google', { idToken: await keys.sign('g-dad', 'dad@gmail.com') }, me.token);
+    const r = await call('POST', '/api/users/me/password', { idToken: await keys.sign('g-dad', 'dad@gmail.com'), next: 'brandnew99' }, me.token);
+    expect(r.status).toBe(200);
+    expect((await call('POST', '/api/users/login', { username: me.user.username, password: 'brandnew99' })).status).toBe(200);
+  });
+
+  it('刪除帳號：用綁定的 Google 確認身分；別人的 Google、填密碼都不行', async () => {
+    const { call } = client();
+    const me = await googleOnly(call);
+    expect((await call('DELETE', '/api/users/me', { idToken: await keys.sign('g-other', 'x@gmail.com') }, me.token)).body.code).toBe('bad_google');
+    expect((await call('DELETE', '/api/users/me', { password: 'whatever123' }, me.token)).body.code).toBe('bad_password');
+    expect((await call('DELETE', '/api/users/me', {}, me.token)).status).toBe(400);
+    expect((await call('DELETE', '/api/users/me', { idToken: await keys.sign('g-mom', 'mom.chen@gmail.com') }, me.token)).status).toBe(200);
+    expect((await call('GET', '/api/users/me', undefined, me.token)).status).toBe(401);
+    expect((await call('POST', '/api/users/google/login', { idToken: await keys.sign('g-mom', 'mom.chen@gmail.com') })).status).toBe(404);
+  });
+
+  it('沒有密碼時不能解除最後一個 Google（不然就沒辦法登入）；還有別的 Google、或設了密碼之後就可以', async () => {
+    const { call } = client();
+    const me = await googleOnly(call);
+    const last = await call('DELETE', '/api/users/me/google/g-mom', undefined, me.token);
+    expect(last.status).toBe(409);
+    expect(last.body.code).toBe('last_login_method');
+    await call('POST', '/api/users/me/google', { idToken: await keys.sign('g-dad', 'dad@gmail.com') }, me.token);
+    expect((await call('DELETE', '/api/users/me/google/g-mom', undefined, me.token)).status).toBe(200);
+    expect((await call('DELETE', '/api/users/me/google/g-dad', undefined, me.token)).body.code).toBe('last_login_method');
+    await call('POST', '/api/users/me/password', { idToken: await keys.sign('g-dad', 'dad@gmail.com'), next: 'brandnew99' }, me.token);
+    expect((await call('DELETE', '/api/users/me/google/g-dad', undefined, me.token)).status).toBe(200);
+  });
+
+  it('也能用「忘記密碼」寄到 Google 驗證過的 email 設定密碼（不用新功能）', async () => {
+    const { call, mailer } = client();
+    const me = await googleOnly(call);
+    expect((await call('POST', '/api/users/password/forgot', { login: 'mom.chen@gmail.com' })).status).toBe(200);
+    const mail = (mailer.outbox ?? []).filter((m) => m.to.toLowerCase() === 'mom.chen@gmail.com' && m.text.includes('?reset=')).at(-1)!;
+    expect((await call('POST', '/api/users/password/reset', { token: tokenIn(mail.text, 'reset'), password: 'brandnew99' })).status).toBe(200);
+    expect((await call('POST', '/api/users/login', { username: me.username, password: 'brandnew99' })).status).toBe(200);
+  });
+
+  it('伺服器沒開 Google 登入時，用 Google 確認身分回 404 google_disabled', async () => {
+    const off = makeClient(db);
+    const me = await createUser(off.call, { parent: true, teacher: false });
+    expect((await off.call('POST', '/api/users/me/password', { idToken: 'x', next: 'brandnew99' }, me.token)).body.code).toBe('google_disabled');
+    expect((await off.call('DELETE', '/api/users/me', { idToken: 'x' }, me.token)).body.code).toBe('google_disabled');
   });
 });
 
@@ -131,7 +224,7 @@ describe('綁定、解除與用 Google 登入', () => {
     expect((await call('POST', '/api/users/me/google', { idToken: await keys.sign('g-k', null) }, kid.token)).status).toBe(401);
     const off = makeClient(db);
     expect((await off.call('POST', '/api/users/google/login', { idToken: 'x' })).body.code).toBe('google_disabled');
-    expect((await off.call('POST', '/api/users/google/register', { idToken: 'x', username: 'abcd', password: 'teach1234', parent: true, teacher: false })).body.code).toBe('google_disabled');
+    expect((await off.call('POST', '/api/users/google/register', { idToken: 'x', parent: true, teacher: false })).body.code).toBe('google_disabled');
   });
 
   it('舊的「Google 直接綁孩子」路由已經拿掉；孩子的 /api/me 沒有 google 欄位', async () => {

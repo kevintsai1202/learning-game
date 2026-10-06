@@ -56,7 +56,11 @@ interface AccountStore {
   logout: () => Promise<void>;
   /** 修改身分或 email（換了 email 會寄驗證信到新的 email） */
   update: (patch: { parent?: boolean; teacher?: boolean; email?: string }) => Promise<void>;
-  changePassword: (current: string, next: string) => Promise<void>;
+  /**
+   * 改密碼，或幫沒有密碼的帳號（用 Google 註冊的）設定密碼：用目前的密碼或綁定的 Google 確認身分。
+   * 成功後讀回帳號資料（「有沒有密碼」會變）；其他裝置的登入由伺服器登出
+   */
+  changePassword: (proof: { current: string } | { idToken: string }, next: string) => Promise<void>;
   /** 呼叫需要大人權杖的 API；權杖失效（401）時自動登出再丟出錯誤 */
   call: <T>(method: string, path: string, body?: unknown) => Promise<T>;
   /** 最近一次驗證信的寄送結果（註冊、換 email、重寄之後畫面顯示提示；按「知道了」或驗證後清掉） */
@@ -81,7 +85,10 @@ interface AccountStore {
   resetPassword: (token: string, password: string) => Promise<void>;
   /** 用 Google 登入（A4）：只能登入已經綁定這個 Google 的大人帳號 */
   googleLogin: (idToken: string, remember: boolean) => Promise<void>;
-  /** 用 Google 註冊（A4）：帳號名稱、密碼、身分照樣要設；email 用 Google 的（算驗證過），同時綁好這個 Google */
+  /**
+   * 用 Google 註冊（A4；L1 起只要選身分）：帳號名稱由伺服器從 email 產生、沒有密碼；
+   * email 用 Google 的（算驗證過），同時綁好這個 Google
+   */
   googleRegister: (input: GoogleRegisterInput) => Promise<void>;
   /** 這個帳號綁定的 Google（email 已遮罩） */
   googleLinks: () => Promise<UserGoogleLink[]>;
@@ -91,11 +98,9 @@ interface AccountStore {
   unlinkGoogle: (id: string) => Promise<UserGoogleLink[]>;
 }
 
-/** 用 Google 註冊需要的資料（email 用 Google 的，不用填） */
+/** 用 Google 註冊需要的資料（L1：不用帳號名稱、密碼、email，只要身分） */
 export interface GoogleRegisterInput {
   idToken: string;
-  username: string;
-  password: string;
   parent: boolean;
   teacher: boolean;
   /** 在這台裝置保持登入 */
@@ -158,8 +163,9 @@ export const useAccount = create<AccountStore>((set, get) => {
       set({ user: r.user, ...(r.verifyMail ? { verifyMail: r.verifyMail } : {}) });
     },
 
-    changePassword: async (current, next) => {
-      await get().call('POST', '/api/users/me/password', { current, next });
+    changePassword: async (proof, next) => {
+      await get().call('POST', '/api/users/me/password', { ...proof, next });
+      await get().refresh();
     },
 
     call: async <T,>(method: string, path: string, body?: unknown): Promise<T> => {

@@ -79,7 +79,12 @@ docker rm -f li-pg-test
   - 禮物 id 由裝置產生，同一個送禮人重送同一個 id 回傳原本那份（不重複扣款）。
   - `main.ts` 啟動時與每小時跑 `expireGifts`（7 天沒收下就退款），關機時清掉計時器。
 - **同時提供前端**（`static.ts`，只在 `STATIC_DIR` 有設時開）：註冊在所有路由之後，不蓋掉 `/api`；快取標頭在拿到回應之後補（`serveStatic` 的 `onFound` 在回應建立後才呼叫，那時設的標頭不會生效）。網頁與語音對照表不快取，`assets/` 與雜湊檔名的語音快取一年，其他一天。Docker 建置的前端用 `VITE_SERVER_URL=same-origin`（`src/online/config.ts` 的 `resolveServerUrl`），所以 `ALLOWED_ORIGINS` 要包含伺服器自己的網址（同網址的 WebSocket 也會送 Origin）。
-- **Google 快速登入綁大人帳號**（A4，`userGoogle.ts`）：一個 Google 只能綁一個大人帳號（`user_google_links` 的主鍵是 `google_sub`），一個帳號可以綁多個。用 Google 登入只能登入已經綁定的帳號；用 Google 註冊時帳號名稱、密碼、身分照樣要設，email 用 Google 驗證過的（`GoogleIdentity.emailVerified`），算驗證過、不寄驗證信。驗證 token 的函式（`verifyGoogleToken`）在 `app.ts`，傳進路由模組共用。Google 的 token 猜不到，不用登入鎖定，只擋同一個 IP 的大量請求。孩子不綁 Google（「Google 綁孩子」與「Google 綁房間」的表在第 7 版拿掉）。
+- **Google 快速登入綁大人帳號**（A4，`userGoogle.ts`）：一個 Google 只能綁一個大人帳號（`user_google_links` 的主鍵是 `google_sub`），一個帳號可以綁多個。用 Google 登入只能登入已經綁定的帳號；email 用 Google 驗證過的（`GoogleIdentity.emailVerified`），算驗證過、不寄驗證信。驗證 token 的函式（`verifyGoogleToken`）在 `app.ts`，傳進 `users.ts` 與 `userGoogle.ts` 共用。Google 的 token 猜不到，不用登入鎖定，只擋同一個 IP 的大量請求。孩子不綁 Google（「Google 綁孩子」與「Google 綁房間」的表在第 7 版拿掉）。
+- **用 Google 註冊不用帳號名稱與密碼**（L1，2026-10-06，`docs/plans/login-ux-review.md` 第 6 節；資料表第 9 版 `users.password_hash` 可以是 null）：
+  - 帳號名稱由 `src/online/userRules.ts` 的 `usernameBaseFromEmail`＋`pickUsername` 從 email 產生（撞名加 2～9999）；查已用的名稱用 `left(username_key, char_length($1)) = $1`，不用 LIKE（底線是萬用字元）。唯一鍵衝突時先查是不是 Google 或 email 被用了（回 409），只是帳號名稱被搶先就換一個重試（最多 3 次）。
+  - 沒有密碼的帳號用密碼登入：回和「帳號不存在、密碼錯」一樣的 401 `bad_login`，也算猜錯次數（不透露帳號存在；前端在 Google 按鈕旁說明）。所有 `verifySecret(…, row.password_hash)` 之前都要先判斷 null。
+  - 改密碼（設定密碼）與刪除帳號用 `users.ts` 的 `reauth`：密碼（算猜錯次數），或 `idToken`（必須是綁定在這個帳號的 Google，否則 401 `bad_google`；伺服器沒開 Google 回 404 `google_disabled`）。也可以用忘記密碼寄到 email 設定。
+  - 沒有密碼的帳號不能解除最後一個 Google（409 `last_login_method`）：解除時在交易裡先 `SELECT … FROM users … FOR UPDATE` 再數綁定，同時解除兩個或同時設定密碼時不會都以為還有別的登入方式。
 - Google 帳號只存 `sub` 與 email；回給前端的 email 一律遮罩（`maskEmail`）。
 - Google 登入的測試一律用程式產生的金鑰（`tests/server/googleKeys.ts`）或 `e2e/fixtures/google-test-key.json`，不要連到真正的 Google。
 

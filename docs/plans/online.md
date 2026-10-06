@@ -50,13 +50,13 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 使用者 2026-10-02 決定 Gmail 只是方便登入的備選，原本的登入方式全部保留。2026-10-03 改成大人帳號（`docs/plans/accounts.md`）之後，A4 把 Google 從「綁孩子」「綁房間」改成**綁大人帳號**（家長、老師）：
 
-- **用 Google 登入**：帳號頁的登入分頁按「用 Google 登入」，只能登入已經綁定這個 Google 的大人帳號；沒綁定回 404，說明先用帳號名稱和密碼登入、到帳號設定綁定，或用 Google 註冊。家長登入後在家長模式選孩子「在這台裝置玩」（A2）。
-- **用 Google 註冊**：註冊分頁按「用 Google 註冊」，email 自動帶入 Google 驗證過的 email（算驗證過，不寄驗證信）；帳號名稱、密碼、身分照樣要設（Google 出問題或換手機時還能用帳號密碼登入）。Google 已經綁了別的帳號回 409 `google_taken`；Google 的 email 已經有帳號回 409 `email_taken`（先登入那個帳號再綁定）。
+- **用 Google 登入**：帳號頁登入表單的「用 Google 繼續」（在「登入」旁邊；L1 起登入與註冊共用這一顆，`docs/plans/login-ux-review.md`），已經綁定這個 Google 的大人帳號直接登入；沒綁定時伺服器回 404，前端接著用 Google 註冊。家長登入後在家長模式選孩子「在這台裝置玩」（A2）。
+- **用 Google 註冊**（L1 起不用設帳號名稱與密碼，使用者 2026-10-06 決定）：掃 QR code 進來的直接當家長，其他情況先選老師或家長；帳號名稱由伺服器從 email 產生（撞名加數字），沒有密碼；email 自動帶入 Google 驗證過的 email（算驗證過，不寄驗證信）。沒有密碼的帳號：用密碼登入回和密碼錯一樣的 401（不透露帳號存在）；設定密碼、刪除帳號用綁定的 Google 確認身分，或用「忘記密碼」寄到 email 設定；不能解除最後一個 Google。Google 已經綁了別的帳號回 409 `google_taken`；Google 的 email 已經有帳號回 409 `email_taken`（先登入那個帳號再綁定）。
 - **綁定與解除**：帳號設定的「Google 快速登入」。一個 Google 只能綁一個大人帳號；一個大人帳號可以綁多個 Google（爸爸、媽媽各一個）。
 - 孩子不綁 Google：學校平板照樣用「班級代碼＋暱稱＋密碼」；家長要在新裝置找回孩子，用家長帳號登入（班級畫面有「用家長帳號登入」連到帳號頁）。
 - **個資**：伺服器只存 Google 帳號的識別碼（`sub`）與 email，用途只有快速登入；畫面上的 email 遮掉中間（`ke***@gmail.com`）。
 - **技術**：
-  - 前端用 Google Identity Services（`accounts.google.com/gsi/client`）的官方按鈕取得 ID token（不需要 client secret）；有 Google 按鈕的畫面才載入 Google 的程式。用 Google 註冊時，表單從 token 讀出 email 顯示（只是顯示，伺服器會重新驗證）。
+  - 前端用 Google Identity Services（`accounts.google.com/gsi/client`）的官方按鈕取得 ID token（不需要 client secret）；有 Google 按鈕的畫面才載入 Google 的程式。登入結果的回呼只有一個，同一個畫面不能同時有兩顆 Google 按鈕（帳號設定用 Google 確認身分時，先收起「綁定 Google」）。
   - 伺服器用 `jose` 依 Google 的公開金鑰（JWKS）驗證 ID token 的簽章、`aud`、`iss`、到期時間，並讀 `email_verified`（用 Google 註冊時 email 必須是 Google 驗證過的）。
   - Client ID 只設定在伺服器（`GOOGLE_CLIENT_ID`），前端從 `GET /api/config` 取得；沒設定時 Google 按鈕不顯示。建立方式見 `docs/google-login-setup.md`。
 - **測試模式**（真實 Google 登入無法自動化）：
@@ -168,13 +168,13 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/users` | 註冊大人帳號（家長、老師）`{ username, password, email, parent, teacher, appUrl? }` → `{ token, user, verifyMail }`（`docs/plans/accounts.md`）。email 已經有帳號回 409 `email_taken`；同時寄驗證信，`verifyMail` 是 `sent`／`failed`／`disabled`／`limited`（寄不出去也不擋註冊） |
 | `POST /api/users/login` | `{ username, password }` → `{ token, user }`；連錯 5 次鎖 5 分鐘 |
 | `GET /api/users/me`、`PATCH /api/users/me` | 讀取或修改自己的身分、email `{ parent?, teacher?, email?, appUrl? }`；換了 email（不分大小寫比較）要重新驗證並寄驗證信到新的 email，回應多 `verifyMail`；email 已經有帳號回 409 `email_taken` |
-| `POST /api/users/me/password` | `{ current, next }` 改密碼（其他裝置的登入失效） |
+| `POST /api/users/me/password` | `{ current, next }` 或 `{ idToken, next }` 改密碼（沒有密碼的帳號是設定密碼；`idToken` 要是綁定在這個帳號的 Google，否則 401 `bad_google`；沒有密碼卻給 `current` 回 401 `bad_password`；其他裝置的登入失效） |
 | `POST /api/users/me/verify/resend` | `{ appUrl? }` 重寄驗證信（A3）：每分鐘 1 封、每天 10 封，超過回 429＋`retryAfter`；已經驗證回 409；伺服器沒有設定寄信回 503 |
 | `POST /api/users/email/verify` | `{ token }` 打開驗證連結（不用登入）；過期（24 小時）、用過、或 email 已經換了回 400 `bad_token` |
 | `POST /api/users/password/forgot` | `{ login, appUrl? }` 忘記密碼（帳號名稱或 email，不分大小寫）：一律回 `{ ok: true }`，只寄給驗證過的 email，不透露帳號是否存在 |
 | `POST /api/users/password/reset` | `{ token, password }` 用重設連結設定新密碼（不用登入）：30 分鐘、只能用一次；成功後這個帳號所有裝置都登出 |
 | `GET /api/test/mails` | **只有 e2e 的測試信箱模式**（`TEST_MAIL_OUTBOX`）才有：記憶體裡寄出的信 `{ mails: [{ to, subject, text }] }` |
-| `DELETE /api/users/me` | `{ password }` 刪除自己的帳號：名下的雲端角色一併刪除（在班級裡的先結清禮物）；密碼錯回 401 `bad_password`，還有班級回 409 `has_classes`（刪掉老師帳號會連帶刪掉班上所有角色） |
+| `DELETE /api/users/me` | `{ password }` 或 `{ idToken }`（沒有密碼的帳號用綁定的 Google 確認）刪除自己的帳號：名下的雲端角色一併刪除（在班級裡的先結清禮物）；密碼錯回 401 `bad_password`、Google 不是這個帳號的回 401 `bad_google`，還有班級回 409 `has_classes`（刪掉老師帳號會連帶刪掉班上所有角色） |
 | `GET /api/parent/kids` | 家長名下的雲端角色 `{ kids: [{ id, profileId, name, avatar, room, coins, stars, lastSeen }] }`（`room` 沒有班級時是 null；`profileId` 讓裝置認出本機的同一個角色）；大人權杖＋家長身分，只有老師身分回 403 `not_parent` |
 | `POST /api/parent/kids` | 把這台裝置上的角色存到雲端 `{ profile }` → `{ token, account, profile, rev, room: null }`（孩子權杖，來源 `parent`）；同一個角色重複上傳回 409 `already_uploaded` |
 | `POST /api/parent/kids/:id/device` | 在這台裝置玩：發一張孩子權杖（來源 `parent`）並回傳存檔，格式同上；別人的角色和不存在的一樣回 404 `no_kid` |
@@ -196,9 +196,9 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/gifts/notices/ack` | `{ ids }` 送禮結果看過了 |
 | `GET /api/config` | `{ googleClientId }`（沒開 Google 登入是 null） |
 | `POST /api/users/google/login` | 用 Google 登入大人帳號（A4）`{ idToken }` → `{ token, user }`；沒綁定回 404 `google_not_linked`，無效的 token 回 401 |
-| `POST /api/users/google/register` | 用 Google 註冊 `{ idToken, username, password, parent, teacher }` → `{ token, user }`：email 用 Google 驗證過的（算驗證過），同時綁好這個 Google；Google 沒有驗證過的 email 回 400 `google_no_email`，Google 已經綁別的帳號 409 `google_taken`，email 已經有帳號 409 `email_taken` |
+| `POST /api/users/google/register` | 用 Google 註冊 `{ idToken, parent, teacher }` → `{ token, user }`（L1 起不收帳號名稱與密碼，舊版網頁多送的會被忽略）：帳號名稱從 email 產生（撞名加數字）、沒有密碼（`user.hasPassword` 是 false）；email 用 Google 驗證過的（算驗證過），同時綁好這個 Google；Google 沒有驗證過的 email 回 400 `google_no_email`，Google 已經綁別的帳號 409 `google_taken`，email 已經有帳號 409 `email_taken` |
 | `GET /api/users/me/google`、`POST /api/users/me/google` | 列出、綁定（`{ idToken }`）這個帳號的 Google → `{ google: [{ id, email }] }`（email 遮罩）；Google 已經綁別的帳號回 409 `google_taken` |
-| `DELETE /api/users/me/google/:id` | 解除一個 Google 綁定；不是自己的回 404 |
+| `DELETE /api/users/me/google/:id` | 解除一個 Google 綁定；不是自己的回 404；沒有密碼的帳號解除最後一個 Google 回 409 `last_login_method`（先設定密碼） |
 | `GET /api/parent/classes/:code` | 查班級名稱與是否開放加入（任何大人帳號、擋大量請求；掃 QR code 加入，`docs/plans/class-join.md`）→ `{ room: { code, name }, joinOpen }` |
 | `POST /api/parent/kids/:id/class` | 家長讓名下的雲端角色加入班級 `{ code, nickname }`，不設密碼 → `{ kid }`；錯誤同帶孩子權杖加入 |
 | `GET /healthz` | Zeabur 健康檢查 |

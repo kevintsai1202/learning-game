@@ -275,6 +275,7 @@ export function createApp(opts: AppOptions) {
     onGift: opts.onGift,
     mailer,
     allowedOrigins: allowed,
+    verifyGoogleToken,
   });
 
   // ---------- Email 驗證與忘記密碼（A3） ----------

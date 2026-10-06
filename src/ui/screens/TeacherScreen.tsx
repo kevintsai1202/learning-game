@@ -1,7 +1,8 @@
 /**
- * 老師／家長的帳號頁（docs/plans/accounts.md 的 A1）：用自訂的帳號密碼登入或註冊，登入後依身分切換——
+ * 老師／家長的帳號頁（docs/plans/accounts.md 的 A1；標題畫面的「大人登入」）：用帳號密碼或 Google 登入、註冊，登入後依身分切換——
  * 老師看到「我的班級」（建立班級；點進去看成員、重設孩子密碼、移出、開關加入／聊天／送禮），
- * 家長的雲端角色在 A2 開放。沒勾「保持登入」時，登入狀態存 sessionStorage：教室共用電腦關掉分頁就登出。
+ * 家長看到名下的雲端角色（A2）與到家長專區的按鈕（登入家長帳號時不用 PIN）。沒勾「保持登入」時，登入狀態存 sessionStorage：教室共用電腦關掉分頁就登出。
+ * L1 登入整理（docs/plans/login-ux-review.md）：一份登入表單、Google 按鈕在「登入」旁邊；用 Google 註冊不用帳號名稱與密碼。
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
 import { useUi } from '../../store/useUi';
@@ -9,7 +10,7 @@ import { useGame } from '../../store/useGame';
 import { useAccount } from '../../online/useAccount';
 import { useCloud } from '../../online/useCloud';
 import { getToken } from '../../online/storage';
-import { emailOfIdToken } from '../../online/google';
+import { ApiFailure } from '../../online/api';
 import { GoogleButton } from '../GoogleButton';
 import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
 import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from '../../content/editions';
@@ -153,32 +154,37 @@ function ClassName({ name, onSave }: { name: string; onSave: (name: string) => P
   );
 }
 
-/** 還沒登入：用帳號密碼登入，或註冊新的大人帳號 */
+/**
+ * 還沒登入：登入或註冊（L1 登入整理，docs/plans/login-ux-review.md 第 4.2 節）。一份表單，「登入」旁邊就是 Google 按鈕（用 Google 繼續）：
+ * - 綁過的 Google 直接登入；沒綁過的直接建立帳號，不用帳號名稱與密碼（第 6 節第 1 點）：
+ *   掃 QR code 進來的自動是家長，其他情況先問老師還是家長。
+ * - 「還沒有帳號？註冊」展開用帳號密碼註冊要多填的欄位（再輸入一次密碼、email、身分）。
+ * - 不想註冊、只要調整這台裝置的設定：連到家長專區（用 4 位數 PIN）。
+ */
 function AccountGate() {
   const login = useAccount((s) => s.login);
   const register = useAccount((s) => s.register);
   const googleLogin = useAccount((s) => s.googleLogin);
   const googleRegister = useAccount((s) => s.googleRegister);
   const googleClientId = useCloud((s) => s.googleClientId);
+  const goto = useUi((s) => s.goto);
   const [mode, setMode] = useState<'login' | 'register'>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [email, setEmail] = useState('');
-  /** 掃 QR code 打開的加入連結（docs/plans/class-join.md）：登入或註冊後讓孩子加入班級；註冊時預先勾「家長」 */
+  /** 掃 QR code 打開的加入連結（docs/plans/class-join.md）：登入或註冊後讓孩子加入班級；註冊時預先勾「家長」，用 Google 時直接當家長 */
   const joining = useAccount((s) => s.joining);
   const [parent, setParent] = useState(!!joining);
   const [teacher, setTeacher] = useState(false);
-  /** 在這台裝置保持登入（預設不勾：教室共用電腦） */
+  /** 在這台裝置保持登入（預設不勾：教室共用電腦、孩子的平板；保持登入時家長專區不用 PIN） */
   const [remember, setRemember] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** 顯示「忘記密碼」的表單 */
   const [forgot, setForgot] = useState(false);
-  /** 用 Google 註冊：Google 給的 ID token（有的話 email 用 Google 的，不用填） */
-  const [googleToken, setGoogleToken] = useState<string | null>(null);
-  /** Google 的 email（從 token 讀出來顯示；伺服器會重新驗證） */
-  const googleEmail = googleToken ? emailOfIdToken(googleToken) : null;
+  /** 沒綁過的 Google 給的 ID token：等使用者選好老師或家長，再用它建立帳號 */
+  const [newGoogle, setNewGoogle] = useState<string | null>(null);
 
   /** 註冊表單的第一個問題（前端先擋，伺服器也會再檢查一次） */
   const registerProblem = (): string | null => {
@@ -187,10 +193,8 @@ function AccountGate() {
     const pw = checkPassword(password);
     if (pw) return pw;
     if (password !== confirm) return '兩次輸入的密碼不一樣';
-    if (!googleToken) {
-      const mail = checkEmail(email);
-      if (!mail.ok) return mail.reason;
-    }
+    const mail = checkEmail(email);
+    if (!mail.ok) return mail.reason;
     if (!parent && !teacher) return '請勾選「老師」或「家長」（可以兩個都勾）';
     return null;
   };
@@ -208,7 +212,6 @@ function AccountGate() {
     setError(null);
     try {
       if (mode === 'login') await login(username.trim(), password, remember);
-      else if (googleToken) await googleRegister({ idToken: googleToken, username: username.trim(), password, parent, teacher, remember });
       else await register({ username: username.trim(), password, email: email.trim(), parent, teacher, remember });
     } catch (err) {
       setError(messageOf(err));
@@ -220,53 +223,87 @@ function AccountGate() {
   const switchMode = (m: 'login' | 'register') => {
     setMode(m);
     setError(null);
-    setGoogleToken(null);
   };
 
-  /** 用 Google 登入（只能登入已經綁定這個 Google 的帳號） */
-  const onGoogleLogin = async (idToken: string) => {
+  /** 用 Google 建立帳號（帳號名稱由伺服器從 email 產生，沒有密碼）；成功後帳號頁換成登入後的畫面 */
+  const createWithGoogle = async (idToken: string, roles: { parent: boolean; teacher: boolean }) => {
     setBusy(true);
     setError(null);
     try {
-      await googleLogin(idToken, remember);
+      await googleRegister({ idToken, ...roles, remember });
     } catch (err) {
       setError(messageOf(err));
     } finally {
       setBusy(false);
     }
   };
+
+  /** 按了 Google 按鈕：綁過的直接登入；沒綁過的建立帳號（掃 QR code 進來的直接當家長，其他情況先問身分） */
+  const onGoogle = async (idToken: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await googleLogin(idToken, remember);
+      return;
+    } catch (err) {
+      if (!(err instanceof ApiFailure && err.code === 'google_not_linked')) {
+        setError(messageOf(err));
+        return;
+      }
+    } finally {
+      setBusy(false);
+    }
+    if (joining) await createWithGoogle(idToken, { parent: true, teacher: false });
+    else setNewGoogle(idToken);
+  };
+
   const ready = !busy && username.trim().length > 0 && password.length > 0;
   if (forgot) return <ForgotPassword onClose={() => setForgot(false)} />;
+
+  if (newGoogle) {
+    // 第一次用這個 Google：選身分就建立帳號（之後可以在帳號設定加上另一個身分）
+    return (
+      <div className="panel-body plain" data-testid="google-role-pick">
+        <h3 style={{ margin: '0 0 6px' }}>第一次用這個 Google 帳號</h3>
+        <p style={{ margin: '0 0 10px' }}>選你的身分，就會建立知識島的帳號（之後可以在帳號設定加上另一個身分）：</p>
+        <div className="join-choices">
+          <button className="join-choice" disabled={busy} onClick={() => void createWithGoogle(newGoogle, { parent: false, teacher: true })} data-testid="google-role-teacher">
+            <span className="avatar-dot">👩‍🏫</span>
+            <b>老師</b>
+            <small>建立班級、管理學生</small>
+          </button>
+          <button className="join-choice" disabled={busy} onClick={() => void createWithGoogle(newGoogle, { parent: true, teacher: false })} data-testid="google-role-parent">
+            <span className="avatar-dot">👨‍👩‍👧</span>
+            <b>家長</b>
+            <small>管理孩子的角色、讓孩子加入班級</small>
+          </button>
+        </div>
+        <ErrorNote text={error} testId="account-error" />
+        <button
+          className="btn small white"
+          style={{ marginTop: 12 }}
+          onClick={() => {
+            setNewGoogle(null);
+            setError(null);
+          }}
+          data-testid="google-role-cancel"
+        >
+          取消，回到登入
+        </button>
+        <p className="notice">帳號名稱會用你的 Google email 自動產生，不用設密碼；想用密碼登入的話，之後可以在帳號設定加上。</p>
+      </div>
+    );
+  }
+
   return (
     <>
       {joining && (
         <p className="notice" style={{ margin: '0 16px 8px' }} data-testid="join-login-note">
-          🏫 要讓孩子加入班級（代碼 {joining.code}）：請登入家長帳號，還沒有帳號的話按「註冊新帳號」。登入後選孩子就能加入，不用輸入密碼。
+          🏫 要讓孩子加入班級（代碼 {joining.code}）：請登入家長帳號；還沒有帳號的話，直接按「用 Google 繼續」或「註冊」。登入後選孩子就能加入，不用輸入密碼。
         </p>
       )}
-      <div className="tabs">
-        <button className={`btn small white ${mode === 'login' ? 'on' : ''}`} onClick={() => switchMode('login')} data-testid="account-tab-login">
-          登入
-        </button>
-        <button className={`btn small white ${mode === 'register' ? 'on' : ''}`} onClick={() => switchMode('register')} data-testid="account-tab-register">
-          註冊新帳號
-        </button>
-      </div>
       <form className="panel-body" onSubmit={submit}>
-        {mode === 'register' && googleClientId && !googleToken && (
-          <div style={{ marginBottom: 10 }}>
-            <span className="label">可以用 Google 註冊：email 自動帶入 Google 的，不用再驗證（帳號名稱和密碼照樣要設）</span>
-            <GoogleButton
-              clientId={googleClientId}
-              label="用 Google 註冊"
-              testId="account-google-register"
-              onCredential={(t) => {
-                setGoogleToken(t);
-                setError(null);
-              }}
-            />
-          </div>
-        )}
+        {mode === 'register' && <h3 style={{ margin: '0 0 6px' }}>註冊新帳號</h3>}
         <label className="label" htmlFor="account-username">
           帳號名稱{mode === 'register' && '（4～20 個英文字母、數字或底線，不要用真實姓名）'}
         </label>
@@ -302,27 +339,16 @@ function AccountGate() {
             <label className="label" htmlFor="account-email">
               email（忘記密碼時用來重設，不會公開）
             </label>
-            {googleToken ? (
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span className="plain" data-testid="account-google-email">
-                  使用 Google 的 email：<strong>{googleEmail ?? '（讀不到）'}</strong>（已驗證）
-                </span>
-                <button type="button" className="btn small white" onClick={() => setGoogleToken(null)} data-testid="account-google-clear">
-                  改用自己輸入 email
-                </button>
-              </div>
-            ) : (
-              <input
-                id="account-email"
-                className="text-input"
-                type="email"
-                inputMode="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                data-testid="account-email"
-              />
-            )}
+            <input
+              id="account-email"
+              className="text-input"
+              type="email"
+              inputMode="email"
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              data-testid="account-email"
+            />
             <span className="label">身分（可以兩個都勾，之後也可以在帳號設定加上）</span>
             <Check checked={teacher} onChange={setTeacher} testId="role-teacher">
               👩‍🏫 老師（建立班級、管理學生）
@@ -333,24 +359,46 @@ function AccountGate() {
           </>
         )}
         <Check checked={remember} onChange={setRemember} testId="account-remember">
-          在這台裝置保持登入（教室共用的電腦請不要勾）
+          在這台裝置保持登入（孩子的平板、教室共用的電腦不要勾）
         </Check>
         <ErrorNote text={error} testId="account-error" />
+        {/* 「登入」與 Google 放在同一排（常見的「帳號密碼＋第三方登入」版面）；窄螢幕自動換行 */}
         <div style={{ marginTop: 14, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="submit" className="btn big green" disabled={!ready} data-testid="account-submit">
             {busy ? '連線中…' : mode === 'login' ? '登入' : '註冊'}
           </button>
-          {mode === 'login' && (
-            <button type="button" className="btn small white" onClick={() => setForgot(true)} data-testid="forgot-open">
+          {googleClientId && <GoogleButton clientId={googleClientId} text="continue_with" label="用 Google 繼續" testId="account-google-login" onCredential={(t) => void onGoogle(t)} />}
+        </div>
+        {mode === 'login' ? (
+          <p className="account-links">
+            <button type="button" className="link-btn" onClick={() => setForgot(true)} data-testid="forgot-open">
               忘記密碼？
             </button>
-          )}
-        </div>
-        {mode === 'login' && googleClientId && (
-          <div style={{ marginTop: 12 }}>
-            <span className="label">綁定過 Google 的話，也可以用 Google 快速登入</span>
-            <GoogleButton clientId={googleClientId} label="用 Google 登入" testId="account-google-login" onCredential={(t) => void onGoogleLogin(t)} />
-          </div>
+            <span>
+              還沒有帳號？
+              <button type="button" className="link-btn" onClick={() => switchMode('register')} data-testid="account-tab-register">
+                註冊
+              </button>
+            </span>
+          </p>
+        ) : (
+          <p className="account-links">
+            <span>
+              已經有帳號？
+              <button type="button" className="link-btn" onClick={() => switchMode('login')} data-testid="account-tab-login">
+                登入
+              </button>
+            </span>
+          </p>
+        )}
+        {googleClientId && <p className="notice">用 Google 繼續：已經綁定的直接登入；第一次用的直接建立帳號，不用另外設帳號名稱和密碼。</p>}
+        {mode === 'login' && !joining && (
+          <p className="notice">
+            只要調整這台裝置的設定（遊玩時間、教材版本、聲音），不用註冊：
+            <button type="button" className="link-btn" onClick={() => goto('parent')} data-testid="account-parent-zone">
+              到家長專區（用 4 位數 PIN）
+            </button>
+          </p>
         )}
         <p className="notice">孩子不用註冊：家長掃老師給的 QR code、用家長帳號選孩子加入（不用密碼）；或孩子用「班級代碼＋暱稱＋自己設的 4 位數密碼」加入。</p>
       </form>
@@ -542,9 +590,13 @@ function VerifyMailNote() {
 /**
  * 帳號設定的 Google 快速登入（A4）：列出已綁定的 Google（email 遮罩）、綁定、解除。
  * 一個 Google 只能綁一個帳號，一個帳號可以綁多個（爸爸、媽媽各一個）；伺服器沒開 Google 登入時不顯示。
+ * 沒有密碼的帳號（用 Google 註冊的）不能解除最後一個 Google：不顯示那顆按鈕，說明要先設定密碼（伺服器也會擋）。
+ * hideLinkButton：帳號設定正在用 Google 確認身分時，先收起「綁定 Google」——同一個畫面只能有一顆真正的 Google 按鈕
+ * （src/online/google.ts 只記一個登入結果的回呼，兩顆同時在畫面上時，按哪一顆都會交給後畫出來的那顆）。
  */
-function GoogleLinks() {
+function GoogleLinks({ hideLinkButton }: { hideLinkButton: boolean }) {
   const clientId = useCloud((s) => s.googleClientId);
+  const hasPassword = useAccount((s) => !!s.user?.hasPassword);
   const googleLinks = useAccount((s) => s.googleLinks);
   const linkGoogle = useAccount((s) => s.linkGoogle);
   const unlinkGoogle = useAccount((s) => s.unlinkGoogle);
@@ -576,6 +628,8 @@ function GoogleLinks() {
       })
       .catch((err: unknown) => setError(messageOf(err)));
   };
+  /** 可以解除：有密碼，或還有別的 Google 可以登入 */
+  const canUnlink = hasPassword || (links?.length ?? 0) > 1;
 
   return (
     <div data-testid="google-links-section">
@@ -584,40 +638,53 @@ function GoogleLinks() {
         {links === null ? '讀取中…' : links.length ? `已綁定：${links.map((l) => l.email).join('、')}` : '還沒有綁定 Google。'}
       </p>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <GoogleButton clientId={clientId} label="綁定 Google" testId="settings-google-link" onCredential={(t) => run(linkGoogle(t), '綁定好了，之後可以在登入畫面用 Google 快速登入')} />
-        {links?.map((l) => (
-          <button key={l.id} className="btn small white" onClick={() => run(unlinkGoogle(l.id), `已解除 ${l.email}`)} data-testid={`google-unlink-${l.id}`}>
-            解除 {l.email}
-          </button>
-        ))}
+        {!hideLinkButton && (
+          <GoogleButton clientId={clientId} label="綁定 Google" testId="settings-google-link" onCredential={(t) => run(linkGoogle(t), '綁定好了，之後可以在登入畫面用 Google 快速登入')} />
+        )}
+        {canUnlink &&
+          links?.map((l) => (
+            <button key={l.id} className="btn small white" onClick={() => run(unlinkGoogle(l.id), `已解除 ${l.email}`)} data-testid={`google-unlink-${l.id}`}>
+              解除 {l.email}
+            </button>
+          ))}
       </div>
+      {!canUnlink && links?.length === 1 && <p style={{ margin: '6px 0 0' }}>這是這個帳號唯一的登入方式：要解除的話，先在下面設定密碼。</p>}
       <ErrorNote text={error} testId="google-links-error" />
       {msg && (
         <p className="notice" data-testid="google-links-msg">
           {msg}
         </p>
       )}
-      <p className="notice">爸爸、媽媽可以各綁一個 Google；帳號名稱和密碼照樣可以登入。伺服器只記 Google 帳號的識別碼與 email，只用在快速登入。</p>
+      <p className="notice">爸爸、媽媽可以各綁一個 Google。伺服器只記 Google 帳號的識別碼與 email，只用在快速登入。</p>
     </div>
   );
 }
 
-/** 帳號設定：加上另一個身分、改 email、改密碼 */
+/** 再確認一次身分的證明：目前的密碼，或綁定的 Google 給的 ID token（用 Google 註冊、沒有密碼的帳號用這個） */
+type Proof = { current: string } | { idToken: string };
+
+/**
+ * 帳號設定：加上另一個身分、改 email、Google 快速登入、改密碼（沒有密碼的帳號是「設定密碼」）、刪除帳號。
+ * 沒有密碼的帳號（L1：用 Google 註冊的）設定密碼與刪除帳號時用 Google 確認身分；這時「綁定 Google」的按鈕先收起來（見 GoogleLinks）。
+ */
 function AccountSettings() {
   const user = useAccount((s) => s.user);
   const update = useAccount((s) => s.update);
   const changePassword = useAccount((s) => s.changePassword);
   const resendVerify = useAccount((s) => s.resendVerify);
+  const clientId = useCloud((s) => s.googleClientId);
   const [email, setEmail] = useState(user?.email ?? '');
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  /** 刪除帳號：按第一次才出現密碼欄與確定鈕 */
-  const [deleting, setDeleting] = useState(false);
+  /** 打開的區塊：設定密碼（沒有密碼的帳號）或刪除帳號；兩個不同時打開（各自可能有一顆 Google 按鈕） */
+  const [panel, setPanel] = useState<'password' | 'delete' | null>(null);
   const [deletePassword, setDeletePassword] = useState('');
   if (!user) return null;
+  /** 正在用 Google 確認身分（沒有密碼的帳號打開了設定密碼或刪除帳號） */
+  const reauthOpen = !user.hasPassword && panel !== null;
 
   /** 執行一個設定動作，顯示結果 */
   const run = async (job: () => Promise<void>, done: string) => {
@@ -631,29 +698,49 @@ function AccountSettings() {
     }
   };
 
-  const savePassword = () => {
+  /** 打開或收起一個區塊（清掉上一個動作的訊息） */
+  const open = (p: 'password' | 'delete' | null) => {
+    setPanel(p);
+    setError(null);
+    setMsg(null);
+  };
+
+  /** 改密碼或設定密碼：先檢查新密碼，再用目前的密碼或 Google 確認身分 */
+  const savePassword = (proof: Proof) => {
     const problem = checkPassword(next) ?? (next !== confirm ? '兩次輸入的新密碼不一樣' : null);
     if (problem) {
       setError(problem);
       return;
     }
+    const done = user.hasPassword ? '密碼改好了，其他裝置的登入都已經登出' : '密碼設定好了，之後也能用帳號名稱和密碼登入；其他裝置的登入都已經登出';
     void run(async () => {
-      await changePassword(current, next);
+      await changePassword(proof, next);
       setCurrent('');
       setNext('');
       setConfirm('');
-    }, '密碼改好了，其他裝置的登入都已經登出');
+      setPanel(null);
+    }, done);
   };
 
   /** 刪除帳號：家長名下的角色一併刪除，這台裝置上的那些角色也拿掉，最後登出 */
-  const deleteAccount = () =>
+  const deleteAccount = (proof: { password: string } | { idToken: string }) =>
     void run(async () => {
       const call = useAccount.getState().call;
       const kids = user.parent ? (await call<ParentKidsResponse>('GET', '/api/parent/kids')).kids : [];
-      await call('DELETE', '/api/users/me', { password: deletePassword });
+      await call('DELETE', '/api/users/me', proof);
       for (const k of kids) useCloud.getState().forget(k.id);
       await useAccount.getState().logout();
     }, '帳號已經刪除');
+
+  /** 新密碼的兩個輸入框（改密碼與設定密碼共用） */
+  const newPasswordInputs = (
+    <>
+      <input className="text-input" type="password" autoComplete="new-password" placeholder={`新密碼（至少 ${PASSWORD_MIN} 個字）`} value={next} onChange={(e) => setNext(e.target.value)} aria-label="新密碼" data-testid="settings-next" />
+      <input className="text-input" type="password" autoComplete="new-password" placeholder="再輸入一次新密碼" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-label="再輸入一次新密碼" data-testid="settings-confirm" />
+    </>
+  );
+  /** 沒開 Google 登入的伺服器上，沒有密碼的帳號改用「忘記密碼」的信設定密碼 */
+  const noGoogleNote = <p style={{ margin: '6px 0 0' }}>班級伺服器沒有開啟 Google 登入：請登出後在登入畫面按「忘記密碼？」，用寄到 email 的連結設定密碼。</p>;
 
   return (
     <div className="panel-body plain" data-testid="account-settings-panel">
@@ -688,19 +775,54 @@ function AccountSettings() {
           儲存 email
         </button>
       </div>
-      <GoogleLinks />
-      <h4 style={{ margin: '14px 0 6px' }}>改密碼</h4>
-      <input className="text-input" type="password" autoComplete="current-password" placeholder="目前的密碼" value={current} onChange={(e) => setCurrent(e.target.value)} aria-label="目前的密碼" data-testid="settings-current" />
-      <input className="text-input" type="password" autoComplete="new-password" placeholder={`新密碼（至少 ${PASSWORD_MIN} 個字）`} value={next} onChange={(e) => setNext(e.target.value)} aria-label="新密碼" data-testid="settings-next" />
-      <input className="text-input" type="password" autoComplete="new-password" placeholder="再輸入一次新密碼" value={confirm} onChange={(e) => setConfirm(e.target.value)} aria-label="再輸入一次新密碼" data-testid="settings-confirm" />
-      <div style={{ marginTop: 8 }}>
-        <button className="btn small white" disabled={!current || !next} onClick={savePassword} data-testid="settings-password-save">
-          改密碼
-        </button>
-      </div>
+      <GoogleLinks hideLinkButton={reauthOpen} />
+      <h4 style={{ margin: '14px 0 6px' }} data-testid="settings-password-title">
+        {user.hasPassword ? '改密碼' : '設定密碼'}
+      </h4>
+      {user.hasPassword ? (
+        <>
+          <input className="text-input" type="password" autoComplete="current-password" placeholder="目前的密碼" value={current} onChange={(e) => setCurrent(e.target.value)} aria-label="目前的密碼" data-testid="settings-current" />
+          {newPasswordInputs}
+          <div style={{ marginTop: 8 }}>
+            <button className="btn small white" disabled={!current || !next} onClick={() => savePassword({ current })} data-testid="settings-password-save">
+              改密碼
+            </button>
+          </div>
+        </>
+      ) : panel === 'password' ? (
+        <>
+          {newPasswordInputs}
+          {clientId ? (
+            <>
+              <p style={{ margin: '8px 0 6px' }}>填好新密碼後，按 Google 按鈕確認是你本人，就會儲存：</p>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <GoogleButton clientId={clientId} label="用 Google 確認並儲存" testId="settings-reauth-google" onCredential={(t) => savePassword({ idToken: t })} />
+                <button className="btn small white" onClick={() => open(null)}>
+                  取消
+                </button>
+              </div>
+            </>
+          ) : (
+            noGoogleNote
+          )}
+        </>
+      ) : (
+        <>
+          <p style={{ margin: '0 0 6px' }}>
+            這個帳號是用 Google 註冊的，還沒有密碼。設定之後，也能用帳號名稱「{user.username}」和密碼登入（Google 帳號出問題時用得到）。
+          </p>
+          <button className="btn small white" onClick={() => open('password')} data-testid="settings-set-password">
+            設定密碼
+          </button>
+        </>
+      )}
       <h4 style={{ margin: '14px 0 6px' }}>刪除帳號</h4>
       <p style={{ margin: '0 0 6px' }}>家長名下的雲端角色會一併刪除，刪除後無法復原。還有班級的老師帳號要先移除班級。</p>
-      {deleting ? (
+      {panel !== 'delete' ? (
+        <button className="btn small white" onClick={() => open('delete')} data-testid="delete-account">
+          刪除帳號
+        </button>
+      ) : user.hasPassword ? (
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <input
             className="text-input"
@@ -713,17 +835,23 @@ function AccountSettings() {
             aria-label="再輸入一次密碼"
             data-testid="delete-password"
           />
-          <button className="btn small red" disabled={!deletePassword} onClick={deleteAccount} data-testid="delete-account-confirm">
+          <button className="btn small red" disabled={!deletePassword} onClick={() => deleteAccount({ password: deletePassword })} data-testid="delete-account-confirm">
             確定刪除帳號
           </button>
-          <button className="btn small white" onClick={() => setDeleting(false)}>
+          <button className="btn small white" onClick={() => open(null)}>
+            取消
+          </button>
+        </div>
+      ) : clientId ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <span style={{ flexBasis: '100%' }}>按 Google 按鈕確認是你本人，帳號就會刪除：</span>
+          <GoogleButton clientId={clientId} label="用 Google 確認並刪除帳號" testId="delete-reauth-google" onCredential={(t) => deleteAccount({ idToken: t })} />
+          <button className="btn small white" onClick={() => open(null)}>
             取消
           </button>
         </div>
       ) : (
-        <button className="btn small white" onClick={() => setDeleting(true)} data-testid="delete-account">
-          刪除帳號
-        </button>
+        noGoogleNote
       )}
       <ErrorNote text={error} testId="settings-error" />
       {msg && (
@@ -740,6 +868,7 @@ function ParentHome() {
   const call = useAccount((s) => s.call);
   const session = useAccount((s) => s.session);
   const profiles = useGame((s) => s.save.profiles);
+  const goto = useUi((s) => s.goto);
   const [kids, setKids] = useState<KidSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -798,7 +927,13 @@ function ParentHome() {
 
   return (
     <div className="panel-body plain" data-testid="parent-home">
-      <h3 style={{ margin: '0 0 8px' }}>我的孩子（雲端角色）</h3>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 0 8px' }}>
+        <h3 style={{ margin: 0 }}>我的孩子（雲端角色）</h3>
+        {/* 這台裝置的設定（遊玩時間、教材版本、聲音）：登入家長帳號時不用 PIN（docs/plans/login-ux-review.md 第 6 節第 2 點） */}
+        <button className="btn small white" onClick={() => goto('parent')} data-testid="parent-zone-link">
+          ⚙️ 這台裝置的設定（家長專區）
+        </button>
+      </div>
       {kids === null ? (
         <p>讀取中…</p>
       ) : kids.length === 0 ? (

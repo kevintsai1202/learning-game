@@ -1,6 +1,7 @@
 /**
  * 家長專區：PIN 保護，內容有學習報告、錯題本、教材版本、班級帳號、設定、自訂題庫匯入、備份、資料來源與授權。
  * 這區給大人看，用一般字型、資訊密度較高。
+ * 這台裝置登入了家長帳號時不用 PIN（L1 登入整理，docs/plans/login-ux-review.md 第 6 節第 2 點）；沒登入照舊用 PIN。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../../store/useGame';
@@ -19,6 +20,7 @@ import { CurriculumTab } from './CurriculumTab';
 import { useCloud } from '../../online/useCloud';
 import { onlineEnabled } from '../../online/config';
 import { getToken } from '../../online/storage';
+import { useAccount } from '../../online/useAccount';
 import { BADGES } from '../../store/badges';
 
 const SUBJECT_NAME: Record<SubjectId, string> = { zh: '國語', math: '數學', en: '英語', life: '生活與健康' };
@@ -97,6 +99,7 @@ function PinGate({ onPass }: { onPass: () => void }) {
         )}
       </div>
       <p className="notice">PIN 只是為了避免孩子誤入設定，不是資安防護。忘記 PIN 時可清除瀏覽器網站資料重設（會一併清除進度）。</p>
+      {onlineEnabled() && <p className="notice">在這台裝置登入家長帳號（標題畫面的「大人登入」）時，進家長專區不用輸入 PIN。</p>}
     </div>
   );
 }
@@ -552,7 +555,7 @@ function ClassTab({ profile }: { profile: Profile }) {
           ) : (
             // 家長名下、沒有班級的角色沒有孩子密碼：請家長登入後「在這台裝置玩」
             <button className="btn small" onClick={() => goto('teacher')}>
-              🔑 家長登入找回角色
+              🔑 大人登入，找回角色
             </button>
           ))}
         {hasToken && !cloud.room && (
@@ -627,6 +630,14 @@ export function ParentScreen() {
   const profiles = useGame((s) => s.save.profiles);
   const activeId = useGame((s) => s.save.activeProfileId);
   const [pass, setPass] = useState(false);
+  /** 這台裝置登入了家長帳號：不用 PIN（docs/plans/login-ux-review.md 第 6 節第 2 點） */
+  const session = useAccount((s) => s.session);
+  const parentSignedIn = useAccount((s) => !!s.session && !!s.user?.parent);
+  // 重新整理後只剩權杖、還沒讀回帳號資料：先顯示 PIN，讀回來是家長就自動打開（權杖失效時 refresh 會登出，維持 PIN）
+  useEffect(() => {
+    if (session && !useAccount.getState().user) useAccount.getState().refresh().catch(() => undefined);
+  }, [session]);
+  const unlocked = pass || parentSignedIn;
   const [tab, setTab] = useState<Tab>('report');
   const [pid, setPid] = useState(activeId ?? profiles[0]?.id ?? '');
   const profile = profiles.find((p) => p.id === pid) ?? null;
@@ -645,7 +656,7 @@ export function ParentScreen() {
             返回
           </button>
         </div>
-        {!pass ? (
+        {!unlocked ? (
           <PinGate onPass={() => setPass(true)} />
         ) : (
           <>

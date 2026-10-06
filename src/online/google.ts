@@ -77,11 +77,21 @@ let currentHandler: ((idToken: string) => void) | null = null;
 /** 已經用哪個 Client ID 初始化過 */
 let initializedFor: string | null = null;
 
+/** Google 官方按鈕上的文字：signin_with「使用 Google 帳戶登入」、continue_with「使用 Google 帳戶繼續」（登入或註冊都用這顆） */
+export type GoogleButtonText = 'signin_with' | 'continue_with';
+
 /**
  * 在 parent 裡畫出 Google 的官方登入按鈕；使用者登入後呼叫 onCredential(ID token)。
  * 回傳取消註冊的函式（元件卸載時呼叫）。
+ * 注意：登入結果的回呼只有一個（currentHandler），同一個畫面同時有兩顆按鈕時，按哪一顆都會交給後畫出來的那顆；畫面要避免同時出現兩顆。
  */
-export async function renderGoogleButton(parent: HTMLElement, clientId: string, onCredential: (idToken: string) => void, width = 260): Promise<() => void> {
+export async function renderGoogleButton(
+  parent: HTMLElement,
+  clientId: string,
+  onCredential: (idToken: string) => void,
+  width = 260,
+  text: GoogleButtonText = 'signin_with',
+): Promise<() => void> {
   const gis = await loadGis();
   if (initializedFor !== clientId) {
     gis.initialize({
@@ -96,7 +106,7 @@ export async function renderGoogleButton(parent: HTMLElement, clientId: string, 
     initializedFor = clientId;
   }
   currentHandler = onCredential;
-  gis.renderButton(parent, { type: 'standard', theme: 'outline', size: 'large', shape: 'pill', text: 'signin_with', locale: 'zh-TW', width });
+  gis.renderButton(parent, { type: 'standard', theme: 'outline', size: 'large', shape: 'pill', text, locale: 'zh-TW', width });
   return () => {
     if (currentHandler === onCredential) currentHandler = null;
   };

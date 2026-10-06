@@ -40,3 +40,31 @@ export function checkEmail(raw: string): EmailCheck {
   if (email.length > 254 || !EMAIL_RE.test(email)) return { ok: false, reason: 'email 的格式不對，請再檢查一次' };
   return { ok: true, email };
 }
+
+/** 自動產生的帳號名稱「本體」最多幾個字：留 4 位給撞名時加的數字，加起來不超過 20 */
+const GENERATED_BASE_MAX = 16;
+
+/**
+ * 用 Google 註冊時，從 email 產生帳號名稱的本體（docs/plans/login-ux-review.md 第 6 節第 1 點：Google 註冊不用設帳號名稱與密碼）。
+ * 取 @ 前面的英文字母、數字、底線（保留大小寫），最多 16 個字；剩不到 4 個字時前面加 user_，一個都不剩時用 user。
+ * 結果一定符合 checkUsername 的規則；撞名時由 pickUsername 加數字。
+ */
+export function usernameBaseFromEmail(email: string): string {
+  const local = email.split('@')[0] ?? '';
+  const cleaned = local.replace(/[^A-Za-z0-9_]/g, '').slice(0, GENERATED_BASE_MAX);
+  if (cleaned.length >= 4) return cleaned;
+  return cleaned ? `user_${cleaned}` : 'user';
+}
+
+/**
+ * 從本體挑一個沒人用的帳號名稱：本體沒人用就用本體，不然從 2 開始往後加數字（最多 9999）。
+ * taken 是已經有人用的帳號名稱（小寫，比對用的 username_key）。全部都被用掉時回傳 null（呼叫端改用亂數）。
+ */
+export function pickUsername(base: string, taken: Set<string>): string | null {
+  if (!taken.has(base.toLowerCase())) return base;
+  for (let n = 2; n <= 9999; n++) {
+    const name = `${base}${n}`;
+    if (!taken.has(name.toLowerCase())) return name;
+  }
+  return null;
+}

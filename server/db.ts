@@ -276,6 +276,12 @@ const MIGRATIONS: Migration[] = [
     version: 8,
     statements: [`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS curriculum jsonb`],
   },
+  {
+    // 登入整理 L1（docs/plans/login-ux-review.md 第 6 節第 1 點）：用 Google 註冊的帳號不用設密碼（password_hash 是 null），
+    // 之後可以在帳號設定用 Google 確認身分再設定密碼，或用「忘記密碼」寄到 Google 驗證過的 email 設定
+    version: 9,
+    statements: [`ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL`],
+  },
 ];
 
 /**

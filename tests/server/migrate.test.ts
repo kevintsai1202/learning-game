@@ -208,4 +208,31 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       await d.close();
     }
   });
+  it('v8 → v9（登入整理 L1）：用 Google 註冊的帳號可以沒有密碼；既有帳號的密碼照舊', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 8 });
+      await d.query(
+        "INSERT INTO users (id, username, username_key, password_hash, is_parent, is_teacher, created_at) VALUES ('u1', 'u1', 'u1', 'old-hash', true, false, $1::timestamptz)",
+        [T],
+      );
+      // 第 8 版還不能沒有密碼
+      await expect(
+        d.query("INSERT INTO users (id, username, username_key, password_hash, is_parent, is_teacher, created_at) VALUES ('u0', 'u0', 'u0', NULL, true, false, $1::timestamptz)", [T]),
+      ).rejects.toThrow();
+
+      await migrate(d);
+
+      expect((await d.query("SELECT password_hash FROM users WHERE id = 'u1'"))[0].password_hash).toBe('old-hash');
+      await d.query(
+        "INSERT INTO users (id, username, username_key, password_hash, is_parent, is_teacher, created_at) VALUES ('u2', 'u2', 'u2', NULL, true, false, $1::timestamptz)",
+        [T],
+      );
+      expect((await d.query("SELECT password_hash FROM users WHERE id = 'u2'"))[0].password_hash).toBeNull();
+      // 可以重複執行
+      await migrate(d);
+    } finally {
+      await d.close();
+    }
+  });
 });

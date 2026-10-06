@@ -107,6 +107,17 @@ describe('清掉 e2e 的測試資料', () => {
     }
   });
 
+  it('沒有密碼的帳號（L1 起用 Google 註冊的）不算測試帳號，也不會出錯：就算帳號名稱與 email 都像 e2e 的也留著', async () => {
+    await seed();
+    await db.query(
+      "INSERT INTO users (id, username, username_key, password_hash, email, is_parent, is_teacher, created_at) VALUES ('u-google', 'e2e_googleonly', 'e2e_googleonly', NULL, 'e2e_googleonly@example.com', true, false, $1::timestamptz)",
+      [T],
+    );
+    const r = await purgeTestData(query, { apply: true, log: () => undefined });
+    expect(r.users).toBe(2);
+    expect((await db.query("SELECT id FROM users WHERE id = 'u-google'")).length).toBe(1);
+  });
+
   it('測試班級裡有別人家長名下的角色：拒絕刪除（刪班級會連帶刪掉那個角色），什麼都不動', async () => {
     await seed();
     await user('u-real-p', 'mom_chen', 'mom@school.example.tw', 'secret-pass', { parent: true, teacher: false });

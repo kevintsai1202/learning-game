@@ -1,7 +1,8 @@
 /**
  * 班級畫面：孩子用「房間代碼＋暱稱＋4 位數密碼」登入班級，或第一次加入班級。
  * 加入時可以選新的外觀，或把這台裝置上的角色進度帶過去（那個角色直接變成雲端角色）。
- * 家長要找回孩子的角色時，用家長帳號登入（帳號頁；A4 起 Google 快速登入綁在家長帳號上）。
+ * 家長要找回孩子的角色時，用家長帳號登入（帳號頁；A4 起 Google 快速登入綁在家長帳號上）：
+ * L1 起大人的入口統一在標題畫面的「大人登入」，這裡只在登入失敗時提示（docs/plans/login-ux-review.md 第 4.1 節）。
  */
 import { useState, type SubmitEvent } from 'react';
 import { useGame } from '../../store/useGame';
@@ -193,11 +194,11 @@ export function ClassScreen() {
               {busy ? '連線中…' : mode === 'login' ? '登入，出發！' : '加入，出發！'}
             </button>
           </div>
-          {mode === 'login' && (
+          {mode === 'login' && error && (
             <div style={{ marginTop: 16 }}>
-              <span className="label">家長要找回孩子的角色（雲端角色）？</span>
+              <span className="label">忘記密碼請老師重設；角色在家長帳號下的，請家長幫忙：</span>
               <button type="button" className="btn small white" onClick={() => goto('teacher')} data-testid="class-parent-login">
-                用家長帳號登入
+                大人登入
               </button>
             </div>
           )}

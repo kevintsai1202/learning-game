@@ -4,7 +4,7 @@
  * 之後的流程與正式環境相同（伺服器只認 Google 簽的 token，測試按鈕在正式環境沒有作用）。
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { googleStubEnabled, renderGoogleButton } from '../online/google';
+import { googleStubEnabled, renderGoogleButton, type GoogleButtonText } from '../online/google';
 
 interface GoogleButtonProps {
   clientId: string;
@@ -13,9 +13,11 @@ interface GoogleButtonProps {
   /** 測試按鈕的文字與 data-testid */
   label: string;
   testId: string;
+  /** Google 官方按鈕上的文字（預設「使用 Google 帳戶登入」；登入表單用「使用 Google 帳戶繼續」） */
+  text?: GoogleButtonText;
 }
 
-export function GoogleButton({ clientId, onCredential, label, testId }: GoogleButtonProps) {
+export function GoogleButton({ clientId, onCredential, label, testId, text = 'signin_with' }: GoogleButtonProps) {
   const box = useRef<HTMLDivElement>(null);
   const [error, setError] = useState<string | null>(null);
   // 讓 GIS 的回呼永遠呼叫最新的 onCredential（避免抓到舊的 props）
@@ -29,7 +31,7 @@ export function GoogleButton({ clientId, onCredential, label, testId }: GoogleBu
     if (stub || !box.current) return;
     let dispose: (() => void) | null = null;
     let cancelled = false;
-    renderGoogleButton(box.current, clientId, (token) => handler.current(token))
+    renderGoogleButton(box.current, clientId, (token) => handler.current(token), 260, text)
       .then((fn) => {
         if (cancelled) fn();
         else dispose = fn;
@@ -39,7 +41,7 @@ export function GoogleButton({ clientId, onCredential, label, testId }: GoogleBu
       cancelled = true;
       dispose?.();
     };
-  }, [clientId, stub]);
+  }, [clientId, stub, text]);
 
   if (stub) {
     return (

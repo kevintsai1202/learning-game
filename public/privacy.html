@@ -147,7 +147,7 @@
         </svg>
         <div>
           <h1>知識島大冒險 隱私權政策</h1>
-          <p class="updated">最後更新：2026 年 10 月 5 日</p>
+          <p class="updated">最後更新：2026 年 10 月 6 日</p>
         </div>
       </header>
       <p class="lang"><a href="#english">English version below</a></p>
@@ -181,7 +181,7 @@
               <td>直到清除瀏覽器的網站資料</td>
             </tr>
             <tr>
-              <td>家長與老師的帳號：帳號名稱、電子郵件地址（必填，用來驗證與重設密碼）、電子郵件是否驗證過、密碼（只存雜湊值）、身分（家長／老師）、建立時間與最後登入時間</td>
+              <td>家長與老師的帳號：帳號名稱、電子郵件地址（必填，用來驗證與重設密碼）、電子郵件是否驗證過、密碼（只存雜湊值；用 Google 註冊的帳號在設定密碼之前沒有密碼）、身分（家長／老師）、建立時間與最後登入時間</td>
               <td>註冊或修改帳號設定時</td>
               <td>班級伺服器的資料庫</td>
               <td>帳號存在期間；在帳號設定刪除帳號時刪除</td>
@@ -262,14 +262,14 @@
       <p>我們不會把資料用於廣告、行銷、使用者分析或剖析，不會出售資料，也不會用來訓練人工智慧模型。</p>
 
       <h2>4. Google 使用者資料（使用 Google 帳號登入）</h2>
-      <p>家長或老師可以選擇用 Google 帳號註冊，或在帳號設定把 Google 帳號綁定到自己的帳號，之後在帳號頁按「使用 Google 帳戶登入」快速登入。這是選用功能，帳號名稱與密碼一直可以登入。孩子的角色不會綁定 Google 帳號。</p>
+      <p>家長或老師可以選擇用 Google 帳號註冊，或在帳號設定把 Google 帳號綁定到自己的帳號，之後在帳號頁按「使用 Google 帳戶繼續」快速登入。這是選用功能：用帳號名稱與密碼註冊的帳號，一直可以用帳號名稱與密碼登入；用 Google 註冊的帳號不用另外設定帳號名稱與密碼，之後可以在帳號設定加上密碼。孩子的角色不會綁定 Google 帳號。</p>
       <ul>
         <li><strong>要求的權限：</strong>只有 <code>openid</code>、<code>email</code>、<code>profile</code>（Google 歸類為非敏感範圍）。我們不會存取 Gmail 信箱、Google 雲端硬碟、聯絡人、日曆或任何其他 Google 服務的資料。</li>
         <li><strong>取得的資料：</strong>登入時，Google 提供的登入按鈕（Google Identity Services）會交給我們一張由 Google 簽署的登入憑證（ID token），內含 Google 帳號識別碼、電子郵件地址（以及 Google 是否驗證過這個地址）、名稱與大頭貼網址。伺服器用 Google 公開的金鑰驗證憑證確實來自 Google。</li>
-        <li><strong>如何使用：</strong>Google 帳號識別碼只用來找出綁定的家長或老師帳號，完成登入。用 Google 註冊時，Google 驗證過的電子郵件地址會成為帳號的電子郵件地址（用途見第 3 節）；綁定時記下的電子郵件地址只用來在帳號設定顯示「綁定的是哪個 Google 帳號」，畫面上會遮住部分字元。</li>
+        <li><strong>如何使用：</strong>Google 帳號識別碼只用來找出綁定的家長或老師帳號，完成登入，以及在設定密碼或刪除帳號時確認是本人。用 Google 註冊時，Google 驗證過的電子郵件地址會成為帳號的電子郵件地址（用途見第 3 節），帳號名稱由這個電子郵件地址「@」前面的英文字母、數字與底線自動產生（只有你自己在帳號頁看得到）；綁定時記下的電子郵件地址只用來在帳號設定顯示「綁定的是哪個 Google 帳號」，畫面上會遮住部分字元。</li>
         <li><strong>保存的資料：</strong>只保存 Google 帳號識別碼、電子郵件地址與綁定時間，存在班級伺服器的資料庫。名稱、大頭貼與憑證裡的其他資料一律不保存。</li>
         <li><strong>分享與揭露：</strong>Google 使用者資料不會出售、不會用於廣告、不會提供或轉移給任何第三方，也不會用來訓練人工智慧模型。除了維護系統安全或依法律要求之外，不會有人檢視這些資料。老師看不到家長的帳號資料與電子郵件地址。</li>
-        <li><strong>刪除與撤銷：</strong>隨時可以在帳號設定按「解除」，伺服器會立即刪除該筆綁定（Google 帳號識別碼與電子郵件地址）；刪除帳號時，所有綁定一併刪除。也可以到 Google 帳戶的「第三方應用程式和服務」頁面（<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>）移除「知識島大冒險」的登入權限。</li>
+        <li><strong>刪除與撤銷：</strong>隨時可以在帳號設定按「解除」，伺服器會立即刪除該筆綁定（Google 帳號識別碼與電子郵件地址；沒有密碼的帳號要先設定密碼，才能解除最後一個 Google 帳號，以免沒有辦法登入）；刪除帳號時，所有綁定一併刪除。也可以到 Google 帳戶的「第三方應用程式和服務」頁面（<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>）移除「知識島大冒險」的登入權限。</li>
         <li><strong>有限使用聲明：</strong>知識島大冒險對於從 Google API 取得之資訊的使用與轉移，將遵守 <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API 服務使用者資料政策（Google API Services User Data Policy）</a>，包括其中的有限使用（Limited Use）規定。</li>
       </ul>
 
@@ -304,7 +304,7 @@
       <ul>
         <li>各項資料的保存期限見第 2 節的表格。</li>
         <li><strong>單機遊玩的資料：</strong>清除瀏覽器的網站資料即可刪除。</li>
-        <li><strong>家長與老師的帳號：</strong>在帳號設定按「刪除帳號」並再輸入一次密碼，就會刪除帳號、名下的雲端角色與進度、登入權杖、驗證與重設連結以及 Google 綁定；角色如果還在班級裡，還沒收下的禮物會先退回。還有班級的老師帳號要先處理班級（刪除會影響班上的孩子），請透過第 13 節的聯絡方式聯絡我們。</li>
+        <li><strong>家長與老師的帳號：</strong>在帳號設定按「刪除帳號」並再輸入一次密碼（沒有密碼的帳號改用綁定的 Google 帳號確認是本人），就會刪除帳號、名下的雲端角色與進度、登入權杖、驗證與重設連結以及 Google 綁定；角色如果還在班級裡，還沒收下的禮物會先退回。還有班級的老師帳號要先處理班級（刪除會影響班上的孩子），請透過第 13 節的聯絡方式聯絡我們。</li>
         <li><strong>家長名下的雲端角色：</strong>家長可以在帳號頁刪除個別角色，或讓角色退出班級（進度保留）。</li>
         <li><strong>孩子在班級裡的資料：</strong>老師移出成員時，沒有家長帳號的角色會刪除進度、收藏與登入權杖；家長名下的角色只退出班級，進度留在家長帳號。同學已經收到的禮物紀錄裡，仍會留著送禮人的暱稱。</li>
         <li><strong>Google 綁定：</strong>在帳號設定按「解除」即刪除。</li>
@@ -338,7 +338,7 @@
       <!-- ===== English version ===== -->
       <section class="en" id="english" lang="en">
         <h1>Learning Island (知識島大冒險) Privacy Policy</h1>
-        <p class="updated">Last updated: October 5, 2026</p>
+        <p class="updated">Last updated: October 6, 2026</p>
         <p class="lead">
           Learning Island (知識島大冒險) is a 3D learning game for second-grade elementary school children (<a href="https://kevintsai1202.github.io/learning-game/">https://kevintsai1202.github.io/learning-game/</a>, mirror
           <a href="https://learning-island.zeabur.app/">https://learning-island.zeabur.app/</a>). This policy explains what data we collect, why, where it is stored, how long it is kept, who can see it, and how data obtained through Google Sign-In is used. We only collect the data needed to provide the game. We show no ads, never sell or share data, and use no tracking or analytics tools.
@@ -366,7 +366,7 @@
                 <td>Until the browser's site data is cleared</td>
               </tr>
               <tr>
-                <td>Parent and teacher accounts: username, email address (required; used for verification and password reset), whether the email is verified, password (hash only), role (parent/teacher), creation time and last sign-in time</td>
+                <td>Parent and teacher accounts: username, email address (required; used for verification and password reset), whether the email is verified, password (hash only; an account registered with Google has no password until one is set), role (parent/teacher), creation time and last sign-in time</td>
                 <td>When registering or changing account settings</td>
                 <td>Class server database</td>
                 <td>While the account exists; deleted when you delete the account in account settings</td>
@@ -447,14 +447,14 @@
         <p>We never use data for advertising, marketing, user analytics, or profiling, never sell it, and never use it to train AI models.</p>
 
         <h2>4. Google user data (Sign in with Google)</h2>
-        <p>Parents and teachers can choose to register with their Google account, or link a Google account to their own account in account settings, and then sign in quickly with "Sign in with Google" on the account page. This is optional; signing in with the username and password always works. Children's characters are never linked to Google accounts.</p>
+        <p>Parents and teachers can choose to register with their Google account, or link a Google account to their own account in account settings, and then sign in quickly with "Continue with Google" on the account page. This is optional: an account registered with a username and password can always sign in with them; an account registered with Google needs no separate username or password, and a password can be added later in account settings. Children's characters are never linked to Google accounts.</p>
         <ul>
           <li><strong>Requested permissions:</strong> only <code>openid</code>, <code>email</code>, and <code>profile</code> (classified by Google as non-sensitive scopes). We never access Gmail mailboxes, Google Drive, contacts, calendars, or any other Google service data.</li>
           <li><strong>Data we receive:</strong> when you sign in, the Google-provided sign-in button (Google Identity Services) gives us an ID token signed by Google that contains the Google account ID, email address (and whether Google has verified it), name, and profile picture URL. The server verifies the token with Google's public keys.</li>
-          <li><strong>How we use it:</strong> the Google account ID is used only to find the linked parent or teacher account and complete sign-in. When you register with Google, the email address verified by Google becomes your account's email address (used as described in Section 3); the email address stored with a link is used only to show which Google account is linked in account settings, partially masked.</li>
+          <li><strong>How we use it:</strong> the Google account ID is used only to find the linked parent or teacher account, complete sign-in, and confirm it is you when you set a password or delete your account. When you register with Google, the email address verified by Google becomes your account's email address (used as described in Section 3), and the username is generated from the letters, digits, and underscores before the "@" in that address (only you can see it on the account page); the email address stored with a link is used only to show which Google account is linked in account settings, partially masked.</li>
           <li><strong>Data we store:</strong> only the Google account ID, email address, and link time, stored in the class server database. The name, profile picture, and any other token data are never stored.</li>
           <li><strong>Sharing and disclosure:</strong> Google user data is never sold, used for advertising, provided or transferred to any third party, or used to train AI models. No one views it except as needed to keep the system secure or as required by law. Teachers cannot see parents' account details or email addresses.</li>
-          <li><strong>Deletion and revocation:</strong> you can choose "Unlink" in account settings at any time, and the server immediately deletes that link (Google account ID and email address); deleting your account deletes all links. You can also remove Learning Island's access on your Google Account's "Third-party apps &amp; services" page (<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>).</li>
+          <li><strong>Deletion and revocation:</strong> you can choose "Unlink" in account settings at any time, and the server immediately deletes that link (Google account ID and email address; an account without a password must set one before unlinking its last Google account, so it can still sign in); deleting your account deletes all links. You can also remove Learning Island's access on your Google Account's "Third-party apps &amp; services" page (<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>).</li>
           <li><strong>Limited Use disclosure:</strong> Learning Island's use and transfer of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
         </ul>
 
@@ -489,7 +489,7 @@
         <ul>
           <li>See the table in Section 2 for each item's retention period.</li>
           <li><strong>Single-device data:</strong> delete it by clearing the browser's site data.</li>
-          <li><strong>Parent and teacher accounts:</strong> choose "Delete account" in account settings and enter your password again to delete the account, its cloud characters and their progress, sign-in tokens, verification and reset links, and Google links; if a character is still in a class, its unaccepted gifts are returned first. A teacher account that still has classes must deal with those classes first (deleting it would affect the children in them); please contact us as described in Section 13.</li>
+          <li><strong>Parent and teacher accounts:</strong> choose "Delete account" in account settings and enter your password again (an account without a password confirms with its linked Google account instead) to delete the account, its cloud characters and their progress, sign-in tokens, verification and reset links, and Google links; if a character is still in a class, its unaccepted gifts are returned first. A teacher account that still has classes must deal with those classes first (deleting it would affect the children in them); please contact us as described in Section 13.</li>
           <li><strong>Parent-owned cloud characters:</strong> on the account page, parents can delete individual characters or take a character out of a class (its progress is kept).</li>
           <li><strong>A child's class membership:</strong> when a teacher removes a member, characters without a parent account are deleted together with their progress, collections, and sign-in tokens; parent-owned characters only leave the class and keep their progress under the parent account. Gifts already received by classmates still show the sender's nickname.</li>
           <li><strong>Google links:</strong> choose "Unlink" in account settings.</li>

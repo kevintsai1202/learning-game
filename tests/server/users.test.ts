@@ -25,7 +25,7 @@ describe('註冊', () => {
     const { call } = makeClient(db);
     const r = await call('POST', '/api/users', WANG);
     expect(r.status).toBe(200);
-    expect(r.body.user).toMatchObject({ username: 'Teacher_Wang', email: 'wang@example.com', emailVerified: false, parent: false, teacher: true });
+    expect(r.body.user).toMatchObject({ username: 'Teacher_Wang', email: 'wang@example.com', emailVerified: false, hasPassword: true, parent: false, teacher: true });
     expect(typeof r.body.token).toBe('string');
     const me = await call('GET', '/api/users/me', undefined, r.body.token);
     expect(me.status).toBe(200);

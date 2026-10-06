@@ -2612,6 +2612,29 @@ button {
 .account-scroll .label {
   font-size: 18px;
 }
+/* 登入表單底下的文字連結（忘記密碼？／還沒有帳號？註冊／到家長專區）：L1 登入整理，只有一顆「登入」按鈕，其他用連結 */
+.link-btn {
+  background: none;
+  border: 0;
+  padding: 0 2px;
+  font: inherit;
+  color: #1f6fb2;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.link-btn:focus-visible {
+  outline: 3px solid #4caf50;
+  border-radius: 4px;
+}
+.account-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  align-items: center;
+  margin: 12px 0 0;
+  font-family: var(--font-plain);
+  font-size: 17px;
+}
 .email-link-panel {
   border-bottom: 2px dashed var(--line, #ccc);
 }

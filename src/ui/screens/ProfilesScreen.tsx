@@ -103,7 +103,8 @@ export function ProfilesScreen() {
             >
               ✓ 完成，出發！
             </button>
-            {onlineEnabled() && (
+            {/* 這台裝置還沒有角色時（建立角色畫面沒有「返回」，看不到選角畫面的「🏫 班級」卡片）才顯示；有角色時用卡片，不重複 */}
+            {onlineEnabled() && profiles.length === 0 && (
               <button className="btn small white" style={{ marginTop: 12 }} onClick={() => goto('class')} data-testid="create-open-class">
                 🏫 已經在班級裡了？用班級登入
               </button>

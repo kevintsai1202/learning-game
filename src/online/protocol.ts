@@ -26,11 +26,13 @@ export const joinRequest = z
 export const loginRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40), pin: z.string().max(10) });
 /** Google 快速登入與綁定（大人帳號，A4）：前端從 Google Identity Services 拿到的 ID token */
 export const googleTokenRequest = z.object({ idToken: z.string().min(1).max(4096) });
-/** 用 Google 註冊（A4）：帳號名稱、密碼、身分照樣要設；email 用 Google 驗證過的 email */
+/**
+ * 用 Google 註冊（A4；L1 起不用設帳號名稱與密碼，docs/plans/login-ux-review.md 第 6 節第 1 點）：
+ * 只要選身分；帳號名稱由伺服器從 email 產生，沒有密碼；email 用 Google 驗證過的 email。
+ * 舊版網頁多送的 username、password 會被 zod 去掉（不會用到）
+ */
 export const googleRegisterRequest = z.object({
   idToken: z.string().min(1).max(4096),
-  username: z.string().max(40),
-  password: z.string().max(200),
   parent: z.boolean(),
   teacher: z.boolean(),
 });
@@ -71,12 +73,21 @@ export const verifyEmailRequest = z.object({ token: z.string().max(200) });
 export const forgotPasswordRequest = z.object({ login: z.string().max(300), appUrl: appUrlSchema });
 /** 打開重設連結後設定新密碼（不用登入） */
 export const resetPasswordRequest = z.object({ token: z.string().max(200), password: z.string().max(200) });
-/** 改密碼 */
-export const passwordChangeRequest = z.object({ current: z.string().max(200), next: z.string().max(200) });
+/**
+ * 再確認一次身分（改密碼、刪除帳號）：密碼，或這個帳號綁定的 Google 給的 ID token（L1：用 Google 註冊、沒有密碼的帳號用這個）。
+ * 至少要有一個
+ */
+const googleProof = z.string().min(1).max(4096).optional();
+/** 改密碼（沒有密碼的帳號是「設定密碼」）：current 是目前的密碼，或用 idToken（綁定的 Google）確認身分 */
+export const passwordChangeRequest = z
+  .object({ current: z.string().max(200).optional(), idToken: googleProof, next: z.string().max(200) })
+  .refine((v) => v.current !== undefined || v.idToken !== undefined, { message: '要有目前的密碼或 Google 確認' });
 /** 老師建立班級 */
 export const createClassRequest = z.object({ name: z.string().max(40) });
-/** 刪除自己的帳號：要再輸入一次密碼 */
-export const deleteAccountRequest = z.object({ password: z.string().max(200) });
+/** 刪除自己的帳號：要再輸入一次密碼，或用綁定的 Google 確認身分（沒有密碼的帳號） */
+export const deleteAccountRequest = z
+  .object({ password: z.string().max(200).optional(), idToken: googleProof })
+  .refine((v) => v.password !== undefined || v.idToken !== undefined, { message: '要有密碼或 Google 確認' });
 /** 家長把裝置上的角色上傳成雲端角色（存檔格式在伺服器用 parseProfile 檢查） */
 export const uploadKidRequest = z.object({ profile: z.unknown() });
 /** 已有的雲端角色加入班級（帶孩子權杖） */
@@ -126,6 +137,8 @@ export interface UserInfo {
   username: string;
   email: string | null;
   emailVerified: boolean;
+  /** 有沒有密碼：用 Google 註冊的帳號沒有（L1），改密碼與刪除帳號要用 Google 確認身分 */
+  hasPassword: boolean;
   parent: boolean;
   teacher: boolean;
 }

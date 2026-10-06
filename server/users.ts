@@ -2,6 +2,8 @@
  * 大人帳號（家長、老師）的 HTTP 路由：註冊、登入、讀取與修改自己的資料、改密碼。
  * 登出共用 /api/logout（刪掉那張權杖）。規格見 docs/plans/accounts.md 的 A1；
  * A3 起 email 只能綁一個帳號（不分大小寫），註冊與換 email 時寄驗證信（server/email.ts）。
+ * L1 起用 Google 註冊的帳號沒有密碼（docs/plans/login-ux-review.md 第 6 節）：不能用密碼登入（回和密碼錯一樣的錯誤），
+ * 改密碼（設定密碼）與刪除帳號改用綁定的 Google 再確認一次身分。
  */
 import type { Context, Hono } from 'hono';
 import type { Db } from './db';
@@ -23,6 +25,7 @@ import { settlePendingGifts, type Events } from './gifts';
 import { KID_DELETED_REASON, emitExcept } from './parents';
 import { sendVerifyMail } from './email';
 import type { Mailer } from './mail';
+import type { GoogleIdentity } from './google';
 import type { Profile } from '../src/store/save';
 
 /** email 已經綁在別的帳號上 */
@@ -33,7 +36,8 @@ export interface UserRow {
   id: string;
   username: string;
   username_key: string;
-  password_hash: string;
+  /** 密碼雜湊；用 Google 註冊、還沒設定密碼的帳號是 null */
+  password_hash: string | null;
   email: string | null;
   email_verified: boolean;
   is_parent: boolean;
@@ -63,11 +67,27 @@ export interface UserRouteDeps {
   mailer: Mailer;
   /** 允許的前端網域：驗證信裡的連結只指回這些網址 */
   allowedOrigins: Set<string>;
+  /** 驗證 Google ID token（用 Google 再確認一次身分時用）：伺服器沒開 Google 登入回 404，驗證失敗回 401 */
+  verifyGoogleToken: (idToken: string) => Promise<GoogleIdentity>;
+}
+
+/** 再確認一次身分的證明：密碼，或綁定的 Google 給的 ID token（兩個至少一個，由請求格式保證） */
+interface Proof {
+  password?: string;
+  idToken?: string;
 }
 
 /** 回給本人的帳號資料 */
 export function userInfo(row: UserRow): UserInfo {
-  return { id: row.id, username: row.username, email: row.email, emailVerified: row.email_verified, parent: row.is_parent, teacher: row.is_teacher };
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    emailVerified: row.email_verified,
+    hasPassword: row.password_hash !== null,
+    parent: row.is_parent,
+    teacher: row.is_teacher,
+  };
 }
 
 /** 登入鎖定的鍵（不分大小寫，同一個帳號名稱共用） */
@@ -83,6 +103,29 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
     const row = (await db.query<UserRow>('SELECT * FROM users WHERE id = $1', [who.userId]))[0];
     if (!row) throw new ApiError(401, 'unauthorized', '請重新登入');
     return { row, hash: who.hash };
+  };
+
+  /**
+   * 改密碼、刪除帳號前再確認一次身分。
+   * - 有 idToken：必須是綁定在這個帳號上的 Google（沒有密碼的帳號只能用這個）；Google 的 token 猜不到，不算登入失敗次數。
+   * - 用密碼：猜錯算登入失敗次數（太多次一樣鎖定）；這個帳號沒有密碼時直接回 bad_password，說明改用 Google。
+   * wrongPassword 是密碼不對時顯示的訊息。
+   */
+  const reauth = async (row: UserRow, proof: Proof, wrongPassword: string): Promise<void> => {
+    if (proof.idToken !== undefined) {
+      const g = await deps.verifyGoogleToken(proof.idToken);
+      const linked = await db.query('SELECT 1 FROM user_google_links WHERE google_sub = $1 AND user_id = $2', [g.sub, row.id]);
+      if (!linked.length) throw new ApiError(401, 'bad_google', '這個 Google 帳號沒有綁定這個知識島帳號，請換一個 Google 帳號');
+      return;
+    }
+    if (row.password_hash === null) throw new ApiError(401, 'bad_password', '這個帳號還沒有設定密碼，請用 Google 確認身分');
+    const key = lockKey(row.username);
+    deps.assertNotLocked(key);
+    if (!(await verifySecret(proof.password ?? '', row.password_hash))) {
+      limiter.fail(key);
+      throw new ApiError(401, 'bad_password', wrongPassword);
+    }
+    limiter.reset(key);
   };
 
   app.post('/api/users', async (c) => {
@@ -127,8 +170,8 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
     const key = lockKey(body.username);
     deps.assertNotLocked(key);
     const row = (await db.query<UserRow>('SELECT * FROM users WHERE username_key = $1', [body.username.trim().toLowerCase()]))[0];
-    // 沒有這個帳號與密碼錯回同一個錯誤，不透露帳號名稱存不存在
-    if (!row || !(await verifySecret(body.password, row.password_hash))) {
+    // 沒有這個帳號、密碼錯、帳號沒有密碼（用 Google 註冊的）都回同一個錯誤，不透露帳號名稱存不存在
+    if (!row || row.password_hash === null || !(await verifySecret(body.password, row.password_hash))) {
       limiter.fail(key);
       throw new ApiError(401, 'bad_login', '帳號名稱或密碼不對');
     }
@@ -182,14 +225,8 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
     const body = await readBody(c, passwordChangeRequest);
     const pwProblem = checkPassword(body.next);
     if (pwProblem) throw new ApiError(400, 'bad_password', pwProblem);
-    // 目前的密碼也算登入嘗試：猜錯太多次一樣會鎖
-    const key = lockKey(row.username);
-    deps.assertNotLocked(key);
-    if (!(await verifySecret(body.current, row.password_hash))) {
-      limiter.fail(key);
-      throw new ApiError(401, 'bad_password', '目前的密碼不對');
-    }
-    limiter.reset(key);
+    // 目前的密碼也算登入嘗試：猜錯太多次一樣會鎖；沒有密碼的帳號（用 Google 註冊的）用綁定的 Google 確認身分
+    await reauth(row, { password: body.current, idToken: body.idToken }, '目前的密碼不對');
     await db.query('UPDATE users SET password_hash = $2 WHERE id = $1', [row.id, await hashSecret(body.next)]);
     // 舊密碼可能外流：其他裝置的登入一律失效，這台保留
     await db.query('DELETE FROM tokens WHERE user_id = $1 AND token_hash <> $2', [row.id, hash]);
@@ -204,13 +241,7 @@ export function registerUserRoutes(app: Hono, deps: UserRouteDeps): void {
   app.delete('/api/users/me', async (c) => {
     const { row } = await loadMe(c);
     const body = await readBody(c, deleteAccountRequest);
-    const key = lockKey(row.username);
-    deps.assertNotLocked(key);
-    if (!(await verifySecret(body.password, row.password_hash))) {
-      limiter.fail(key);
-      throw new ApiError(401, 'bad_password', '密碼不對');
-    }
-    limiter.reset(key);
+    await reauth(row, body, '密碼不對');
     const classes = await db.query('SELECT 1 FROM rooms WHERE owner_id = $1 LIMIT 1', [row.id]);
     if (classes.length) throw new ApiError(409, 'has_classes', '這個帳號還有班級，要先移除班級才能刪除帳號（不然班上同學的角色會跟著不見）');
     const events: Events = { profiles: [], gifts: [] };
