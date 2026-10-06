@@ -2,19 +2,25 @@
  * 檢查兩個正式網址的「用 Google 登入」按鈕能不能載入，也就是網址有沒有加進 Google OAuth 用戶端的「已授權的 JavaScript 來源」。
  * Google 對沒授權的網址：按鈕 iframe（accounts.google.com/gsi/button）回 403，主控台出現
  * "The given origin is not allowed for the given client ID"。
- * 只打開「老師／家長」帳號頁的「用 Google 登入」按鈕（A4 起 Google 綁大人帳號）；找不到時退回舊版前端的位置
- * （標題畫面 →「開始」→ 班級登入畫面；A5 上線前的正式環境還是舊版），不登入、不寫入任何資料。
+ * 只打開帳號頁（標題畫面的「大人登入」）的 Google 按鈕（A4 起 Google 綁大人帳號；L1 起按鈕寫「透過 Google 帳戶繼續操作」）；
+ * 找不到時退回舊版前端的位置（標題畫面 →「開始」→ 班級登入畫面；A5 上線前的正式環境還是舊版），不登入、不寫入任何資料。
+ * 加 --shot：把載入完成的 Google 按鈕截圖存到 logs/google-button-<網域>.png，確認按鈕上的字（隱私權政策寫的是這幾個字）。
  *
  * 執行（PowerShell 7，專案根目錄）：
  *   node scripts/deploy/check-google-origins.mjs
  *   node scripts/deploy/check-google-origins.mjs https://learning-island.zeabur.app/   # 只檢查指定網址
+ *   node scripts/deploy/check-google-origins.mjs --shot                                 # 另存按鈕截圖
  */
+import { mkdirSync } from 'node:fs';
 import { chromium } from '@playwright/test';
 
+/** 命令列參數：網址與選項分開 */
+const ARGS = process.argv.slice(2);
+/** 是否把 Google 按鈕截圖存到 logs/ */
+const SHOT = ARGS.includes('--shot');
 /** 要檢查的前端網址（GitHub Pages 與班級伺服器同時提供的前端） */
-const SITES = process.argv.slice(2).length
-  ? process.argv.slice(2)
-  : ['https://kevintsai1202.github.io/learning-game/', 'https://learning-island.zeabur.app/'];
+const URLS = ARGS.filter((a) => !a.startsWith('--'));
+const SITES = URLS.length ? URLS : ['https://kevintsai1202.github.io/learning-game/', 'https://learning-island.zeabur.app/'];
 
 /** 等 Google 按鈕回應的上限（zeabur 網址的素材經過閘道器，載入較慢） */
 const WAIT_MS = 60_000;
@@ -64,6 +70,14 @@ async function checkSite(browser, site) {
     while (Date.now() < deadline && buttonStatuses.length === 0 && originErrors.length === 0) await page.waitForTimeout(500);
     // 有 403 時再多等一下，讓主控台訊息也進來
     if (buttonStatuses.some((s) => s !== 200)) await page.waitForTimeout(2000);
+    // 截圖：等 Google 的 iframe 畫完按鈕再拍（只拍按鈕那一塊）
+    if (SHOT && buttonStatuses.includes(200)) {
+      await page.waitForTimeout(2500);
+      mkdirSync('logs', { recursive: true });
+      const file = `logs/google-button-${new URL(site).hostname}.png`;
+      await page.getByTestId('account-google-login').screenshot({ path: file });
+      console.log(`  按鈕截圖：${file}`);
+    }
   } catch (err) {
     return { site, verdict: 'unknown', detail: `頁面操作失敗：${err instanceof Error ? err.message.split('\n')[0] : err}` };
   } finally {

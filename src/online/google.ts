@@ -77,7 +77,7 @@ let currentHandler: ((idToken: string) => void) | null = null;
 /** 已經用哪個 Client ID 初始化過 */
 let initializedFor: string | null = null;
 
-/** Google 官方按鈕上的文字：signin_with「使用 Google 帳戶登入」、continue_with「使用 Google 帳戶繼續」（登入或註冊都用這顆） */
+/** Google 官方按鈕上的文字：signin_with「使用 Google 帳戶登入」、continue_with（zh-TW 顯示「透過 Google 帳戶繼續操作」，2026-10-06 正式網址截圖確認；登入或註冊都用這顆） */
 export type GoogleButtonText = 'signin_with' | 'continue_with';
 
 /**

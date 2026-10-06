@@ -13,7 +13,7 @@ interface GoogleButtonProps {
   /** 測試按鈕的文字與 data-testid */
   label: string;
   testId: string;
-  /** Google 官方按鈕上的文字（預設「使用 Google 帳戶登入」；登入表單用「使用 Google 帳戶繼續」） */
+  /** Google 官方按鈕上的文字（預設「使用 Google 帳戶登入」；登入表單用 continue_with「透過 Google 帳戶繼續操作」） */
   text?: GoogleButtonText;
 }
 

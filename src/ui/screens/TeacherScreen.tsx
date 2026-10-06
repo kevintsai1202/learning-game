@@ -155,7 +155,7 @@ function ClassName({ name, onSave }: { name: string; onSave: (name: string) => P
 }
 
 /**
- * 還沒登入：登入或註冊（L1 登入整理，docs/plans/login-ux-review.md 第 4.2 節）。一份表單，「登入」旁邊就是 Google 按鈕（用 Google 繼續）：
+ * 還沒登入：登入或註冊（L1 登入整理，docs/plans/login-ux-review.md 第 4.2 節）。一份表單，「登入」旁邊就是 Google 按鈕（Google 官方按鈕寫「透過 Google 帳戶繼續操作」）：
  * - 綁過的 Google 直接登入；沒綁過的直接建立帳號，不用帳號名稱與密碼（第 6 節第 1 點）：
  *   掃 QR code 進來的自動是家長，其他情況先問老師還是家長。
  * - 「還沒有帳號？註冊」展開用帳號密碼註冊要多填的欄位（再輸入一次密碼、email、身分）。
@@ -299,7 +299,7 @@ function AccountGate() {
     <>
       {joining && (
         <p className="notice" style={{ margin: '0 16px 8px' }} data-testid="join-login-note">
-          🏫 要讓孩子加入班級（代碼 {joining.code}）：請登入家長帳號；還沒有帳號的話，直接按「用 Google 繼續」或「註冊」。登入後選孩子就能加入，不用輸入密碼。
+          🏫 要讓孩子加入班級（代碼 {joining.code}）：請登入家長帳號；還沒有帳號的話，直接按 Google 按鈕或「註冊」。登入後選孩子就能加入，不用輸入密碼。
         </p>
       )}
       <form className="panel-body" onSubmit={submit}>
@@ -391,7 +391,7 @@ function AccountGate() {
             </span>
           </p>
         )}
-        {googleClientId && <p className="notice">用 Google 繼續：已經綁定的直接登入；第一次用的直接建立帳號，不用另外設帳號名稱和密碼。</p>}
+        {googleClientId && <p className="notice">按 Google 按鈕：已經綁定的直接登入；第一次用的直接建立帳號，不用另外設帳號名稱和密碼。</p>}
         {mode === 'login' && !joining && (
           <p className="notice">
             只要調整這台裝置的設定（遊玩時間、教材版本、聲音），不用註冊：
