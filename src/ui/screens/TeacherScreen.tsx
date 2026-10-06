@@ -20,6 +20,7 @@ import { JoinClassPanel } from './JoinClassPanel';
 import { JoinQr } from './JoinQr';
 import type { ZoneId } from '../../store/useUi';
 import { MAX_CLASSES, kidRooms } from '../../online/protocol';
+import { addDeclined, profilesToOffer, readDeclined } from '../../online/uploadOffer';
 import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
 
 /** 顯示「多久以前」 */
@@ -357,7 +358,7 @@ function AccountGate() {
               👩‍🏫 老師（建立班級、管理學生）
             </Check>
             <Check checked={parent} onChange={setParent} testId="role-parent">
-              👨‍👩‍👧 家長（管理自己孩子的雲端角色）
+              👨‍👩‍👧 家長（管理自己孩子的角色、讓孩子加入班級）
             </Check>
           </>
         )}
@@ -820,7 +821,7 @@ function AccountSettings() {
         </>
       )}
       <h4 style={{ margin: '14px 0 6px' }}>刪除帳號</h4>
-      <p style={{ margin: '0 0 6px' }}>家長名下的雲端角色會一併刪除，刪除後無法復原。還有班級的老師帳號要先移除班級。</p>
+      <p style={{ margin: '0 0 6px' }}>家長名下的孩子角色會一併刪除，刪除後無法復原。還有班級的老師帳號要先移除班級。</p>
       {panel !== 'delete' ? (
         <button className="btn small white" onClick={() => open('delete')} data-testid="delete-account">
           刪除帳號
@@ -866,13 +867,19 @@ function AccountSettings() {
   );
 }
 
-/** 家長：名下的雲端角色（在這台裝置玩、退出班級、刪除），以及這台裝置上還沒存到雲端的角色（存到雲端） */
+/**
+ * 家長：名下的孩子角色（在這台裝置玩、加入或退出班級、刪除）。上方一張卡片問「這台裝置上有○○，是你的孩子嗎？」
+ * （L2，存到雲端的決定 A：按「是」一次存好；按「不是」這台裝置不再問這位家長這些角色）
+ */
 function ParentHome() {
   const call = useAccount((s) => s.call);
   const session = useAccount((s) => s.session);
+  const user = useAccount((s) => s.user);
   const profiles = useGame((s) => s.save.profiles);
   const goto = useUi((s) => s.goto);
   const [kids, setKids] = useState<KidSummary[] | null>(null);
+  /** 「不是」之後重新讀紀錄用（紀錄在 localStorage，不是 React 狀態） */
+  const [declinedTick, setDeclinedTick] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   /** 等待第二次確認刪除的孩子 */
@@ -922,16 +929,47 @@ function ParentHome() {
   const onThisDevice = (kidId: string) => profiles.some((p) => p.cloud?.accountId === kidId) && !!getToken(kidId);
   /** 這台裝置上同一個角色（同一個角色 id）、但不是這個雲端角色的那份（例如以前用備份匯入的）：換成雲端版要先確認 */
   const sameLocalOf = (k: KidSummary) => profiles.find((p) => p.id === k.profileId && p.cloud?.accountId !== k.id);
-  /** 雲端已經有這個角色（在別台裝置存的）：不能再存到雲端，要用雲端的進度就按名單上的「在這台裝置玩」 */
-  const inCloud = (profileId: string) => !!kids?.some((k) => k.profileId === profileId);
-  const localOnly = profiles.filter((p) => !p.cloud);
+  /**
+   * 要問家長「是你的孩子嗎？」的角色（L2，存到雲端的決定 A）：這台裝置上還沒存到雲端、雲端也沒有同一個角色、
+   * 這位家長沒說過「不是」的（declinedTick 變了就重新讀「不是」的紀錄）
+   */
+  const offer = kids && user ? profilesToOffer(profiles, kids, declinedTick >= 0 ? readDeclined(user.id) : []) : [];
   /** 「在這台裝置玩」完成時的提示 */
   const playedNote = (k: KidSummary) => `「${k.name}」已經在這台裝置上了，回到選角畫面就能玩`;
 
+  /** 「是，存到我的帳號」：這張卡片上的角色一個一個存到家長帳號 */
+  const saveOffered = () =>
+    void act(async () => {
+      for (const p of offer) await useCloud.getState().uploadToCloud(p.id, session.server, session.token);
+    }, `${offer.map((p) => `「${p.name}」`).join('、')}已經存到你的帳號`);
+
   return (
     <div className="panel-body plain" data-testid="parent-home">
+      {offer.length > 0 && (
+        <div className="card upload-offer" data-testid="upload-offer">
+          <p style={{ margin: '0 0 8px' }}>
+            這台裝置上有{offer.map((p) => `「${p.name}」`).join('、')}，是你的孩子嗎？存到你的帳號後，換裝置、加入班級都用得到。
+          </p>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button className="btn green" disabled={busy} onClick={saveOffered} data-testid="upload-offer-yes">
+              是，存到我的帳號
+            </button>
+            <button
+              className="btn small white"
+              disabled={busy}
+              onClick={() => {
+                if (user) addDeclined(user.id, offer.map((p) => p.id));
+                setDeclinedTick((t) => t + 1);
+              }}
+              data-testid="upload-offer-no"
+            >
+              不是
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, flexWrap: 'wrap', margin: '0 0 8px' }}>
-        <h3 style={{ margin: 0 }}>我的孩子（雲端角色）</h3>
+        <h3 style={{ margin: 0 }}>我的孩子</h3>
         {/* 這台裝置的設定（遊玩時間、教材版本、聲音）：登入家長帳號時不用 PIN（docs/plans/login-ux-review.md 第 6 節第 2 點） */}
         <button className="btn small white" onClick={() => goto('parent')} data-testid="parent-zone-link">
           ⚙️ 這台裝置的設定（家長專區）
@@ -940,13 +978,13 @@ function ParentHome() {
       {kids === null ? (
         <p>讀取中…</p>
       ) : kids.length === 0 ? (
-        <p>還沒有雲端角色。把下面這台裝置上的角色「存到雲端」，換電腦用家長帳號登入就能接著玩。</p>
+        <p>還沒有孩子的角色。掃老師給的 QR code 可以直接新建；這台裝置上的角色存到你的帳號後，換裝置也能接著玩。</p>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }} data-testid="kid-list">
           {kids.map((k) => (
             <div key={k.id} className="card" style={{ padding: '8px 12px' }} data-testid={`kid-${k.name}`}>
               <div>
-                <strong>{k.name}</strong>　{kidRooms(k).length ? `🏫 ${kidRooms(k).map((r) => r.name).join('、')}` : '☁️ 還沒加入班級'}・⭐ {k.stars}・🪙 {k.coins}・{ago(k.lastSeen)}
+                <strong>{k.name}</strong>　{kidRooms(k).length ? `🏫 ${kidRooms(k).map((r) => r.name).join('、')}` : '還沒加入班級'}・⭐ {k.stars}・🪙 {k.coins}・{ago(k.lastSeen)}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                 {onThisDevice(k.id) ? (
@@ -1065,31 +1103,6 @@ function ParentHome() {
             </div>
           ))}
         </div>
-      )}
-      {localOnly.length > 0 && (
-        <>
-          <h3 style={{ margin: '16px 0 6px' }}>這台裝置上的角色</h3>
-          <p style={{ margin: '0 0 6px' }}>存到雲端後，換電腦用家長帳號登入就能接著玩。</p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {localOnly.map((p) => (
-              <div key={p.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }} data-testid={`local-${p.name}`}>
-                <strong>{p.name}</strong>
-                {inCloud(p.id) ? (
-                  <span data-testid={`local-in-cloud-${p.name}`}>雲端已經有這個角色（在別台裝置存的）：要用雲端的進度，按上面的「在這台裝置玩」。</span>
-                ) : (
-                  <button
-                    className="btn small green"
-                    disabled={busy}
-                    onClick={() => void act(() => useCloud.getState().uploadToCloud(p.id, session.server, session.token), `「${p.name}」已經存到雲端`)}
-                    data-testid={`upload-${p.name}`}
-                  >
-                    存到雲端
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </>
       )}
       <ErrorNote text={error} testId="parent-error" />
       {note && (

@@ -48,8 +48,12 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   const local = await profileOf(home.page);
   expect(local.coins).toBeGreaterThan(0);
   const username = await registerParent(home.page);
-  await home.page.getByTestId('upload-安安').click();
-  await expect(home.page.getByTestId('parent-note')).toContainText('已經存到雲端');
+  // L2（存到雲端的決定 A）：家長頁上方問「這台裝置上有「安安」，是你的孩子嗎？」，按一下就存好
+  await expect(home.page.getByTestId('upload-offer')).toContainText('「安安」');
+  await home.page.screenshot({ path: `${SHOTS}/00-upload-offer.png` });
+  await home.page.getByTestId('upload-offer-yes').click();
+  await expect(home.page.getByTestId('parent-note')).toContainText('已經存到你的帳號');
+  await expect(home.page.getByTestId('upload-offer')).toHaveCount(0);
   await expect(home.page.getByTestId('kid-安安')).toContainText('還沒加入班級');
   await expect(home.page.getByTestId('kid-here-安安')).toBeVisible();
   const uploaded = await profileOf(home.page);
@@ -67,7 +71,8 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   expect(onTablet).toMatchObject({ id: local.id, name: '安安', coins: local.coins });
   await tablet.page.getByTestId('teacher-back').click();
   await tablet.page.getByTestId('start').click();
-  await expect(tablet.page.locator('.cloud-badge').first()).toContainText('☁️ 雲端');
+  // 還沒有班級：選角卡片不再標「☁️ 雲端」（L2：給大人看的地方不出現「雲端」，有班級才標班級名稱）
+  await expect(tablet.page.locator('.cloud-badge')).toHaveCount(0);
   await tablet.page.screenshot({ path: `${SHOTS}/02-tablet-profiles.png` });
 
   // ---------- 用代碼加入班級：同一個角色，名字改成班上的暱稱 ----------
@@ -133,7 +138,7 @@ test('平板上已經有同一個角色（以前用備份匯入的）：在這�
   // 還沒有雲端標記的這份，等同當時匯出的備份
   const local = await profileOf(home.page);
   const username = await registerParent(home.page);
-  await home.page.getByTestId('upload-安安').click();
+  await home.page.getByTestId('upload-offer-yes').click();
   await expect(home.page.getByTestId('kid-here-安安')).toBeVisible();
   const cloudAccount = (await profileOf(home.page)).cloud.accountId;
 
@@ -141,16 +146,15 @@ test('平板上已經有同一個角色（以前用備份匯入的）：在這�
   const tablet = await openDevice(browser, baseURL!);
   await tablet.page.evaluate((p) => (window as any).__game.game.getState().putProfile({ ...p, coins: p.coins + 7 }), local);
   await loginTeacher(tablet.page, username);
-  // 本機那份不能再存到雲端（雲端已經有了）；名單上的「在這台裝置玩」要先確認
-  await expect(tablet.page.getByTestId('local-in-cloud-安安')).toBeVisible();
-  await expect(tablet.page.getByTestId('upload-安安')).toHaveCount(0);
+  // 本機那份不會被問要不要存（雲端已經有同一個角色）；名單上的「在這台裝置玩」要先確認
+  await expect(tablet.page.getByTestId('kid-device-安安')).toBeVisible();
+  await expect(tablet.page.getByTestId('upload-offer')).toHaveCount(0);
   await tablet.page.getByTestId('kid-device-安安').click();
   await expect(tablet.page.getByTestId('kid-replace-warning-安安')).toContainText('這台裝置上的進度會不見');
   await tablet.page.screenshot({ path: `${SHOTS}/04-tablet-replace-confirm.png` });
   await tablet.page.getByTestId('kid-replace-confirm-安安').click();
   await expect(tablet.page.getByTestId('parent-note')).toContainText('已經在這台裝置上了');
   await expect(tablet.page.getByTestId('kid-here-安安')).toBeVisible();
-  await expect(tablet.page.getByTestId('local-in-cloud-安安')).toHaveCount(0);
   // 同一個角色換成雲端的進度（金幣是雲端的），沒有多出第二個角色
   const saved = await tablet.page.evaluate(() => JSON.parse(JSON.stringify((window as any).__game.game.getState().save.profiles)));
   expect(saved).toHaveLength(1);
@@ -164,7 +168,7 @@ test('家長刪除帳號：名下的雲端角色一併刪除，這台裝置上�
   const d = await openDevice(browser, baseURL!);
   await playLocalRound(d.page, '妹妹');
   await registerParent(d.page);
-  await d.page.getByTestId('upload-妹妹').click();
+  await d.page.getByTestId('upload-offer-yes').click();
   await expect(d.page.getByTestId('kid-here-妹妹')).toBeVisible();
   await d.page.getByTestId('account-settings').click();
   await d.page.getByTestId('delete-account').click();
@@ -173,6 +177,30 @@ test('家長刪除帳號：名下的雲端角色一併刪除，這台裝置上�
   await expect(d.page.getByTestId('account-submit')).toBeVisible();
   // 這台裝置上的雲端角色也拿掉了
   await expect.poll(() => d.page.evaluate(() => (window as any).__game.game.getState().save.profiles.length)).toBe(0);
+  expect(pageErrors(d.page)).toEqual([]);
+  await d.context.close();
+});
+
+test('「這台裝置上有○○，是你的孩子嗎？」按「不是」：這位家長之後不再問（重新整理也一樣），換另一位家長登入會問', async ({ browser, baseURL }) => {
+  test.setTimeout(240_000);
+  const d = await openDevice(browser, baseURL!);
+  await d.page.evaluate(() => (window as any).__game.game.getState().createProfile('鄰居小孩', { animal: 'dog', color: '#ffffff', hat: null }));
+  await registerParent(d.page);
+  await expect(d.page.getByTestId('upload-offer')).toContainText('「鄰居小孩」');
+  await d.page.getByTestId('upload-offer-no').click();
+  await expect(d.page.getByTestId('upload-offer')).toHaveCount(0);
+  // 重新整理（同一個分頁還是登入的）：孩子清單讀完之後還是不問
+  await d.page.reload();
+  await d.page.getByTestId('teacher-link').click();
+  await expect(d.page.getByTestId('parent-home')).toContainText('還沒有孩子的角色');
+  await expect(d.page.getByTestId('upload-offer')).toHaveCount(0);
+  // 角色還在這台裝置，沒有存到家長帳號
+  expect(await d.page.evaluate(() => (window as any).__game.game.getState().save.profiles.map((p: any) => [p.name, !!p.cloud]))).toEqual([['鄰居小孩', false]]);
+  // 換另一位家長登入：會問
+  await d.page.getByTestId('account-logout').click();
+  await d.page.getByTestId('teacher-back').click();
+  await registerParent(d.page);
+  await expect(d.page.getByTestId('upload-offer')).toContainText('「鄰居小孩」');
   expect(pageErrors(d.page)).toEqual([]);
   await d.context.close();
 });

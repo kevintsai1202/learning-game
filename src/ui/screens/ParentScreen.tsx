@@ -518,7 +518,7 @@ function ClassTab({ profile }: { profile: Profile }) {
             <td data-testid="class-room">
               {rooms.length
                 ? rooms.map((r) => `${r.name}（房間代碼 ${r.code}${r.nickname && r.nickname !== profile.name ? `，班上叫「${r.nickname}」` : ''}）`).join('、')
-                : '還沒加入班級（家長名下的雲端角色）'}
+                : '還沒加入班級'}
             </td>
           </tr>
           <tr>

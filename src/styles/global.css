@@ -2650,6 +2650,12 @@ button {
   outline: 3px solid #4caf50;
   border-radius: 4px;
 }
+/* 家長頁上方「這台裝置上有○○，是你的孩子嗎？」（L2，存到雲端的決定 A） */
+.upload-offer {
+  padding: 12px 14px;
+  margin: 0 0 12px;
+  background: #fff8e1;
+}
 .account-links {
   display: flex;
   flex-wrap: wrap;

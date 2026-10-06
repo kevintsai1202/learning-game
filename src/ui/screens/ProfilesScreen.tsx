@@ -1,6 +1,6 @@
 /**
  * 選角畫面：選擇小朋友，或建立新角色（名字、動物、顏色）。
- * 有設定班級伺服器時，多一張「🏫 班級」卡片（加入或登入班級）；雲端角色的卡片標示班級名稱。
+ * 有設定班級伺服器時，多一張「🏫 班級」卡片（加入或登入班級）；有班級的角色卡片標示班級名稱。
  */
 import { useState } from 'react';
 import { useGame } from '../../store/useGame';
@@ -145,7 +145,8 @@ export function ProfilesScreen() {
                 <span className="meta">
                   🪙 {p.coins}　⭐ {Object.values(p.bestStars).reduce((s, v) => s + v, 0)}
                 </span>
-                {p.cloud && <span className="cloud-badge">{p.cloud.rooms?.length ? `🏫 ${p.cloud.rooms.map((r) => r.name).join('・')}` : '☁️ 雲端'}</span>}
+                {/* 有班級才標班級名稱（L2：給大人看的地方不再出現「雲端」） */}
+                {p.cloud?.rooms?.length ? <span className="cloud-badge">🏫 {p.cloud.rooms.map((r) => r.name).join('・')}</span> : null}
               </button>
             ))}
             {onlineEnabled() && (
