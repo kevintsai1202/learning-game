@@ -1,6 +1,6 @@
 # 登入與加入流程的 UX 檢驗（老師、家長、學生）
 
-> 狀態：**檢驗報告（2026-10-06）**；使用者的決定見第 6、8 節與第 9 節最後，**L1 完成（2026-10-06），待上線**，實作紀錄見第 10 節。依使用者要求，以資深 UI/UX 設計師的角度檢驗三種身分的登入操作；步驟數是**讀畫面程式算出來的**（`TitleScreen`、`ProfilesScreen`、`ClassScreen`、`TeacherScreen` 的 `AccountGate`／`AccountHome`／`ParentHome`、`JoinClassPanel`、`IslandHud`），不是實際走過瀏覽器。
+> 狀態：**檢驗報告（2026-10-06）**；使用者的決定見第 6、8 節與第 9 節最後，**L1 2026-10-06 12:09 上線**，實作紀錄與上線結果見第 10 節；下一批 L2。依使用者要求，以資深 UI/UX 設計師的角度檢驗三種身分的登入操作；步驟數是**讀畫面程式算出來的**（`TitleScreen`、`ProfilesScreen`、`ClassScreen`、`TeacherScreen` 的 `AccountGate`／`AccountHome`／`ParentHome`、`JoinClassPanel`、`IslandHud`），不是實際走過瀏覽器。
 > 相關文件：`docs/plans/accounts.md`（大人帳號，第 10 節是使用者的決定）、`docs/plans/class-join.md`（掃 QR code）、`docs/plans/guides.md`（批次 1.6 指引）、`docs/plans/roadmap.md`。
 > 建議分兩類：**A 純畫面整理**（不違背任何已記錄的決定）、**B 要翻案**（和 `accounts.md` 第 10 節或 `class-join.md` 第 1 節的決定相反，請使用者重新決定）。
 
@@ -239,7 +239,7 @@ L1、L2 排在批次 1.6（指引）之前；L3、L4 完成後指引的步驟才
 
 ## 10. 實作紀錄
 
-### L1 登入整理（2026-10-06 完成，待上線）
+### L1 登入整理（2026-10-06 12:09 上線）
 
 - **伺服器**：資料表第 9 版 `users.password_hash` 可以是 null。`POST /api/users/google/register` 只收 `{ idToken, parent, teacher }`，帳號名稱由 `usernameBaseFromEmail`＋`pickUsername`（`src/online/userRules.ts`）從 email 產生，撞名加數字；帳號資料多 `hasPassword`。改密碼與刪除帳號接受「目前的密碼」或「綁定的 Google」再確認身分（`server/users.ts` 的 `reauth`）；沒有密碼的帳號不能解除最後一個 Google（409 `last_login_method`，交易裡先鎖帳號列）。
 - **畫面**：標題畫面只有「👨‍👩‍👧 大人登入（老師、家長）」，單機版（沒有班級伺服器）才留角落的「家長專區」。帳號頁一份表單，「登入」旁邊是 Google 按鈕（官方文字「透過 Google 帳戶繼續操作」，上線後截圖確認，隱私權政策照這幾個字寫）；底下是「忘記密碼？」「還沒有帳號？註冊」與「到家長專區（用 4 位數 PIN）」的連結。沒綁過的 Google：掃 QR code 進來的直接建立家長帳號，其他情況出現「老師／家長」兩張卡片。帳號設定：沒有密碼時「設定密碼」要填新密碼再按 Google 確認；刪除帳號同理；這時「綁定 Google」的按鈕先收起來。家長頁多「⚙️ 這台裝置的設定（家長專區）」；登入家長帳號時家長專區不用 PIN。選角畫面有角色時，建立角色表單不再重複出現「用班級登入」；班級畫面的「大人登入」只在登入失敗時出現。
@@ -254,3 +254,10 @@ L1、L2 排在批次 1.6（指引）之前；L3、L4 完成後指引的步驟才
 - **家長專區免 PIN 的代價**：家長在孩子的平板上勾了「保持登入」時，孩子也能進家長專區。帳號頁本來就有同樣的情況（孩子能看到家長頁），所以保持登入的說明改成「孩子的平板、教室共用的電腦不要勾」。
 - **同一個畫面只能有一顆 Google 按鈕**：`src/online/google.ts` 只記一個登入結果的回呼，兩顆同時出現時，按哪一顆都會交給後畫出來的那顆（e2e 的測試按鈕各自有回呼，測不出來）。帳號設定用 Google 確認身分時，先收起「綁定 Google」。
 - **上線那幾分鐘**：GitHub Pages 比 Zeabur 先換新版時，新版網頁用 Google 註冊會被舊伺服器擋（400，舊伺服器要帳號名稱與密碼）；反過來舊版網頁送的帳號名稱與密碼，新伺服器會忽略、改用產生的名稱。都只影響部署途中幾分鐘。
+
+**上線結果（2026-10-06）**：
+
+- 合併 main（44be6f3）並 push，GitHub Pages 與 Zeabur 約 2 分鐘換新版；伺服器啟動紀錄正常，`inspect-prod-data.ps1` 顯示資料表第 9 版（正式資料 2 個大人帳號、1 個班級、1 個孩子，沒有動到）。healthz、`/api/config` 正常，兩個網址的前端都是新版（主程式含「大人登入」）。
+- `check-google-origins.mjs --shot`（這次加的選項）兩個網址都在帳號頁、都已授權。截圖發現 Google 官方按鈕（continue_with、zh-TW）顯示的是「透過 Google 帳戶繼續操作」，不是政策原本寫的「使用 Google 帳戶繼續」：政策中英文與帳號頁說明改成實際文字或泛稱「Google 按鈕」（ed6b146），12:15 再部署一次，兩個網址的政策都已更新。
+- 沒有對正式伺服器跑 e2e：註冊會真的寄驗證信到 e2e 的假信箱（退信）；改動的畫面已在本機 e2e 驗證，正式環境特有的部分（資料表升級、設定、Google 來源與按鈕）直接檢查。
+- 待你用真的 Google 帳號走一次：登出 →「大人登入」→ Google 按鈕 → 第一次用會問老師或家長（已綁定的直接登入）；帳號設定「設定密碼」→ Google 確認。
