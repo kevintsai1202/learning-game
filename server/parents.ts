@@ -6,13 +6,15 @@
 import type { Context, Hono } from 'hono';
 import type { Db, Queryable } from './db';
 import { ApiError, readBody } from './http';
-import { newAccountId } from './auth';
+import { newAccountId, tokenHash } from './auth';
 import { emitGiftEvents, settlePendingGifts, type Events } from './gifts';
 import { leaveClass } from './classes';
 import {
   parentJoinClassRequest,
   parentLeaveClassRequest,
   uploadKidRequest,
+  type ClaimAcceptResponse,
+  type ClaimLookupResponse,
   type ClassInfo,
   type ClassLookupResponse,
   type KidSummary,
@@ -49,6 +51,8 @@ export interface ParentRouteDeps {
   joinClass: (accountId: string, code: string, nickname: string) => Promise<{ row: AccountRow; room: { code: string; name: string } }>;
   /** 讀班級；找不到回 404 */
   loadRoom: (code: string) => Promise<{ code: string; name: string; join_open: boolean }>;
+  /** 孩子換了家長（接手連結卡，L4）：即時中樞讓他重新上線，拿到新的兄弟姊妹好友 */
+  onClassChanged?: (accountId: string) => void;
 }
 
 /** 去掉已經刪除的帳號再送出通知（被刪的角色沒有人可以收） */
@@ -132,6 +136,71 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
     const body = await readBody(c, parentJoinClassRequest);
     await deps.joinClass(kid.id, body.code, body.nickname);
     return c.json<ParentJoinClassResponse>({ kid: (await kidSummaries('a.id = $1', [kid.id]))[0] });
+  });
+
+  // ---------- 家長連結卡（L4，docs/plans/login-ux-review.md 第 7.3 節方案 A） ----------
+
+  /** 連結代碼的一列（加上孩子這一班的暱稱、外觀、班級名稱與目前的家長） */
+  interface ClaimRow {
+    code_hash: string;
+    account_id: string;
+    room_code: string;
+    expires_at: Date;
+    used_at: Date | null;
+    nickname: string;
+    profile: Profile;
+    room_name: string;
+    parent_id: string | null;
+  }
+
+  /** 讀連結代碼並檢查能不能用：不存在 404、用過 410、過期 410、孩子已經有家長 409。lock 時鎖住代碼列（接手用） */
+  const loadClaim = async (q: Queryable, code: string, lock: boolean): Promise<ClaimRow> => {
+    const row = (
+      await q.query<ClaimRow>(
+        `SELECT c.code_hash, c.account_id, c.room_code, c.expires_at, c.used_at, m.nickname, a.profile, r.name AS room_name, a.parent_id
+         FROM claim_codes c JOIN accounts a ON a.id = c.account_id JOIN rooms r ON r.code = c.room_code
+         LEFT JOIN class_members m ON m.account_id = c.account_id AND m.room_code = c.room_code
+         WHERE c.code_hash = $1${lock ? ' FOR UPDATE OF c' : ''}`,
+        [tokenHash(code)],
+      )
+    )[0];
+    if (!row) throw new ApiError(404, 'claim_not_found', '找不到這張連結卡，請老師重新產生');
+    if (row.used_at) throw new ApiError(410, 'claim_used', '這張連結卡已經用過了');
+    if (new Date(row.expires_at).getTime() <= now().getTime()) throw new ApiError(410, 'claim_expired', '這張連結卡過期了，請老師重新產生');
+    if (row.parent_id !== null) throw new ApiError(409, 'has_parent', '這個孩子已經有家長帳號了');
+    return row;
+  };
+
+  /** 查連結（顯示要接手的孩子讓家長核對）：任何大人帳號（只有老師身分時畫面提示加上家長）；擋大量請求；不回帳號 id */
+  app.get('/api/parent/claims/:code', async (c) => {
+    deps.checkFlood(c);
+    await deps.authenticateUser(c);
+    const row = await loadClaim(db, c.req.param('code'), false);
+    return c.json<ClaimLookupResponse>({
+      kid: { nickname: row.nickname ?? row.profile.name, avatar: row.profile.avatar },
+      room: { code: row.room_code, name: row.room_name },
+      expiresAt: new Date(row.expires_at).toISOString(),
+    });
+  });
+
+  /**
+   * 接手：孩子連到這位家長（parent_id 填上），進度、班級、平板上的權杖都不動；連結用掉。
+   * 交易裡先鎖代碼列再鎖孩子的帳號列，兩位家長同時接手只有一位成功
+   */
+  app.post('/api/parent/claims/:code', async (c) => {
+    deps.checkFlood(c);
+    const parent = await authenticateParent(c);
+    const kidId = await db.transaction(async (tx) => {
+      const claim = await loadClaim(tx, c.req.param('code'), true);
+      const kid = (await tx.query<{ parent_id: string | null }>('SELECT parent_id FROM accounts WHERE id = $1 FOR UPDATE', [claim.account_id]))[0];
+      if (!kid) throw new ApiError(404, 'claim_not_found', '找不到這張連結卡，請老師重新產生');
+      if (kid.parent_id !== null) throw new ApiError(409, 'has_parent', '這個孩子已經有家長帳號了');
+      await tx.query('UPDATE accounts SET parent_id = $2 WHERE id = $1', [claim.account_id, parent]);
+      await tx.query('UPDATE claim_codes SET used_at = $2::timestamptz WHERE code_hash = $1', [claim.code_hash, now().toISOString()]);
+      return claim.account_id;
+    });
+    deps.onClassChanged?.(kidId);
+    return c.json<ClaimAcceptResponse>({ kid: (await kidSummaries('a.id = $1', [kidId]))[0] });
   });
 
   app.post('/api/parent/kids', async (c) => {

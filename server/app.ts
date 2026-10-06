@@ -37,6 +37,8 @@ import {
   type ClassroomMember,
   type ClassroomMembersResponse,
   type ClassroomUnlockResponse,
+  type ClaimIssueResponse,
+  CLAIM_DAYS,
   type MemberSummary,
   type OpsResponse,
   type RoomInfo,
@@ -338,6 +340,7 @@ export function createApp(opts: AppOptions) {
     // 包一層：joinExisting 定義在後面，請求進來時才呼叫
     joinClass: (accountId, code, nickname) => joinExisting(accountId, code, nickname, null),
     loadRoom: (code) => loadRoom(db, code),
+    onClassChanged: opts.onClassChanged,
   });
 
   // ---------- 老師（大人帳號＋老師身分；一個老師可以有好幾個班級，只能管自己的） ----------
@@ -405,6 +408,7 @@ export function createApp(opts: AppOptions) {
       online: isOnline(a.id),
       where: opts.whereOf?.(a.id, room.code) ?? null,
       hasPin: a.member_pin !== null,
+      hasParent: a.parent_id !== null,
     }));
     return c.json<TeacherRoomResponse>({ room: roomSettings(room), members });
   });
@@ -456,6 +460,34 @@ export function createApp(opts: AppOptions) {
     // 只踢用這一班代碼登入的連線：家長裝置、別班登入的連線留著
     opts.onKick?.(c.req.param('id'), '老師重設了你的密碼，請用新密碼重新登入', 'class', room.code);
     return c.json({ ok: true });
+  });
+
+  // 家長連結卡（L4）：還沒有家長的孩子產生一次性連結（7 天）；一個孩子同時只有一張，重新產生時舊的作廢
+  app.post('/api/teacher/rooms/:code/members/:id/claim', async (c) => {
+    const owner = await authenticateTeacher(c);
+    const room = await loadOwnRoom(db, c.req.param('code'), owner);
+    const member = (
+      await db.query<{ id: string; parent_id: string | null; nickname: string; profile: Profile }>(
+        'SELECT a.id, a.parent_id, m.nickname, a.profile FROM class_members m JOIN accounts a ON a.id = m.account_id WHERE m.room_code = $1 AND m.account_id = $2',
+        [room.code, c.req.param('id')],
+      )
+    )[0];
+    if (!member) throw new ApiError(404, 'no_member', '找不到這位成員');
+    if (member.parent_id !== null) throw new ApiError(409, 'has_parent', '這個孩子已經有家長帳號了');
+    const code = newToken();
+    const t = now();
+    const expiresAt = new Date(t.getTime() + CLAIM_DAYS * 24 * 3600 * 1000).toISOString();
+    await db.transaction(async (tx) => {
+      await tx.query('DELETE FROM claim_codes WHERE account_id = $1', [member.id]);
+      await tx.query('INSERT INTO claim_codes (code_hash, account_id, room_code, expires_at, created_at) VALUES ($1, $2, $3, $4::timestamptz, $5::timestamptz)', [
+        tokenHash(code),
+        member.id,
+        room.code,
+        expiresAt,
+        t.toISOString(),
+      ]);
+    });
+    return c.json<ClaimIssueResponse>({ code, expiresAt, kid: { nickname: member.nickname, avatar: member.profile.avatar } });
   });
 
   app.delete('/api/teacher/rooms/:code/members/:id', async (c) => {

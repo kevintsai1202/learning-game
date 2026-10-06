@@ -312,6 +312,23 @@ const MIGRATIONS: Migration[] = [
     version: 11,
     statements: [`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS class_password_hash text`],
   },
+  {
+    // L4 家長連結卡（docs/plans/login-ux-review.md 第 7.3 節方案 A）：老師對還沒有家長的孩子產生一次性連結（只存雜湊，7 天），
+    // 家長打開、登入後把孩子連到自己的帳號。一個孩子同時只有一張有效的卡（重新產生時刪掉舊的）；
+    // 孩子的角色或班級刪除時跟著刪
+    version: 12,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS claim_codes (
+        code_hash text PRIMARY KEY,
+        account_id text NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        room_code text NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        expires_at timestamptz NOT NULL,
+        used_at timestamptz,
+        created_at timestamptz NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS claim_codes_account ON claim_codes (account_id)`,
+    ],
+  },
 ];
 
 /**

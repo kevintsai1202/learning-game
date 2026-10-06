@@ -243,6 +243,28 @@ export interface ClassroomCreateResponse {
   member: ClassroomMember;
 }
 
+/** 家長連結卡的有效天數（L4） */
+export const CLAIM_DAYS = 7;
+
+/** 老師產生家長連結（L4）：代碼只在這次回應出現（伺服器只存雜湊），卡片上的孩子資料 */
+export interface ClaimIssueResponse {
+  code: string;
+  expiresAt: string;
+  kid: { nickname: string; avatar: AvatarConfig };
+}
+
+/** 家長查詢連結（L4）：要接手的孩子（這一班的暱稱與外觀）與班級；不含帳號 id */
+export interface ClaimLookupResponse {
+  kid: { nickname: string; avatar: AvatarConfig };
+  room: { code: string; name: string };
+  expiresAt: string;
+}
+
+/** 家長接手的回應（L4）：孩子現在在家長名下 */
+export interface ClaimAcceptResponse {
+  kid: KidSummary;
+}
+
 /** 老師看到的成員資料 */
 export interface MemberSummary {
   id: string;
@@ -263,6 +285,8 @@ export interface MemberSummary {
   where: { island: 'class' | 'own' | 'otherClass'; zone: string | null } | null;
   /** 有沒有班級密碼（家長掃 QR code 加入的孩子沒有，老師要設了孩子才能用班級代碼登入） */
   hasPin: boolean;
+  /** 有沒有家長帳號（L4：沒有的才能產生家長連結卡）；舊版伺服器沒有 */
+  hasParent?: boolean;
 }
 
 /** 查班級（加入連結打開時顯示班級名稱） */

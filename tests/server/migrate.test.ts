@@ -297,4 +297,25 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       await d.close();
     }
   });
+  it('v11 → v12（L4 家長連結卡）：新增 claim_codes；孩子或班級刪除時跟著刪', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 11 });
+      await d.query("INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ('888888', '二年八班', 'h', $1::timestamptz)", [T]);
+      await d.query(
+        "INSERT INTO accounts (id, room_code, nickname, nickname_key, profile, rev, created_at, last_seen) VALUES ('k8', NULL, '小安', '小安', '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)",
+        [T],
+      );
+
+      await migrate(d);
+
+      await d.query("INSERT INTO claim_codes (code_hash, account_id, room_code, expires_at, created_at) VALUES ('h1', 'k8', '888888', $1::timestamptz, $1::timestamptz)", [T]);
+      expect((await d.query('SELECT used_at FROM claim_codes'))[0].used_at).toBeNull();
+      await d.query("DELETE FROM accounts WHERE id = 'k8'");
+      expect((await d.query('SELECT 1 FROM claim_codes')).length).toBe(0);
+      await migrate(d);
+    } finally {
+      await d.close();
+    }
+  });
 });

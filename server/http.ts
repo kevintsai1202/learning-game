@@ -8,7 +8,8 @@ import type { z } from 'zod';
 /** 會回給前端的錯誤（訊息是給孩子或大人看的中文） */
 export class ApiError extends Error {
   constructor(
-    readonly status: 400 | 401 | 403 | 404 | 409 | 413 | 423 | 429 | 502 | 503,
+    /** 410：一次性連結已經用過或過期（L4 家長連結卡） */
+    readonly status: 400 | 401 | 403 | 404 | 409 | 410 | 413 | 423 | 429 | 502 | 503,
     readonly code: string,
     message: string,
     readonly retryAfter?: number,
