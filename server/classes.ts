@@ -98,10 +98,25 @@ export async function revokeClassTokens(q: Queryable, accountId: string, roomCod
   await q.query("DELETE FROM tokens WHERE account_id = $1 AND via = 'class' AND room_code = $2", [accountId, roomCode]);
 }
 
-/** 讓一個孩子離開某一班（只在交易裡呼叫，那一班的禮物要先結清）：刪掉成員資格與那一班發的 class 權杖 */
+/**
+ * 老師換了教室密碼（L3）：這一班的教室權杖，以及平板從名單點進去發的孩子權杖（via 'tablet'）全部撤銷。
+ * 回傳被撤銷權杖的孩子帳號 id（不重複），讓呼叫端把他們踢下線。在家用代碼登入的（class）與家長裝置（parent）不受影響
+ */
+export async function revokeClassroomTokens(q: Queryable, roomCode: string): Promise<string[]> {
+  const rows = await q.query<{ account_id: string | null }>(
+    "DELETE FROM tokens WHERE room_code = $1 AND (kind = 'classroom' OR (kind = 'kid' AND via = 'tablet')) RETURNING account_id",
+    [roomCode],
+  );
+  return [...new Set(rows.map((r) => r.account_id).filter((id): id is string => id !== null))];
+}
+
+/**
+ * 讓一個孩子離開某一班（只在交易裡呼叫，那一班的禮物要先結清）：刪掉成員資格與用那一班登入的權杖
+ * （代碼登入的 class 與平板的 tablet；家長裝置的留著）
+ */
 export async function leaveClass(tx: Queryable, accountId: string, roomCode: string): Promise<void> {
   await tx.query('DELETE FROM class_members WHERE account_id = $1 AND room_code = $2', [accountId, roomCode]);
-  await revokeClassTokens(tx, accountId, roomCode);
+  await tx.query("DELETE FROM tokens WHERE account_id = $1 AND via IN ('class', 'tablet') AND room_code = $2", [accountId, roomCode]);
 }
 
 /** 我和每位同學的共同班級（好友名單的名字用；交給 sharedClassNames 挑最早建立的那一班） */

@@ -224,6 +224,22 @@ describe('家長名下的雲端角色', () => {
     await home.waitFor('room');
     expect(home.msgs.map((m) => m.t)).not.toContain('kicked');
   });
+  it('用平板進島的孩子（tablet 權杖，L3 教室密碼）：老師換教室密碼被踢；被老師移出班級也被踢（和 class 權杖相同）', async () => {
+    const room = await createRoom(call);
+    expect((await call('PATCH', `/api/teacher/rooms/${room.code}`, { classPassword: 'bear2026' }, room.token)).status).toBe(200);
+    const kid = (await call('POST', '/api/join', { code: room.code, nickname: '小美', pin: '1234', avatar: { animal: 'cat', color: '#ffffff', hat: null } })).body;
+    const classroom = (await call('POST', `/api/class/${room.code}/unlock`, { password: 'bear2026' })).body.token;
+    const first = (await call('POST', `/api/class/members/${kid.account.id}/device`, {}, classroom)).body;
+    const tablet = await connect(first.token);
+    expect((await call('PATCH', `/api/teacher/rooms/${room.code}`, { classPassword: 'rabbit2027' }, room.token)).status).toBe(200);
+    expect((await tablet.waitFor('kicked')).reason).toContain('教室密碼');
+    // 新密碼再進島 → 老師移出班級：平板的連線被踢（純班級角色被刪除）
+    const again = (await call('POST', `/api/class/${room.code}/unlock`, { password: 'rabbit2027' })).body.token;
+    const second = (await call('POST', `/api/class/members/${kid.account.id}/device`, {}, again)).body;
+    const tablet2 = await connect(second.token);
+    expect((await call('DELETE', `/api/teacher/rooms/${room.code}/members/${kid.account.id}`, undefined, room.token)).status).toBe(200);
+    expect((await tablet2.waitFor('kicked')).reason).toContain('移出');
+  });
 });
 
 describe('島嶼互訪 I1：選島、換島、好友名單（docs/plans/islands.md）', () => {

@@ -1,16 +1,22 @@
 /**
  * 登入權杖的查詢（HTTP 路由與 WebSocket 登入共用）：資料庫只存權杖的雜湊，過期的不算。
- * 兩種權杖：孩子（雲端角色）與大人（家長、老師的帳號，不屬於班級）。
+ * 三種權杖：孩子（雲端角色）、大人（家長、老師的帳號，不屬於班級）、教室（L3：學校平板用教室密碼解鎖後拿到，綁一個班級，8 小時）。
  * 孩子權杖的「班級」從成員資格讀（class_members，加入、退出班級立刻生效）：多班級（docs/plans/multi-class.md）起是一個清單，
  * 第一個班級（最早加入的）在前面；沒有班級是空清單。
- * tokens.room_code 對 class 權杖是「用哪一班的代碼登入」（移出、重設密碼時只撤銷那一班的）；家長權杖的這一欄不代表什麼。
+ * tokens.room_code 對 class、tablet 權杖是「用哪一班登入」（移出、重設密碼、換教室密碼時只撤銷那一班的）；家長權杖的這一欄不代表什麼。
  * 改版前的老師權杖（kind 'teacher'，綁房間）已停用，查到一律當作無效。
  */
 import type { Queryable } from './db';
 import { tokenHash } from './auth';
 
-/** 孩子權杖的來源：class 是孩子用班級代碼登入（學校平板），parent 是家長登入後「在這台裝置玩」 */
-export type TokenVia = 'class' | 'parent';
+/**
+ * 孩子權杖的來源：class 是孩子用班級代碼＋暱稱＋密碼登入；tablet 是學校平板用教室密碼解鎖後從名單點進去（L3）；
+ * parent 是家長登入後「在這台裝置玩」
+ */
+export type TokenVia = 'class' | 'parent' | 'tablet';
+
+/** 是不是「用班級登入」的來源（class、tablet）：被移出那一班、老師重設密碼或換教室密碼時要踢下線；家長裝置不算 */
+export const isClassLogin = (via: TokenVia): boolean => via !== 'parent';
 
 /** 權杖驗證後的身分 */
 export type TokenIdentity =
@@ -20,7 +26,7 @@ export type TokenIdentity =
       /** 這個角色所在的班級，第一個班級在前面；沒有班級（只有家長帳號）是空清單 */
       rooms: string[];
       via: TokenVia;
-      /** class 權杖是用哪一班的代碼登入的；家長權杖是 null */
+      /** class、tablet 權杖是用哪一班登入的；家長權杖是 null */
       tokenRoom: string | null;
       /** 權杖的雜湊（登出時刪除用） */
       hash: string;
@@ -45,9 +51,22 @@ export async function lookupToken(q: Queryable, token: string, now: Date): Promi
   )[0];
   if (!row) return null;
   if (row.kind === 'kid' && row.account_id && row.account_exists) {
-    const via: TokenVia = row.via === 'parent' ? 'parent' : 'class';
-    return { kind: 'kid', accountId: row.account_id, rooms: row.rooms ?? [], via, tokenRoom: via === 'class' ? row.token_room : null, hash };
+    const via: TokenVia = row.via === 'parent' ? 'parent' : row.via === 'tablet' ? 'tablet' : 'class';
+    return { kind: 'kid', accountId: row.account_id, rooms: row.rooms ?? [], via, tokenRoom: isClassLogin(via) ? row.token_room : null, hash };
   }
   if (row.kind === 'user' && row.user_id) return { kind: 'user', userId: row.user_id, hash };
   return null;
+}
+
+/** 教室權杖（L3）：查到就回它綁的班級代碼；不存在、過期、班級已刪除回傳 null。和孩子、大人的權杖分開查，三種身分不混在一起 */
+export async function lookupClassroomToken(q: Queryable, token: string, now: Date): Promise<{ roomCode: string; hash: string } | null> {
+  const hash = tokenHash(token);
+  const row = (
+    await q.query<{ room_code: string | null }>(
+      `SELECT t.room_code FROM tokens t JOIN rooms r ON r.code = t.room_code
+       WHERE t.token_hash = $1 AND t.kind = 'classroom' AND t.expires_at > $2::timestamptz`,
+      [hash, now.toISOString()],
+    )
+  )[0];
+  return row?.room_code ? { roomCode: row.room_code, hash } : null;
 }

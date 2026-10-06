@@ -17,7 +17,7 @@ import { shownTitle } from '../src/store/badges';
 import type { AvatarConfig, Profile } from '../src/store/save';
 import type { ZoneId } from '../src/store/useUi';
 import { SPAWN, WALK_RADIUS } from '../src/world/layout';
-import type { TokenVia } from './tokens';
+import { isClassLogin, type TokenVia } from './tokens';
 
 /** 一條連線（WebSocket 包起來的介面） */
 export interface HubConn {
@@ -390,7 +390,7 @@ export class Hub {
   leftClass(accountId: string, room: string, reason: string): void {
     const m = this.accounts.get(accountId);
     if (!m) return;
-    if (m.via === 'class' && m.tokenRoom === room) return this.kick(accountId, reason);
+    if (isClassLogin(m.via) && m.tokenRoom === room) return this.kick(accountId, reason);
     m.conn.send({ t: 'notice', message: reason });
     this.reconnect(accountId);
   }

@@ -24,7 +24,7 @@ describe('建立與列出班級', () => {
     const t = await createUser(call);
     const a = await call('POST', '/api/teacher/rooms', { name: ' 二年一班 ' }, t.token);
     expect(a.status).toBe(200);
-    expect(a.body.room).toEqual({ code: expect.stringMatching(/^[1-9]\d{5}$/), name: '二年一班', joinOpen: true, chatOpen: true, giftsOpen: true, curriculum: null });
+    expect(a.body.room).toEqual({ code: expect.stringMatching(/^[1-9]\d{5}$/), name: '二年一班', joinOpen: true, chatOpen: true, giftsOpen: true, curriculum: null, hasClassPassword: false });
     await call('POST', '/api/teacher/rooms', { name: '安親班' }, t.token);
     await joinRoom(call, a.body.room.code, '小安');
     const list = await call('GET', '/api/teacher/rooms', undefined, t.token);

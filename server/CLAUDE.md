@@ -46,8 +46,8 @@ docker rm -f li-pg-test
 - PGlite 轉接層自己排隊所有查詢；交易裡只能用 `tx.query`，在交易裡呼叫 `db.query` 會卡死。
 - 資料表結構只往後加版本（`server/db.ts` 的 `MIGRATIONS`），不修改已發布的版本。
 - 登入鎖定以「房間＋暱稱」（孩子）或「帳號名稱」（大人）計次（5 次鎖 5 分鐘），不用 IP：同一間教室共用對外 IP。IP 只擋大量請求（每分鐘 300 次）。
-- **權杖兩種**（`tokens.ts` 的 `lookupToken` 回傳分型別）：孩子（雲端角色）與大人（`user_id`，不屬於班級）。改版前的老師權杖（kind `teacher`）一律視為無效。
-  - 孩子權杖的班級從成員資格讀（`class_members`，加入或退出班級立刻生效；多班級起是清單，第一個班級在前面）；`tokens.via` 記來源：`class`（孩子用班級代碼登入，例如學校平板）、`parent`（家長「在這台裝置玩」）；`class` 權杖的 `tokens.room_code` 是用哪一班的代碼登入的（家長權杖的這一欄不代表什麼，不能拿來判斷）。
+- **權杖三種**：`tokens.ts` 的 `lookupToken` 回傳孩子（雲端角色）與大人（`user_id`，不屬於班級）兩種身分；教室權杖（L3，kind `classroom`，綁一個班級、8 小時）由 `lookupClassroomToken` 單獨查，只給 `/api/class/…` 四個 API 用（`authenticateClassroom`），其他 API 一律 401。改版前的老師權杖（kind `teacher`）一律視為無效。
+  - 孩子權杖的班級從成員資格讀（`class_members`，加入或退出班級立刻生效；多班級起是清單，第一個班級在前面）；`tokens.via` 記來源：`class`（孩子用班級代碼＋暱稱＋密碼登入）、`tablet`（學校平板用教室密碼解鎖後從名單點進去，L3）、`parent`（家長「在這台裝置玩」）；`class`、`tablet` 權杖的 `tokens.room_code` 是用哪一班登入的（家長權杖的這一欄不代表什麼，不能拿來判斷）。「用班級登入」的判斷統一用 `isClassLogin(via)`（被移出那一班、換教室密碼時踢下線）；重設孩子密碼只撤銷 `class`（`revokeClassTokens`），換教室密碼撤銷教室權杖與 `tablet`（`revokeClassroomTokens`）。
   - `authenticate(c, 'kid')`：班級功能用，角色沒有班級時回 403 `no_class`（送禮、同學名單因此不用自己檢查）；`authenticateKidAny`：班級可以空，只給同步（`/api/ops`）、讀存檔（`/api/me`）與「帶權杖加入班級」用；`authenticateUser` 只收大人的。WebSocket 遇到沒有班級的角色：島嶼互訪 I1 起進他自己的島（改版前用 4004 `CLOSE_NO_CLASS` 關閉）。
 - **家長的雲端角色與退出班級**（A2，`docs/plans/accounts.md` 第 6 節）：
   - 角色可以只有家長、沒有班級（`accounts` 的限制：班級與家長至少一個）；沒有班級就沒有孩子密碼。

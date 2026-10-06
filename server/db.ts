@@ -305,6 +305,13 @@ const MIGRATIONS: Migration[] = [
       `ALTER TABLE accounts DROP CONSTRAINT IF EXISTS accounts_class_or_parent`,
     ],
   },
+  {
+    // L3 教室密碼（docs/plans/login-ux-review.md 第 7.1 節）：每個班級一組教室密碼（只存雜湊；老師在班級頁設定、改密碼），
+    // 學校平板掃 QR code 後由老師輸入，拿到 8 小時的教室權杖（tokens，kind 'classroom'）看名單、讓孩子進島、建學生。
+    // 既有班級是 null（還沒設定，平板不能解鎖）
+    version: 11,
+    statements: [`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS class_password_hash text`],
+  },
 ];
 
 /**

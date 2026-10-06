@@ -281,4 +281,20 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       await d.close();
     }
   });
+  it('v10 → v11（L3 教室密碼）：班級多一欄教室密碼的雜湊，既有班級是 null；可以存', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 10 });
+      await d.query("INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ('777777', '二年七班', 'h', $1::timestamptz)", [T]);
+
+      await migrate(d);
+
+      expect((await d.query("SELECT class_password_hash FROM rooms WHERE code = '777777'"))[0].class_password_hash).toBeNull();
+      await d.query("UPDATE rooms SET class_password_hash = 'scrypt$x$y' WHERE code = '777777'");
+      expect((await d.query("SELECT class_password_hash FROM rooms WHERE code = '777777'"))[0].class_password_hash).toBe('scrypt$x$y');
+      await migrate(d);
+    } finally {
+      await d.close();
+    }
+  });
 });

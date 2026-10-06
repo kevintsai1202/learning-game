@@ -9,7 +9,7 @@ import type { Db, Queryable } from './db';
 import { ApiError, readBody, type Identity } from './http';
 import { LoginLimiter, RateLimiter, checkNickname, hashSecret, newAccountId, newRoomCode, newToken, tokenHash, verifySecret } from './auth';
 import type { GoogleConfig, GoogleIdentity } from './google';
-import { lookupToken, type TokenVia } from './tokens';
+import { isClassLogin, lookupClassroomToken, lookupToken, type TokenVia } from './tokens';
 import { emitGiftEvents, registerGiftRoutes, removeMemberWithRefunds } from './gifts';
 import { registerStatic } from './static';
 import { registerUserRoutes } from './users';
@@ -17,11 +17,14 @@ import { registerParentRoutes } from './parents';
 import { registerEmailRoutes } from './email';
 import { registerUserGoogleRoutes } from './userGoogle';
 import { createMailer, type Mailer } from './mail';
-import { MAX_CLASSES, classInfos, membershipsOf, revokeClassTokens } from './classes';
+import { MAX_CLASSES, classInfos, membershipsOf, revokeClassTokens, revokeClassroomTokens } from './classes';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
+  CLASSROOM_HOURS,
   attachClassRequest,
+  classroomCreateRequest,
+  classroomUnlockRequest,
   createClassRequest,
   joinRequest,
   loginRequest,
@@ -30,6 +33,10 @@ import {
   roomPatchRequest,
   type AttachResponse,
   type ClassInfo,
+  type ClassroomCreateResponse,
+  type ClassroomMember,
+  type ClassroomMembersResponse,
+  type ClassroomUnlockResponse,
   type MemberSummary,
   type OpsResponse,
   type RoomInfo,
@@ -122,6 +129,8 @@ interface RoomRow {
   gifts_open: boolean;
   /** 老師設定的班級教材版本；null 是沒有統一（第 8 版新增） */
   curriculum: CurriculumChoice | null;
+  /** 教室密碼的雜湊（L3，第 11 版新增）；null 是老師還沒設定，學校平板不能解鎖 */
+  class_password_hash: string | null;
 }
 
 /**
@@ -142,7 +151,7 @@ function roomInfo(r: RoomRow): RoomInfo {
 
 /** 房間設定的回應格式 */
 function roomSettings(r: RoomRow): RoomSettings {
-  return { ...roomInfo(r), joinOpen: r.join_open, chatOpen: r.chat_open, giftsOpen: r.gifts_open };
+  return { ...roomInfo(r), joinOpen: r.join_open, chatOpen: r.chat_open, giftsOpen: r.gifts_open, hasClassPassword: r.class_password_hash !== null };
 }
 
 /** 建立 Hono app */
@@ -162,25 +171,27 @@ export function createApp(opts: AppOptions) {
   };
 
   /**
-   * 發一張權杖並存進資料庫：孩子的權杖屬於某個帳號；大人（家長、老師）的權杖屬於大人帳號。
-   * 孩子的 roomCode 是「用哪一班的代碼登入」（class 權杖；移出、重設密碼時只撤銷那一班的），家長來源的權杖是 null
+   * 發一張權杖並存進資料庫：孩子的權杖屬於某個帳號；大人（家長、老師）的權杖屬於大人帳號；
+   * 教室權杖（L3）只綁一個班級、8 小時後失效。
+   * 孩子的 roomCode 是「用哪一班登入」（class、tablet 權杖；移出、重設密碼、換教室密碼時只撤銷那一班的），家長來源的權杖是 null
    */
   const issueToken = async (
     q: Queryable,
-    who: { kind: 'kid'; roomCode: string | null; accountId: string; via: TokenVia } | { kind: 'user'; userId: string },
-  ) => {
+    who: { kind: 'kid'; roomCode: string | null; accountId: string; via: TokenVia } | { kind: 'user'; userId: string } | { kind: 'classroom'; roomCode: string },
+  ): Promise<{ token: string; expiresAt: string }> => {
     const token = newToken();
-    const expires = new Date(nowMs() + TOKEN_DAYS * 24 * 3600 * 1000).toISOString();
+    const life = who.kind === 'classroom' ? CLASSROOM_HOURS * 3600 * 1000 : TOKEN_DAYS * 24 * 3600 * 1000;
+    const expiresAt = new Date(nowMs() + life).toISOString();
     await q.query('INSERT INTO tokens (token_hash, kind, room_code, account_id, user_id, via, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz)', [
       tokenHash(token),
       who.kind,
-      who.kind === 'kid' ? who.roomCode : null,
+      who.kind === 'user' ? null : who.roomCode,
       who.kind === 'kid' ? who.accountId : null,
       who.kind === 'user' ? who.userId : null,
       who.kind === 'kid' ? who.via : 'class',
-      expires,
+      expiresAt,
     ]);
-    return token;
+    return { token, expiresAt };
   };
 
   /** 讀 Authorization 標頭的權杖並查詢；沒有、過期或停用的種類回 401 */
@@ -235,7 +246,7 @@ export function createApp(opts: AppOptions) {
    * nickname 是這次登入用的名字：班級登入是那一班的暱稱，家長裝置是角色的名字
    */
   const sessionResponse = async (account: AccountRow, via: TokenVia, opts: { nickname: string; loginRoom?: string }): Promise<SessionResponse> => ({
-    token: await issueToken(db, { kind: 'kid', roomCode: via === 'class' ? (opts.loginRoom ?? null) : null, accountId: account.id, via }),
+    token: (await issueToken(db, { kind: 'kid', roomCode: isClassLogin(via) ? (opts.loginRoom ?? null) : null, accountId: account.id, via })).token,
     account: { id: account.id, nickname: opts.nickname },
     profile: account.profile,
     rev: account.rev,
@@ -290,7 +301,7 @@ export function createApp(opts: AppOptions) {
     limiter,
     checkFlood,
     assertNotLocked,
-    issueUserToken: (userId) => issueToken(db, { kind: 'user', userId }),
+    issueUserToken: async (userId) => (await issueToken(db, { kind: 'user', userId })).token,
     authenticateUser,
     onKick: opts.onKick,
     onProfileChanged: opts.onProfileChanged,
@@ -304,7 +315,14 @@ export function createApp(opts: AppOptions) {
   registerEmailRoutes(app, { db, now, mailer, allowedOrigins: allowed, limiter, checkFlood, authenticateUser });
 
   // ---------- Google 快速登入綁大人帳號（A4） ----------
-  registerUserGoogleRoutes(app, { db, now, checkFlood, verifyGoogleToken, issueUserToken: (userId) => issueToken(db, { kind: 'user', userId }), authenticateUser });
+  registerUserGoogleRoutes(app, {
+    db,
+    now,
+    checkFlood,
+    verifyGoogleToken,
+    issueUserToken: async (userId) => (await issueToken(db, { kind: 'user', userId })).token,
+    authenticateUser,
+  });
 
   // ---------- 家長的雲端角色（A2） ----------
   registerParentRoutes(app, {
@@ -400,12 +418,20 @@ export function createApp(opts: AppOptions) {
     if (name !== null && (!name || [...name].length > ROOM_NAME_MAX)) throw new ApiError(400, 'bad_name', `班級名稱要 1～${ROOM_NAME_MAX} 個字`);
     // curriculum：沒給是不變，null 是取消統一（COALESCE 分不出這兩種，另外用 $5 標記有沒有給）
     const setCurriculum = body.curriculum !== undefined;
+    // 教室密碼（L3）：只存雜湊；沒給是不變
+    const passwordHash = body.classPassword === undefined ? null : await hashSecret(body.classPassword);
     const rows = await db.query<RoomRow>(
       `UPDATE rooms SET join_open = COALESCE($2, join_open), chat_open = COALESCE($3, chat_open), gifts_open = COALESCE($4, gifts_open),
-              curriculum = CASE WHEN $5 THEN $6::jsonb ELSE curriculum END, name = COALESCE($7, name)
+              curriculum = CASE WHEN $5 THEN $6::jsonb ELSE curriculum END, name = COALESCE($7, name), class_password_hash = COALESCE($8, class_password_hash)
        WHERE code = $1 RETURNING *`,
-      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null, setCurriculum, body.curriculum ? JSON.stringify(body.curriculum) : null, name],
+      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null, setCurriculum, body.curriculum ? JSON.stringify(body.curriculum) : null, name, passwordHash],
     );
+    if (passwordHash !== null) {
+      // 舊的教室密碼可能被別人知道了：教室權杖與平板上孩子的權杖全部失效，平板要重新輸入；鎖定紀錄一併清掉
+      const kicked = await revokeClassroomTokens(db, room.code);
+      limiter.reset(`classroom:${room.code}`);
+      for (const id of kicked) opts.onKick?.(id, '老師換了教室密碼，請老師重新輸入', 'tablet', room.code);
+    }
     opts.onRoomChanged?.(room.code, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open });
     // 班級版本或名稱變了：線上的孩子重新同步，拿到新的班級版本與名稱
     if (setCurriculum || (name !== null && name !== room.name)) opts.onRoomContent?.(room.code);
@@ -443,6 +469,92 @@ export function createApp(opts: AppOptions) {
     if (removed.left) opts.onLeftClass?.(c.req.param('id'), room.code, LEFT_CLASS_REASON);
     else opts.onKick?.(c.req.param('id'), '老師把你移出房間了');
     return c.json({ ok: true, left: removed.left });
+  });
+
+  // ---------- 學校平板（L3 教室密碼，docs/plans/login-ux-review.md 第 7.2 節） ----------
+
+  /** 驗證教室權杖（只有這四個 API 收它；老師、孩子的權杖一律 401），回傳它綁的班級 */
+  const authenticateClassroom = async (c: Context): Promise<RoomRow> => {
+    const m = /^Bearer (.+)$/.exec(c.req.header('authorization') ?? '');
+    const found = m ? await lookupClassroomToken(db, m[1], now()) : null;
+    if (!found) throw new ApiError(401, 'unauthorized', '請老師重新輸入教室密碼');
+    return loadRoom(db, found.roomCode);
+  };
+
+  /** 平板名單上的一位孩子：這一班的暱稱與角色的外觀 */
+  const classroomMember = (row: { id: string; nickname: string; profile: Profile }): ClassroomMember => ({ id: row.id, nickname: row.nickname, avatar: row.profile.avatar });
+
+  // 老師輸入教室密碼：對了拿到 8 小時的教室權杖。錯 5 次鎖 5 分鐘（和孩子登入同一套）；還沒設定密碼不算猜錯
+  app.post('/api/class/:code/unlock', async (c) => {
+    checkFlood(c);
+    const room = await loadRoom(db, c.req.param('code'));
+    const body = await readBody(c, classroomUnlockRequest);
+    const key = `classroom:${room.code}`;
+    assertNotLocked(key);
+    if (room.class_password_hash === null) throw new ApiError(404, 'no_classroom_password', '老師還沒有設定教室密碼，請老師在班級頁設定');
+    if (!(await verifySecret(body.password, room.class_password_hash))) {
+      limiter.fail(key);
+      throw new ApiError(401, 'bad_password', '教室密碼不對');
+    }
+    limiter.reset(key);
+    const issued = await issueToken(db, { kind: 'classroom', roomCode: room.code });
+    return c.json<ClassroomUnlockResponse>({ token: issued.token, room: { code: room.code, name: room.name }, expiresAt: issued.expiresAt });
+  });
+
+  // 班上名單：這一班每位孩子的暱稱與外觀（認人用，不含學習資料）
+  app.get('/api/class/members', async (c) => {
+    const room = await authenticateClassroom(c);
+    const rows = await db.query<{ id: string; nickname: string; profile: Profile }>(
+      'SELECT a.id, m.nickname, a.profile FROM class_members m JOIN accounts a ON a.id = m.account_id WHERE m.room_code = $1 ORDER BY m.joined_at, m.nickname',
+      [room.code],
+    );
+    return c.json<ClassroomMembersResponse>({ room: { code: room.code, name: room.name }, joinOpen: room.join_open, members: rows.map(classroomMember) });
+  });
+
+  // 點名單上的孩子：這台平板拿到他的孩子權杖（via 'tablet'，綁這一班；換教室密碼時撤銷）
+  app.post('/api/class/members/:id/device', async (c) => {
+    const room = await authenticateClassroom(c);
+    const rows = await db.query<AccountRow & { member_nickname: string }>(
+      'SELECT a.*, m.nickname AS member_nickname FROM class_members m JOIN accounts a ON a.id = m.account_id WHERE m.room_code = $1 AND m.account_id = $2',
+      [room.code, c.req.param('id')],
+    );
+    if (!rows.length) throw new ApiError(404, 'no_member', '找不到這位孩子');
+    await db.query('UPDATE accounts SET last_seen = $2::timestamptz WHERE id = $1', [rows[0].id, now().toISOString()]);
+    return c.json(await sessionResponse(rows[0], 'tablet', { nickname: rows[0].member_nickname, loginRoom: room.code }));
+  });
+
+  // 老師在平板上新增學生：沒有家長、沒有密碼、只在這一班（之後家長用連結卡接手，L4）。老師關掉「允許加入」就不能建
+  app.post('/api/class/members', async (c) => {
+    const room = await authenticateClassroom(c);
+    const body = await readBody(c, classroomCreateRequest);
+    if (!room.join_open) throw new ApiError(403, 'join_closed', '老師關掉了「允許新的孩子加入」，請老師在班級頁打開');
+    const nick = checkNickname(body.nickname);
+    if (!nick.ok) throw new ApiError(400, 'bad_nickname', nick.reason);
+    const profile = addProfile(createEmptySave(), { name: nick.nickname, avatar: body.avatar }, now()).profiles[0];
+    const id = newAccountId();
+    const t = now().toISOString();
+    try {
+      await db.transaction(async (tx) => {
+        const taken = await tx.query('SELECT 1 FROM class_members WHERE room_code = $1 AND nickname_key = $2', [room.code, nick.key]);
+        if (taken.length) throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
+        await tx.query(
+          `INSERT INTO accounts (id, room_code, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+           VALUES ($1, NULL, $2, $3, NULL, $4::jsonb, 1, $5::timestamptz, $5::timestamptz)`,
+          [id, nick.nickname, nick.key, JSON.stringify(profile), t],
+        );
+        await tx.query('INSERT INTO class_members (account_id, room_code, nickname, nickname_key, pin_hash, joined_at) VALUES ($1, $2, $3, $4, NULL, $5::timestamptz)', [
+          id,
+          room.code,
+          nick.nickname,
+          nick.key,
+          t,
+        ]);
+      });
+    } catch (err) {
+      if ((err as { code?: string }).code === '23505') throw new ApiError(409, 'nickname_taken', '這個暱稱已經有人用了，換一個吧');
+      throw err;
+    }
+    return c.json<ClassroomCreateResponse>({ member: { id, nickname: nick.nickname, avatar: body.avatar } });
   });
 
   // ---------- 孩子 ----------

@@ -10,6 +10,11 @@ export const roomCodeSchema = z.string().regex(/^\d{6}$/);
 /** 孩子的密碼：4 位數字 */
 export const pinSchema = z.string().regex(/^\d{4}$/);
 /** 老師改班級設定：開關、班級教材版本（null 是取消統一，班級島照各孩子自己的設定；老師 GM 的 G0）、班級名稱 */
+/** 教室密碼（L3，docs/plans/login-ux-review.md 第 8 節第 2 點）：6 個字以上，避免被別人猜中 */
+export const CLASS_PASSWORD_MIN = 6;
+export const classPasswordSchema = z.string().min(CLASS_PASSWORD_MIN).max(64);
+/** 教室權杖的效期（小時；第 8 節第 3 點：平板記住 8 小時） */
+export const CLASSROOM_HOURS = 8;
 export const roomPatchRequest = z.object({
   joinOpen: z.boolean().optional(),
   chatOpen: z.boolean().optional(),
@@ -17,7 +22,13 @@ export const roomPatchRequest = z.object({
   curriculum: curriculumSchema.nullable().optional(),
   /** 班級名稱（升級換年級時改；規則和建立班級相同，伺服器檢查） */
   name: z.string().max(40).optional(),
+  /** 設定或更換教室密碼（L3）：換了之後這一班的教室權杖與平板上孩子的權杖都失效 */
+  classPassword: classPasswordSchema.optional(),
 });
+/** 學校平板用教室密碼解鎖（L3） */
+export const classroomUnlockRequest = z.object({ password: z.string().min(1).max(64) });
+/** 老師在平板上新增學生（L3）：暱稱與外觀，沒有密碼、沒有家長 */
+export const classroomCreateRequest = z.object({ nickname: z.string().max(40), avatar: avatarSchema });
 export const resetPinRequest = z.object({ pin: pinSchema });
 /** 加入班級：avatar（建新角色）與 profile（帶本機進度）擇一 */
 export const joinRequest = z
@@ -201,6 +212,35 @@ export interface RoomSettings extends RoomInfo {
   joinOpen: boolean;
   chatOpen: boolean;
   giftsOpen: boolean;
+  /** 有沒有設定教室密碼（L3；只存雜湊，看不到密碼本身）；舊版伺服器沒有 */
+  hasClassPassword?: boolean;
+}
+
+/** 平板解鎖成功（L3）：教室權杖、班級、權杖到期時間 */
+export interface ClassroomUnlockResponse {
+  token: string;
+  room: { code: string; name: string };
+  expiresAt: string;
+}
+
+/** 平板名單上的一位孩子（L3）：這一班的暱稱與外觀，不含學習資料 */
+export interface ClassroomMember {
+  id: string;
+  nickname: string;
+  avatar: AvatarConfig;
+}
+
+/** 平板名單（L3） */
+export interface ClassroomMembersResponse {
+  room: { code: string; name: string };
+  /** 老師有沒有開放加入（關掉時平板不能新增學生） */
+  joinOpen: boolean;
+  members: ClassroomMember[];
+}
+
+/** 老師在平板上新增學生的回應（L3）：進島要再用名單的 device API 拿孩子的權杖 */
+export interface ClassroomCreateResponse {
+  member: ClassroomMember;
 }
 
 /** 老師看到的成員資料 */
