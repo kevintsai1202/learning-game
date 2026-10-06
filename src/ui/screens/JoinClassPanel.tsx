@@ -213,6 +213,11 @@ export function JoinClassPanel() {
           >
             加上家長身分並繼續
           </button>
+          {/* 老師帳號已登入的學校平板掃到 QR code（L3）：改走教室密碼看名單；joining 留著讓教室密碼畫面預填代碼 */}
+          <p className="notice" style={{ margin: '10px 0 0' }}>這台是學校的平板、老師在旁邊？不用家長身分，輸入教室密碼就能看到班上名單：</p>
+          <button className="btn small white" disabled={busy} onClick={() => goto('classroom')} data-testid="join-classroom">
+            👩‍🏫 老師輸入教室密碼
+          </button>
         </div>
       ) : running || autoPending ? (
         <p className="notice" data-testid="join-auto">

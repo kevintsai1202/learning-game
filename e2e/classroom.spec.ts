@@ -135,3 +135,16 @@ test('家長在自己手機掃 QR code：選「我是家長」→ 登入表單�
   expect(pageErrors(phone.page)).toEqual([]);
   await phone.context.close();
 });
+
+test('老師帳號已登入的平板掃 QR code：加入面板多一顆「老師在旁邊」，直接到教室密碼畫面（代碼已填）', async ({ browser, baseURL, request }) => {
+  const room = await createClassViaApi(request, '二年三班');
+  const tablet = await openDevice(browser, baseURL!);
+  await loginTeacher(tablet.page, room.username);
+  await tablet.page.goto(`./?join=${room.code}`);
+  await expect(tablet.page.getByTestId('join-not-parent')).toBeVisible();
+  await tablet.page.getByTestId('join-classroom').click();
+  await expect(tablet.page.getByTestId('classroom-screen')).toBeVisible();
+  await expect(tablet.page.getByTestId('classroom-code')).toHaveValue(room.code);
+  expect(pageErrors(tablet.page)).toEqual([]);
+  await tablet.context.close();
+});
