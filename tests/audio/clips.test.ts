@@ -66,6 +66,18 @@ describe('ttsParts', () => {
     expect(ttsParts(['ㄅ。', '照著筆順，描寫這個注音符號。'])).toEqual(['照著筆順，描寫這個注音符號。']);
     expect(ttsParts(['太厲害了！'])).toEqual(['太厲害了！']);
   });
+
+  it('裝置語音的同音字替代：乘以改成成以（Windows 內建的 Hanhan 把乘以唸成 ㄕㄥˋ 以）', () => {
+    expect(ttsParts(['7 乘以 8 等於多少？'])).toEqual(['7 成以 8 等於多少？']);
+    expect(ttsParts(['3 乘以 6 等於多少？', '2 乘以 9 呢？'])).toEqual(['3 成以 6 等於多少？', '2 成以 9 呢？']);
+    // 其他含「乘」的詞 Hanhan 唸對，不替代
+    expect(ttsParts(['十十乘法'])).toEqual(['十十乘法']);
+  });
+
+  it('替代只影響裝置語音：查預錄音檔仍用原句', () => {
+    const m: ClipManifest = { version: 1, clips: { 'zh-TW|7 乘以 8 等於多少？': { f: 'm.mp3', v: 0 } } };
+    expect(clipsFor(m, ['7 乘以 8 等於多少？'], 'zh-TW')).toEqual(['m.mp3']);
+  });
 });
 
 describe('parseManifest', () => {

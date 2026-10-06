@@ -49,9 +49,16 @@ export function clipsFor(manifest: ClipManifest, parts: readonly string[], lang:
   return files;
 }
 
-/** 改用裝置語音時要唸的句子：略過只有注音符號的句子（裝置語音唸不準單獨的注音） */
+/**
+ * 裝置語音的同音字替代：只影響改用裝置語音時唸的文字（查預錄對照表仍用原句；預錄音檔的讀音修正在 scripts/voice/rules.mjs）。
+ * - 乘以 → 成以：Windows 內建的 Microsoft Hanhan 把「乘以」唸成 ㄕㄥˋ 以（2026-10-06 合成後用 Whisper 聽寫確認）；
+ *   Edge 的自然語音、Chrome 的 Google 國語本來就唸對，寫成「成以」五種聲音都唸 ㄔㄥˊ 以。「乘法」「乘客」Hanhan 唸對，不替代。
+ */
+export const TTS_SUBSTITUTE: readonly (readonly [string, string])[] = [['乘以', '成以']];
+
+/** 改用裝置語音時要唸的句子：略過只有注音符號的句子（裝置語音唸不準單獨的注音），並套用裝置語音的同音字替代 */
 export function ttsParts(parts: readonly string[]): string[] {
-  return parts.filter((p) => !isSymbolSentence(p));
+  return parts.filter((p) => !isSymbolSentence(p)).map((p) => TTS_SUBSTITUTE.reduce((s, [word, sub]) => s.split(word).join(sub), p));
 }
 
 /** 解析對照表；不是 JSON、版本不對或格式錯誤時回傳 null（執行端就全部用裝置語音） */
