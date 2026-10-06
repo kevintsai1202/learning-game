@@ -81,4 +81,27 @@ describe('刪除指定的空房間', () => {
       await d.close();
     }
   });
+
+  it('多班級（第 10 版）：成員看 class_members；空房間刪除時，已經離開那一班（舊欄位還指著它）的角色不會被連帶刪掉', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 10 });
+      await d.query("INSERT INTO users (id, username, username_key, password_hash, is_parent, is_teacher, created_at) VALUES ('p1', 'mom', 'mom', 'x', true, false, $1::timestamptz)", [T]);
+      for (const code of ['555555', '666666']) await d.query('INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ($1, $1, NULL, $2::timestamptz)', [code, T]);
+      // 舊欄位還指著 555555，但已經不是成員（退出了）；666666 有成員
+      await d.query(
+        `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, profile, created_at, last_seen)
+         VALUES ('a1', '555555', 'p1', '安安', '安安', '{}'::jsonb, $1::timestamptz, $1::timestamptz)`,
+        [T],
+      );
+      await d.query("INSERT INTO class_members (account_id, room_code, nickname, nickname_key, joined_at) VALUES ('a1', '666666', '安安', '安安', $1::timestamptz)", [T]);
+      const query: Query = (sql, params) => d.query(sql, params);
+      await expect(deleteEmptyRooms(query, ['666666'], { apply: true, log: () => undefined })).rejects.toThrow(/666666/);
+      expect((await deleteEmptyRooms(query, ['555555'], { apply: true, log: () => undefined })).deleted).toBe(1);
+      expect((await query("SELECT room_code FROM accounts WHERE id = 'a1'"))[0]).toEqual({ room_code: null });
+      expect((await query("SELECT room_code FROM class_members WHERE account_id = 'a1'")).length).toBe(1);
+    } finally {
+      await d.close();
+    }
+  });
 });

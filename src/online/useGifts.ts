@@ -11,6 +11,7 @@ import type { Classmate, GiftNotice, IncomingGift, SendGiftResponse } from './pr
 import { cloudDeps } from './useCloud';
 import { useGame } from '../store/useGame';
 import { GIFT_DAILY_LIMIT } from '../store/gifts';
+import { currentClass } from '../store/island';
 
 interface GiftStore {
   /** 目前的資料屬於哪位角色（換角色時不顯示舊的） */
@@ -48,6 +49,12 @@ const activeCloudId = (): string | null => {
 };
 
 /** 需要雲端角色的動作：沒有時丟出錯誤 */
+/** 現在所在的班級島是哪一班（多班級：同學名單與送禮只算這一班）；在自己的島是 undefined */
+const currentRoom = (): string | undefined => {
+  const p = useGame.getState().profile();
+  return p ? currentClass(p)?.code : undefined;
+};
+
 const requireCloudId = (): string => {
   const id = activeCloudId();
   if (!id) throw new Error('這個角色沒有加入班級');
@@ -77,10 +84,11 @@ export const useGifts = create<GiftStore>((set, get) => ({
   openDialog: (to = null) => set({ dialog: { to } }),
   closeDialog: () => set({ dialog: null }),
 
-  classmates: async () => fetchClassmates(cloudDeps, requireCloudId()),
+  classmates: async () => fetchClassmates(cloudDeps, requireCloudId(), currentRoom()),
 
   send: async (input) => {
-    const gift = await sendGift(cloudDeps, requireCloudId(), input);
+    const room = currentRoom();
+    const gift = await sendGift(cloudDeps, requireCloudId(), room ? { ...input, room } : input);
     set((s) => ({ sentToday: s.sentToday + 1 }));
     void get().load();
     return gift;

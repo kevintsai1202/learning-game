@@ -507,6 +507,8 @@ function ClassTab({ profile }: { profile: Profile }) {
   }
   const isActive = profile.id === activeId;
   const hasToken = !!getToken(cloud.accountId);
+  /** 所在的班級（多班級） */
+  const rooms = cloud.rooms ?? [];
   return (
     <div className="plain" data-testid="class-tab">
       <table className="report-table">
@@ -514,7 +516,9 @@ function ClassTab({ profile }: { profile: Profile }) {
           <tr>
             <th>班級</th>
             <td data-testid="class-room">
-              {cloud.room ? `${cloud.roomName ?? ''}（房間代碼 ${cloud.room}）` : '還沒加入班級（家長名下的雲端角色）'}
+              {rooms.length
+                ? rooms.map((r) => `${r.name}（房間代碼 ${r.code}${r.nickname && r.nickname !== profile.name ? `，班上叫「${r.nickname}」` : ''}）`).join('、')
+                : '還沒加入班級（家長名下的雲端角色）'}
             </td>
           </tr>
           <tr>
@@ -548,7 +552,7 @@ function ClassTab({ profile }: { profile: Profile }) {
           </button>
         )}
         {!hasToken &&
-          (cloud.room ? (
+          (rooms.length ? (
             <button className="btn small" onClick={() => goto('class')}>
               🔑 重新登入
             </button>
@@ -558,7 +562,7 @@ function ClassTab({ profile }: { profile: Profile }) {
               🔑 大人登入，找回角色
             </button>
           ))}
-        {hasToken && !cloud.room && (
+        {hasToken && !rooms.length && (
           <button className="btn small" onClick={() => goto('class')} data-testid="class-join-from-cloud">
             🏫 加入班級
           </button>
@@ -574,7 +578,7 @@ function ClassTab({ profile }: { profile: Profile }) {
         )}
       </div>
       <p className="notice">
-        {cloud.room
+        {rooms.length
           ? `登出後，這台裝置上的「${profile.name}」會移除；進度存在班級伺服器，用房間代碼＋暱稱＋密碼就能再登入。忘記密碼請老師重設。`
           : `登出後，這台裝置上的「${profile.name}」會移除；進度存在家長帳號，家長登入後選「在這台裝置玩」就能找回。`}
       </p>

@@ -2,6 +2,7 @@
  * 加入班級面板（docs/plans/class-join.md）：家長掃老師的 QR code（?join=代碼），或在孩子清單按「🏫 加入班級」之後，
  * 帳號頁最上面出現這個面板。選一個角色（家長名下的雲端角色、這台裝置上的角色、或新建一個），設定班上的暱稱就加入，
  * 不用密碼（孩子要用班級代碼登入時，老師在管理頁幫他設）。加入後可以直接在這台裝置玩。
+ * 多班級（docs/plans/multi-class.md）：已經在別班的孩子也能加入（最多 5 個班級）；在這台裝置玩時直接進剛加入的那一班的班級島。
  * 元素都有 data-testid（e2e 與之後的家長指引會用）。
  */
 import { useCallback, useEffect, useState } from 'react';
@@ -11,7 +12,7 @@ import { getToken } from '../../online/storage';
 import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
 import { addProfile, createEmptySave, type AvatarConfig, type Profile } from '../../store/save';
-import type { ClassLookupResponse, KidSummary, ParentJoinClassResponse, ParentKidsResponse, SessionResponse } from '../../online/protocol';
+import { MAX_CLASSES, kidRooms, type ClassLookupResponse, type KidSummary, type ParentJoinClassResponse, type ParentKidsResponse, type SessionResponse } from '../../online/protocol';
 import { ApiFailure } from '../../online/api';
 import { ANIMALS, COLORS } from './ProfilesScreen';
 import { AnimalIcon } from '../AnimalIcon';
@@ -25,6 +26,12 @@ type Choice = { kind: 'cloud'; kid: KidSummary } | { kind: 'local'; profile: Pro
 
 /** 錯誤訊息 */
 const messageOf = (err: unknown) => (err instanceof ApiFailure || err instanceof Error ? err.message : '出了點問題，再試一次');
+
+/** 這個孩子還能不能加入這一班（多班級：不在這一班、而且還沒滿 MAX_CLASSES 個班級） */
+const canJoin = (k: KidSummary, code: string) => {
+  const rooms = kidRooms(k);
+  return !rooms.some((r) => r.code === code) && rooms.length < MAX_CLASSES;
+};
 
 export function JoinClassPanel() {
   const joining = useAccount((s) => s.joining);
@@ -58,8 +65,8 @@ export function JoinClassPanel() {
       if (isParent) {
         const list = (await call<ParentKidsResponse>('GET', '/api/parent/kids')).kids;
         setKids(list);
-        // 從孩子清單按「加入班級」進來的：先選好那個角色
-        const pre = joining?.kidId ? list.find((k) => k.id === joining.kidId && !k.room) : undefined;
+        // 從孩子清單按「加入班級」進來的：先選好那個角色（還能加入這一班的才選）
+        const pre = joining?.kidId ? list.find((k) => k.id === joining.kidId && canJoin(k, code)) : undefined;
         if (pre) {
           setChoice({ kind: 'cloud', kid: pre });
           setNickname(pre.name);
@@ -100,8 +107,8 @@ export function JoinClassPanel() {
       }
       const r = await call<ParentJoinClassResponse>('POST', `/api/parent/kids/${kidId}/class`, { code, nickname: nickname.trim() });
       setDone(r.kid);
-      // 這台裝置上有這個角色：同步一次，本機就知道加入了班級
-      if (profiles.some((p) => p.cloud?.accountId === kidId)) void useCloud.getState().syncNow();
+      // 這台裝置上有這個角色：同步一次，本機就知道加入了班級（不是目前的角色也一樣）
+      void useCloud.getState().syncKid(kidId);
     } catch (err) {
       setError(messageOf(err));
     } finally {
@@ -109,14 +116,20 @@ export function JoinClassPanel() {
     }
   };
 
-  /** 在這台裝置玩：這台已經有這個角色就直接選它，不然拿這台裝置的權杖；然後進島 */
+  /** 在這台裝置玩：這台已經有這個角色就直接選它，不然拿這台裝置的權杖；然後進剛加入的那一班的班級島 */
   const play = async (kid: KidSummary) => {
     if (!session) return;
     setBusy(true);
     try {
       const here = profiles.find((p) => p.cloud?.accountId === kid.id && getToken(kid.id));
-      if (here) useGame.getState().selectProfile(here.id);
-      else await useCloud.getState().playOnThisDevice(kid.id, session.server, session.token);
+      let profileId: string;
+      if (here) {
+        useGame.getState().selectProfile(here.id);
+        profileId = here.id;
+        // 這台裝置上的角色還不知道剛加入的班級：同步一次拿到班級清單，才換得到那一班的班級島
+        await useCloud.getState().syncNow();
+      } else profileId = (await useCloud.getState().playOnThisDevice(kid.id, session.server, session.token)).id;
+      useGame.getState().setIsland(profileId, code);
       setJoining(null);
       teleport(SPAWN);
       speak(enterIslandLine(kid.name));
@@ -145,7 +158,7 @@ export function JoinClassPanel() {
       {done ? (
         <div data-testid="join-done">
           <p className="notice">
-            「{done.name}」已經加入「{done.room?.name}」了！孩子的平板會自動同步，下次打開就在班級裡。
+            「{done.name}」已經加入「{kidRooms(done).find((r) => r.code === code)?.name ?? info?.room.name ?? code}」了！孩子的平板會自動同步，下次打開就在班級裡。
           </p>
           <p>如果孩子要用學校的平板以「班級代碼＋暱稱」登入，請老師在管理頁幫他設定密碼。</p>
           <button className="btn green" disabled={busy} onClick={() => void play(done)} data-testid="join-play">
@@ -166,12 +179,13 @@ export function JoinClassPanel() {
           <p style={{ margin: '6px 0' }}>選要加入的孩子（不用密碼）：</p>
           <div className="join-choices">
             {(kids ?? []).map((k) => {
-              const here = k.room?.code === code;
+              const rooms = kidRooms(k);
+              const here = rooms.some((r) => r.code === code);
               return (
                 <button
                   key={k.id}
                   className={`join-choice ${choice?.kind === 'cloud' && choice.kid.id === k.id ? 'on' : ''}`}
-                  disabled={!!k.room}
+                  disabled={!canJoin(k, code)}
                   onClick={() => pick({ kind: 'cloud', kid: k })}
                   data-testid={`join-kid-${k.name}`}
                 >
@@ -179,7 +193,15 @@ export function JoinClassPanel() {
                     <AnimalIcon animal={k.avatar.animal} />
                   </span>
                   <b>{k.name}</b>
-                  <small>{here ? '已經在這一班' : k.room ? `在「${k.room.name}」（要先退出才能換班）` : '☁️ 雲端角色'}</small>
+                  <small>
+                    {here
+                      ? '已經在這一班'
+                      : rooms.length >= MAX_CLASSES
+                        ? `已經有 ${MAX_CLASSES} 個班級（要先退出一個）`
+                        : rooms.length
+                          ? `也在「${rooms.map((r) => r.name).join('、')}」`
+                          : '☁️ 雲端角色'}
+                  </small>
                 </button>
               );
             })}

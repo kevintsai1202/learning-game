@@ -76,7 +76,8 @@ test('家長掃 QR code：登入家長帳號、選雲端角色加入、在這台
   await p.page.getByTestId('join-play').click();
   await expect.poll(() => p.page.evaluate(() => (window as any).__game.ui.getState().screen)).toBe('island');
   await expect.poll(() => p.page.evaluate(() => (window as any).__game.realtime.getState().island)).toBe('class');
-  expect(await p.page.evaluate(() => (window as any).__game.game.getState().profile().cloud.room)).toBe(room.code);
+  // 多班級：本機記著班級清單
+  expect(await p.page.evaluate(() => (window as any).__game.game.getState().profile().cloud.rooms[0].code)).toBe(room.code);
 
   // ⑤ 新建角色加入（同一位家長再打開一次連結）
   await p.page.goto(joinUrl);

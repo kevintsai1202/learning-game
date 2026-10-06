@@ -49,6 +49,11 @@ interface CloudStore {
   logout: (profileId: string) => Promise<void>;
   /** 馬上同步 */
   syncNow: () => Promise<void>;
+  /**
+   * 家長在帳號頁改了某個孩子的班級（加入、退出；多班級）：這台裝置上有這個角色就馬上同步一次，本機的班級清單跟著更新。
+   * 是目前的角色就走 syncNow；不是的話直接同步那個角色（同步失敗不丟錯，下次排程再同步）
+   */
+  syncKid: (accountId: string) => Promise<void>;
   /** 重新計算目前角色的待送筆數 */
   refresh: () => void;
   /** 伺服器的 Google 登入 Client ID（沒開 Google 登入或還沒讀到時是 null；帳號頁的 Google 按鈕用） */
@@ -135,6 +140,14 @@ export const useCloud = create<CloudStore>((set, get) => ({
     } finally {
       timer.running = false;
     }
+  },
+
+  syncKid: async (accountId) => {
+    const { save } = useGame.getState();
+    const p = save.profiles.find((x) => x.cloud?.accountId === accountId);
+    if (!p || !getToken(accountId)) return;
+    if (p.id === save.activeProfileId) return get().syncNow();
+    await syncProfile(cloudDeps, p.id).catch(() => undefined);
   },
 
   refresh: () => {

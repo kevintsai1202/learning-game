@@ -18,6 +18,7 @@ import {
   ANIMAL_IDS,
   setTitle,
   setAvatar,
+  type CloudLink,
 } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
 
@@ -283,7 +284,16 @@ describe('存檔：版本遷移與最近做過的題', () => {
 
 describe('存檔：雲端角色', () => {
   const base = addProfile(createEmptySave(), { name: '小安', avatar: { animal: 'bear', color: '#8B5A2B', hat: null } }, NOW);
-  const cloud = { server: 'https://island.example', room: '123456', roomName: '二年一班', accountId: 'a_1' };
+  /** 多班級（docs/plans/multi-class.md）的雲端標記：班級清單（第一個班級在前面）＋現在在哪座島 */
+  const cloud: CloudLink = {
+    server: 'https://island.example',
+    accountId: 'a_1',
+    rooms: [
+      { code: '123456', name: '二年一班', nickname: '小安' },
+      { code: '654321', name: '安親班', nickname: '安安', curriculum: { zh: 'nani-zh', math: 'hanlin-math', term: '上' } },
+    ],
+    island: '654321',
+  };
 
   it('雲端標記可以存回來；舊存檔沒有這個欄位也讀得進來', () => {
     const linked = replaceProfile(base, { ...base.profiles[0], cloud });
@@ -291,12 +301,24 @@ describe('存檔：雲端角色', () => {
     expect(loadSave(JSON.stringify(base)).profiles[0].cloud).toBeUndefined();
   });
 
-  it('班級版本與我的島（老師 GM 的 G0＋G1）也存得回來；格式不對的整份不收', () => {
-    const more = { ...cloud, roomCurriculum: { zh: 'nani-zh', math: 'hanlin-math', term: '上' as const }, island: 'mine' as const };
-    const linked = replaceProfile(base, { ...base.profiles[0], cloud: more });
-    expect(loadSave(JSON.stringify(linked)).profiles[0].cloud).toEqual(more);
+  it('多班級之前的存檔（一個班級：room、roomName、roomCurriculum）載入時轉成班級清單；我的島照舊', () => {
+    const old = { server: 'https://island.example', room: '123456', roomName: '二年一班', accountId: 'a_1', roomCurriculum: { zh: 'nani-zh', math: 'hanlin-math', term: '上' as const }, island: 'mine' };
+    const linked = replaceProfile(base, { ...base.profiles[0], cloud: old as unknown as CloudLink });
+    expect(loadSave(JSON.stringify(linked)).profiles[0].cloud).toEqual({
+      server: 'https://island.example',
+      accountId: 'a_1',
+      rooms: [{ code: '123456', name: '二年一班', curriculum: { zh: 'nani-zh', math: 'hanlin-math', term: '上' } }],
+      island: 'mine',
+    });
+    // 家長名下、還沒加入班級的舊雲端標記：沒有班級清單
+    const noClass = replaceProfile(base, { ...base.profiles[0], cloud: { server: 'https://island.example', accountId: 'a_2' } });
+    expect(loadSave(JSON.stringify(noClass)).profiles[0].cloud).toEqual({ server: 'https://island.example', accountId: 'a_2' });
+  });
+
+  it('島只能是「我的島」或班級代碼；班級的格式不對整份不收', () => {
     expect(profileSchema.safeParse({ ...base.profiles[0], cloud: { ...cloud, island: 'class' } }).success).toBe(false);
-    expect(profileSchema.safeParse({ ...base.profiles[0], cloud: { ...cloud, roomCurriculum: { zh: 'nani-zh' } } }).success).toBe(false);
+    expect(profileSchema.safeParse({ ...base.profiles[0], cloud: { ...cloud, island: 'mine' } }).success).toBe(true);
+    expect(profileSchema.safeParse({ ...base.profiles[0], cloud: { ...cloud, rooms: [{ code: '123456', name: '二年一班', curriculum: { zh: 'nani-zh' } }] } }).success).toBe(false);
   });
 
   it('profileSchema 可以單獨驗證一位小朋友的資料（伺服器收上傳的進度用）', () => {

@@ -7,6 +7,7 @@ import { ackBatch, emptyOutbox, rebase, takeBatch, type Outbox } from './sync';
 import type {
   AcceptGiftResponse,
   AttachResponse,
+  ClassInfo,
   Classmate,
   ClassmatesResponse,
   GiftsResponse,
@@ -15,7 +16,7 @@ import type {
   SendGiftResponse,
   SessionResponse,
 } from './protocol';
-import type { AvatarConfig, CloudLink, Profile } from '../store/save';
+import type { AvatarConfig, CloudLink, CloudRoom, Profile } from '../store/save';
 
 /** 同步需要的外部功能 */
 export interface CloudDeps {
@@ -58,24 +59,33 @@ export interface LoginInput {
 
 /** 由加入／登入的回應組出本機的雲端標記；沒有班級（家長名下的雲端角色）就不帶班級 */
 function cloudOf(server: string, res: SessionResponse): CloudLink {
-  return withRoom({ server, accountId: res.account.id }, res.room);
+  return withRooms({ server, accountId: res.account.id }, res);
+}
+
+/** 伺服器回應裡的班級（多班級的 rooms；多班級之前的伺服器只有 room） */
+interface RoomsInResponse {
+  room: RoomInfo | null;
+  rooms?: ClassInfo[];
 }
 
 /**
- * 雲端標記換成伺服器說的目前班級（加入、退出、被移出班級都靠這裡更新本機）。
+ * 雲端標記換成伺服器說的班級（加入、退出、被移出班級都靠這裡更新本機；多班級，docs/plans/multi-class.md）。
+ * - 伺服器有給 rooms 就用它（第一個班級在前面）；多班級之前的伺服器只給 room 時當作只有一個班級；都沒有是沒有班級。
  * - 班級教材版本跟著伺服器：老師取消統一（null，或舊版伺服器沒有這個欄位）就拿掉本機記住的。
- * - 「我的島」只在同一個班級裡保留；退出或換到別的班級就回到班級島。
+ * - 「我的島」保留；選的班級島只在那一班還在清單裡時保留（不然回到第一個班級）；沒有班級時都拿掉。
  */
-export function withRoom(cloud: CloudLink, room: RoomInfo | null): CloudLink {
-  const { room: oldCode, roomName: _name, roomCurriculum: _cur, island, ...rest } = cloud;
-  if (!room) return rest;
-  return {
-    ...rest,
-    room: room.code,
-    roomName: room.name,
-    ...(room.curriculum ? { roomCurriculum: room.curriculum } : {}),
-    ...(island && oldCode === room.code ? { island } : {}),
-  };
+export function withRooms(cloud: CloudLink, res: RoomsInResponse): CloudLink {
+  const { rooms: _old, island, ...rest } = cloud;
+  const source: (RoomInfo & { nickname?: string })[] = res.rooms ?? (res.room ? [res.room] : []);
+  const rooms: CloudRoom[] = source.map((r) => ({
+    code: r.code,
+    name: r.name,
+    ...(r.nickname ? { nickname: r.nickname } : {}),
+    ...(r.curriculum ? { curriculum: r.curriculum } : {}),
+  }));
+  if (!rooms.length) return rest;
+  const keep = island === 'mine' || (island !== undefined && rooms.some((r) => r.code === island));
+  return { ...rest, rooms, ...(keep ? { island } : {}) };
 }
 
 /**
@@ -130,7 +140,8 @@ export async function playOnThisDevice(deps: CloudDeps, server: string, userToke
 export async function attachToClass(deps: CloudDeps, profileId: string, input: LoginInput): Promise<Profile> {
   const { cloud, token } = credentials(deps, profileId);
   const res = await deps.call<AttachResponse>('POST', '/api/join', { base: cloud.server, token, body: input });
-  const profile = rebase(res.profile, deps.loadOutbox(cloud.accountId), withRoom(cloud, res.room), deps.now());
+  // 多班級之前的伺服器沒有 rooms：只知道剛加入的那一班
+  const profile = rebase(res.profile, deps.loadOutbox(cloud.accountId), withRooms(cloud, { room: res.room, rooms: res.rooms }), deps.now());
   deps.putProfile(profile);
   return profile;
 }
@@ -214,8 +225,8 @@ export async function syncProfile(deps: CloudDeps, profileId: string): Promise<S
     // 角色可能在送出期間被登出移除了
     const current = deps.getProfile(profileId);
     if (!current?.cloud) return { status: 'skipped' };
-    // 班級跟著伺服器更新：在別台裝置退出班級、或被老師移出時，這台也會知道
-    deps.putProfile(rebase(res.profile, rest, withRoom(current.cloud, res.room), deps.now()));
+    // 班級跟著伺服器更新：在別台裝置加入、退出班級，或被老師移出時，這台也會知道
+    deps.putProfile(rebase(res.profile, rest, withRooms(current.cloud, res), deps.now()));
     if (!rest.pending.length) return { status: 'synced', rev: res.rev, rejected: res.rejected };
   }
 }
@@ -243,9 +254,9 @@ function applyServerProfile(deps: CloudDeps, profileId: string, server: Profile)
   deps.putProfile(rebase(server, deps.loadOutbox(current.cloud.accountId), current.cloud, deps.now()));
 }
 
-/** 讀全班同學（不含自己），選送禮對象用 */
-export async function fetchClassmates(deps: CloudDeps, profileId: string): Promise<Classmate[]> {
-  return (await authed<ClassmatesResponse>(deps, profileId, 'GET', '/api/classmates')).classmates;
+/** 讀同學（不含自己），選送禮對象用；room 是現在所在的班級島（多班級：只列那一班的同學） */
+export async function fetchClassmates(deps: CloudDeps, profileId: string, room?: string): Promise<Classmate[]> {
+  return (await authed<ClassmatesResponse>(deps, profileId, 'GET', `/api/classmates${room ? `?room=${encodeURIComponent(room)}` : ''}`)).classmates;
 }
 
 /** 讀禮物狀態：待收下的禮物、送出的禮物的結果、今天送了幾份 */
@@ -257,7 +268,7 @@ export async function fetchGifts(deps: CloudDeps, profileId: string): Promise<Gi
  * 送禮物。先把待送的操作送完，伺服器才看得到最新的金幣（直接呼叫 syncProfile：useCloud 的 syncNow
  * 在同步進行中時會馬上返回，不保證送完）。id 由呼叫端產生，同一次送禮重試時沿用，伺服器不會扣兩次錢。
  */
-export async function sendGift(deps: CloudDeps, profileId: string, input: { id: string; to: string; itemId: string }): Promise<SendGiftResponse['gift']> {
+export async function sendGift(deps: CloudDeps, profileId: string, input: { id: string; to: string; itemId: string; room?: string }): Promise<SendGiftResponse['gift']> {
   const flushed = await syncProfile(deps, profileId);
   if (flushed.status === 'offline') throw new ApiFailure(0, 'network', flushed.message);
   if (flushed.status === 'needLogin') throw new ApiFailure(401, 'unauthorized', '請重新登入班級');

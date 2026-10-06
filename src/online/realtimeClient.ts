@@ -19,8 +19,8 @@ import { useGifts } from './useGifts';
 import { useGame } from '../store/useGame';
 import { useUi, type Screen, type ZoneId } from '../store/useUi';
 import { equippedOf } from '../store/catalog';
-import { islandOf } from '../store/island';
-import type { AvatarConfig } from '../store/save';
+import { classesOf, currentClass } from '../store/island';
+import type { AvatarConfig, CloudLink } from '../store/save';
 import { player } from '../world/input';
 
 /** 自己的資料（welcome 時放進成員：說話才有氣泡，但不畫在島上） */
@@ -69,7 +69,10 @@ export function zoneOfScreen(screen: Screen, zone: ZoneId | null): ZoneId | null
   return screen === 'zone' || screen === 'activity' || screen === 'result' || screen === 'shop' ? zone : null;
 }
 
-/** 被踢線或伺服器說「沒有班級」之後記住的帳號、班級與權杖：三者都沒變就不再自動重連 */
+/**
+ * 被踢線或伺服器說「沒有班級」之後記住的帳號、班級與權杖：三者都沒變就不再自動重連。
+ * room 是班級組合（多班級：所有班級代碼接起來，見 roomsKey）；沒有班級是 undefined
+ */
 export interface RealtimeBlock {
   accountId: string;
   room: string | undefined;
@@ -97,6 +100,12 @@ export function updateBlock(
   if (sameAccount && blocked.room === current?.room) return { blocked, clearNotice: false };
   if (sameAccount && !current?.room) return { blocked: { ...blocked, room: undefined }, clearNotice: false };
   return { blocked: null, clearNotice: true };
+}
+
+/** 雲端角色的班級組合（封鎖用；多班級：所有班級代碼接起來，加入或退出任何一班都算變了）；沒有班級是 undefined */
+export function roomsKey(cloud: CloudLink | undefined): string | undefined {
+  const codes = (cloud?.rooms ?? []).map((r) => r.code);
+  return codes.length ? codes.join(',') : undefined;
 }
 
 /** 不在遊戲裡的畫面（不連線） */
@@ -134,7 +143,7 @@ export function startRealtime(): () => void {
    */
   let blocked: RealtimeBlock | null = null;
   /** 記住被踢或「沒有班級」當下的帳號、班級與權杖 */
-  const blockNow = (): RealtimeBlock | null => (accountId ? { accountId, room: useGame.getState().profile()?.cloud?.room, token: getToken(accountId) } : null);
+  const blockNow = (): RealtimeBlock | null => (accountId ? { accountId, room: roomsKey(useGame.getState().profile()?.cloud), token: getToken(accountId) } : null);
   let last = { x: NaN, z: NaN, h: NaN, at: 0 };
   let lastZone: ZoneId | null | undefined;
 
@@ -143,6 +152,8 @@ export function startRealtime(): () => void {
    * 在 welcome 之前送的 go 會被伺服器忽略（還在驗證權杖），所以等 welcome 再補送
    */
   let desiredIsland: IslandKind = 'class';
+  /** 要去哪一班的班級島（多班級；在自己的島時沒有） */
+  let desiredRoom: string | undefined;
 
   /**
    * 應該連到哪個帳號、去哪座島；不該連線時回傳 null。
@@ -152,9 +163,13 @@ export function startRealtime(): () => void {
     const p = useGame.getState().profile();
     if (!p?.cloud || OFFLINE_SCREENS.includes(useUi.getState().screen)) return null;
     const token = getToken(p.cloud.accountId);
-    const island: IslandKind = islandOf(p) === 'class' ? 'class' : 'own';
-    return token ? { profile: p, token, url: wsUrlOf(p.cloud.server), island } : null;
+    const cls = currentClass(p);
+    const island: IslandKind = cls ? 'class' : 'own';
+    return token ? { profile: p, token, url: wsUrlOf(p.cloud.server), island, room: cls?.code } : null;
   };
+
+  /** 送出換島（不斷線）：班級島帶班級代碼 */
+  const sendGo = () => send({ t: 'go', island: desiredIsland, ...(desiredRoom ? { room: desiredRoom } : {}) });
 
   /** 送一則訊息 */
   const send = (msg: object) => {
@@ -188,10 +203,11 @@ export function startRealtime(): () => void {
   const connect = (target: NonNullable<ReturnType<typeof wanted>>) => {
     accountId = target.profile.cloud!.accountId;
     desiredIsland = target.island;
+    desiredRoom = target.room;
     useRealtime.setState({ status: 'connecting', notice: null });
     const ws = new WebSocket(target.url);
     socket = ws;
-    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token: target.token, island: desiredIsland }));
+    ws.onopen = () => ws.send(JSON.stringify({ t: 'hello', token: target.token, island: desiredIsland, ...(desiredRoom ? { room: desiredRoom } : {}) }));
     ws.onmessage = (ev) => {
       if (socket !== ws) return;
       const msg = JSON.parse(String(ev.data)) as ServerMessage;
@@ -206,10 +222,15 @@ export function startRealtime(): () => void {
           sendWhere(true);
           void useGifts.getState().load();
           // 進的島和要去的不一樣：要去班級島卻進了自己的島，是伺服器說沒有班級（同步一次更新本機的班級）；
-          // 其他情況是連線途中換了島，補送 go。舊版伺服器的 welcome 沒有 island，不補送（舊版不認得 go）
+          // 要去的那一班伺服器說不是成員（進了別班，例如在別台裝置退出了）：同步一次更新本機的班級清單；
+          // 其他情況是連線途中換了島，補送 go。舊版伺服器的 welcome 沒有 island，不補送（舊版不認得 go）；
+          // 多班級之前的伺服器沒有 classCode，不比對是哪一班
           if (msg.island && msg.island !== desiredIsland) {
             if (desiredIsland === 'class' && msg.island === 'own') void useCloud.getState().syncNow();
-            else send({ t: 'go', island: desiredIsland });
+            else sendGo();
+          } else if (msg.island === 'class' && msg.classCode && desiredRoom && msg.classCode !== desiredRoom) {
+            if (classesOf(useGame.getState().profile()).some((r) => r.code === desiredRoom)) void useCloud.getState().syncNow();
+            else sendGo();
           }
           break;
         case 'friends':
@@ -239,6 +260,10 @@ export function startRealtime(): () => void {
           break;
         case 'error':
           useRealtime.setState({ notice: msg.message });
+          break;
+        case 'notice':
+          // 離開了其中一班（多班級）：熊熊老師的泡泡說明，接著伺服器以 4005 讓這台重新上線（不封鎖）
+          useUi.getState().say(msg.message);
           break;
       }
     };
@@ -280,7 +305,7 @@ export function startRealtime(): () => void {
     // 角色、班級或權杖變了：解除封鎖或保留被踢的提示（updateBlock）。evaluate 每次狀態變動都會跑，沒有封鎖時不讀權杖
     if (blocked) {
       const cloud = useGame.getState().profile()?.cloud;
-      const next = updateBlock(blocked, cloud, cloud ? getToken(cloud.accountId) : null);
+      const next = updateBlock(blocked, cloud ? { accountId: cloud.accountId, room: roomsKey(cloud) } : undefined, cloud ? getToken(cloud.accountId) : null);
       blocked = next.blocked;
       if (next.clearNotice && useRealtime.getState().status === 'kicked') useRealtime.setState({ status: 'off', notice: null });
     }
@@ -290,12 +315,14 @@ export function startRealtime(): () => void {
       return;
     }
     if (accountId === id && (socket || retryTimer)) {
-      // 同一個帳號換島：連著的話送 go（不斷線），先清掉原本島上的人，免得新的島上還畫著舊同學
-      if (target.island !== desiredIsland) {
+      // 同一個帳號換島（多班級：也可能是換到另一班的班級島）：連著的話送 go（不斷線），先清掉原本島上的人，
+      // 免得新的島上還畫著舊同學
+      if (target.island !== desiredIsland || target.room !== desiredRoom) {
         desiredIsland = target.island;
+        desiredRoom = target.room;
         if (useRealtime.getState().status === 'online') {
           usePresence.getState().clear();
-          send({ t: 'go', island: desiredIsland });
+          sendGo();
         }
       }
       return;

@@ -1,6 +1,8 @@
 /**
  * 刪除正式資料庫裡指定的空房間（A5 上線前清掉改版前用管理密碼建、沒有擁有者的空房間；2026-10-05 使用者決定刪 713521、869912）。
  * - 只刪指定的代碼；每一間都必須存在、沒有成員（孩子帳號）、沒有擁有者（老師帳號），有任何一間不符合就整個拒絕。
+ *   多班級（資料表第 10 版）起成員看 class_members；刪之前先清空指向這些班級的舊欄位 accounts.room_code
+ *   （它還連著會連帶刪角色的外鍵，已經離開那一班的角色才不會被誤刪）。
  * - 房間的權杖、Google 綁房間、禮物都設了 ON DELETE CASCADE，跟著房間一起刪。
  * - 預設只列出，加 --apply 才刪；整段在交易裡，出錯就全部撤銷。改版前（第 3 版）與改版後都能用。
  *
@@ -18,9 +20,11 @@ const day = (t) => (t ? new Date(t).toISOString().slice(0, 10) : '—');
 async function deleteEmptyRooms(query, codes, { apply = false, log = console.log } = {}) {
   if (!codes.length) throw new Error('沒有指定房間代碼');
   const hasOwner = (await query("SELECT count(*)::int AS n FROM information_schema.columns WHERE table_schema = current_schema() AND table_name = 'rooms' AND column_name = 'owner_id'"))[0].n > 0;
+  // 多班級（第 10 版）起成員在 class_members，之前看 accounts.room_code
+  const multi = (await query("SELECT to_regclass('class_members') IS NOT NULL AS ok"))[0].ok;
+  const memberCount = multi ? '(SELECT count(*)::int FROM class_members m WHERE m.room_code = r.code)' : '(SELECT count(*)::int FROM accounts a WHERE a.room_code = r.code)';
   const rows = await query(
-    `SELECT r.code, r.name, r.created_at, ${hasOwner ? 'r.owner_id' : 'NULL AS owner_id'},
-            (SELECT count(*)::int FROM accounts a WHERE a.room_code = r.code) AS members
+    `SELECT r.code, r.name, r.created_at, ${hasOwner ? 'r.owner_id' : 'NULL AS owner_id'}, ${memberCount} AS members
        FROM rooms r WHERE r.code = ANY($1) ORDER BY r.code`,
     [codes],
   );
@@ -34,6 +38,8 @@ async function deleteEmptyRooms(query, codes, { apply = false, log = console.log
     log(`共 ${rows.length} 間空房間（只列出；加 --apply 才刪除）`);
     return { deleted: 0, rooms: rows.map((r) => r.code) };
   }
+  // 舊欄位還連著會連帶刪角色的外鍵：先清空（只有已經離開這些班級的角色會指著它們）
+  if (multi) await query('UPDATE accounts SET room_code = NULL WHERE room_code = ANY($1)', [codes]);
   const deleted = await query('DELETE FROM rooms WHERE code = ANY($1) RETURNING code', [codes]);
   log(`已刪除 ${deleted.length} 間空房間`);
   return { deleted: deleted.length, rooms: rows.map((r) => r.code) };

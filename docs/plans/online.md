@@ -179,7 +179,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/parent/kids` | 把這台裝置上的角色存到雲端 `{ profile }` → `{ token, account, profile, rev, room: null }`（孩子權杖，來源 `parent`）；同一個角色重複上傳回 409 `already_uploaded` |
 | `POST /api/parent/kids/:id/device` | 在這台裝置玩：發一張孩子權杖（來源 `parent`）並回傳存檔，格式同上；別人的角色和不存在的一樣回 404 `no_kid` |
 | `DELETE /api/parent/kids/:id` | 刪除角色（在班級裡的先結清禮物） |
-| `POST /api/parent/kids/:id/leave-class` | 讓孩子退出班級：禮物兩邊都結清、班級與孩子密碼清空、`class` 來源的權杖失效；不在班級回 409 `not_in_class` |
+| `POST /api/parent/kids/:id/leave-class` | `{ code? }` 讓孩子退出某一班（多班級；沒給 `code` 而且只有一個班級時退出那一班，好幾個班級回 400 `which_class`）：只結清那一班的禮物（兩邊）、刪掉那一班的成員資格與那一班發的 `class` 權杖；不在那一班回 409 `not_in_class` |
 | `GET /api/teacher/rooms`、`POST /api/teacher/rooms` | 老師的班級清單（附成員數）、建立班級 `{ name }`；大人權杖＋老師身分，只有家長身分回 403 |
 | `GET /api/teacher/rooms/:code`、`PATCH /api/teacher/rooms/:code` | 班級設定＋成員列表、開關 `{ joinOpen?, chatOpen?, giftsOpen? }`、班級名稱 `{ name? }`、班級教材版本 `{ curriculum? }`（`null` 是不統一；老師 GM 的 G0，`docs/plans/teacher-gm.md`）；別人的班級和不存在的代碼一樣回 404 |
 | `POST /api/teacher/rooms/:code/members/:id/pin` | `{ pin }` 重設孩子密碼：只撤銷 `class` 來源的權杖、只踢 `class` 來源的即時連線，家長裝置上的不受影響 |
@@ -188,9 +188,9 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 | `POST /api/login` | `{ code, nickname, pin }` → `{ token, account, profile, rev, room }` |
 | `GET /api/me` | 目前存檔與版本號、班級（沒有班級是 null）、有沒有家長帳號（`owned`） |
 | `POST /api/ops` | `{ ops: Op[] }` → `{ profile, rev, rejected: [{ id, reason }], room }`（`room` 是目前的班級，沒有是 null：裝置靠它知道在別台裝置退出、或被老師移出班級） |
-| `GET /api/classmates` | 全班同學（不含自己）`[{ id, nickname, avatar, online, inventory }]`，選送禮對象用；外觀經過 `equippedOf` |
-| `POST /api/gifts` | `{ id, to, itemId }` → `{ gift, profile, rev }`（id 由裝置產生，重送不重複扣款） |
-| `GET /api/gifts` | `{ incoming, notices, sentToday, dailyLimit }`：待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份。待收下與結果只算目前班級的（收下、不用了也是），退出班級前殘留的交給 7 天過期退款 |
+| `GET /api/classmates?room=` | 同學（不含自己）`[{ id, nickname, avatar, online, inventory }]`，選送禮對象用；外觀經過 `equippedOf`。多班級：`room` 是現在所在的班級島，只列那一班、用那一班的暱稱（不是自己的班級 403）；沒給列出所有班級的同學（暱稱用最早建立的共同班級的） |
+| `POST /api/gifts` | `{ id, to, itemId, room? }` → `{ gift, profile, rev }`（id 由裝置產生，重送不重複扣款）。禮物記在 `room` 那一班（兩人都要是成員，否則 404）；沒給時記在最早建立、開放送禮的共同班級 |
+| `GET /api/gifts` | `{ incoming, notices, sentToday, dailyLimit }`：待收下的禮物、送出的禮物還沒看過的結果、今天送了幾份。待收下與結果只算目前所在的班級（多班級：所有班級；收下、不用了也是），退出班級前殘留的交給 7 天過期退款 |
 | `POST /api/gifts/:id/accept` | 收下 → `{ status: 'accepted' \| 'returned', profile, rev }`（`returned`：已經有了，自動退回） |
 | `POST /api/gifts/:id/decline` | 不用了（退款給送禮人） |
 | `POST /api/gifts/notices/ack` | `{ ids }` 送禮結果看過了 |
@@ -207,8 +207,8 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 
 ### WebSocket（`/ws`，連上後第一則訊息送權杖）
 
-- 裝置 → 伺服器：`hello { token, island? }`（`island` 是 `class`／`own`，沒給是班級島）、`go { island }`（換島，不斷線）、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
-- 伺服器 → 裝置：`welcome { self, island, room, members, chat }`（`island` 是進了哪一種島）、`friends { list }`（上線時的整份好友名單）、`friend { friend }`（某位朋友上線、下線、換島、換外觀）、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`content`（老師改了班級教材版本：裝置同步一次，從回應的 `room.curriculum` 拿新的設定）、`kicked { reason }`
+- 裝置 → 伺服器：`hello { token, island?, room? }`（`island` 是 `class`／`own`，沒給是班級島；`room` 是哪一班的班級島，多班級，沒給或不是成員是第一個班級）、`go { island, room? }`（換島，不斷線）、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
+- 伺服器 → 裝置：`welcome { self, island, classCode, room, members, chat }`（`island` 是進了哪一種島，`classCode` 是哪一班的班級島、自己的島是 null）、`friends { list }`（上線時的整份好友名單；同學的名字是共同班級的暱稱）、`friend { friend }`（某位朋友上線、下線、換島、換外觀）、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`content`（老師改了班級教材版本：裝置同步一次，從回應的 `rooms[].curriculum` 拿新的設定）、`kicked { reason }`、`notice { message }`（多班級：離開了其中一班，緊接著以 4005 重新上線）
 - 島嶼互訪 I1（`docs/plans/islands.md`）起中樞以「島」為單位：班級島與每個人自己的島；沒有班級的孩子進自己的島。
 - 關閉代碼：權杖無效 4003；角色沒有班級 4004（I1 起伺服器不再送，裝置保留處理）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
 

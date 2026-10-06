@@ -1,7 +1,7 @@
 /**
  * 島上的介面：角色名牌、金幣與星星、雲端同步狀態、班級島與我的島的切換、好友名單、門口提示泡泡、熊熊老師的話、觸控搖桿、公頻。
  */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
 import { zoneById } from '../../world/layout';
@@ -15,7 +15,7 @@ import { ChatPanel } from '../ChatPanel';
 import { GiftInbox } from '../GiftInbox';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
-import { islandOf } from '../../store/island';
+import { classesOf, currentClass, type IslandTarget } from '../../store/island';
 import { ISLAND_LINES } from '../lines';
 import { FriendsButton, FriendsPanel } from '../FriendsPanel';
 
@@ -37,8 +37,8 @@ function CloudChip() {
   const status = useCloud((s) => s.status);
   const pending = useCloud((s) => s.pending);
   const goto = useUi((s) => s.goto);
-  /** 目前角色在不在班級裡 */
-  const inClass = useGame((s) => !!s.profile()?.cloud?.room);
+  /** 目前角色在不在班級裡（多班級：至少一個班級） */
+  const inClass = useGame((s) => classesOf(s.profile()).length > 0);
   const base = status === 'synced' && !inClass ? '☁️ 已存到雲端' : CLOUD_LABEL[status];
   const label = base + (pending > 0 && status !== 'synced' ? `・${pending} 筆待上傳` : '');
   return (
@@ -56,27 +56,58 @@ function CloudChip() {
 }
 
 /**
- * 班級角色才顯示：切換班級島與我的島（老師 GM 的 G1）。按鈕寫要去的島。
- * 我的島看不到同學、用家長選的版本與裝置上的題庫；切回班級島時同步一次，拿老師最新的班級版本。
+ * 班級角色才顯示：切換班級島與我的島（老師 GM 的 G1）。
+ * 只有一個班級時是一顆按鈕，寫要去的島（和多班級之前一樣）；有好幾個班級時按鈕寫「換島」，
+ * 打開選單列出我的島與各班的班級島（多班級，docs/plans/multi-class.md）。
+ * 我的島看不到同學、用家長選的版本與裝置上的題庫；回到班級島時同步一次，拿老師最新的班級版本。
  */
 function IslandSwitch() {
   const profile = useGame((s) => s.profile());
   const setIsland = useGame((s) => s.setIsland);
-  if (!profile?.cloud?.room) return null;
-  const island = islandOf(profile);
-  const toggle = () => {
-    const next = island === 'class' ? 'mine' : 'class';
+  /** 換島選單打開了沒（有好幾個班級時） */
+  const [open, setOpen] = useState(false);
+  const rooms = classesOf(profile);
+  if (!profile || !rooms.length) return null;
+  /** 現在在哪一班的班級島；在我的島是 null */
+  const here = currentClass(profile);
+  /** 去一座島：'mine' 或班級代碼；已經在那裡就只收起選單 */
+  const go = (target: IslandTarget) => {
+    setOpen(false);
+    const toMine = target === 'mine';
+    if (toMine ? !here : here?.code === target) return;
     sfx.tap();
-    setIsland(profile.id, next);
-    const line = next === 'mine' ? ISLAND_LINES.toMine : ISLAND_LINES.toClass;
+    setIsland(profile.id, target);
+    const line = toMine ? ISLAND_LINES.toMine : ISLAND_LINES.toClass;
     useUi.getState().say(line);
     speak(line);
-    if (next === 'class') void useCloud.getState().syncNow();
+    if (!toMine) void useCloud.getState().syncNow();
   };
+  if (rooms.length === 1) {
+    return (
+      <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={() => go(here ? 'mine' : rooms[0].code)} data-testid="hud-island" data-island={here ? 'class' : 'mine'}>
+        {here ? '🏝️ 去我的島' : '🏫 回班級島'}
+      </button>
+    );
+  }
   return (
-    <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={toggle} data-testid="hud-island" data-island={island}>
-      {island === 'class' ? '🏝️ 去我的島' : '🏫 回班級島'}
-    </button>
+    <div className="island-menu-wrap">
+      <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="hud-island" data-island={here ? 'class' : 'mine'}>
+        🏝️ 換島
+      </button>
+      {open && (
+        <div className="island-menu card" role="menu" data-testid="island-menu">
+          <button role="menuitem" className={`btn small white ${here ? '' : 'on'}`} onClick={() => go('mine')} data-testid="island-go-mine">
+            🏝️ 我的島{here ? '' : ' ✓'}
+          </button>
+          {rooms.map((r) => (
+            <button key={r.code} role="menuitem" className={`btn small white ${here?.code === r.code ? 'on' : ''}`} onClick={() => go(r.code)} data-testid={`island-go-${r.code}`}>
+              🏫 {r.name}
+              {here?.code === r.code ? ' ✓' : ''}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -134,7 +165,7 @@ export function SpeechBubble() {
   }, [bubble, clear]);
   if (!bubble) return null;
   return (
-    <div className="speech card" key={bubble.id} onClick={clear} role="status">
+    <div className="speech card" key={bubble.id} onClick={clear} role="status" data-testid="speech-bubble">
       <span className="who">🐻</span>
       <span>{bubble.text}</span>
     </div>

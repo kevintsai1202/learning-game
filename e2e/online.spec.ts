@@ -62,7 +62,7 @@ test('班級：建立房間、帶進度加入、換裝置登入、離線同步�
   const linked = await profileOf(a.page);
   expect(linked.id).toBe(localBefore.id);
   expect(linked.name).toBe('小安');
-  expect(linked.cloud.room).toBe(codeText);
+  expect(linked.cloud.rooms[0].code).toBe(codeText);
   expect(linked.history).toHaveLength(1);
   expect(await a.page.evaluate(() => (window as any).__game.game.getState().save.profiles.length)).toBe(1);
   await waitSynced(a.page);

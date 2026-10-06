@@ -40,13 +40,19 @@ async function user(id: string, username: string, email: string, password: strin
 async function room(code: string, owner: string | null, legacyPassword?: string) {
   await db.query('INSERT INTO rooms (code, name, owner_id, teacher_hash, created_at) VALUES ($1, $1, $2, $3, $4::timestamptz)', [code, owner, legacyPassword ? await hashSecret(legacyPassword) : null, T]);
 }
-/** 建一個角色（班級或家長至少一個） */
-async function kid(id: string, roomCode: string | null, parent: string | null) {
+/**
+ * 建一個角色（班級或家長至少一個）：和升級到第 10 版（多班級）後的資料一樣，舊欄位 room_code 記著班級，
+ * 成員資格在 class_members。extraRooms 是另外加入的班級（只有成員資格）
+ */
+async function kid(id: string, roomCode: string | null, parent: string | null, extraRooms: string[] = []) {
   await db.query(
     `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
      VALUES ($1, $2, $3, $1, $1, NULL, '{}'::jsonb, 1, $4::timestamptz, $4::timestamptz)`,
     [id, roomCode, parent, T],
   );
+  for (const code of [...(roomCode ? [roomCode] : []), ...extraRooms]) {
+    await db.query('INSERT INTO class_members (account_id, room_code, nickname, nickname_key, joined_at) VALUES ($1, $2, $1, $1, $3::timestamptz)', [id, code, T]);
+  }
 }
 /** 目前的資料筆數 */
 async function counts() {
@@ -105,6 +111,23 @@ describe('清掉 e2e 的測試資料', () => {
     } finally {
       await old.close();
     }
+  });
+
+  it('多班級：已經離開測試班級的角色（舊欄位還指著那一班）不算成員、不會被誤刪；也在真班級的純班級角色留著，只拿掉測試班級', async () => {
+    await seed();
+    await user('u-real-p', 'mom_chen', 'mom@school.example.tw', 'secret-pass', { parent: true, teacher: false });
+    // 真的家長名下、以前在測試班級（升級時舊欄位記著）、後來退出了：沒有成員資格
+    await db.query(
+      `INSERT INTO accounts (id, room_code, parent_id, nickname, nickname_key, pin_hash, profile, rev, created_at, last_seen)
+       VALUES ('k-left', '111111', 'u-real-p', 'k-left', 'k-left', NULL, '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)`,
+      [T],
+    );
+    // 沒有家長、同時在測試班級與真班級
+    await kid('k-both', null, null, ['111111', '222222']);
+    const r = await purgeTestData(query, { apply: true, log: () => undefined });
+    expect(r.blocked).toBe(false);
+    expect((await db.query<{ id: string }>('SELECT id FROM accounts ORDER BY id')).map((x) => x.id)).toEqual(['k-both', 'k-left', 'k-real']);
+    expect((await db.query<{ room_code: string }>("SELECT room_code FROM class_members WHERE account_id = 'k-both'")).map((x) => x.room_code)).toEqual(['222222']);
   });
 
   it('沒有密碼的帳號（L1 起用 Google 註冊的）不算測試帳號，也不會出錯：就算帳號名稱與 email 都像 e2e 的也留著', async () => {

@@ -71,7 +71,7 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   await t.page.screenshot({ path: `${SHOTS}/01-teacher-class-curriculum.png` });
 
   // 線上的孩子馬上收到（不用重新整理）：本機記住班級版本，數學城堡跟著老師
-  await expect.poll(async () => (await profileOf(a.page)).cloud?.roomCurriculum, { timeout: 20_000 }).toEqual({ zh: 'kanghsuan-zh', math: 'hanlin-math', term: '上' });
+  await expect.poll(async () => (await profileOf(a.page)).cloud?.rooms?.[0]?.curriculum, { timeout: 20_000 }).toEqual({ zh: 'kanghsuan-zh', math: 'hanlin-math', term: '上' });
   expect(await mathBook(a.page)).toContain('翰林 二上');
   // 孩子自己的設定沒有被改
   expect((await profileOf(a.page)).curriculum.math).toBe('nani-math');
@@ -125,7 +125,7 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   // ④ 老師取消統一：班級島回到孩子自己的設定
   await t.page.getByTestId('class-curriculum-toggle').click();
   await expect(t.page.getByTestId('class-curriculum-toggle')).not.toBeChecked();
-  await expect.poll(async () => (await profileOf(a.page)).cloud?.roomCurriculum ?? null, { timeout: 20_000 }).toBeNull();
+  await expect.poll(async () => (await profileOf(a.page)).cloud?.rooms?.[0]?.curriculum ?? null, { timeout: 20_000 }).toBeNull();
   expect(await mathBook(a.page)).toContain('南一 二');
 
   for (const d of [a, b, t]) expect(pageErrors(d.page)).toEqual([]);

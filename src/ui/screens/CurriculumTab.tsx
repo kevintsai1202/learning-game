@@ -120,15 +120,15 @@ export function CurriculumTab({ profile }: { profile: Profile }) {
       <p>
         幫 <b>{profile.name}</b> 選課本版本。選好後，「文字森林」與「數學城堡」最上方會出現「跟著課本」的每課／每單元練習，挑戰塔也會有期中、期末模擬考。
       </p>
-      {profile.cloud?.room && (
-        // 班級角色：班級島的版本由老師決定（老師 GM 的 G0）；這裡的設定用在「我的島」
-        <p className="notice" data-testid="class-curriculum-note">
-          {profile.name} 在班級「{profile.cloud.roomName}」。
-          {profile.cloud.roomCurriculum
-            ? `班級島的教材版本由老師設定（${curriculumText(all, profile.cloud.roomCurriculum)}），這裡的設定用在「我的島」。`
-            : '老師還沒有統一班級的教材版本，班級島和「我的島」都用這裡的設定。'}
+      {(profile.cloud?.rooms ?? []).map((r) => (
+        // 班級角色：班級島的版本由那一班的老師決定（老師 GM 的 G0；多班級時每一班各自的）；這裡的設定用在「我的島」
+        <p key={r.code} className="notice" data-testid="class-curriculum-note">
+          {profile.name} 在班級「{r.name}」。
+          {r.curriculum
+            ? `那一班的班級島，教材版本由老師設定（${curriculumText(all, r.curriculum)}），這裡的設定用在「我的島」。`
+            : '老師還沒有統一那一班的教材版本，那一班的班級島和「我的島」都用這裡的設定。'}
         </p>
-      )}
+      ))}
       <label style={{ display: 'flex', gap: 10, alignItems: 'center', fontSize: 18, marginBottom: 14 }}>
         <b style={{ minWidth: 60 }}>學期</b>
         <select value={cur.term} onChange={(e) => set({ term: e.target.value as CurriculumChoice['term'] })} style={{ fontSize: 18 }} data-testid="edition-term">

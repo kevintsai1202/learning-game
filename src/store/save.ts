@@ -114,19 +114,33 @@ export interface SessionRecord {
  * 雲端角色的連結資訊（只存在本機；伺服器不存這個欄位）。
  * 有這個欄位的角色，進度會同步到班級伺服器。
  */
+/** 雲端角色所在的一個班級（本機記住的；伺服器每次同步都會更新） */
+export interface CloudRoom {
+  /** 班級代碼（6 位數字） */
+  code: string;
+  /** 班級名稱（顯示用） */
+  name: string;
+  /** 在這一班的暱稱（班級島上大家看到的；多班級之前的伺服器沒有） */
+  nickname?: string;
+  /** 老師設定的班級教材版本（這一班的班級島用）；沒有表示老師沒有統一（老師 GM 的 G0） */
+  curriculum?: CurriculumChoice;
+}
+
 export interface CloudLink {
   /** 伺服器網址 */
   server: string;
-  /** 班級代碼（6 位數字）；家長名下、還沒加入班級的雲端角色沒有（docs/plans/accounts.md 第 6 節） */
-  room?: string;
-  /** 班級名稱（顯示用）；沒有班級時沒有 */
-  roomName?: string;
   /** 伺服器上的帳號 id（與 Profile.id 不同） */
   accountId: string;
-  /** 老師設定的班級教材版本（班級島用；伺服器每次同步都會更新）；沒有表示老師沒有統一（老師 GM 的 G0） */
-  roomCurriculum?: CurriculumChoice;
-  /** 孩子切到「我的島」（只記在這台裝置；沒有表示在班級島）。換班級或退出班級時拿掉（老師 GM 的 G1） */
-  island?: 'mine';
+  /**
+   * 所在的班級（多班級，docs/plans/multi-class.md），第一個班級（最早加入的）在前面；
+   * 家長名下、還沒加入班級的雲端角色沒有或是空的
+   */
+  rooms?: CloudRoom[];
+  /**
+   * 孩子在哪座島（只記在這台裝置）：'mine' 是我的島（老師 GM 的 G1），班級代碼是那一班的班級島；
+   * 沒有表示第一個班級的班級島。那一班不在班級清單裡了（退出、被移出）就回到第一個班級
+   */
+  island?: string;
 }
 
 /** 收禮紀錄的一筆（雲端角色才有；只有伺服器會寫入） */
@@ -542,14 +556,19 @@ export const profileSchema = z.object({
   // 2026-10 新增：可省略，舊存檔不必升級版本
   // 2026-10 A2：班級可以沒有（家長名下的雲端角色）；舊版前端讀不了沒有班級的雲端角色，所以 A2～A4 只在 A5 一起上線
   // 2026-10 老師 GM 的 G0＋G1：班級版本與「我的島」（只存在本機）
+  // 2026-10 多班級：班級清單（rooms）與島可以是班級代碼；多班級之前的 room、roomName、roomCurriculum 照樣讀得進來，
+  // 載入時由 upgradeCloud 轉成班級清單（存檔版本不升：欄位都可以省略）
   cloud: z
     .object({
       server: z.string(),
+      accountId: z.string(),
+      rooms: z
+        .array(z.object({ code: z.string(), name: z.string(), nickname: z.string().optional(), curriculum: curriculumShape.optional() }))
+        .optional(),
+      island: z.union([z.literal('mine'), z.string().regex(/^\d{6}$/)]).optional(),
       room: z.string().optional(),
       roomName: z.string().optional(),
-      accountId: z.string(),
       roomCurriculum: curriculumShape.optional(),
-      island: z.literal('mine').optional(),
     })
     .optional(),
   stats: z.object({ wrongCleared: int.min(0), written: int.min(0) }).optional(),
@@ -587,7 +606,10 @@ const saveSchema = z.object({
 /** 驗證一位小朋友的資料（伺服器收上傳的進度用）；格式不符回傳 null。錯題本的題目只做寬鬆檢查 */
 export function parseProfile(raw: unknown): Profile | null {
   const r = profileSchema.safeParse(raw);
-  return r.success ? (r.data as unknown as Profile) : null;
+  if (!r.success) return null;
+  const p = r.data as unknown as Profile;
+  // 雲端標記升級成多班級的格式（伺服器收上傳時會拿掉雲端標記，這裡只影響裝置）
+  return p.cloud ? { ...p, cloud: upgradeCloud(p.cloud) } : p;
 }
 
 /**
@@ -607,8 +629,26 @@ export function migrateSave(data: unknown): unknown {
   return data;
 }
 
+/** 多班級之前的雲端標記（一個班級）：載入時轉成班級清單 */
+interface LegacyCloud {
+  room?: string;
+  roomName?: string;
+  roomCurriculum?: CurriculumChoice;
+}
+
+/**
+ * 雲端標記升級成多班級的格式（docs/plans/multi-class.md）：多班級之前的 room、roomName、roomCurriculum
+ * 轉成只有一個班級的班級清單，「我的島」照舊；已經是新格式的原樣回傳（去掉舊欄位）
+ */
+export function upgradeCloud(cloud: CloudLink & LegacyCloud): CloudLink {
+  const { room, roomName, roomCurriculum, ...rest } = cloud;
+  if (room === undefined || rest.rooms !== undefined) return rest;
+  return { ...rest, rooms: [{ code: room, name: roomName ?? '', ...(roomCurriculum ? { curriculum: roomCurriculum } : {}) }] };
+}
+
 /**
  * 從 JSON 字串載入存檔；舊版會先升級。格式不符或壞掉時回傳新存檔（呼叫端負責先備份原始字串）。
+ * 雲端標記在驗證之後升級成多班級的格式（upgradeCloud）
  */
 export function loadSave(raw: string | null): SaveData {
   if (!raw) return createEmptySave();
@@ -619,8 +659,10 @@ export function loadSave(raw: string | null): SaveData {
     return createEmptySave();
   }
   const r = saveSchema.safeParse(data);
+  if (!r.success) return createEmptySave();
   // 錯題本的題目只做寬鬆檢查，型別上視為 Question（顯示時再依題型處理）
-  return r.success ? (r.data as unknown as SaveData) : createEmptySave();
+  const save = r.data as unknown as SaveData;
+  return { ...save, profiles: save.profiles.map((p) => (p.cloud ? { ...p, cloud: upgradeCloud(p.cloud) } : p)) };
 }
 
 /** 判斷原始字串是否為可讀的存檔（給備份與匯入用） */

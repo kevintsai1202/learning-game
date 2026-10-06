@@ -7,7 +7,7 @@
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
 - 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/store/puzzle.ts`（益智遊戲的金幣與每日上限）、`src/engine/check.ts`（計分）
-- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「退出班級」的共用函式）；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
+- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「老師移出成員」的共用函式）；多班級的成員資格（第一個班級的定義、離開某一班、撤銷某一班的權杖、好友名單的名字）在 `classes.ts`；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
@@ -47,13 +47,19 @@ docker rm -f li-pg-test
 - 資料表結構只往後加版本（`server/db.ts` 的 `MIGRATIONS`），不修改已發布的版本。
 - 登入鎖定以「房間＋暱稱」（孩子）或「帳號名稱」（大人）計次（5 次鎖 5 分鐘），不用 IP：同一間教室共用對外 IP。IP 只擋大量請求（每分鐘 300 次）。
 - **權杖兩種**（`tokens.ts` 的 `lookupToken` 回傳分型別）：孩子（雲端角色）與大人（`user_id`，不屬於班級）。改版前的老師權杖（kind `teacher`）一律視為無效。
-  - 孩子權杖的「目前班級」從帳號讀（`accounts.room_code`，加入或退出班級立刻生效），`tokens.room_code` 只是保留寫入；`tokens.via` 記來源：`class`（孩子用班級代碼登入，例如學校平板）、`parent`（家長「在這台裝置玩」）。
+  - 孩子權杖的班級從成員資格讀（`class_members`，加入或退出班級立刻生效；多班級起是清單，第一個班級在前面）；`tokens.via` 記來源：`class`（孩子用班級代碼登入，例如學校平板）、`parent`（家長「在這台裝置玩」）；`class` 權杖的 `tokens.room_code` 是用哪一班的代碼登入的（家長權杖的這一欄不代表什麼，不能拿來判斷）。
   - `authenticate(c, 'kid')`：班級功能用，角色沒有班級時回 403 `no_class`（送禮、同學名單因此不用自己檢查）；`authenticateKidAny`：班級可以空，只給同步（`/api/ops`）、讀存檔（`/api/me`）與「帶權杖加入班級」用；`authenticateUser` 只收大人的。WebSocket 遇到沒有班級的角色：島嶼互訪 I1 起進他自己的島（改版前用 4004 `CLOSE_NO_CLASS` 關閉）。
 - **家長的雲端角色與退出班級**（A2，`docs/plans/accounts.md` 第 6 節）：
   - 角色可以只有家長、沒有班級（`accounts` 的限制：班級與家長至少一個）；沒有班級就沒有孩子密碼。
-  - 退出班級（老師移出家長名下的角色、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts`（收到與送出的未收禮物都退款，送出的標成看過）＋`detachFromClass`（班級與孩子密碼清空、刪掉 `class` 來源的權杖，家長裝置上的權杖留著）；沒有家長的純班級角色照舊刪除。
-  - 老師重設孩子密碼只撤銷 `class` 來源的權杖，也只踢 `class` 來源的連線：中樞記每條連線的權杖來源（`JoinInfo.via`），`onKick(id, reason, 'class')`／`hub.kick(id, reason, via)`。移出、退出、刪除照舊全踢。
-  - 收禮清單、送禮結果、收下與不用了都只算目前班級的禮物（`gifts.room_code`）：退出班級的交易在掃完禮物、鎖到帳號之前，同學剛好送出的那份會漏掉（真正的 PostgreSQL 才會發生），這種殘留的在新班級看不到也收不下，7 天後由 `expireGifts` 退款。
+  - 退出某一班（老師移出、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts(…, { roomCode })`（只結清那一班的：收到與送出的未收禮物都退款，送出的標成看過）＋`classes.ts` 的 `leaveClass`（刪掉那一班的成員資格與那一班發的 `class` 權杖，家長裝置與別班的權杖留著）；沒有家長、也沒有其他班級的純班級角色照舊刪除。
+  - 老師重設孩子密碼（每一班各自的密碼）只撤銷那一班發的 `class` 權杖（`revokeClassTokens`：條件一定是 `via = 'class' AND room_code = 那一班`），也只踢用那一班代碼登入的連線：`onKick(id, reason, 'class', code)`／`hub.kick(id, reason, via, room)`。刪除角色照舊全踢；離開某一班用 `onLeftClass(id, code, reason)`／`hub.leftClass`：用那一班代碼登入的連線踢下線，其他連線收到 `notice` 後以 4005 重新上線（不封鎖）。
+  - 收禮清單、送禮結果、收下與不用了都只算目前所在班級的禮物（`gifts.room_code = ANY(所有班級)`）：退出班級的交易在掃完禮物、鎖到帳號之前，同學剛好送出的那份會漏掉（真正的 PostgreSQL 才會發生），這種殘留的看不到也收不下，7 天後由 `expireGifts` 退款。
+- **多班級**（`docs/plans/multi-class.md`；資料表第 10 版）：
+  - 一個孩子最多 `MAX_CLASSES`（5）個班級（`src/online/protocol.ts`，伺服器與畫面共用）；成員資格在 `class_members`（帳號、班級、這一班的暱稱與孩子密碼、加入時間），同一班的暱稱不能重複。加入時存檔裡的名字不改（班級島上顯示那一班的暱稱）。
+  - `accounts.room_code`、`pin_hash`、`nickname_key` 是舊欄位：第 10 版起不讀也不寫（新角色是空的），但 `room_code` 還連著 `rooms` 的外鍵 `ON DELETE CASCADE`：刪班級的程式（部署腳本）要先把指向那一班的舊欄位清空，不然會連帶刪掉已經離開那一班的角色。上線穩定後再用下一版清掉這些欄位。
+  - 「第一個班級」一律是最早加入的（`joined_at`，再比代碼）：回應裡給舊版網頁的 `room`、沒說哪一班時進的班級島都用它（`classes.ts` 的 `membershipsOf` 已經照這個順序）。「共同班級」用最早建立的那一班（`rooms.created_at`，再比代碼）：好友名單的名字、舊版網頁送禮記在哪一班。
+  - 加入（`joinExisting`）鎖住帳號列後再數成員資格：已經是成員 409 `already_member`、滿 5 個 409 `too_many_classes`。帶孩子權杖加入第二個班級：沒有家長帳號的回 409 `need_parent`（請家長掃 QR code）。
+  - 回應同時帶 `rooms`（所有班級與各班暱稱）與 `room`（第一個班級，給部署途中的舊版網頁）。
   - 老師移出成員（`removeMemberWithRefunds`）：交易開頭讀到的班級可能已經過期（家長讓他退出、又加入別的班級），結清禮物時鎖到帳號之後再確認一次，不是這個班的就丟出內部例外撤銷整個交易、回傳 null（路由回 404，不送撤銷前的退款通知）。老師只能移出自己班上的學生。
   - 存到雲端（`POST /api/parent/kids`）在交易裡先鎖家長的 `users` 列，再查重與新增：同時上傳同一個角色不會變成兩個分身。這個鎖只在這裡拿，期間只新增帳號、不鎖既有的帳號與禮物，和下面的鎖定順序不衝突。
   - 刪除角色、刪除自己的帳號：在交易裡結清禮物再刪，交易結束後才送通知，而且不送給被刪的角色（`parents.ts` 的 `emitExcept`）；還有班級的帳號不能刪（`has_classes`），因為刪掉老師帳號會連帶刪掉班上所有角色。
@@ -71,7 +77,8 @@ docker rm -f li-pg-test
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。中樞以「島」為單位（班級島 `class:<代碼>`、自己的島 `kid:<帳號 id>`，`docs/plans/islands.md`）：移動、聊天、外觀只送同島的人；好友的在線狀態（只有在哪座島）送給朋友；全班的通知（`roomContent`、`roomSettings`）照帳號的班級送，不管在哪座島。
 - 伺服器只保證位置在島的圓形範圍內，不做障礙物碰撞（信任模型，見 `docs/plans/online.md` 第 5 節）。
-- HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onRoomContent`／`onClassChanged`（加入班級，中樞以 4005 讓那個帳號重新上線）／`onKick` 通知即時中樞；老師成員表的在線與在哪裡來自 `isOnline`／`whereOf`（`main.ts` 串接；`onKick` 的第三個參數是只踢哪種權杖來源的連線）。
+- HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onRoomContent`／`onClassChanged`（加入班級，中樞以 4005 讓那個帳號重新上線）／`onLeftClass`（離開某一班）／`onKick` 通知即時中樞；老師成員表的在線與在哪裡來自 `isOnline`／`whereOf(id, 班級)`（`main.ts` 串接；`onKick` 的第三、四個參數是只踢哪種權杖來源、用哪一班代碼登入的連線；`whereOf` 在別班的班級島時回 `otherClass`）。
+- 即時中樞的班級島每一班一座：`hello`／`go` 可以帶 `room`（沒給或不是成員進第一個班級），`welcome` 帶回 `classCode`；在班級島上顯示那一班的暱稱；好友名單的名字照「各自看到的」（`FriendSeed.nickname` 是我看到的、`myName` 是對方看到的我），`tellFriends` 依收到的人換名字。
 - **送禮物**（`gifts.ts`，規格見 `docs/plans/online.md` 第 7 節）：
   - 鎖定順序固定，避免真正的 PostgreSQL 互相等待：送禮只鎖帳號（送禮人與收禮人用一句 `WHERE id = ANY(…) ORDER BY id FOR UPDATE` 一起鎖）；收下、不用了、過期、移出成員先鎖禮物，再依 id 順序鎖帳號。新增會同時鎖禮物與帳號的路由也要照這個順序。
   - 交易裡不能丟 `ApiError` 卻期待前面的寫入保留（整個交易會撤銷）：例如收下過期的禮物，要先回傳結果讓退款提交，交易結束後再回 409。

@@ -90,7 +90,7 @@ describe('家長的雲端角色（前端）', () => {
     expect(d.tokens.get(p.cloud!.accountId)).toBeTruthy();
     d.act(p.id, playOp());
     expect((await syncProfile(d.deps, p.id)).status).toBe('synced');
-    expect(d.profiles.get(p.id)!.cloud!.room).toBeUndefined();
+    expect(d.profiles.get(p.id)!.cloud!.rooms).toBeUndefined();
     expect(d.profiles.get(p.id)!.coins).toBe(20);
   });
 
@@ -148,7 +148,7 @@ describe('家長的雲端角色（前端）', () => {
     home.profiles.set(local.id, local);
     const up = await uploadToCloud(home.deps, SERVER, mom, local.id);
     const tablet = device(app);
-    tablet.profiles.set(local.id, { ...local, cloud: { server: SERVER, accountId: 'a_other', room: '123456', roomName: '舊班級' } });
+    tablet.profiles.set(local.id, { ...local, cloud: { server: SERVER, accountId: 'a_other', rooms: [{ code: '123456', name: '舊班級' }] } });
     tablet.tokens.set('a_other', 'old-token');
     tablet.deps.saveOutbox('a_other', enqueue(emptyOutbox(), playOp()));
     await expect(playOnThisDevice(tablet.deps, SERVER, mom, up.cloud!.accountId)).rejects.toBeInstanceOf(LocalConflictError);
@@ -177,7 +177,7 @@ describe('家長的雲端角色（前端）', () => {
     expect(me.rev).toBe(2);
   });
 
-  it('雲端角色加入班級：本機的雲端標記多了班級；被老師移出後同步，班級清掉、進度還在', async () => {
+  it('雲端角色加入班級：本機的雲端標記多了班級（名字不改，班上的暱稱記在班級裡）；被老師移出後同步，班級清掉、進度還在', async () => {
     const app = createApp({ db });
     const mom = await register(app, { parent: true, teacher: false });
     const teacher = await register(app, { parent: false, teacher: true });
@@ -187,7 +187,12 @@ describe('家長的雲端角色（前端）', () => {
     d.profiles.set(local.id, local);
     const up = await uploadToCloud(d.deps, SERVER, mom, local.id);
     const joined = await attachToClass(d.deps, up.id, { code: room.code, nickname: '小安', pin: '1234' });
-    expect(joined).toMatchObject({ id: local.id, name: '小安', coins: 40, cloud: { server: SERVER, accountId: up.cloud!.accountId, room: room.code, roomName: '二年一班' } });
+    expect(joined).toMatchObject({
+      id: local.id,
+      name: '安安',
+      coins: 40,
+      cloud: { server: SERVER, accountId: up.cloud!.accountId, rooms: [{ code: room.code, name: '二年一班', nickname: '小安' }] },
+    });
     // 老師移出（家長名下的角色：退出班級）
     await post(app, `/api/teacher/rooms/${room.code}/members/${up.cloud!.accountId}`, undefined, teacher, 'DELETE');
     d.act(up.id, playOp());

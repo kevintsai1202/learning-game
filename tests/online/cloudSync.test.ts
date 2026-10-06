@@ -18,7 +18,7 @@ import {
   logoutClass,
   sendGift,
   syncProfile,
-  withRoom,
+  withRooms,
   type CloudDeps,
 } from '../../src/online/cloudSync';
 import { applyOp, type Op } from '../../src/online/ops';
@@ -128,7 +128,7 @@ describe('加入與登入', () => {
     const code = await newRoom(app);
     const d = device(app);
     const p = await joinClass(d.deps, SERVER, { code, nickname: '小安', pin: '1234', avatar: { animal: 'cat', color: '#ffffff', hat: null } });
-    expect(p.cloud).toMatchObject({ server: SERVER, room: code, roomName: '二年一班' });
+    expect(p.cloud).toMatchObject({ server: SERVER, rooms: [{ code, name: '二年一班', nickname: '小安' }] });
     expect(d.profiles.get(p.id)).toEqual(p);
     expect(d.tokens.get(p.cloud!.accountId)).toBeTruthy();
   });
@@ -278,15 +278,15 @@ describe('班級教材版本與我的島（老師 GM 的 G0＋G1）', () => {
     const code = await newRoom(app);
     const d = device(app);
     const p = await joinClass(d.deps, SERVER, { code, nickname: '小安', pin: '1234', avatar: { animal: 'cat', color: '#ffffff', hat: null } });
-    expect(p.cloud!.roomCurriculum).toBeUndefined();
+    expect(p.cloud!.rooms![0].curriculum).toBeUndefined();
     expect((await patchRoom(app, code, { curriculum: CLASS })).status).toBe(200);
     await syncProfile(d.deps, p.id);
-    expect(d.profiles.get(p.id)!.cloud).toMatchObject({ room: code, roomCurriculum: CLASS });
+    expect(d.profiles.get(p.id)!.cloud!.rooms).toEqual([{ code, name: '二年一班', nickname: '小安', curriculum: CLASS }]);
     // 孩子自己的設定沒有被改
     expect(d.profiles.get(p.id)!.curriculum).toEqual(p.curriculum);
     await patchRoom(app, code, { curriculum: null });
     await syncProfile(d.deps, p.id);
-    expect(d.profiles.get(p.id)!.cloud).not.toHaveProperty('roomCurriculum');
+    expect(d.profiles.get(p.id)!.cloud!.rooms![0]).not.toHaveProperty('curriculum');
   });
 
   it('本機選了我的島：同步後還在我的島；用班級代碼登入時班級版本一起帶回來', async () => {
@@ -295,24 +295,42 @@ describe('班級教材版本與我的島（老師 GM 的 G0＋G1）', () => {
     await patchRoom(app, code, { curriculum: CLASS });
     const d = device(app);
     const p = await joinClass(d.deps, SERVER, { code, nickname: '小安', pin: '1234', avatar: { animal: 'cat', color: '#ffffff', hat: null } });
-    expect(p.cloud!.roomCurriculum).toEqual(CLASS);
+    expect(p.cloud!.rooms![0].curriculum).toEqual(CLASS);
     d.profiles.set(p.id, { ...p, cloud: { ...p.cloud!, island: 'mine' } });
     await syncProfile(d.deps, p.id);
-    expect(d.profiles.get(p.id)!.cloud).toMatchObject({ island: 'mine', roomCurriculum: CLASS });
+    expect(d.profiles.get(p.id)!.cloud).toMatchObject({ island: 'mine', rooms: [{ code, curriculum: CLASS }] });
     const other = device(app);
     const again = await loginClass(other.deps, SERVER, { code, nickname: '小安', pin: '1234' });
-    expect(again.cloud!.roomCurriculum).toEqual(CLASS);
+    expect(again.cloud!.rooms![0].curriculum).toEqual(CLASS);
     expect(again.cloud!.island).toBeUndefined();
   });
 
-  it('withRoom：同一個班級保留我的島；退出或換班級回到班級島；班級沒有統一版本時拿掉本機的舊版本', () => {
-    const base = { server: SERVER, accountId: 'a_1', room: '123456', roomName: '二年一班', roomCurriculum: CLASS, island: 'mine' as const };
-    expect(withRoom(base, { code: '123456', name: '二年一班', curriculum: CLASS })).toEqual(base);
-    expect(withRoom(base, { code: '123456', name: '二年一班', curriculum: null })).toEqual({ server: SERVER, accountId: 'a_1', room: '123456', roomName: '二年一班', island: 'mine' });
-    expect(withRoom(base, null)).toEqual({ server: SERVER, accountId: 'a_1' });
-    expect(withRoom(base, { code: '654321', name: '二年二班', curriculum: null })).toEqual({ server: SERVER, accountId: 'a_1', room: '654321', roomName: '二年二班' });
-    // 舊版伺服器的回應沒有 curriculum 欄位：當作沒有統一版本
-    expect(withRoom(base, { code: '123456', name: '二年一班' } as never)).not.toHaveProperty('roomCurriculum');
+  it('withRooms（多班級）：班級清單換成伺服器的（暱稱、班級版本；沒有統一版本時拿掉）；我的島保留，選的班級還在才保留，沒有班級時都拿掉', () => {
+    const base = { server: SERVER, accountId: 'a_1', rooms: [{ code: '123456', name: '二年一班', curriculum: CLASS }], island: '654321' };
+    const both = {
+      room: { code: '123456', name: '二年一班', curriculum: CLASS },
+      rooms: [
+        { code: '123456', name: '二年一班', curriculum: CLASS, nickname: '小安' },
+        { code: '654321', name: '安親班', curriculum: null, nickname: '安安' },
+      ],
+    };
+    expect(withRooms(base, both)).toEqual({
+      server: SERVER,
+      accountId: 'a_1',
+      rooms: [
+        { code: '123456', name: '二年一班', curriculum: CLASS, nickname: '小安' },
+        { code: '654321', name: '安親班', nickname: '安安' },
+      ],
+      island: '654321',
+    });
+    // 退出安親班：選的班級不在了，回到第一個班級（拿掉）；我的島照樣保留
+    const onlySchool = { room: both.room, rooms: [both.rooms[0]] };
+    expect(withRooms(base, onlySchool)).not.toHaveProperty('island');
+    expect(withRooms({ ...base, island: 'mine' }, onlySchool).island).toBe('mine');
+    // 沒有班級了
+    expect(withRooms({ ...base, island: 'mine' }, { room: null, rooms: [] })).toEqual({ server: SERVER, accountId: 'a_1' });
+    // 多班級之前的伺服器只給 room（沒有 rooms、可能也沒有 curriculum）：當作只有一個班級
+    expect(withRooms(base, { room: { code: '123456', name: '二年一班' } as never })).toEqual({ server: SERVER, accountId: 'a_1', rooms: [{ code: '123456', name: '二年一班' }] });
   });
 });
 

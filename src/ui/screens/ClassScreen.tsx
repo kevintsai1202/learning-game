@@ -12,6 +12,7 @@ import { getToken } from '../../online/storage';
 import type { AvatarConfig } from '../../store/save';
 import { ANIMALS, COLORS } from './ProfilesScreen';
 import { AnimalIcon } from '../AnimalIcon';
+import { classesOf } from '../../store/island';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
 import { enterIslandLine } from '../lines';
@@ -28,11 +29,12 @@ export function ClassScreen() {
   const join = useCloud((s) => s.join);
   const login = useCloud((s) => s.login);
   const attachToClass = useCloud((s) => s.attachToClass);
-  // 目前角色是雲端角色但需要重新登入時，先填好代碼與暱稱
+  // 目前角色是雲端角色但需要重新登入時，先填好代碼與暱稱（多班級：第一個班級的代碼與那一班的暱稱）
   const relogin = active?.cloud && !getToken(active.cloud.accountId) ? active : null;
+  const reloginRoom = classesOf(relogin)[0];
   const [mode, setMode] = useState<'login' | 'join'>('login');
-  const [code, setCode] = useState(relogin?.cloud?.room ?? '');
-  const [nickname, setNickname] = useState(relogin?.name ?? '');
+  const [code, setCode] = useState(reloginRoom?.code ?? '');
+  const [nickname, setNickname] = useState(reloginRoom?.nickname ?? relogin?.name ?? '');
   const [pin, setPin] = useState('');
   /** 加入時的角色來源：new 為建立新角色，否則是要帶過去的本機角色 id */
   const [source, setSource] = useState('new');
@@ -40,7 +42,7 @@ export function ClassScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   /** 可以帶進度加入的角色：本機角色（上傳一份到班級），以及家長名下、還沒加入班級的雲端角色（同一個角色直接加入） */
-  const localProfiles = profiles.filter((p) => !p.cloud || (!p.cloud.room && !!getToken(p.cloud.accountId)));
+  const localProfiles = profiles.filter((p) => !p.cloud || (!classesOf(p).length && !!getToken(p.cloud.accountId)));
   const ready = code.length === 6 && nickname.trim().length > 0 && pin.length === 4 && !busy;
 
   /** 成功後進島 */

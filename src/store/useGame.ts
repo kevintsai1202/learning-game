@@ -9,7 +9,7 @@ import { applyOp, newOpId, type Op, type OpBody } from '../online/ops';
 import { recordOp } from '../online/storage';
 import { findItem } from './catalog';
 import { newlyEarned } from './badges';
-import { withIsland, type Island } from './island';
+import { withIsland, type IslandTarget } from './island';
 import {
   addPlayTime,
   addProfile,
@@ -90,7 +90,8 @@ interface GameStore {
   /** 寫入一位角色（同 id 取代、沒有就新增）；雲端同步套用伺服器版本時用 */
   putProfile: (profile: Profile) => void;
   /** 班級角色切換班級島與我的島（只記在這台裝置；老師 GM 的 G1） */
-  setIsland: (profileId: string, island: Island) => void;
+  /** 換島（我的島或某一班的班級島；多班級時是班級代碼），只改本機的雲端標記 */
+  setIsland: (profileId: string, island: IslandTarget) => void;
 }
 
 export const useGame = create<GameStore>((set, get) => {

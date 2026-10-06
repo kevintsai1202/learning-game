@@ -22,7 +22,7 @@ const result: SessionResult = {
     { question: q('b'), correct: false, firstTry: false },
   ],
 };
-const cloud = { server: 'https://island.example', room: '123456', roomName: '二年一班', accountId: 'a_1' };
+const cloud = { server: 'https://island.example', accountId: 'a_1', rooms: [{ code: '123456', name: '二年一班' }] };
 
 /** 收集被記錄的操作 */
 let recorded: { accountId: string; op: Op }[] = [];
@@ -140,13 +140,14 @@ describe('useGame：益智遊戲館', () => {
 });
 
 describe('useGame：切換班級島與我的島（老師 GM 的 G1）', () => {
-  it('只記在這台裝置（不產生操作、進度不變）；切回班級島就拿掉標記', () => {
+  it('只記在這台裝置（不產生操作、進度不變）；切回班級島記下是哪一班（多班級）', () => {
     const before = makeKid(true);
     useGame.getState().setIsland(before.id, 'mine');
     expect(useGame.getState().profile()!.cloud).toEqual({ ...cloud, island: 'mine' });
     expect(recorded).toEqual([]);
-    useGame.getState().setIsland(before.id, 'class');
-    expect(useGame.getState().profile()).toEqual(before);
+    useGame.getState().setIsland(before.id, '123456');
+    expect(useGame.getState().profile()).toEqual({ ...before, cloud: { ...cloud, island: '123456' } });
+    expect(recorded).toEqual([]);
   });
 
   it('沒有班級的角色：不能切（只有自己的島）', () => {

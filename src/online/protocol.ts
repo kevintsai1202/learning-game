@@ -114,8 +114,8 @@ export interface KidSummary {
   avatar: AvatarConfig;
   /** 第一個班級（最早加入的；給部署途中的舊版網頁）；沒有班級是 null */
   room: RoomInfo | null;
-  /** 所有班級與各班的暱稱（多班級，docs/plans/multi-class.md），第一個班級在前面 */
-  rooms: ClassInfo[];
+  /** 所有班級與各班的暱稱（多班級，docs/plans/multi-class.md），第一個班級在前面；多班級之前的伺服器沒有（用 kidRooms 讀） */
+  rooms?: ClassInfo[];
   coins: number;
   /** 各活動最佳星數加總 */
   stars: number;
@@ -186,6 +186,14 @@ export interface RoomInfo {
 /** 孩子所在的一個班級：班級資訊＋他在那一班的暱稱（多班級，每一班各自的暱稱） */
 export interface ClassInfo extends RoomInfo {
   nickname: string;
+}
+
+/** 一個孩子最多加入幾個班級（使用者決定，docs/plans/multi-class.md 第 8 節第 2 點；伺服器與畫面共用） */
+export const MAX_CLASSES = 5;
+
+/** 家長清單上一個孩子所在的班級，第一個班級在前面（多班級之前的伺服器只有 room：當作只有那一班） */
+export function kidRooms(k: Pick<KidSummary, 'room' | 'rooms'>): (RoomInfo & { nickname?: string })[] {
+  return k.rooms ?? (k.room ? [k.room] : []);
 }
 
 /** 房間設定（老師可以切換） */

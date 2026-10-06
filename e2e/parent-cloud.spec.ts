@@ -55,7 +55,7 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   const uploaded = await profileOf(home.page);
   expect(uploaded.id).toBe(local.id);
   expect(uploaded.cloud.accountId).toBeTruthy();
-  expect(uploaded.cloud.room).toBeUndefined();
+  expect(uploaded.cloud.rooms).toBeUndefined();
   await home.page.screenshot({ path: `${SHOTS}/01-parent-uploaded.png` });
 
   // ---------- 新的平板：家長登入，在這台裝置玩 → 進度相同 ----------
@@ -81,8 +81,9 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   await tablet.page.getByTestId('class-submit').click();
   await expect.poll(() => screen(tablet.page)).toBe('island');
   const joined = await profileOf(tablet.page);
-  expect(joined).toMatchObject({ id: local.id, name: '小安', coins: local.coins });
-  expect(joined.cloud.room).toBe(cls.code);
+  // 多班級起角色的名字不改成班上的暱稱，暱稱記在班級清單裡
+  expect(joined).toMatchObject({ id: local.id, name: '安安', coins: local.coins });
+  expect(joined.cloud.rooms[0]).toMatchObject({ code: cls.code, nickname: '小安' });
   const roster = await (await request.get(`${SERVER}/api/teacher/rooms/${cls.code}`, { headers: { authorization: `Bearer ${cls.token}` } })).json();
   expect(roster.members.map((m: { nickname: string }) => m.nickname)).toEqual(['小安']);
   await expect.poll(() => tablet.page.evaluate(() => (window as any).__game.realtime.getState().status)).toBe('online');
@@ -90,12 +91,16 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   // ---------- 老師移出：平板上的角色還在、沒有班級、金幣不變 ----------
   const removed = await request.delete(`${SERVER}/api/teacher/rooms/${cls.code}/members/${joined.cloud.accountId}`, { headers: { authorization: `Bearer ${cls.token}` } });
   expect(removed.ok(), `移出 ${removed.status()}`).toBe(true);
-  await expect.poll(async () => (await profileOf(tablet.page)).cloud?.room ?? null, { timeout: 30_000 }).toBeNull();
+  // 多班級起（docs/plans/multi-class.md 第 9 節第 6 點）：家長裝置不踢下線，熊熊老師的泡泡說「進度都還在」，然後重新上線
+  await expect(tablet.page.getByTestId('speech-bubble')).toContainText('進度都還在');
+  await expect.poll(async () => (await profileOf(tablet.page)).cloud?.rooms?.[0]?.code ?? null, { timeout: 30_000 }).toBeNull();
   const after = await profileOf(tablet.page);
   expect(after).toMatchObject({ id: local.id, coins: local.coins, cloud: { accountId: joined.cloud.accountId } });
   await expect.poll(() => cloudState(tablet.page), { timeout: 20_000 }).toMatchObject({ status: 'synced' });
-  // 同步把班級清掉之後，提示還留著（孩子要看到「進度都還在」）
-  await expect(tablet.page.getByTestId('chat-notice')).toContainText('進度都還在');
+  // 沒有班級了：重新上線到自己的島（不再保持離線）
+  await expect
+    .poll(() => tablet.page.evaluate(() => [(window as any).__game.realtime.getState().status, (window as any).__game.realtime.getState().island]), { timeout: 20_000 })
+    .toEqual(['online', 'own']);
   // 沒有班級了：同步狀態寫「已存到雲端」，不是「已存到班級」
   await expect(tablet.page.getByTestId('hud-cloud')).toHaveText('☁️ 已存到雲端');
   await tablet.page.screenshot({ path: `${SHOTS}/03-tablet-after-removed.png` });
@@ -111,7 +116,7 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
   await tablet.page.getByTestId('hud-cloud').click();
   await expect.poll(() => screen(tablet.page)).toBe('teacher');
   // 本機有這個角色、但沒有權杖：照樣顯示「在這台裝置玩」（不是「這台裝置上有」）
-  await tablet.page.getByTestId('kid-device-小安').click();
+  await tablet.page.getByTestId('kid-device-安安').click();
   await expect(tablet.page.getByTestId('parent-note')).toContainText('已經在這台裝置上了');
   await expect.poll(() => cloudState(tablet.page), { timeout: 20_000 }).toMatchObject({ status: 'synced' });
   expect(await profileOf(tablet.page)).toMatchObject({ id: local.id, coins: local.coins });

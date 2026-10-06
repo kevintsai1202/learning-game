@@ -68,4 +68,23 @@ describe('唯讀檢查正式資料庫', () => {
       await d.close();
     }
   });
+
+  it('多班級（第 10 版）：真房間的成員數看 class_members（不看舊欄位）', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { log: () => undefined });
+      await d.query("INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ('444444', '舊的班', $1, $2::timestamptz)", [await hashSecret('real-admin-pass'), T]);
+      await d.query(
+        `INSERT INTO accounts (id, room_code, nickname, nickname_key, profile, created_at, last_seen) VALUES
+         ('a1', NULL, '小美', '小美', '{}'::jsonb, $1::timestamptz, $1::timestamptz),
+         ('a2', '444444', '小安', '小安', '{}'::jsonb, $1::timestamptz, $1::timestamptz)`,
+        [T],
+      );
+      await d.query("INSERT INTO class_members (account_id, room_code, nickname, nickname_key, joined_at) VALUES ('a1', '444444', '小美', '小美', $1::timestamptz)", [T]);
+      const r = await inspect((sql, params) => d.query(sql, params), () => undefined);
+      expect(r.legacyRealRooms).toEqual([{ code: '444444', name: '舊的班', members: 1 }]);
+    } finally {
+      await d.close();
+    }
+  });
 });

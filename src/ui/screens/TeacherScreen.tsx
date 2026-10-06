@@ -19,6 +19,7 @@ import { zoneName } from '../../world/layout';
 import { JoinClassPanel } from './JoinClassPanel';
 import { JoinQr } from './JoinQr';
 import type { ZoneId } from '../../store/useUi';
+import { MAX_CLASSES, kidRooms } from '../../online/protocol';
 import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
 
 /** 顯示「多久以前」 */
@@ -114,7 +115,9 @@ function ClassCurriculum({ value, onSave }: { value: CurriculumChoice | null; on
 
 /** 成員表的「在哪裡」：班級島或自己的島＋建築（島嶼互訪 I1）；舊版伺服器只有 online 時顯示 🟢；離線空白 */
 function whereText(m: MemberSummary): string {
-  if (m.where) return `🟢 ${m.where.island === 'class' ? '班級島' : '自己的島'}${m.where.zone ? `・${zoneName(m.where.zone as ZoneId)}` : ''}`;
+  /** 哪座島：這一班的班級島、別班的班級島（多班級，不寫是哪一班）、自己的島 */
+  const island = { class: '班級島', otherClass: '別的班級島', own: '自己的島' } as const;
+  if (m.where) return `🟢 ${island[m.where.island] ?? '班級島'}${m.where.zone ? `・${zoneName(m.where.zone as ZoneId)}` : ''}`;
   return m.online ? '🟢' : '';
 }
 
@@ -943,7 +946,7 @@ function ParentHome() {
           {kids.map((k) => (
             <div key={k.id} className="card" style={{ padding: '8px 12px' }} data-testid={`kid-${k.name}`}>
               <div>
-                <strong>{k.name}</strong>　{k.room ? `🏫 ${k.room.name}` : '☁️ 還沒加入班級'}・⭐ {k.stars}・🪙 {k.coins}・{ago(k.lastSeen)}
+                <strong>{k.name}</strong>　{kidRooms(k).length ? `🏫 ${kidRooms(k).map((r) => r.name).join('、')}` : '☁️ 還沒加入班級'}・⭐ {k.stars}・🪙 {k.coins}・{ago(k.lastSeen)}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
                 {onThisDevice(k.id) ? (
@@ -980,7 +983,7 @@ function ParentHome() {
                     在這台裝置玩
                   </button>
                 )}
-                {!k.room &&
+                {kidRooms(k).length < MAX_CLASSES &&
                   (joinFor === k.id ? (
                     // 輸入老師給的班級代碼（不用掃描），下一步在上面的「加入班級」面板選暱稱
                     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1015,16 +1018,24 @@ function ParentHome() {
                       🏫 加入班級
                     </button>
                   ))}
-                {k.room && (
+                {/* 退出班級：每一班各一顆（多班級；只有一個班級時照舊寫「退出班級」） */}
+                {kidRooms(k).map((r) => (
                   <button
+                    key={r.code}
                     className="btn small white"
                     disabled={busy}
-                    onClick={() => void act(() => call('POST', `/api/parent/kids/${k.id}/leave-class`, {}), `「${k.name}」已經退出班級，進度都還在`)}
-                    data-testid={`kid-leave-${k.name}`}
+                    onClick={() =>
+                      void act(async () => {
+                        await call('POST', `/api/parent/kids/${k.id}/leave-class`, { code: r.code });
+                        // 這台裝置上有這個角色：馬上同步，本機的班級清單跟著更新
+                        await useCloud.getState().syncKid(k.id);
+                      }, `「${k.name}」已經退出「${r.name}」，進度都還在`)
+                    }
+                    data-testid={kidRooms(k).length === 1 ? `kid-leave-${k.name}` : `kid-leave-${k.name}-${r.code}`}
                   >
-                    退出班級
+                    {kidRooms(k).length === 1 ? '退出班級' : `退出「${r.name}」`}
                   </button>
-                )}
+                ))}
                 {confirmDelete === k.id ? (
                   <>
                     <button

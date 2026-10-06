@@ -199,7 +199,7 @@
               <td>家長刪除這個角色或刪除自己的帳號時刪除</td>
             </tr>
             <tr>
-              <td>孩子在班級裡的資料：班上的暱稱、4 位數密碼（有設定時才有，只存雜湊值；家長用家長帳號讓孩子加入時不需要，老師要讓孩子用班級代碼登入時才設定）、學習進度與收藏、加入時間與最後上線時間</td>
+              <td>孩子在班級裡的資料：一個孩子最多可以加入 5 個班級（例如學校的班級與安親班），每一班各自有班上的暱稱、4 位數密碼（有設定時才有，只存雜湊值；家長用家長帳號讓孩子加入時不需要，老師要讓孩子用班級代碼登入時才設定）與加入時間；學習進度與收藏、最後上線時間是同一個角色共用的</td>
               <td>孩子用班級代碼加入班級時，以及之後每次存檔</td>
               <td>班級伺服器的資料庫</td>
               <td>老師移出時：沒有家長帳號的角色刪除；家長名下的角色只退出班級，進度留在家長帳號</td>
@@ -229,7 +229,7 @@
               <td>30 天後自動刪除</td>
             </tr>
             <tr>
-              <td>在島上的位置、上線狀態、目前在哪座島（班級島或自己的島）、聊天短句</td>
+              <td>在島上的位置、上線狀態、目前在哪座島（哪一班的班級島或自己的島）、聊天短句</td>
               <td>雲端角色在島上時</td>
               <td>伺服器的記憶體，不寫入資料庫</td>
               <td>位置、上線狀態與所在的島在離線後移除；聊天只留每個班級最近 30 句，伺服器重新啟動就清空</td>
@@ -275,9 +275,9 @@
 
       <h2>5. 誰看得到這些資料</h2>
       <ul>
-        <li><strong>同一班的同學：</strong>暱稱、角色外觀、是否上線、目前在哪座島（班級島或自己的島，顯示在好友名單上）、在班級島上的位置、聊天短句（遊戲裡沒有可以自由打字的地方）；選禮物時看得到對方已經有哪些外觀（避免送重複）；收到的禮物會顯示送禮人的暱稱。</li>
+        <li><strong>同一班的同學：</strong>在這一班的暱稱、角色外觀、是否上線、目前在哪座島（只寫「在班級島」或「在自己的島」，不顯示是哪一班，顯示在好友名單上）、在這一班的班級島上的位置、聊天短句（遊戲裡沒有可以自由打字的地方）；選禮物時看得到對方已經有哪些外觀（避免送重複）；收到的禮物會顯示送禮人在那一班的暱稱。孩子在別的班級用的暱稱與班級名稱，這一班的同學看不到。</li>
         <li><strong>兄弟姊妹（同一個家長帳號名下的雲端角色）：</strong>好友名單上的暱稱、角色外觀、是否上線、目前在哪座島（只寫「在班級島」或「在自己的島」，不顯示班級名稱），不同班也看得到。</li>
-        <li><strong>老師：</strong>班上每個孩子的暱稱、星星、金幣、錯題數、完成回合數、加入時間、最後上線時間，以及現在在哪裡（是否上線、在班級島或自己的島、在哪棟建築）。老師可以重設孩子在班上的密碼、移出成員，以及開關加入、聊天與送禮功能。老師看不到家長的帳號資料與電子郵件地址。</li>
+        <li><strong>老師：</strong>班上每個孩子在這一班的暱稱、星星、金幣、錯題數、完成回合數（學習進度是孩子整個角色的，包括在其他班級島與自己的島上玩的）、加入這一班的時間、最後上線時間，以及現在在哪裡（是否上線、在這一班的班級島、別的班級島（不顯示是哪一班）或自己的島、在哪棟建築）。老師可以重設孩子在這一班的密碼、把孩子移出這一班，以及開關加入、聊天與送禮功能。老師看不到孩子還在哪些其他班級，也看不到家長的帳號資料與電子郵件地址。</li>
         <li><strong>家長：</strong>用家長帳號登入後，看得到自己名下雲端角色的摘要（名字、外觀、所在班級、星星、金幣、最後上線時間），可以把角色下載到這台裝置、讓角色退出班級或刪除角色；裝置上的家長專區看得到這台裝置上角色的完整進度與錯題本。</li>
         <li><strong>帳號本人：</strong>帳號設定看得到自己的帳號名稱、電子郵件地址、身分與綁定的 Google 帳號。</li>
         <li>班級以外的人看不到班級裡的任何資料（兄弟姊妹只看得到上面列的好友名單資料）。</li>
@@ -306,7 +306,7 @@
         <li><strong>單機遊玩的資料：</strong>清除瀏覽器的網站資料即可刪除。</li>
         <li><strong>家長與老師的帳號：</strong>在帳號設定按「刪除帳號」並再輸入一次密碼（沒有密碼的帳號改用綁定的 Google 帳號確認是本人），就會刪除帳號、名下的雲端角色與進度、登入權杖、驗證與重設連結以及 Google 綁定；角色如果還在班級裡，還沒收下的禮物會先退回。還有班級的老師帳號要先處理班級（刪除會影響班上的孩子），請透過第 13 節的聯絡方式聯絡我們。</li>
         <li><strong>家長名下的雲端角色：</strong>家長可以在帳號頁刪除個別角色，或讓角色退出班級（進度保留）。</li>
-        <li><strong>孩子在班級裡的資料：</strong>老師移出成員時，沒有家長帳號的角色會刪除進度、收藏與登入權杖；家長名下的角色只退出班級，進度留在家長帳號。同學已經收到的禮物紀錄裡，仍會留著送禮人的暱稱。</li>
+        <li><strong>孩子在班級裡的資料：</strong>老師移出成員時，只會離開那一班（那一班的暱稱、密碼與用那一班代碼登入的權杖會刪除）；沒有家長帳號、也沒有其他班級的角色會刪除進度、收藏與登入權杖；家長名下的角色進度留在家長帳號。同學已經收到的禮物紀錄裡，仍會留著送禮人的暱稱。</li>
         <li><strong>Google 綁定：</strong>在帳號設定按「解除」即刪除。</li>
         <li><strong>整個班級或其他資料：</strong>透過第 13 節的聯絡方式提出刪除要求；確認是該班的老師或孩子的家長後，我們會盡快刪除。</li>
       </ul>
@@ -384,7 +384,7 @@
                 <td>Deleted when the parent deletes the character or their own account</td>
               </tr>
               <tr>
-                <td>A child's class membership: class nickname, 4-digit PIN (only if one is set, hash only; not needed when a parent adds the child with a parent account, and set by the teacher only if the child needs to sign in with the class code), learning progress and collections, join time and last online time</td>
+                <td>A child's class membership: a child can be in up to 5 classes (for example a school class and an after-school class); each class has its own class nickname, 4-digit PIN (only if one is set, hash only; not needed when a parent adds the child with a parent account, and set by the teacher only if the child needs to sign in with the class code), and join time; learning progress, collections, and last online time belong to the one character</td>
                 <td>When the child joins a class with a class code, and on every later save</td>
                 <td>Class server database</td>
                 <td>When a teacher removes the child: characters without a parent account are deleted; parent-owned characters only leave the class and keep their progress under the parent account</td>
@@ -414,7 +414,7 @@
                 <td>Deleted automatically after 30 days</td>
               </tr>
               <tr>
-                <td>Position on the island, online status, which island the child is on (the class island or their own island), chat phrases</td>
+                <td>Position on the island, online status, which island the child is on (which class's island, or their own island), chat phrases</td>
                 <td>While a cloud character is on an island</td>
                 <td>Server memory only; never written to the database</td>
                 <td>Positions, online status, and the current island are removed after going offline; only the latest 30 chat phrases per class are kept, and they are cleared when the server restarts</td>
@@ -460,9 +460,9 @@
 
         <h2>5. Who can see the data</h2>
         <ul>
-          <li><strong>Classmates in the same class:</strong> nickname, character appearance, online status, which island the child is on (the class island or their own island, shown in the friends list), position on the class island, and chat phrases (there is no free-text typing anywhere in the game); when choosing a gift, which outfits the recipient already has (to avoid duplicates); received gifts show the sender's nickname.</li>
+          <li><strong>Classmates in the same class:</strong> the nickname used in that class, character appearance, online status, which island the child is on (only "on the class island" or "on their own island", without saying which class; shown in the friends list), position on that class's island, and chat phrases (there is no free-text typing anywhere in the game); when choosing a gift, which outfits the recipient already has (to avoid duplicates); received gifts show the sender's nickname in that class. Classmates cannot see the nicknames or names of the child's other classes.</li>
           <li><strong>Siblings (cloud characters under the same parent account):</strong> in the friends list, nickname, character appearance, online status, and which island the child is on (only "on the class island" or "on their own island"; the class name is not shown), even if they are in different classes.</li>
-          <li><strong>Teachers:</strong> each child's nickname, stars, coins, number of mistakes, completed rounds, join time, last online time, and where the child is now (online status, the class island or their own island, and which building) in their class. Teachers can reset a child's class PIN, remove members, and turn joining, chat, and gifts on or off. Teachers cannot see parents' account details or email addresses.</li>
+          <li><strong>Teachers:</strong> for each child in their class, the nickname used in that class, stars, coins, number of mistakes, completed rounds (learning progress belongs to the whole character, including play on other class islands and their own island), when the child joined that class, last online time, and where the child is now (online status, this class's island, another class's island without saying which, or their own island, and which building). Teachers can reset a child's PIN for their class, remove the child from their class, and turn joining, chat, and gifts on or off. Teachers cannot see which other classes a child is in, or parents' account details or email addresses.</li>
           <li><strong>Parents:</strong> after signing in with a parent account, a summary of their own cloud characters (name, appearance, class, stars, coins, last online time); they can download a character to the current device, take it out of a class, or delete it. The parent area on a device shows the full progress and mistake notebook of the characters on that device.</li>
           <li><strong>Account owners:</strong> account settings show your own username, email address, roles, and linked Google accounts.</li>
           <li>People outside a class cannot see any data in that class (siblings only see the friends-list data listed above).</li>
@@ -491,7 +491,7 @@
           <li><strong>Single-device data:</strong> delete it by clearing the browser's site data.</li>
           <li><strong>Parent and teacher accounts:</strong> choose "Delete account" in account settings and enter your password again (an account without a password confirms with its linked Google account instead) to delete the account, its cloud characters and their progress, sign-in tokens, verification and reset links, and Google links; if a character is still in a class, its unaccepted gifts are returned first. A teacher account that still has classes must deal with those classes first (deleting it would affect the children in them); please contact us as described in Section 13.</li>
           <li><strong>Parent-owned cloud characters:</strong> on the account page, parents can delete individual characters or take a character out of a class (its progress is kept).</li>
-          <li><strong>A child's class membership:</strong> when a teacher removes a member, characters without a parent account are deleted together with their progress, collections, and sign-in tokens; parent-owned characters only leave the class and keep their progress under the parent account. Gifts already received by classmates still show the sender's nickname.</li>
+          <li><strong>A child's class membership:</strong> when a teacher removes a member, the child only leaves that class (the nickname, PIN, and sign-in tokens from that class's code are deleted); characters without a parent account and without other classes are deleted together with their progress, collections, and sign-in tokens; parent-owned characters keep their progress under the parent account. Gifts already received by classmates still show the sender's nickname.</li>
           <li><strong>Google links:</strong> choose "Unlink" in account settings.</li>
           <li><strong>Whole classes or other data:</strong> request deletion through the contact in Section 13; once we confirm you are the class teacher or the child's parent, we will delete it promptly.</li>
         </ul>

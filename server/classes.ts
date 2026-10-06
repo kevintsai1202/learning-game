@@ -13,8 +13,8 @@ import type { ClassInfo } from '../src/online/protocol';
 import type { CurriculumChoice } from '../src/store/save';
 import type { RoomFlags } from '../src/online/realtime';
 
-/** 一個孩子最多幾個班級（使用者決定，第 8 節第 2 點） */
-export const MAX_CLASSES = 5;
+/** 一個孩子最多幾個班級（使用者決定，第 8 節第 2 點；和畫面共用 protocol.ts 的） */
+export { MAX_CLASSES } from '../src/online/protocol';
 
 /** 一筆「我和某位朋友同在一班」的資料（ws.ts 從資料庫讀出來，交給 sharedClassNames） */
 export interface SharedMembership {

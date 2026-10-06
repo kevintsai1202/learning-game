@@ -44,12 +44,13 @@ async function inspect(query, log) {
 
   // 班級：老師帳號的（改版後才有 owner_id）、改版前的測試房間、改版前沒有擁有者的真房間
   const owner = (await hasColumn('rooms', 'owner_id')) ? 'r.owner_id' : 'NULL::text AS owner_id';
-  const rooms = await query(
-    `SELECT r.code, r.name, r.teacher_hash, r.created_at, ${owner},
-       (SELECT count(*)::int FROM accounts a WHERE a.room_code = r.code) AS members,
-       (SELECT max(a.last_seen) FROM accounts a WHERE a.room_code = r.code) AS last_seen
-     FROM rooms r ORDER BY r.created_at, r.code`,
-  );
+  // 多班級（第 10 版）起成員在 class_members，之前看 accounts.room_code
+  const members = (await has('class_members'))
+    ? `(SELECT count(*)::int FROM class_members m WHERE m.room_code = r.code) AS members,
+       (SELECT max(a.last_seen) FROM class_members m JOIN accounts a ON a.id = m.account_id WHERE m.room_code = r.code) AS last_seen`
+    : `(SELECT count(*)::int FROM accounts a WHERE a.room_code = r.code) AS members,
+       (SELECT max(a.last_seen) FROM accounts a WHERE a.room_code = r.code) AS last_seen`;
+  const rooms = await query(`SELECT r.code, r.name, r.teacher_hash, r.created_at, ${owner}, ${members} FROM rooms r ORDER BY r.created_at, r.code`);
   const test = [];
   const legacyReal = [];
   const owned = [];

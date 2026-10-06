@@ -1,8 +1,10 @@
 /**
  * 清掉正式資料庫裡 e2e 建的測試資料（A5 上線後的資料表；改版前的測試房間也一起清）：
  * - e2e 的大人帳號：帳號名稱 e2e_ 開頭、email 是「帳號名稱@example.com」、密碼 teach1234（e2e/onlineDevice.ts 的 TEST_PASSWORD），
- *   三個都符合才算。刪帳號時，它的班級（rooms.owner_id）、班上的角色（accounts.room_code）、名下的角色（accounts.parent_id）、
- *   權杖、email 連結、Google 綁定都跟著刪（外鍵 CASCADE）。
+ *   三個都符合才算。刪帳號時，它的班級（rooms.owner_id）、名下的角色（accounts.parent_id）、權杖、email 連結、
+ *   Google 綁定都跟著刪（外鍵 CASCADE）。多班級（資料表第 10 版）起刪班級只會刪成員資格（class_members），
+ *   所以先清空指向這些班級的舊欄位 accounts.room_code（它還連著會連帶刪角色的外鍵），
+ *   再另外刪掉測試班級裡沒有家長、也沒有其他班級的純班級角色；第 10 版之前班上的角色跟著班級刪。
  * - 改版前用管理密碼 teach123 建的測試房間（沒有擁有者）。
  * 安全檢查：要刪的班級裡如果有不是 e2e 家長名下的角色（真的家長讓孩子加入了測試班級），整個拒絕、什麼都不刪。
  * 預設只列出，加 --apply 才刪除。
@@ -61,20 +63,36 @@ async function purgeTestData(query, { apply, log }) {
   log(`改版前的測試房間（管理密碼 ${LEGACY_ROOM_PASSWORD}）${legacy.length} 間：${legacy.map((r) => `${r.code} ${r.name}`).join('、') || '沒有'}`);
   const roomCodes = [...owned, ...legacy].map((r) => r.code);
 
-  // 安全檢查：要刪的班級裡，不是測試家長名下的角色（刪班級會連帶刪掉它）
-  const strangers = roomCodes.length
-    ? await query('SELECT id, room_code, parent_id FROM accounts WHERE room_code = ANY($1) AND parent_id IS NOT NULL AND NOT (parent_id = ANY($2)) ORDER BY id', [roomCodes, userIds])
-    : [];
+  // 測試班級的成員：多班級（資料表第 10 版）起在 class_members，之前看 accounts.room_code
+  const multi = (await query("SELECT to_regclass('class_members') IS NOT NULL AS ok"))[0]?.ok;
+  const members = !roomCodes.length
+    ? []
+    : multi
+      ? await query('SELECT a.id, a.parent_id, m.room_code FROM class_members m JOIN accounts a ON a.id = m.account_id WHERE m.room_code = ANY($1) ORDER BY a.id, m.room_code', [roomCodes])
+      : await query('SELECT id, parent_id, room_code FROM accounts WHERE room_code = ANY($1) ORDER BY id', [roomCodes]);
+  // 安全檢查：要刪的班級裡，不是測試家長名下的角色（真的家庭加入了測試班級，先人工確認）
+  const strangers = members.filter((a) => a.parent_id && !userIds.includes(a.parent_id));
   const result = { users: users.length, rooms: roomCodes.length, blocked: strangers.length > 0 };
   if (strangers.length) {
-    log(`拒絕刪除：測試班級裡有別人家長名下的角色（刪班級會連帶刪掉）：${strangers.map((a) => `${a.id}（班級 ${a.room_code}）`).join('、')}。請先人工確認。`);
+    log(`拒絕刪除：測試班級裡有別人家長名下的角色：${strangers.map((a) => `${a.id}（班級 ${a.room_code}）`).join('、')}。請先人工確認。`);
     return result;
   }
   if (!apply) {
     log('只列出；加 --apply 才會刪除。');
     return result;
   }
-  // 先刪測試帳號（連同班級、班上與名下的角色），再刪改版前的測試房間
+  if (multi && roomCodes.length) {
+    // 舊欄位 accounts.room_code 還連著班級的外鍵（刪班級會連帶刪角色）：先清空，已經不在那一班的角色才不會被誤刪
+    await query('UPDATE accounts SET room_code = NULL WHERE room_code = ANY($1)', [roomCodes]);
+    // 多班級起刪班級只會刪成員資格：測試班級裡沒有家長、也沒有其他班級的純班級角色要另外刪
+    const orphans = await query(
+      `SELECT a.id FROM accounts a WHERE a.parent_id IS NULL AND a.id = ANY($1)
+         AND NOT EXISTS (SELECT 1 FROM class_members o WHERE o.account_id = a.id AND NOT (o.room_code = ANY($2)))`,
+      [[...new Set(members.map((m) => m.id))], roomCodes],
+    );
+    if (orphans.length) log(`已刪除測試班級裡的純班級角色 ${(await query('DELETE FROM accounts WHERE id = ANY($1) RETURNING id', [orphans.map((o) => o.id)])).length} 個。`);
+  }
+  // 先刪測試帳號（連同班級、名下的角色；第 10 版之前也連同班上的角色），再刪改版前的測試房間
   if (userIds.length) log(`已刪除測試帳號 ${(await query('DELETE FROM users WHERE id = ANY($1) RETURNING id', [userIds])).length} 個。`);
   if (legacy.length) log(`已刪除改版前的測試房間 ${(await query('DELETE FROM rooms WHERE code = ANY($1) RETURNING code', [legacy.map((r) => r.code)])).length} 間。`);
   const left = (await query('SELECT (SELECT count(*)::int FROM users) AS users, (SELECT count(*)::int FROM rooms) AS rooms, (SELECT count(*)::int FROM accounts) AS accounts'))[0];
