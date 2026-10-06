@@ -109,7 +109,7 @@ export function roomsKey(cloud: CloudLink | undefined): string | undefined {
 }
 
 /** 不在遊戲裡的畫面（不連線） */
-const OFFLINE_SCREENS: Screen[] = ['title', 'profiles', 'class', 'teacher'];
+const OFFLINE_SCREENS: Screen[] = ['title', 'profiles', 'class', 'classroom', 'teacher'];
 
 /** 即時連線的狀態（畫面顯示用） */
 interface RealtimeStore {

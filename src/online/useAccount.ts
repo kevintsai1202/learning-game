@@ -28,6 +28,8 @@ export interface RegisterInput {
 export interface JoiningClass {
   code: string;
   kidId?: string;
+  /** 掃碼後沒有大人登入時先問「老師在旁邊／我是家長」（L3）：選了家長才顯示登入表單 */
+  asParent?: boolean;
 }
 
 /** sessionStorage 的鍵：正在加入的班級 */

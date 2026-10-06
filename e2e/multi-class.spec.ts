@@ -50,6 +50,8 @@ test('哥哥在學校與安親班：家長掃兩個 QR code 加入、換島選�
   // ① 掃學校的 QR code：登入家長帳號 → 只有哥哥一個孩子，自動加入並在這台裝置進學校的班級島（L2，不用按按鈕）
   const p = await openDevice(browser, baseURL!);
   await p.page.goto(`./?join=${school.code}`);
+  // L3：沒有大人登入時先問「老師在旁邊／我是家長」
+  await p.page.getByTestId('join-as-parent').click();
   await p.page.getByTestId('account-username').fill(momName);
   await p.page.getByTestId('account-password').fill(TEST_PASSWORD);
   await p.page.getByTestId('account-submit').click();

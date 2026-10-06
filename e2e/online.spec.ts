@@ -47,15 +47,16 @@ test('班級：建立房間、帶進度加入、換裝置登入、離線同步�
   const localBefore = await profileOf(a.page);
   expect(Object.keys(localBefore.wrongBook).length).toBeGreaterThan(0);
 
-  await a.page.evaluate(() => (window as any).__game.ui.getState().goto('profiles'));
-  await a.page.getByTestId('open-class').click();
-  await a.page.getByTestId('class-tab-join').click();
-  await a.page.getByTestId('class-code').fill(codeText);
-  await a.page.getByTestId('class-nickname').fill('小安');
-  await a.page.getByTestId('class-pin').fill('1234');
-  await a.page.getByTestId('class-source').selectOption(localBefore.id);
-  await a.page.screenshot({ path: `${SHOTS}/02-kid-join.png` });
-  await a.page.getByTestId('class-submit').click();
+  // 帶著本機進度加入班級（L3 起畫面上沒有「第一次加入」，孩子的加入由家長掃碼或老師在平板上建；這裡直接呼叫同一個函式，測的是進度同步）
+  await a.page.evaluate(
+    ({ code, id }) => {
+      const g = (window as any).__game;
+      const p = g.game.getState().save.profiles.find((x: any) => x.id === id);
+      return g.cloud.getState().join({ code, nickname: '小安', pin: '1234', profile: p });
+    },
+    { code: codeText, id: localBefore.id },
+  );
+  await a.page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
   await expect.poll(() => screen(a.page)).toBe('island');
 
   // 同一個角色變成雲端角色，名字改成暱稱，進度都在

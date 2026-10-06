@@ -515,9 +515,9 @@ function ClassTab({ profile }: { profile: Profile }) {
     return (
       <div className="plain">
         <p>「{profile.name}」的進度只存在這台裝置。</p>
-        <p>加入班級後，進度（成績、錯題本、金幣、帽子）會存到班級伺服器，換一台平板登入也能接著玩。請到選角畫面點「🏫 班級」→「第一次加入」，可以選擇把這個角色的進度帶過去。</p>
-        <button className="btn small" onClick={() => goto('class')}>
-          🏫 前往班級畫面
+        <p>加入班級後，進度（成績、錯題本、金幣、帽子）會存到班級伺服器，換一台平板登入也能接著玩。請家長掃老師給的 QR code、用家長帳號選這個角色加入（進度會帶過去）。</p>
+        <button className="btn small" onClick={() => goto('teacher')}>
+          👨‍👩‍👧 家長登入
         </button>
       </div>
     );

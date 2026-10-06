@@ -77,13 +77,9 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
 
   // ---------- 用代碼加入班級：同一個角色，名字改成班上的暱稱 ----------
   const cls = await createClassViaApi(request, '二年一班');
-  await tablet.page.getByTestId('open-class').click();
-  await tablet.page.getByTestId('class-tab-join').click();
-  await tablet.page.getByTestId('class-code').fill(cls.code);
-  await tablet.page.getByTestId('class-nickname').fill('小安');
-  await tablet.page.getByTestId('class-pin').fill('1234');
-  await tablet.page.getByTestId('class-source').selectOption({ label: '用「安安」加入（雲端角色）' });
-  await tablet.page.getByTestId('class-submit').click();
+  // 雲端角色帶權杖加入班級（L3 起畫面上沒有「第一次加入」，家長改用掃碼加入；這裡直接呼叫同一個函式，測的是同一個角色）
+  await tablet.page.evaluate(({ id, code }) => (window as any).__game.cloud.getState().attachToClass(id, { code, nickname: '小安', pin: '1234' }), { id: local.id, code: cls.code });
+  await tablet.page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
   await expect.poll(() => screen(tablet.page)).toBe('island');
   const joined = await profileOf(tablet.page);
   // 多班級起角色的名字不改成班上的暱稱，暱稱記在班級清單裡

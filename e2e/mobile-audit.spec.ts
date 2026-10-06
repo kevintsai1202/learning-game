@@ -199,8 +199,9 @@ for (const d of DEVICES) {
       // 班級（線上版）：沒有設定伺服器也能顯示表單，直接切過去量版面
       await page.evaluate(() => (window as any).__game.ui.getState().goto('class'));
       await check('22-class-login');
-      await page.getByTestId('class-tab-join').click();
-      await check('23-class-join');
+      // 學校平板的教室密碼畫面（L3）
+      await page.evaluate(() => (window as any).__game.ui.getState().goto('classroom'));
+      await check('23-classroom-unlock');
       // 老師／家長帳號頁：登入與註冊表單（docs/plans/accounts.md 的 A1）
       await page.evaluate(() => (window as any).__game.ui.getState().goto('teacher'));
       await check('24-account-login');

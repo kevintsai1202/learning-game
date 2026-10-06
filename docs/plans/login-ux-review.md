@@ -1,6 +1,6 @@
 # 登入與加入流程的 UX 檢驗（老師、家長、學生）
 
-> 狀態：**檢驗報告（2026-10-06）**；使用者的決定見第 6、8 節與第 9 節最後，**L1 2026-10-06 12:09 上線**；**L2 2026-10-06 17:17 和多班級一起上線**；實作紀錄與上線結果見第 10 節；下一批 L3。依使用者要求，以資深 UI/UX 設計師的角度檢驗三種身分的登入操作；步驟數是**讀畫面程式算出來的**（`TitleScreen`、`ProfilesScreen`、`ClassScreen`、`TeacherScreen` 的 `AccountGate`／`AccountHome`／`ParentHome`、`JoinClassPanel`、`IslandHud`），不是實際走過瀏覽器。
+> 狀態：**檢驗報告（2026-10-06）**；使用者的決定見第 6、8 節與第 9 節最後，**L1 2026-10-06 12:09 上線**；**L2 2026-10-06 17:17 和多班級一起上線**；**L3 完成（2026-10-07），待上線**；實作紀錄與上線結果見第 10 節；下一批 L4。依使用者要求，以資深 UI/UX 設計師的角度檢驗三種身分的登入操作；步驟數是**讀畫面程式算出來的**（`TitleScreen`、`ProfilesScreen`、`ClassScreen`、`TeacherScreen` 的 `AccountGate`／`AccountHome`／`ParentHome`、`JoinClassPanel`、`IslandHud`），不是實際走過瀏覽器。
 > 相關文件：`docs/plans/accounts.md`（大人帳號，第 10 節是使用者的決定）、`docs/plans/class-join.md`（掃 QR code）、`docs/plans/guides.md`（批次 1.6 指引）、`docs/plans/roadmap.md`。
 > 建議分兩類：**A 純畫面整理**（不違背任何已記錄的決定）、**B 要翻案**（和 `accounts.md` 第 10 節或 `class-join.md` 第 1 節的決定相反，請使用者重新決定）。
 
@@ -308,3 +308,23 @@ L1、L2 排在批次 1.6（指引）之前；L3、L4 完成後指引的步驟才
 - `feature/online` 快轉合併 main（0767763）並 push，GitHub Pages 與 Zeabur 約 2 分鐘換新版（17:17:40 兩個網址的主程式都是新版）。伺服器啟動紀錄正常（PostgreSQL、Google 登入開啟、允許的來源只有兩個正式網址，沒有測試模式的警告）；`/api/config` 正常。
 - 資料表 9 → 10 版、班級成員搬到 `class_members`（見 `multi-class.md` 第 10 節）。兩個網址的隱私權政策都是新版（第 3 節表格中英文）；`check-google-origins.mjs --shot` 兩個網址都已授權、按鈕在帳號頁。
 - 沒有對正式伺服器跑 e2e（註冊會真的寄驗證信）；改動的畫面已在本機 e2e 驗證，正式環境特有的部分直接檢查。
+
+### L3 教室密碼（2026-10-07 完成，待上線）
+
+依第 7.1～7.2 節、第 8 節的決定，加上使用者 2026-10-07 對 7 個問題的決定（都照建議）：
+
+1. **伺服器**：資料表第 11 版 `rooms.class_password_hash`（只存雜湊，6 個字以上）。教室權杖放在 `tokens`（`kind='classroom'`，綁一個班級，8 小時），由 `lookupClassroomToken` 單獨查，不混進孩子與大人的身分。四個 API 只收教室權杖（老師、孩子的權杖一律 401），教室權杖也只能用在這四個：`POST /api/class/:code/unlock`（錯 5 次鎖 5 分鐘；老師還沒設密碼 404 `no_classroom_password`，不算猜錯）、`GET /api/class/members`（這一班每位孩子的暱稱與外觀，不含學習資料）、`POST /api/class/members/:id/device`（發孩子權杖，`via='tablet'`、綁這一班）、`POST /api/class/members`（建學生：沒有家長、沒有密碼、只在這一班；老師關掉「允許加入」回 403 `join_closed`；回應不發權杖，前端再打 device）。老師用 `PATCH /api/teacher/rooms/:code` 的 `classPassword` 設定或更換；班級資料多 `hasClassPassword`。
+2. **權杖來源 `tablet`**：和 `class` 同樣是「用班級登入」（`isClassLogin`）：被移出那一班、老師換教室密碼時踢下線（`hub.leftClass` 與 `revokeClassroomTokens`）；`leaveClass` 連同 tablet 權杖一起撤銷。重設孩子密碼只撤銷 `class` 權杖（`revokeClassTokens` 不變）。
+3. **畫面**：`?join=` 打開時沒有大人登入 → 帳號頁先問「學校的平板，老師在旁邊／我是家長」（決定 7：兩顆一樣大的按鈕，`Gate`）；老師 → `ClassroomScreen`（代碼已填、輸入教室密碼 → 名單卡片 → 點孩子進那一班的班級島；最後一張「➕ 新增學生」）。教室權杖記在 localStorage（`src/online/classroom.ts`，只記最近一個班級），8 小時內從選角畫面點「🏫 班級」直接到名單；「換班級／重新輸入教室密碼」清掉。進島走和家長「在這台裝置玩」同一條路（`playFromClassroom`，備份分身的確認相同）。班級畫面拿掉「第一次加入」（決定 4：只拿掉畫面，伺服器的 `/api/join` 保留給舊版網頁與測試資料），多一顆「老師輸入教室密碼」（決定 5）；老師班級頁多「🔑 教室密碼」區塊（決定 2：只顯示已設定／還沒設定，忘了就設新的）。
+4. **沒有做的**（決定 6）：成員表不顯示「最近在哪台裝置登入」。
+5. **隱私權政策**：第 1、9 節孩子加入的方式；第 2 節表格班級列加教室密碼、新增教室權杖一列、孩子資料列的收集時機、權杖列的刪除時機；第 10 節教室密碼的雜湊與鎖定。日期 2026-10-07。
+6. **測試**：`tests/server/classroom.test.ts`（6）、`migrate.test.ts` v10→v11、`ws.test.ts` tablet 權杖被踢、`tests/online/classroom.test.ts`（教室權杖的本機紀錄）、`parentCloud.test.ts` 的 `playFromClassroom`（3）；e2e `classroom.spec.ts`（老師設密碼 → 平板掃碼解鎖 → 新增學生進島 → 記住 8 小時 → 換密碼被踢、要重新輸入 → 關掉允許加入；家長掃碼選「我是家長」）。`online`、`puzzle`、`parent-cloud` 原本經由「第一次加入」畫面建帳號的步驟改成直接呼叫同一個函式（測的本來就是同步、金幣、同一個角色）；`mobile-audit` 改量教室密碼畫面。
+
+和第 7 節、第 9 節的說法不同、或規劃沒寫到的：
+
+- **換教室密碼登出哪些人**（決定 1）：只登出用教室密碼進來的（教室權杖、平板上的孩子）；孩子在家用代碼＋4 位數密碼登入的（`class`）不受影響。第 7.1 節原本寫撤銷所有 `class` 來源的權杖。
+- **教室權杖用 `kind='classroom'`，孩子權杖的來源用 `via='tablet'`**：第 9 節只寫「權杖加 `classroom` 種類」。平板點進去的孩子權杖要能和代碼登入的分開撤銷，所以多一個 `via`。
+- **「記住 8 小時」只管能不能再開名單**：平板上點過的孩子，權杖和其他孩子權杖一樣 180 天（換教室密碼或被移出時撤銷），不是 8 小時後要重新進島。
+- **第 7.2 節第 4 點「同一台平板第二個孩子每次都要再輸入教室密碼」**：改成 8 小時內不用（第 8 節第 3 點的決定已經蓋過它）。
+- **建學生的回應不發孩子權杖**：建好後前端再打一次 `device`，兩條進島的路徑共用同一個發權杖的入口。
+- **名單對任何拿到教室權杖的人都看得到全班暱稱與外觀**：這是教室密碼的用途；密碼外流時老師更換即可（政策第 10 節有寫）。

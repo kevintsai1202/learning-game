@@ -15,6 +15,7 @@ import {
   joinClass,
   loginClass,
   logoutClass,
+  playFromClassroom,
   playOnThisDevice,
   syncProfile,
   uploadToCloud,
@@ -67,6 +68,8 @@ interface CloudStore {
    * 這台裝置已經有同一個角色、但不是這個雲端角色時丟出 LocalConflictError；家長確認後帶 replaceLocal 再呼叫一次
    */
   playOnThisDevice: (kidId: string, server: string, userToken: string, opts?: { replaceLocal?: boolean }) => Promise<Profile>;
+  /** 學校平板從班上名單點一位孩子（L3 教室密碼；classroomToken 是老師輸入教室密碼拿到的）：角色下載到這台平板並切換成目前的角色 */
+  playFromClassroom: (kidId: string, classroomToken: string, opts?: { replaceLocal?: boolean }) => Promise<Profile>;
   /** 家長名下、還沒加入班級的雲端角色加入班級（同一個角色，不另開新角色） */
   attachToClass: (profileId: string, input: LoginInput) => Promise<Profile>;
   /** 把一個雲端角色從這台裝置拿掉（伺服器上已經刪除，或家長刪除帳號後）：本機角色、權杖、佇列都清掉 */
@@ -176,6 +179,16 @@ export const useCloud = create<CloudStore>((set, get) => ({
 
   playOnThisDevice: async (kidId, server, userToken, opts) => {
     const p = await playOnThisDevice(cloudDeps, server, userToken, kidId, opts);
+    useGame.getState().selectProfile(p.id);
+    timer.failures = 0;
+    void get().syncNow();
+    return p;
+  },
+
+  playFromClassroom: async (kidId, classroomToken, opts) => {
+    const server = serverUrl();
+    if (!server) throw new Error('還沒有設定班級伺服器');
+    const p = await playFromClassroom(cloudDeps, server, classroomToken, kidId, opts);
     useGame.getState().selectProfile(p.id);
     timer.failures = 0;
     void get().syncNow();

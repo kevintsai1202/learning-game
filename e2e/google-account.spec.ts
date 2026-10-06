@@ -85,6 +85,8 @@ test('掃 QR code 進來用 Google：不用選身分，直接成為家長、出�
   const d = await openDevice(browser, baseURL!);
   const name = uniqueUsername();
   await d.page.goto(`./?join=${room.code}`);
+  // L3：沒有大人登入時先問「老師在旁邊／我是家長」
+  await d.page.getByTestId('join-as-parent').click();
   await expect(d.page.getByTestId('join-login-note')).toContainText(room.code);
   await prepareGoogleAccount(d.page, `sub-${name}`, `${name}@gmail.com`);
   await d.page.getByTestId('account-google-login').click();

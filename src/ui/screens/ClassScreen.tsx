@@ -1,17 +1,14 @@
 /**
- * 班級畫面：孩子用「房間代碼＋暱稱＋4 位數密碼」登入班級，或第一次加入班級。
- * 加入時可以選新的外觀，或把這台裝置上的角色進度帶過去（那個角色直接變成雲端角色）。
- * 家長要找回孩子的角色時，用家長帳號登入（帳號頁；A4 起 Google 快速登入綁在家長帳號上）：
- * L1 起大人的入口統一在標題畫面的「大人登入」，這裡只在登入失敗時提示（docs/plans/login-ux-review.md 第 4.1 節）。
+ * 班級登入畫面：孩子用「班級代碼＋暱稱＋4 位數密碼」登入（備援；L3 起主要路徑是老師在學校平板輸入教室密碼、
+ * 家長掃 QR code 加入，docs/plans/login-ux-review.md 第 8 節第 4 點，「第一次加入」已拿掉）。
+ * 老師在旁邊時改走教室密碼（ClassroomScreen）。家長要找回孩子的角色時，用家長帳號登入（帳號頁）：
+ * L1 起大人的入口統一在標題畫面的「大人登入」，這裡只在登入失敗時提示（第 4.1 節）。
  */
 import { useState, type SubmitEvent } from 'react';
 import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
 import { useCloud } from '../../online/useCloud';
 import { getToken } from '../../online/storage';
-import type { AvatarConfig } from '../../store/save';
-import { ANIMALS, COLORS } from './ProfilesScreen';
-import { AnimalIcon } from '../AnimalIcon';
 import { classesOf } from '../../store/island';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
@@ -24,34 +21,17 @@ const digits = (v: string, n: number) => v.replace(/\D/g, '').slice(0, n);
 
 export function ClassScreen() {
   const goto = useUi((s) => s.goto);
-  const profiles = useGame((s) => s.save.profiles);
   const active = useGame((s) => s.profile());
-  const join = useCloud((s) => s.join);
   const login = useCloud((s) => s.login);
-  const attachToClass = useCloud((s) => s.attachToClass);
   // 目前角色是雲端角色但需要重新登入時，先填好代碼與暱稱（多班級：第一個班級的代碼與那一班的暱稱）
   const relogin = active?.cloud && !getToken(active.cloud.accountId) ? active : null;
   const reloginRoom = classesOf(relogin)[0];
-  const [mode, setMode] = useState<'login' | 'join'>('login');
   const [code, setCode] = useState(reloginRoom?.code ?? '');
   const [nickname, setNickname] = useState(reloginRoom?.nickname ?? relogin?.name ?? '');
   const [pin, setPin] = useState('');
-  /** 加入時的角色來源：new 為建立新角色，否則是要帶過去的本機角色 id */
-  const [source, setSource] = useState('new');
-  const [avatar, setAvatar] = useState<AvatarConfig>({ animal: 'bear', color: COLORS[0], hat: null });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** 可以帶進度加入的角色：本機角色（上傳一份到班級），以及家長名下、還沒加入班級的雲端角色（同一個角色直接加入） */
-  const localProfiles = profiles.filter((p) => !p.cloud || (!classesOf(p).length && !!getToken(p.cloud.accountId)));
   const ready = code.length === 6 && nickname.trim().length > 0 && pin.length === 4 && !busy;
-
-  /** 成功後進島 */
-  const enterIsland = (who: string) => {
-    sfx.fanfare();
-    teleport(SPAWN);
-    speak(enterIslandLine(who));
-    goto('island');
-  };
 
   const submit = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -59,17 +39,11 @@ export function ClassScreen() {
     setBusy(true);
     setError(null);
     try {
-      const input = { code, nickname: nickname.trim(), pin };
-      const picked = profiles.find((x) => x.id === source);
-      const p =
-        mode === 'login'
-          ? await login(input)
-          : source === 'new' || !picked
-            ? await join({ ...input, avatar })
-            : picked.cloud
-              ? await attachToClass(picked.id, input)
-              : await join({ ...input, profile: picked });
-      enterIsland(p.name);
+      const p = await login({ code, nickname: nickname.trim(), pin });
+      sfx.fanfare();
+      teleport(SPAWN);
+      speak(enterIslandLine(p.name));
+      goto('island');
     } catch (err) {
       setError(err instanceof Error ? err.message : '發生錯誤，請再試一次');
       sfx.oops();
@@ -85,22 +59,14 @@ export function ClassScreen() {
           <span className="ribbon" style={{ background: '#2f8f6b' }}>
             🏫 班級
           </span>
-          <h2>{mode === 'login' ? '登入班級' : '第一次加入班級'}</h2>
+          <h2>登入班級</h2>
           <button className="btn small white" onClick={() => goto('profiles')} data-testid="class-back">
             返回
           </button>
         </div>
-        <div className="tabs">
-          <button className={`btn small white ${mode === 'login' ? 'on' : ''}`} onClick={() => setMode('login')} data-testid="class-tab-login">
-            我加入過了
-          </button>
-          <button className={`btn small white ${mode === 'join' ? 'on' : ''}`} onClick={() => setMode('join')} data-testid="class-tab-join">
-            第一次加入
-          </button>
-        </div>
         <form className="panel-body" onSubmit={submit}>
           <label className="label" htmlFor="class-code">
-            房間代碼（6 個數字，請問老師）
+            班級代碼（6 個數字，請問老師）
           </label>
           <input
             id="class-code"
@@ -113,7 +79,7 @@ export function ClassScreen() {
             data-testid="class-code"
           />
           <label className="label" htmlFor="class-nickname">
-            暱稱{mode === 'join' && '（請用綽號，不要用真名）'}
+            暱稱
           </label>
           <input
             id="class-nickname"
@@ -126,7 +92,7 @@ export function ClassScreen() {
             data-testid="class-nickname"
           />
           <label className="label" htmlFor="class-pin">
-            {mode === 'join' ? '自己設一個 4 位數密碼（要記住喔）' : '4 位數密碼'}
+            4 位數密碼
           </label>
           <input
             id="class-pin"
@@ -139,65 +105,24 @@ export function ClassScreen() {
             placeholder="● ● ● ●"
             data-testid="class-pin"
           />
-
-          {mode === 'join' && (
-            <>
-              {localProfiles.length > 0 && (
-                <>
-                  <label className="label" htmlFor="class-source">
-                    要用哪個角色？
-                  </label>
-                  <select id="class-source" className="text-input" value={source} onChange={(e) => setSource(e.target.value)} data-testid="class-source">
-                    <option value="new">建立新角色</option>
-                    {localProfiles.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.cloud ? `用「${p.name}」加入（雲端角色）` : `帶著「${p.name}」的進度過去`}
-                      </option>
-                    ))}
-                  </select>
-                </>
-              )}
-              {source === 'new' && (
-                <>
-                  <span className="label">選一個動物</span>
-                  <div className="choice-row">
-                    {ANIMALS.map((a) => (
-                      <button
-                        type="button"
-                        key={a.id}
-                        className={`animal-btn ${avatar.animal === a.id ? 'on' : ''}`}
-                        onClick={() => setAvatar({ ...avatar, animal: a.id })}
-                        aria-label={a.name}
-                        aria-pressed={avatar.animal === a.id}
-                      >
-                        <AnimalIcon animal={a.id} />
-                      </button>
-                    ))}
-                  </div>
-                  <span className="label">選一個顏色</span>
-                  <div className="choice-row">
-                    {COLORS.map((c) => (
-                      <button type="button" key={c} className={`swatch ${avatar.color === c ? 'on' : ''}`} style={{ background: c }} onClick={() => setAvatar({ ...avatar, color: c })} aria-label={`顏色 ${c}`} />
-                    ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
           {error && (
             <p className="notice" role="alert" style={{ color: '#c0392b' }} data-testid="class-error">
               {error}
             </p>
           )}
-          {/* 包一層 div：按鈕自己佔一行，不會擠到上面的下拉選單旁邊 */}
           <div style={{ marginTop: 14 }}>
             <button type="submit" className="btn big green" disabled={!ready} data-testid="class-submit">
-              {busy ? '連線中…' : mode === 'login' ? '登入，出發！' : '加入，出發！'}
+              {busy ? '連線中…' : '登入，出發！'}
             </button>
           </div>
-          {mode === 'login' && error && (
-            <div style={{ marginTop: 16 }}>
+          <div style={{ marginTop: 16 }}>
+            <span className="label">在學校、老師在旁邊？不用記密碼：</span>
+            <button type="button" className="btn small white" onClick={() => goto('classroom')} data-testid="class-classroom">
+              👩‍🏫 老師輸入教室密碼
+            </button>
+          </div>
+          {error && (
+            <div style={{ marginTop: 12 }}>
               <span className="label">忘記密碼請老師重設；角色在家長帳號下的，請家長幫忙：</span>
               <button type="button" className="btn small white" onClick={() => goto('teacher')} data-testid="class-parent-login">
                 大人登入

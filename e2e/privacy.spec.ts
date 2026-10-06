@@ -48,6 +48,10 @@ test('隱私權政策：中英文都有 Google 使用者資料與有限使用聲
   await expect(body).toContainText('是，存到我的帳號');
   await expect(body).toContainText('只有家長身分的帳號（沒有老師身分）登入期間');
   await expect(body).not.toContainText('「存到雲端」時');
+  // L3 教室密碼：教室密碼與教室權杖；孩子加入的方式不再是自己用代碼加入
+  await expect(body).toContainText('教室密碼（老師設定時才有，只存雜湊值）');
+  await expect(body).toContainText('教室權杖');
+  await expect(body).not.toContainText('孩子用老師給的班級代碼加入班級，不需要註冊');
   // 英文版（Google 審核人員看得懂的版本）
   const en = page.locator('#english');
   await expect(en).toContainText('Learning Island (知識島大冒險) Privacy Policy');
@@ -59,6 +63,8 @@ test('隱私權政策：中英文都有 Google 使用者資料與有限使用聲
   await expect(en).not.toContainText('admin password');
   await expect(en).toContainText('a parent-only account (one without the teacher role)');
   await expect(en).not.toContainText('"Save to cloud"');
+  await expect(en).toContainText('classroom password');
+  await expect(en).toContainText('Classroom token');
   // 中英文各有一個連到 Google API 服務使用者資料政策的連結
   await expect(page.locator('a[href="https://developers.google.com/terms/api-services-user-data-policy"]')).toHaveCount(2);
 

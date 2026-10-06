@@ -51,6 +51,8 @@ test('家長掃 QR code：一個孩子自動進島、兩個孩子點卡片（撞
   /** 這台裝置打開加入連結、用家長帳號登入 */
   const openAndLogin = async (page: Page, joinUrl: string, username: string) => {
     await page.goto(joinUrl);
+    // L3：沒有大人登入時先問「老師在旁邊／我是家長」
+    await page.getByTestId('join-as-parent').click();
     await expect(page.getByTestId('join-login-note')).toContainText(room.code);
     expect(page.url()).not.toContain('join=');
     await page.getByTestId('account-username').fill(username);
@@ -135,7 +137,6 @@ test('家長掃 QR code：一個孩子自動進島、兩個孩子點卡片（撞
 
   // ⑥ 還沒有密碼的弟弟用班級代碼登入：畫面直接說還沒有設定密碼（使用者決定）
   await c.page.evaluate(() => (window as any).__game.ui.getState().goto('class'));
-  await c.page.getByTestId('class-tab-login').click();
   await c.page.getByTestId('class-code').fill(room.code);
   await c.page.getByTestId('class-nickname').fill('弟弟');
   await c.page.getByTestId('class-pin').fill('1111');

@@ -238,13 +238,9 @@ test('雲端角色：益智遊戲的金幣由伺服器用同樣規則算，同�
   const kid = await openDevice(browser, baseURL!);
   const { page } = kid;
   await createKid(page, '安安');
-  await page.evaluate(() => (window as any).__game.ui.getState().goto('profiles'));
-  await page.getByTestId('open-class').click();
-  await page.getByTestId('class-tab-join').click();
-  await page.getByTestId('class-code').fill(code);
-  await page.getByTestId('class-nickname').fill('益智小安');
-  await page.getByTestId('class-pin').fill('1234');
-  await page.getByTestId('class-submit').click();
+  // 用班級代碼加入（L3 起畫面上沒有「第一次加入」；直接呼叫同一個函式，測的是金幣規則）
+  await page.evaluate((c) => (window as any).__game.cloud.getState().join({ code: c, nickname: '益智小安', pin: '1234', avatar: { animal: 'bear', color: '#ffffff', hat: null } }), code);
+  await page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
   await expect.poll(() => screen(page)).toBe('island');
   await expect.poll(() => cloudState(page), { timeout: 20_000 }).toEqual({ status: 'synced', pending: 0 });
 

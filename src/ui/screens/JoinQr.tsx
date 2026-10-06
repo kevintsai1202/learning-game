@@ -40,7 +40,7 @@ export function JoinQr({ code, name, joinOpen }: { code: string; name: string; j
       <div className="join-qr-body">
         {img ? <img src={img} width={160} height={160} alt={`加入「${name}」的 QR code（班級代碼 ${code}）`} data-testid="join-qr" /> : <div className="join-qr-placeholder">產生中…</div>}
         <div className="plain" style={{ flex: '1 1 220px' }}>
-          <p style={{ margin: '0 0 6px' }}>家長用手機掃描，登入家長帳號後選孩子就能加入，不用輸入密碼。也可以把連結傳給家長：</p>
+          <p style={{ margin: '0 0 6px' }}>家長用手機掃描，登入家長帳號後選孩子就能加入，不用輸入密碼。學校平板掃同一個 QR code，由老師輸入教室密碼就能看到名單。也可以把連結傳給家長：</p>
           <code className="join-url" data-testid="join-url">
             {url}
           </code>

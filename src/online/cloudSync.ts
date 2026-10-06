@@ -118,6 +118,20 @@ export class LocalConflictError extends Error {
  */
 export async function playOnThisDevice(deps: CloudDeps, server: string, userToken: string, kidId: string, opts: { replaceLocal?: boolean } = {}): Promise<Profile> {
   const res = await deps.call<SessionResponse>('POST', `/api/parent/kids/${encodeURIComponent(kidId)}/device`, { base: server, token: userToken, body: {} });
+  return adoptDeviceSession(deps, server, res, opts);
+}
+
+/**
+ * 學校平板從班上名單點一位孩子（L3 教室密碼）：用教室權杖拿這個孩子的權杖，角色下載到這台平板。
+ * 和家長的「在這台裝置玩」走同一條路（備份分身的確認也相同）；教室權杖失效時伺服器回 401，本機什麼都不動
+ */
+export async function playFromClassroom(deps: CloudDeps, server: string, classroomToken: string, kidId: string, opts: { replaceLocal?: boolean } = {}): Promise<Profile> {
+  const res = await deps.call<SessionResponse>('POST', `/api/class/members/${encodeURIComponent(kidId)}/device`, { base: server, token: classroomToken, body: {} });
+  return adoptDeviceSession(deps, server, res, opts);
+}
+
+/** 「在這台裝置玩」拿到孩子的權杖與存檔之後：記權杖、本機存檔＝伺服器版本＋這台裝置還沒送出的進度（家長與學校平板共用） */
+function adoptDeviceSession(deps: CloudDeps, server: string, res: SessionResponse, opts: { replaceLocal?: boolean }): Profile {
   const cloud = cloudOf(server, res);
   // 這台裝置已經有同一個角色（同一個角色 id）、但不是這個雲端角色（例如之前用備份匯入的本機角色）：
   // 換成雲端版會蓋掉這台裝置上的進度，家長確認（replaceLocal）才取代（同一個雲端角色只是權杖不見了，照常拿新權杖）

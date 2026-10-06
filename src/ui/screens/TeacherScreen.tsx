@@ -19,7 +19,7 @@ import { zoneName } from '../../world/layout';
 import { JoinClassPanel } from './JoinClassPanel';
 import { JoinQr } from './JoinQr';
 import type { ZoneId } from '../../store/useUi';
-import { MAX_CLASSES, kidRooms } from '../../online/protocol';
+import { CLASS_PASSWORD_MIN, MAX_CLASSES, kidRooms } from '../../online/protocol';
 import { addDeclined, profilesToOffer, readDeclined } from '../../online/uploadOffer';
 import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
 
@@ -122,6 +122,49 @@ function whereText(m: MemberSummary): string {
   return m.online ? '🟢' : '';
 }
 
+/**
+ * 教室密碼（L3，docs/plans/login-ux-review.md 第 7.1 節）：只存雜湊，看不到目前的密碼，忘了就直接設新的。
+ * 6 個字以上；更換後這一班已經解鎖的平板、平板上進島的孩子都要重新來過
+ */
+function ClassPassword({ has, onSave }: { has: boolean; onSave: (password: string) => Promise<void> }) {
+  /** 正在輸入的新密碼；null 表示沒在改 */
+  const [draft, setDraft] = useState<string | null>(null);
+  const ok = draft !== null && draft.trim().length >= CLASS_PASSWORD_MIN && draft.trim().length <= 64;
+  return (
+    <div className="plain" style={{ margin: '8px 0' }} data-testid="class-password">
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <strong>🔑 教室密碼</strong>
+        <span data-testid="class-password-status">{has ? '已設定' : '還沒設定（學校平板要用）'}</span>
+        {draft === null && (
+          <button className="btn small white" onClick={() => setDraft('')} data-testid="class-password-set">
+            {has ? '更換' : '設定'}
+          </button>
+        )}
+      </div>
+      {draft !== null && (
+        <form
+          style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (ok) void onSave(draft.trim()).then(() => setDraft(null));
+          }}
+        >
+          <input className="text-input" maxLength={64} value={draft} onChange={(e) => setDraft(e.target.value)} aria-label="教室密碼" placeholder={`${CLASS_PASSWORD_MIN} 個字以上`} data-testid="class-password-input" autoFocus />
+          <button type="submit" className="btn small green" disabled={!ok} data-testid="class-password-save">
+            儲存
+          </button>
+          <button type="button" className="btn small white" onClick={() => setDraft(null)}>
+            取消
+          </button>
+        </form>
+      )}
+      <p className="notice" style={{ margin: '6px 0 0' }}>
+        學校平板掃 QR code 後，由你輸入教室密碼（{CLASS_PASSWORD_MIN} 個字以上，不要和帳號密碼一樣），就能看到班上名單讓孩子進島、新增學生；平板記住 8 小時。密碼外流就換一組，平板要重新輸入。
+      </p>
+    </div>
+  );
+}
+
 /** 班級名稱與「改名稱」（升級換年級時用；規則和建立班級相同：1～20 個字） */
 function ClassName({ name, onSave }: { name: string; onSave: (name: string) => Promise<void> }) {
   /** 正在改的名稱；null 表示沒在改 */
@@ -155,6 +198,31 @@ function ClassName({ name, onSave }: { name: string; onSave: (name: string) => P
         取消
       </button>
     </form>
+  );
+}
+
+/**
+ * 還沒登入時先分流（L3 教室密碼，docs/plans/login-ux-review.md 第 7.4 節）：掃 QR code 進來的，先問是老師在旁邊（學校平板，輸入教室密碼）
+ * 還是家長（登入）；選了家長、或不是掃碼進來的，才顯示登入表單
+ */
+function Gate() {
+  const joining = useAccount((s) => s.joining);
+  const setJoining = useAccount((s) => s.setJoining);
+  const goto = useUi((s) => s.goto);
+  if (!joining || joining.asParent) return <AccountGate />;
+  return (
+    <div className="panel-body" data-testid="join-entry">
+      <p className="plain" style={{ margin: '0 0 10px' }}>🏫 加入班級（代碼 {joining.code}）。這台是誰的裝置？</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <button className="btn big green" onClick={() => goto('classroom')} data-testid="join-as-teacher">
+          👩‍🏫 學校的平板，老師在旁邊
+        </button>
+        <button className="btn big" onClick={() => setJoining({ ...joining, asParent: true })} data-testid="join-as-parent">
+          👨‍👩‍👧 我是家長
+        </button>
+      </div>
+      <p className="notice">老師：輸入教室密碼就能看到班上名單，點孩子進島或新增學生。家長：登入後選孩子就能加入，不用密碼。</p>
+    </div>
   );
 }
 
@@ -404,7 +472,7 @@ function AccountGate() {
             </button>
           </p>
         )}
-        <p className="notice">孩子不用註冊：家長掃老師給的 QR code、用家長帳號選孩子加入（不用密碼）；或孩子用「班級代碼＋暱稱＋自己設的 4 位數密碼」加入。</p>
+        <p className="notice">孩子不用註冊：家長掃老師給的 QR code、用家長帳號選孩子加入（不用密碼）；學校平板掃同一個 QR code，由老師輸入教室密碼。</p>
       </form>
     </>
   );
@@ -1286,7 +1354,11 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
       <button className="btn small white" onClick={onBack} data-testid="class-back">
         ← 我的班級
       </button>
-      {justCreated && <p className="notice">班級建好了！請家長掃下面的 QR code（或把連結傳給家長），用家長帳號選孩子加入；也可以把班級代碼告訴孩子，孩子在選角畫面點「🏫 班級」→「第一次加入」。</p>}
+      {justCreated && (
+        <p className="notice">
+          班級建好了！先設定教室密碼，再讓家長掃下面的 QR code（或把連結傳給家長）用家長帳號選孩子加入；學校平板掃同一個 QR code、由你輸入教室密碼，就能看到名單讓孩子進島或新增學生。
+        </p>
+      )}
       {room && (
         <>
           <div className="room-code-box">
@@ -1296,6 +1368,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
             </strong>
             <ClassName name={room.name} onSave={(name) => act(() => call('PATCH', base, { name }), `班級名稱改成「${name}」`)} />
           </div>
+          <ClassPassword has={!!room.hasClassPassword} onSave={(classPassword) => act(() => call('PATCH', base, { classPassword }), '教室密碼設定好了。已經解鎖的平板要重新輸入。')} />
           <Check checked={room.joinOpen} onChange={(v) => void act(() => call('PATCH', base, { joinOpen: v }), v ? '已開放加入' : '已停止加入')} testId="toggle-join">
             允許新的孩子加入（全班都加入後可以關掉，避免代碼外流後有陌生人加入）
           </Check>
@@ -1325,7 +1398,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
         </button>
       </div>
       {members.length === 0 ? (
-        <p className="plain">還沒有孩子加入。請孩子在選角畫面點「🏫 班級」→「第一次加入」，輸入上面的班級代碼。</p>
+        <p className="plain">還沒有孩子加入。請家長掃上面的 QR code 用家長帳號加入；或用學校平板掃 QR code、輸入教室密碼後按「新增學生」。</p>
       ) : (
         <div className="scroll-x">
           <table className="report-table" data-testid="member-table">
@@ -1468,7 +1541,7 @@ export function TeacherScreen() {
         {/* 整頁一起捲動：裡面的區塊不各自捲動（不然區塊被壓扁、按鈕被切掉、多出捲軸）；大人用的頁面字小一號 */}
         <div className="account-scroll">
           <EmailLinkPanel />
-          {session ? <AccountHome /> : resetting ? null : <AccountGate />}
+          {session ? <AccountHome /> : resetting ? null : <Gate />}
         </div>
       </div>
     </div>

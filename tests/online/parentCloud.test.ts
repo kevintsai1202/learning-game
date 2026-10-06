@@ -7,7 +7,7 @@ import { createApp } from '../../server/app';
 import type { Db } from '../../server/db';
 import { openTestDb, resetDb } from '../server/helpers';
 import { api, type ApiOptions } from '../../src/online/api';
-import { attachToClass, LocalConflictError, playOnThisDevice, syncProfile, uploadToCloud, type CloudDeps } from '../../src/online/cloudSync';
+import { attachToClass, LocalConflictError, playFromClassroom, playOnThisDevice, syncProfile, uploadToCloud, type CloudDeps } from '../../src/online/cloudSync';
 import { applyOp, type Op } from '../../src/online/ops';
 import { emptyOutbox, enqueue, type Outbox } from '../../src/online/sync';
 import { addProfile, createEmptySave, parseProfile, type Profile } from '../../src/store/save';
@@ -200,5 +200,55 @@ describe('家長的雲端角色（前端）', () => {
     const after = d.profiles.get(up.id)!;
     expect(after.cloud).toEqual({ server: SERVER, accountId: up.cloud!.accountId });
     expect(after.coins).toBe(40);
+  });
+});
+
+describe('學校平板用教室權杖讓孩子進島（L3 教室密碼）', () => {
+  /** 建班、設教室密碼、解鎖，回傳班級代碼與教室權杖 */
+  async function classroom(app: ReturnType<typeof createApp>) {
+    const teacher = await register(app, { parent: false, teacher: true });
+    const room = (await post(app, '/api/teacher/rooms', { name: '二年三班' }, teacher)).room;
+    await post(app, `/api/teacher/rooms/${room.code}`, { classPassword: 'bear2026' }, teacher, 'PATCH');
+    const unlocked = await post(app, `/api/class/${room.code}/unlock`, { password: 'bear2026' });
+    return { code: room.code as string, classroomToken: unlocked.token as string };
+  }
+
+  it('點名單上的孩子：這台平板拿到他的權杖、存檔是伺服器版本、之後能同步', async () => {
+    const app = createApp({ db });
+    const { code, classroomToken } = await classroom(app);
+    const kid = await post(app, '/api/join', { code, nickname: '小美', pin: '1234', avatar: { animal: 'cat', color: '#ffffff', hat: null } });
+    const tablet = device(app);
+    const p = await playFromClassroom(tablet.deps, SERVER, classroomToken, kid.account.id);
+    expect(p).toMatchObject({ name: '小美', cloud: { server: SERVER, accountId: kid.account.id, rooms: [{ code, name: '二年三班', nickname: '小美' }] } });
+    expect(tablet.tokens.get(kid.account.id)).toBeTruthy();
+    expect((await syncProfile(tablet.deps, p.id)).status).toBe('synced');
+  });
+
+  it('這台平板已經有同一個角色、但不是這個雲端角色時不蓋掉（和家長的「在這台裝置玩」相同）；確認後取代', async () => {
+    const app = createApp({ db });
+    const { code, classroomToken } = await classroom(app);
+    const mom = await register(app, { parent: true, teacher: false });
+    const home = device(app);
+    const local = localKid('安安', 33);
+    home.profiles.set(local.id, local);
+    const up = await uploadToCloud(home.deps, SERVER, mom, local.id);
+    await post(app, `/api/parent/kids/${up.cloud!.accountId}/class`, { code, nickname: '小安' }, mom);
+    const tablet = device(app);
+    tablet.profiles.set(local.id, { ...local, coins: 50 });
+    await expect(playFromClassroom(tablet.deps, SERVER, classroomToken, up.cloud!.accountId)).rejects.toBeInstanceOf(LocalConflictError);
+    expect(tablet.tokens.size).toBe(0);
+    const p = await playFromClassroom(tablet.deps, SERVER, classroomToken, up.cloud!.accountId, { replaceLocal: true });
+    expect(p).toMatchObject({ id: local.id, coins: 33 });
+  });
+
+  it('教室權杖失效（老師換了密碼）：401，本機什麼都不動', async () => {
+    const app = createApp({ db });
+    const { code, classroomToken } = await classroom(app);
+    const kid = await post(app, '/api/join', { code, nickname: '小美', pin: '1234', avatar: { animal: 'cat', color: '#ffffff', hat: null } });
+    const tablet = device(app);
+    await expect(playFromClassroom(tablet.deps, SERVER, 'ct_stale', kid.account.id)).rejects.toMatchObject({ status: 401 });
+    expect(tablet.tokens.size).toBe(0);
+    expect(tablet.profiles.size).toBe(0);
+    expect(classroomToken).toBeTruthy();
   });
 });
