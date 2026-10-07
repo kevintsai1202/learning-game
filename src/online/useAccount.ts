@@ -35,6 +35,19 @@ export interface JoiningClass {
 /** sessionStorage 的鍵：正在加入的班級 */
 const JOINING_KEY = 'learning-island-joining';
 
+/** sessionStorage 的鍵：正在接手的家長連結卡（L4） */
+const CLAIMING_KEY = 'learning-island-claiming';
+
+/** 讀回這個分頁正在接手的連結卡代碼（讀不到或格式不對就是沒有） */
+function readClaiming(): string | null {
+  try {
+    const raw = typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(CLAIMING_KEY);
+    return raw && /^[A-Za-z0-9_-]{43}$/.test(raw) ? raw : null;
+  } catch {
+    return null;
+  }
+}
+
 /** 讀回這個分頁正在加入的班級（讀不到或格式不對就是沒有） */
 function readJoining(): JoiningClass | null {
   try {
@@ -79,6 +92,12 @@ interface AccountStore {
    */
   joining: JoiningClass | null;
   setJoining: (joining: JoiningClass | null) => void;
+  /**
+   * 正在接手的家長連結卡代碼（L4：老師給的 ?claim= 連結）：帳號頁登入後顯示接手面板，完成或取消時清掉。
+   * 存在 sessionStorage，註冊途中重新整理也還在
+   */
+  claiming: string | null;
+  setClaiming: (code: string | null) => void;
   /** 打開驗證連結：驗證 email（不用登入；這台有登入時順便更新帳號資料） */
   verifyEmail: (token: string) => Promise<void>;
   /** 忘記密碼：帳號名稱或 email；伺服器一律回同一句話 */
@@ -134,6 +153,7 @@ export const useAccount = create<AccountStore>((set, get) => {
     verifyMail: null,
     emailLink: null,
     joining: readJoining(),
+    claiming: readClaiming(),
 
     register: async ({ remember, ...body }) => {
       const base = server();
@@ -198,6 +218,16 @@ export const useAccount = create<AccountStore>((set, get) => {
         // 無痕模式等不能存：只在這次開著的頁面裡有效
       }
       set({ joining });
+    },
+
+    setClaiming: (code) => {
+      try {
+        if (code) sessionStorage.setItem(CLAIMING_KEY, code);
+        else sessionStorage.removeItem(CLAIMING_KEY);
+      } catch {
+        // 無痕模式等不能存：只在這次開著的頁面裡有效
+      }
+      set({ claiming: code });
     },
 
     verifyEmail: async (token) => {

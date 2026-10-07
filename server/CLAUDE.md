@@ -49,6 +49,7 @@ docker rm -f li-pg-test
 - **權杖三種**：`tokens.ts` 的 `lookupToken` 回傳孩子（雲端角色）與大人（`user_id`，不屬於班級）兩種身分；教室權杖（L3，kind `classroom`，綁一個班級、8 小時）由 `lookupClassroomToken` 單獨查，只給 `/api/class/…` 四個 API 用（`authenticateClassroom`），其他 API 一律 401。改版前的老師權杖（kind `teacher`）一律視為無效。
   - 孩子權杖的班級從成員資格讀（`class_members`，加入或退出班級立刻生效；多班級起是清單，第一個班級在前面）；`tokens.via` 記來源：`class`（孩子用班級代碼＋暱稱＋密碼登入）、`tablet`（學校平板用教室密碼解鎖後從名單點進去，L3）、`parent`（家長「在這台裝置玩」）；`class`、`tablet` 權杖的 `tokens.room_code` 是用哪一班登入的（家長權杖的這一欄不代表什麼，不能拿來判斷）。「用班級登入」的判斷統一用 `isClassLogin(via)`（被移出那一班、換教室密碼時踢下線）；重設孩子密碼只撤銷 `class`（`revokeClassTokens`），換教室密碼撤銷教室權杖與 `tablet`（`revokeClassroomTokens`）。
   - `authenticate(c, 'kid')`：班級功能用，角色沒有班級時回 403 `no_class`（送禮、同學名單因此不用自己檢查）；`authenticateKidAny`：班級可以空，只給同步（`/api/ops`）、讀存檔（`/api/me`）與「帶權杖加入班級」用；`authenticateUser` 只收大人的。WebSocket 遇到沒有班級的角色：島嶼互訪 I1 起進他自己的島（改版前用 4004 `CLOSE_NO_CLASS` 關閉）。
+- **家長連結卡**（L4，`docs/plans/login-ux-review.md` 第 7.3 節）：`claim_codes` 只存代碼雜湊，一個孩子同時只有一張（重新產生時刪舊的），7 天、用過不能再用；接手在交易裡先鎖代碼列再鎖孩子的帳號列（兩位家長同時接手只有一位成功），只改 `parent_id`，進度、班級、權杖都不動。查詢不回帳號 id。
 - **家長的雲端角色與退出班級**（A2，`docs/plans/accounts.md` 第 6 節）：
   - 角色可以只有家長、沒有班級（`accounts` 的限制：班級與家長至少一個）；沒有班級就沒有孩子密碼。
   - 退出某一班（老師移出、家長讓孩子退出）用 `gifts.ts` 的 `settlePendingGifts(…, { roomCode })`（只結清那一班的：收到與送出的未收禮物都退款，送出的標成看過）＋`classes.ts` 的 `leaveClass`（刪掉那一班的成員資格與那一班發的 `class` 權杖，家長裝置與別班的權杖留著）；沒有家長、也沒有其他班級的純班級角色照舊刪除。

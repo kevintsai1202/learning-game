@@ -29,6 +29,7 @@ import { startRealtime } from './online/realtimeClient';
 import { useAccount } from './online/useAccount';
 import { readEmailLink, stripEmailLink } from './online/emailLinks';
 import { readJoinCode, stripJoinCode } from './online/joinLink';
+import { readClaimCode, stripClaimCode } from './online/claimLink';
 
 /** 各畫面的配樂 */
 const SCREEN_MUSIC: Record<Screen, Track> = {
@@ -69,6 +70,15 @@ export function App() {
     if (!code) return;
     window.history.replaceState(window.history.state, '', stripJoinCode(window.location.href));
     useAccount.getState().setJoining({ code });
+    useUi.getState().goto('teacher');
+  }, []);
+
+  // 老師給的家長連結卡打開（?claim=代碼，L4）：先從網址拿掉，到帳號頁讓家長登入並把孩子連到自己的帳號
+  useEffect(() => {
+    const code = readClaimCode(window.location.search);
+    if (!code) return;
+    window.history.replaceState(window.history.state, '', stripClaimCode(window.location.href));
+    useAccount.getState().setClaiming(code);
     useUi.getState().goto('teacher');
   }, []);
 

@@ -17,11 +17,13 @@ import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from 
 import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
 import { zoneName } from '../../world/layout';
 import { JoinClassPanel } from './JoinClassPanel';
+import { ClaimPanel } from './ClaimPanel';
+import { ClaimCard } from './ClaimCard';
 import { JoinQr } from './JoinQr';
 import type { ZoneId } from '../../store/useUi';
 import { CLASS_PASSWORD_MIN, MAX_CLASSES, kidRooms } from '../../online/protocol';
 import { addDeclined, profilesToOffer, readDeclined } from '../../online/uploadOffer';
-import type { KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
+import type { ClaimIssueResponse, KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
 
 /** 顯示「多久以前」 */
 function ago(iso: string): string {
@@ -247,7 +249,9 @@ function AccountGate() {
   const [email, setEmail] = useState('');
   /** 掃 QR code 打開的加入連結（docs/plans/class-join.md）：登入或註冊後讓孩子加入班級；註冊時預先勾「家長」，用 Google 時直接當家長 */
   const joining = useAccount((s) => s.joining);
-  const [parent, setParent] = useState(!!joining);
+  /** 老師給的家長連結卡（L4）：和加入連結一樣，註冊時預先勾「家長」，用 Google 時直接當家長 */
+  const claiming = useAccount((s) => s.claiming);
+  const [parent, setParent] = useState(!!joining || !!claiming);
   const [teacher, setTeacher] = useState(false);
   /** 在這台裝置保持登入（預設不勾：教室共用電腦、孩子的平板；保持登入時家長專區不用 PIN） */
   const [remember, setRemember] = useState(false);
@@ -325,7 +329,7 @@ function AccountGate() {
     } finally {
       setBusy(false);
     }
-    if (joining) await createWithGoogle(idToken, { parent: true, teacher: false });
+    if (joining || claiming) await createWithGoogle(idToken, { parent: true, teacher: false });
     else setNewGoogle(idToken);
   };
 
@@ -369,6 +373,11 @@ function AccountGate() {
 
   return (
     <>
+      {claiming && (
+        <p className="notice" style={{ margin: '0 16px 8px' }} data-testid="claim-login-note">
+          👨‍👩‍👧 要把老師建的孩子角色連到你的帳號：請登入家長帳號；還沒有帳號的話，直接按 Google 按鈕或「註冊」。登入後按一下就完成。
+        </p>
+      )}
       {joining && (
         <p className="notice" style={{ margin: '0 16px 8px' }} data-testid="join-login-note">
           🏫 要讓孩子加入班級（代碼 {joining.code}）：請登入家長帳號；還沒有帳號的話，直接按 Google 按鈕或「註冊」。登入後選孩子就能加入，不用輸入密碼。
@@ -464,7 +473,7 @@ function AccountGate() {
           </p>
         )}
         {googleClientId && <p className="notice">按 Google 按鈕：已經綁定的直接登入；第一次用的直接建立帳號，不用另外設帳號名稱和密碼。</p>}
-        {mode === 'login' && !joining && (
+        {mode === 'login' && !joining && !claiming && (
           <p className="notice">
             只要調整這台裝置的設定（遊玩時間、教材版本、聲音），不用註冊：
             <button type="button" className="link-btn" onClick={() => goto('parent')} data-testid="account-parent-zone">
@@ -1196,7 +1205,18 @@ function ParentHome() {
 }
 
 /** 一位成員的操作：設定或重設密碼（家長掃 QR code 加入的孩子沒有密碼）、移除（兩段式確認，不用瀏覽器的 confirm 對話框） */
-function MemberActions({ member, onReset, onRemove }: { member: MemberSummary; onReset: (pin: string) => Promise<void>; onRemove: () => Promise<void> }) {
+function MemberActions({
+  member,
+  onReset,
+  onRemove,
+  onClaim,
+}: {
+  member: MemberSummary;
+  onReset: (pin: string) => Promise<void>;
+  onRemove: () => Promise<void>;
+  /** 產生家長連結卡（L4；只有還沒有家長的孩子有這顆） */
+  onClaim: () => Promise<void>;
+}) {
   const [mode, setMode] = useState<'idle' | 'pin' | 'remove'>('idle');
   const [pin, setPin] = useState('');
   if (mode === 'pin') {
@@ -1238,6 +1258,11 @@ function MemberActions({ member, onReset, onRemove }: { member: MemberSummary; o
       <button className="btn small white" onClick={() => setMode('pin')} data-testid={`reset-pin-${member.nickname}`}>
         {member.hasPin === false ? '設定密碼' : '重設密碼'}
       </button>
+      {member.hasParent === false && (
+        <button className="btn small white" onClick={() => void onClaim()} data-testid={`claim-${member.nickname}`}>
+          👨‍👩‍👧 家長連結
+        </button>
+      )}
       <button className="btn small white" onClick={() => setMode('remove')} data-testid={`remove-${member.nickname}`}>
         移除
       </button>
@@ -1320,6 +1345,8 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
   const [members, setMembers] = useState<MemberSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  /** 剛產生的家長連結卡（L4；關掉就看不到代碼了） */
+  const [claimCard, setClaimCard] = useState<ClaimIssueResponse | null>(null);
   /** 這個班級的 API 路徑 */
   const base = `/api/teacher/rooms/${code}`;
 
@@ -1417,7 +1444,15 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
             <tbody>
               {members.map((m) => (
                 <tr key={m.id} data-testid={`member-${m.nickname}`}>
-                  <td>{m.nickname}</td>
+                  <td>
+                    {m.nickname}
+                    {m.hasParent && (
+                      <span title="有家長帳號" data-testid={`has-parent-${m.nickname}`}>
+                        {' '}
+                        👨‍👩‍👧
+                      </span>
+                    )}
+                  </td>
                   <td data-testid={`online-${m.nickname}`}>{whereText(m)}</td>
                   <td>{ago(m.lastSeen)}</td>
                   <td>{m.stars}</td>
@@ -1434,12 +1469,21 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
                         )
                       }
                       onRemove={() => act(() => call('DELETE', `${base}/members/${m.id}`), `已移除「${m.nickname}」`)}
+                      onClaim={async () => {
+                        try {
+                          setClaimCard(await call<ClaimIssueResponse>('POST', `${base}/members/${m.id}/claim`, {}));
+                          setError(null);
+                        } catch (err) {
+                          setError(messageOf(err));
+                        }
+                      }}
                     />
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+          {claimCard && room && <ClaimCard issued={claimCard} roomName={room.name} onClose={() => setClaimCard(null)} />}
         </div>
       )}
     </div>
@@ -1507,6 +1551,7 @@ function AccountHome() {
         )}
       </div>
       {showSettings && <AccountSettings />}
+      <ClaimPanel />
       <JoinClassPanel />
       {current === 'teacher' ? (
         openClass ? (
