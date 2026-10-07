@@ -51,7 +51,9 @@ async function findOverflow(page: Page): Promise<{ pageScrollX: boolean; offende
     };
     const bad: { el: Element; dir: string }[] = [];
     for (const el of document.querySelectorAll('body *')) {
-      if (el.closest('canvas, svg') && el.tagName.toLowerCase() !== 'svg') continue;
+      // 3D 場景裡跟著物件投影的文字（同學名牌、島上的牌子，drei Html 的 .scene-label）和畫布一樣，出了畫面就被切掉，不算版面超出；
+      // 真的會不會讓整頁左右捲由下面的 pageScrollX 把關
+      if (el.closest('canvas, svg, .scene-label') && el.tagName.toLowerCase() !== 'svg') continue;
       const cs = getComputedStyle(el);
       if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
       const r = el.getBoundingClientRect();

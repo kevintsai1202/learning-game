@@ -92,7 +92,7 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
         </mesh>
         {/* 名牌與氣泡：不攔截點擊（才能點地面走路），z-index 低於畫面上的面板；可以送禮時只有名牌點得到 */}
-        <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]}>
+        <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]} wrapperClass="scene-label">
           <div className="remote-label">
             {bubble && (
               <div className="chat-bubble" data-testid="chat-bubble">

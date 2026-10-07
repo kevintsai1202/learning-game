@@ -1299,6 +1299,83 @@ button {
   font-size: 15px;
   font-weight: 700;
 }
+/* 島上地標的牌子（L5）：旗面的班級名稱、小屋的「○○的家」、島門牌（drei Html，不攔截點擊） */
+.island-sign {
+  pointer-events: none;
+  white-space: nowrap;
+  font-family: var(--font-kid);
+  font-weight: 800;
+  font-size: 18px;
+  padding: 2px 12px 4px;
+  border-radius: 10px;
+  border: 2px solid var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+}
+.island-sign.flag {
+  color: #fff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.island-sign.plate {
+  background: #f3d9b1;
+}
+.island-sign.home {
+  background: #fff1d6;
+}
+/* 所在地標籤（L5）：寫「現在在哪」；班級島綠色、自己的島藍色，和換島按鈕分開 */
+.hud-chip.hud-location {
+  padding-left: 14px;
+  color: #fff;
+}
+.hud-chip.hud-location.class {
+  background: #2f8f6b;
+}
+.hud-chip.hud-location.mine {
+  background: #2f6fde;
+}
+/* 進島橫幅（L5）：全螢幕大字 1.5 秒，不攔截點擊 */
+.island-banner {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 30;
+}
+.island-banner > span {
+  max-width: calc(100vw - 32px);
+  padding: 14px 28px 18px;
+  border-radius: 28px;
+  border: 4px solid var(--ink);
+  box-shadow: var(--shadow-chunky);
+  color: #fff;
+  font-size: clamp(28px, 7vw, 56px);
+  font-weight: 900;
+  text-align: center;
+  animation: island-banner 1.5s ease-out both;
+}
+.island-banner.class > span {
+  background: #2f8f6b;
+}
+.island-banner.mine > span {
+  background: #2f6fde;
+}
+@keyframes island-banner {
+  0% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  15%,
+  75% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+}
 .chat-bubble {
   position: relative;
   background: #fff;

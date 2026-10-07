@@ -5,7 +5,7 @@
  * 多班級：每一班一座班級島；沒選過時在第一個班級（最早加入的）的班級島，選的那一班不在清單裡了就回到第一個班級。
  */
 import { describe, expect, it } from 'vitest';
-import { activeCurriculum, currentClass, devicePacksVisible, islandOf, withIsland } from '../../src/store/island';
+import { activeCurriculum, currentClass, devicePacksVisible, islandLook, islandOf, withIsland } from '../../src/store/island';
 import { DEFAULT_CURRICULUM, addProfile, createEmptySave, type CloudLink, type CurriculumChoice, type Profile } from '../../src/store/save';
 import { curriculumActivities } from '../../src/activities/resolve';
 import { BUILT_IN_EDITIONS } from '../../src/content/editions';
@@ -107,5 +107,20 @@ describe('裝置上匯入的題庫', () => {
   it('沒有班級的角色、還沒選角色：照舊顯示', () => {
     expect(devicePacksVisible(kid())).toBe(true);
     expect(devicePacksVisible(null)).toBe(true);
+  });
+});
+
+describe('島的外觀（L5：班級島與我的島分得出來）', () => {
+  it('沒有班級的角色只有自己的島（solo）：不區分，只帶名字（門牌與小屋用）', () => {
+    expect(islandLook(kid())).toEqual({ kind: 'solo', kidName: '小安' });
+  });
+
+  it('有班級在班級島：class，帶那一班的代碼與名稱；切到我的島：mine', () => {
+    expect(islandLook(kid(inClass))).toEqual({ kind: 'class', kidName: '小安', classCode: '123456', className: '二年一班' });
+    expect(islandLook(withIsland(kid(inClass), 'mine'))).toEqual({ kind: 'mine', kidName: '小安' });
+  });
+
+  it('多班級：在哪一班的班級島就帶哪一班', () => {
+    expect(islandLook(withIsland(kid(twoClasses), '654321'))).toEqual({ kind: 'class', kidName: '小安', classCode: '654321', className: '安親班' });
   });
 });

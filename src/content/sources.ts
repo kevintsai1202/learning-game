@@ -105,7 +105,7 @@ export const SOURCES: SourceEntry[] = [
     license: '政府公開資訊（事實依據，題目文字自編）',
   },
   {
-    use: '背景音樂（島上、答題、結算）',
+    use: '背景音樂（島上、自己的島、答題、結算）',
     name: 'Cozy Puzzle 系列（MintoDog，OpenGameArt）',
     url: 'https://opengameart.org/content/cozy-puzzle-in-game-3',
     license: 'CC0（公眾領域）',

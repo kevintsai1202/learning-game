@@ -26,6 +26,25 @@ export function currentClass(p: Profile): CloudRoom | null {
   return rooms.find((r) => r.code === p.cloud?.island) ?? rooms[0];
 }
 
+/**
+ * 島的外觀（L5，docs/plans/login-ux-review.md 第 4.5 節）：
+ * - solo：沒有班級，只有自己的島，不需要區分（白天、原本的音樂、沒有所在地標籤與橫幅；門牌與小屋照樣有）
+ * - class：有班級、在某一班的班級島（白天、班級旗子、原本的音樂）
+ * - mine：有班級、切到自己的島（黃昏、門牌與小屋、另一首音樂）
+ */
+export type IslandLook =
+  | { kind: 'solo'; kidName: string }
+  | { kind: 'class'; kidName: string; classCode: string; className: string }
+  | { kind: 'mine'; kidName: string };
+
+/** 這個角色現在看到的島長什麼樣子 */
+export function islandLook(p: Profile): IslandLook {
+  const kidName = p.name;
+  if (!classesOf(p).length) return { kind: 'solo', kidName };
+  const room = currentClass(p);
+  return room ? { kind: 'class', kidName, classCode: room.code, className: room.name } : { kind: 'mine', kidName };
+}
+
 /** 這個角色現在在哪一種島：有班級而且沒有切到我的島就在班級島 */
 export function islandOf(p: Profile): Island {
   return currentClass(p) ? 'class' : 'mine';

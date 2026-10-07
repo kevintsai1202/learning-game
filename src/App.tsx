@@ -30,6 +30,10 @@ import { useAccount } from './online/useAccount';
 import { readEmailLink, stripEmailLink } from './online/emailLinks';
 import { readJoinCode, stripJoinCode } from './online/joinLink';
 import { readClaimCode, stripClaimCode } from './online/claimLink';
+import { islandLook } from './store/island';
+
+/** 在島上走、進建築時的畫面（配樂依島：有班級的孩子在自己的島播 home，L5） */
+const ON_ISLAND: Screen[] = ['island', 'zone'];
 
 /** 各畫面的配樂 */
 const SCREEN_MUSIC: Record<Screen, Track> = {
@@ -51,6 +55,11 @@ const SCREEN_MUSIC: Record<Screen, Track> = {
 export function App() {
   const screen = useUi((s) => s.screen);
   const settings = useGame((s) => s.save.settings);
+  /** 有班級的孩子切到自己的島（L5）：島上換另一首曲子 */
+  const onOwnIsland = useGame((s) => {
+    const p = s.profile();
+    return !!p && islandLook(p).kind === 'mine';
+  });
 
   // 套用設定：語音、音效、注音字型
   useEffect(() => {
@@ -91,8 +100,8 @@ export function App() {
     useUi.getState().goto('teacher');
   }, []);
 
-  // 換畫面就換配樂
-  useEffect(() => playMusic(SCREEN_MUSIC[screen]), [screen]);
+  // 換畫面、換島就換配樂
+  useEffect(() => playMusic(onOwnIsland && ON_ISLAND.includes(screen) ? 'home' : SCREEN_MUSIC[screen]), [screen, onOwnIsland]);
 
   // 鍵盤操作；每次點擊都確認音訊已解鎖、配樂有在播（瀏覽器要求有使用者手勢才能發聲）
   useEffect(() => {

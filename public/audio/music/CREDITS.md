@@ -1,6 +1,6 @@
 # 背景音樂授權與來源（CREDITS）
 
-本資料夾的四個 MP3 都來自 OpenGameArt.org，作者在作品頁把授權標為 **CC0 1.0（公眾領域貢獻宣告）**。
+本資料夾的五個 MP3 都來自 OpenGameArt.org，作者在作品頁把授權標為 **CC0 1.0（公眾領域貢獻宣告）**。
 CC0 不要求署名，這裡仍照實列出作者與來源，以示尊重，也方便日後查證。
 
 - 查證日期：2026-10-01（每一頁都在當日以程式抓取頁面並讀取「License(s)」欄位，另用 WebFetch 獨立讀一次，結果都只列出 CC0 一項）。
@@ -20,6 +20,7 @@ CC0 不要求署名，這裡仍照實列出作者與來源，以示尊重，也�
 | `quiz.mp3` | Cozy Puzzle In-Game 2 | MintoDog | 答題背景（循環） |
 | `result.mp3` | Cozy Puzzle Clear (Jingle) | MintoDog | 結算短樂句（不循環） |
 | `shop.mp3` | Buy Something!（Shop Theme） | CleytonKauffman | 商店／家長區（循環） |
+| `home.mp3` | Cozy Puzzle Stage Select | MintoDog | 有班級的孩子在自己的島（循環；2026-10-07 加入，L5） |
 
 所有成品共同的處理：解碼來源檔、套用固定增益（`volume` 濾鏡，不做壓縮或限幅）、以 libmp3lame 重新編碼為 44.1 kHz 立體聲 MP3、移除中繼資料。循環曲目的長度與來源逐取樣相同，沒有裁掉任何樂句。
 
@@ -106,3 +107,25 @@ CC0 不要求署名，這裡仍照實列出作者與來源，以示尊重，也�
   - 重新編碼為 MP3 128 kbps CBR、44.1 kHz、立體聲，移除中繼資料。開頭原有的約 77 毫秒靜音保留（它是節拍的一部分）。
   - 長度與來源相同（3,880,800 取樣，88.000 秒）。
 - 成品：`shop.mp3`，1,408,959 bytes
+
+## home.mp3　自己的島（有班級的孩子）
+
+- 用途：有班級的孩子切到自己的島時播放，和班級島（`island.mp3`）分得出來（L5，`docs/plans/login-ux-review.md` 第 4.5 節）。沒有班級的孩子只有一座島，照舊播 `island.mp3`。
+- 曲名：Cozy Puzzle Stage Select
+- 作者：MintoDog（OpenGameArt 使用者頁：https://opengameart.org/users/mintodog）
+- 作品頁：https://opengameart.org/content/cozy-puzzle-stage-select
+- 作品頁發佈日：2026-04-23
+- 授權：CC0 1.0
+- 查證日期：2026-10-07。WebFetch 讀作品頁一次，另用 `curl` 抓頁面、找「License(s)」欄位一次，兩次都只列 `CC0`，連結指向 `http://creativecommons.org/publicdomain/zero/1.0/`。
+- 作者的頁面說明（逐字）：「Stage select music for puzzle game. This music is loopable.」
+- 作品頁標籤：cozy, Puzzle, stage, select, level select, synth, saxophone, Relax, loopable
+- 作品頁沒有「Attribution Instructions」或「Copyright/Attribution Notice」欄位。
+- 原始檔名：`cozy_puzzle_stage_select_bpm100.mp3`（3,074,220 bytes，320 kbps，44.1 kHz 立體聲）
+- 下載網址：https://opengameart.org/sites/default/files/cozy_puzzle_stage_select_bpm100.mp3
+- 來源檔 SHA-256：`0e74a478268c68c03b884588eecacd1ad83e6e84761ddaf87f3251d7c923adf9`
+- 我們的修改：
+  - 固定增益 -6.1 dB（來源約 -11.9 LUFS，調到約 -18.4 LUFS，和 `island.mp3` 同一級）。
+  - 重新編碼為 MP3 128 kbps CBR、44.1 kHz、立體聲，移除中繼資料（bitexact，不寫編碼器標籤）。
+  - 不裁切、不加淡入淡出：接回開頭時的跳變約 -46 dBFS，和 `island.mp3`（約 -51 dBFS）相近，聽不到「喀」一聲。
+  - 長度與來源相同（3,386,880 取樣，76.800 秒）。
+- 成品：`home.mp3`，1,229,654 bytes

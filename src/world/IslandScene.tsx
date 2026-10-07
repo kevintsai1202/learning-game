@@ -1,6 +1,7 @@
 /**
  * 島嶼場景：天空、海、地面、建築、熊熊老師、玩家角色、同房間的其他玩家。
  * mode：play 可操作；menu 背景顯示（選單打開時）；attract 標題畫面鏡頭環繞。
+ * look（L5）：班級島白天＋班級旗子；有班級的孩子在自己的島是黃昏；自己的島有小屋與門牌（小屋地上的樹拿掉）。
  */
 import { useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
@@ -18,13 +19,22 @@ import type { ZoneId } from '../store/useUi';
 import type { AvatarConfig } from '../store/save';
 import { sfx } from '../audio/sfx';
 import { teacherTalk } from '../ui/teacherTips';
+import { ClassFlag, IslandPlate, KidHouse } from './IslandLandmarks';
+import { treesAway, type SceneLook } from './landmarks';
+import { FLAGPOLE, HOUSE, PLATE } from './layout';
 
-/** 漸層天空球（頂端較藍、地平線較淺） */
-function SkyDome() {
+/** 天空與燈光（L5）：白天是原本的樣子；黃昏是暖橘的地平線、偏紫的天頂、低而偏橘的太陽 */
+const SKY = {
+  day: { top: '#4fc0ff', horizon: '#dff6ff', fog: '#dff6ff', hemiSky: '#e6f6ff', hemiGround: '#9bd27a', hemi: 1.25, sun: '#ffffff', sunPos: [18, 32, 16], sunIntensity: 1.7 },
+  sunset: { top: '#5d6bd8', horizon: '#ffb58a', fog: '#ffc7a0', hemiSky: '#ffd8b5', hemiGround: '#8fb86a', hemi: 1.05, sun: '#ffb46b', sunPos: [34, 14, 8], sunIntensity: 1.55 },
+} as const;
+
+/** 漸層天空球（頂端較藍、地平線較淺；黃昏時頂端偏紫、地平線暖橘） */
+function SkyDome({ sky }: { sky: SceneLook['sky'] }) {
   const geo = useMemo(() => {
     const g = new THREE.SphereGeometry(320, 32, 16);
-    const top = new THREE.Color('#4fc0ff');
-    const horizon = new THREE.Color('#dff6ff');
+    const top = new THREE.Color(SKY[sky].top);
+    const horizon = new THREE.Color(SKY[sky].horizon);
     const colors: number[] = [];
     const pos = g.attributes.position;
     for (let i = 0; i < pos.count; i++) {
@@ -34,7 +44,7 @@ function SkyDome() {
     }
     g.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
     return g;
-  }, []);
+  }, [sky]);
   return (
     <mesh geometry={geo}>
       <meshBasicMaterial vertexColors side={THREE.BackSide} fog={false} depthWrite={false} />
@@ -55,10 +65,23 @@ function AttractCamera() {
 /** 預設角色（還沒選角色時在島上走的是小黑熊） */
 const DEFAULT_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
 
-export function IslandScene({ mode, avatar, shadows }: { mode: 'play' | 'menu' | 'attract'; avatar: AvatarConfig | null; shadows: boolean }) {
-  const trees = useMemo(() => placeTrees(), []);
+export function IslandScene({ mode, avatar, shadows, look }: { mode: 'play' | 'menu' | 'attract'; avatar: AvatarConfig | null; shadows: boolean; look: SceneLook }) {
+  const allTrees = useMemo(() => placeTrees(), []);
+  const hasHome = look.home !== null;
+  const hasFlag = look.flag !== null;
+  /** 自己的島空出小屋地（其他島的樹一棵不動） */
+  const trees = useMemo(() => (hasHome ? treesAway(allTrees, HOUSE, HOUSE.clear) : allTrees), [allTrees, hasHome]);
   const flowers = useMemo(() => placeFlowers(), []);
-  const obstacles = useMemo(() => worldObstacles(trees), [trees]);
+  /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
+  const obstacles = useMemo(
+    () => [
+      ...worldObstacles(trees),
+      ...(hasHome ? [{ x: HOUSE.x, z: HOUSE.z, r: HOUSE.radius }, { x: PLATE.x, z: PLATE.z, r: 0.5 }] : []),
+      ...(hasFlag ? [{ x: FLAGPOLE.x, z: FLAGPOLE.z, r: 0.5 }] : []),
+    ],
+    [trees, hasHome, hasFlag],
+  );
+  const sky = SKY[look.sky];
   const interactive = mode === 'play';
   const sun = useRef<THREE.DirectionalLight>(null);
 
@@ -81,13 +104,15 @@ export function IslandScene({ mode, avatar, shadows }: { mode: 'play' | 'menu' |
 
   return (
     <>
-      <SkyDome />
-      <fog attach="fog" args={['#dff6ff', 70, 190]} />
-      <hemisphereLight args={['#e6f6ff', '#9bd27a', 1.25]} />
+      <SkyDome sky={look.sky} />
+      {/* key：換天空時重建霧與半球光（它們的顏色是建構參數） */}
+      <fog key={`fog-${look.sky}`} attach="fog" args={[sky.fog, 70, 190]} />
+      <hemisphereLight key={`hemi-${look.sky}`} args={[sky.hemiSky, sky.hemiGround, sky.hemi]} />
       <directionalLight
         ref={sun}
-        position={[18, 32, 16]}
-        intensity={1.7}
+        position={[...sky.sunPos]}
+        color={sky.sun}
+        intensity={sky.sunIntensity}
         castShadow={shadows}
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-34}
@@ -104,6 +129,9 @@ export function IslandScene({ mode, avatar, shadows }: { mode: 'play' | 'menu' |
       <Flowers spots={flowers} />
       <Clouds />
       <Dock />
+      {look.flag && <ClassFlag name={look.flag.name} color={look.flag.color} />}
+      {look.home && <KidHouse name={look.home.name} />}
+      {look.home && <IslandPlate name={look.home.name} />}
       {ZONES.map((z) => {
         const B = BUILDINGS[z.id];
         return (

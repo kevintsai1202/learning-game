@@ -17,6 +17,7 @@ import { useRealtime } from './online/realtimeClient';
 import { useFriends } from './online/useFriends';
 import { useGifts } from './online/useGifts';
 import { puzzleDebug } from './puzzle/debug';
+import { musicDebug } from './audio/music';
 import './styles/global.css';
 
 declare global {
@@ -44,6 +45,8 @@ declare global {
       puzzle: typeof puzzleDebug;
       /** 好友名單（島嶼互訪 I1） */
       friends: typeof useFriends;
+      /** 背景配樂：想播的曲目與實際在播的曲目（L5：班級島與自己的島不同曲） */
+      music: typeof musicDebug;
     };
   }
 }
@@ -63,6 +66,7 @@ window.__game = {
   gifts: useGifts,
   puzzle: puzzleDebug,
   friends: useFriends,
+  music: musicDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

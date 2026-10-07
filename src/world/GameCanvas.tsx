@@ -10,6 +10,8 @@ import { useGame } from '../store/useGame';
 import { findActivity } from '../activities/resolve';
 import type { AvatarConfig } from '../store/save';
 import { equippedOf } from '../store/catalog';
+import { classesOf, islandLook } from '../store/island';
+import { sceneLookOf } from './landmarks';
 
 const FALLBACK_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
 
@@ -32,6 +34,8 @@ export function GameCanvas() {
   const activity = run ? findActivity(run.activityId) : undefined;
   const theme = zone === 'tower' ? 'mixed' : (activity?.subject ?? 'math');
   const mode = screen === 'island' ? 'play' : screen === 'title' || screen === 'profiles' ? 'attract' : 'menu';
+  /** 島的外觀（L5）：標題與選角畫面是中性的白天；其他時候依這個角色在哪座島 */
+  const look = sceneLookOf(mode === 'attract' || !profile ? null : islandLook(profile), classesOf(profile).map((r) => r.code));
 
   return (
     <Canvas
@@ -49,7 +53,7 @@ export function GameCanvas() {
       {onStage ? (
         <StageScene avatar={profile?.avatar ?? FALLBACK_AVATAR} subject={theme} />
       ) : (
-        <IslandScene mode={mode} avatar={profile ? equippedOf(profile) : null} shadows={!low} />
+        <IslandScene mode={mode} avatar={profile ? equippedOf(profile) : null} shadows={!low} look={look} />
       )}
     </Canvas>
   );

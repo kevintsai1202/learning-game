@@ -7,10 +7,11 @@
  */
 import { sharedAudio } from './sfx';
 
-export type Track = 'island' | 'quiz' | 'result' | 'shop';
+/** 曲目：home 是有班級的孩子在自己的島（L5，和班級島的 island 分得出來） */
+export type Track = 'island' | 'home' | 'quiz' | 'result' | 'shop';
 
 /** 各曲目的基本音量（0～1）：答題時壓低，避免蓋過朗讀 */
-const BASE_VOLUME: Record<Track, number> = { island: 0.32, quiz: 0.16, result: 0.45, shop: 0.28 };
+const BASE_VOLUME: Record<Track, number> = { island: 0.32, home: 0.32, quiz: 0.16, result: 0.45, shop: 0.28 };
 /** 只播一次的曲目 */
 const ONE_SHOT: Track[] = ['result'];
 /** 朗讀時音量剩幾成 */
@@ -31,7 +32,7 @@ let ducked = false;
 /** 載入失敗過的曲目（不再重試） */
 const missing = new Set<Track>();
 /** 曲目缺檔時改用的曲目（答題缺檔就保持安靜，避免干擾） */
-const FALLBACK: Partial<Record<Track, Track>> = { shop: 'island' };
+const FALLBACK: Partial<Record<Track, Track>> = { shop: 'island', home: 'island' };
 
 /** 把想播的曲目換成實際可播的曲目 */
 function resolve(t: Track | null): Track | null {
@@ -112,6 +113,16 @@ function apply(): void {
   }
   if (t) current = startChannel(t);
 }
+
+/** 除錯用（e2e 透過 window.__game.music 讀）：現在想播的曲目，與實際在播的曲目（還沒有使用者手勢或缺檔時是 null） */
+export const musicDebug = {
+  get wanted(): Track | null {
+    return wanted;
+  },
+  get playing(): Track | null {
+    return current?.track ?? null;
+  },
+};
 
 /** 切換到指定曲目（null 表示安靜） */
 export function playMusic(t: Track | null): void {

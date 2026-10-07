@@ -15,7 +15,7 @@ import { ChatPanel } from '../ChatPanel';
 import { GiftInbox } from '../GiftInbox';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
-import { classesOf, currentClass, type IslandTarget } from '../../store/island';
+import { classesOf, currentClass, islandLook, type IslandTarget } from '../../store/island';
 import { ISLAND_LINES } from '../lines';
 import { FriendsButton, FriendsPanel } from '../FriendsPanel';
 
@@ -107,6 +107,52 @@ function IslandSwitch() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 所在地標籤（L5，docs/plans/login-ux-review.md 第 4.5 節）：寫「現在在哪」，和寫「要去哪」的換島按鈕分開。
+ * 班級島綠色、自己的島藍色；沒有班級的角色只有一座島，不顯示
+ */
+function LocationChip() {
+  // 先取存檔裡的角色（同一個物件，不會每次都是新的），再算外觀；selector 直接回傳新物件會一直重畫
+  const profile = useGame((s) => s.profile());
+  const look = profile ? islandLook(profile) : null;
+  if (!look || look.kind === 'solo') return null;
+  const text = look.kind === 'class' ? `📍 班級島・${look.className}` : `📍 ${look.kidName}的島`;
+  return (
+    <span className={`hud-chip hud-location ${look.kind}`} data-testid="hud-location" data-island={look.kind}>
+      {text}
+    </span>
+  );
+}
+
+/** 上一次顯示過橫幅的「角色＋島」：從建築回到同一座島不再顯示（模組層級，換畫面卸載也記得） */
+let lastBannerKey: string | null = null;
+
+/**
+ * 進島橫幅（L5）：進島或換島時全螢幕大字 1.5 秒「🏫 二年三班的班級島」「🏝️ 小安的島」，不攔截點擊；沒有班級的角色不顯示
+ */
+function IslandBanner() {
+  // 先取存檔裡的角色（同一個物件，不會每次都是新的），再算外觀；selector 直接回傳新物件會一直重畫
+  const profile = useGame((s) => s.profile());
+  const look = profile ? islandLook(profile) : null;
+  const profileId = useGame((s) => s.save.activeProfileId);
+  const [shown, setShown] = useState<string | null>(null);
+  const key = look && look.kind !== 'solo' ? `${profileId}:${look.kind === 'class' ? look.classCode : 'mine'}` : null;
+  const text = !look || look.kind === 'solo' ? null : look.kind === 'class' ? `🏫 ${look.className}的班級島` : `🏝️ ${look.kidName}的島`;
+  useEffect(() => {
+    if (!key || key === lastBannerKey) return;
+    lastBannerKey = key;
+    setShown(text);
+    const timer = setTimeout(() => setShown(null), 1500);
+    return () => clearTimeout(timer);
+  }, [key, text]);
+  if (!shown) return null;
+  return (
+    <div className={`island-banner ${look?.kind ?? ''}`} aria-live="polite" data-testid="island-banner">
+      <span>{shown}</span>
     </div>
   );
 }
@@ -225,6 +271,7 @@ export function IslandHud() {
             ⭐ {totalStars}
           </span>
           {profile?.cloud && <CloudChip />}
+          <LocationChip />
           <IslandSwitch />
           <FriendsButton />
         </div>
@@ -241,6 +288,7 @@ export function IslandHud() {
         </div>
       </div>
       <SpeechBubble />
+      <IslandBanner />
       {near ? (
         <div className={`door-bubble card ${touch ? 'touch' : ''}`} data-testid="door-bubble">
           <span>

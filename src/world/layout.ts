@@ -65,3 +65,11 @@ export const WALK_RADIUS = 21.5;
 export const ISLAND_RADIUS = 25;
 /** 中央噴水池 */
 export const FOUNTAIN = { x: 0, z: -3.2, radius: 1.9 };
+
+/**
+ * 我的島的地標（L5）：孩子的小屋（西南角，門朝出生點，門前留空地，之後朝動物森友會的方向讓孩子進屋、佈置）、
+ * 上岸後往廣場走的步道旁的島門牌（在角色的北邊，字不會擋到角色）、班級島噴水池旁的旗桿。clear 是小屋周圍拿掉樹的半徑（只在我的島）
+ */
+export const HOUSE = { x: -14, z: 11, rotY: Math.atan2(SPAWN.x - -14, SPAWN.z - 11), radius: 2.1, clear: 4.2 };
+export const PLATE = { x: 3.2, z: 10.4 };
+export const FLAGPOLE = { x: -2.6, z: -5 };
