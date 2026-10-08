@@ -131,3 +131,61 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   for (const d of [a, b, t]) expect(pageErrors(d.page)).toEqual([]);
   await Promise.all([a.context.close(), b.context.close(), t.context.close()]);
 });
+
+// 老師連續改兩個下拉（docs/plans/login-ux-review.md 第 10 節 L5 順手發現）：前一次儲存的回應晚到，畫面曾被重設成伺服器的舊值，
+// 下一個下拉就從舊值組出來送出，把前一次的修改蓋掉。這裡攔下老師頁重新整理的回應、由測試決定何時交給頁面，讓舊回應確定落在中間
+test('老師連續改兩個教材版本下拉：前一次的回應晚到，也不會蓋掉剛選的', async ({ browser, baseURL, request }) => {
+  test.setTimeout(120_000);
+  const room = await createClassViaApi(request, '二年二班');
+  const t = await openDevice(browser, baseURL!);
+  await loginTeacher(t.page, room.username);
+  await t.page.getByTestId(`class-${room.code}`).click();
+  await expect(t.page.getByTestId('class-curriculum-toggle')).not.toBeChecked();
+
+  /** 攔下來的班級資料回應：放行的函式與「頁面收到了」的 Promise（照攔到的順序） */
+  const held: { release: () => void; delivered: Promise<void> }[] = [];
+  /** 還要不要攔（最後全部放行） */
+  let holding = true;
+  // 進頁面那次已經載入完才開始攔，攔到的第一個就是打勾之後的重新整理；先跟伺服器拿到回應（當下的值），等放行才交給頁面
+  await t.page.route(
+    (url) => url.pathname === `/api/teacher/rooms/${room.code}`,
+    async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      const res = await route.fetch();
+      if (holding) {
+        let release!: () => void;
+        let done!: () => void;
+        const released = new Promise<void>((r) => (release = r));
+        held.push({ release, delivered: new Promise<void>((r) => (done = r)) });
+        await released;
+        await route.fulfill({ response: res });
+        done();
+      } else await route.fulfill({ response: res });
+    },
+  );
+
+  // 打勾（存預設版本：數學南一、學期自動），它的回應先攔著
+  await t.page.getByTestId('class-curriculum-toggle').click();
+  await expect(t.page.getByTestId('class-curriculum-toggle')).toBeChecked();
+  await expect.poll(() => held.length).toBe(1);
+  // 選數學翰林，之後打勾那次的舊回應才到
+  await t.page.getByTestId('class-edition-math').selectOption('hanlin-math');
+  held[0].release();
+  await held[0].delivered;
+  // 等頁面處理完這個回應
+  await t.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await t.page.waitForTimeout(200);
+  // 再選學期：要沿用剛選的數學翰林
+  await t.page.getByTestId('class-edition-term').selectOption('上');
+  holding = false;
+  for (const h of held) h.release();
+  await expect(t.page.getByText('班級島的教材版本：國語 康軒・數學 翰林・二年級上學期')).toBeVisible();
+  await expect(t.page.getByTestId('class-edition-math')).toHaveValue('hanlin-math');
+
+  // 伺服器上兩次修改都在：重新整理後下拉的值
+  await t.page.getByTestId('teacher-reload').click();
+  await expect(t.page.getByTestId('class-edition-math')).toHaveValue('hanlin-math');
+  await expect(t.page.getByTestId('class-edition-term')).toHaveValue('上');
+  expect(pageErrors(t.page)).toEqual([]);
+  await t.context.close();
+});

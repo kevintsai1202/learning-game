@@ -20,6 +20,7 @@ import { JoinClassPanel } from './JoinClassPanel';
 import { ClaimPanel } from './ClaimPanel';
 import { ClaimCard } from './ClaimCard';
 import { JoinQr } from './JoinQr';
+import { createLatestSaver } from '../latestSaver';
 import type { ZoneId } from '../../store/useUi';
 import { CLASS_PASSWORD_MIN, MAX_CLASSES, kidRooms } from '../../online/protocol';
 import { addDeclined, profilesToOffer, readDeclined } from '../../online/uploadOffer';
@@ -63,19 +64,29 @@ function Check({ checked, onChange, testId, children }: { checked: boolean; onCh
  * 不統一（null）時班級島照各孩子在家長專區的設定；孩子自己的設定留給「我的島」。
  * 只列內建版本：老師這台裝置匯入的版本包，孩子的裝置上沒有。
  */
-function ClassCurriculum({ value, onSave }: { value: CurriculumChoice | null; onSave: (c: CurriculumChoice | null) => void }) {
+function ClassCurriculum({ value, onSave }: { value: CurriculumChoice | null; onSave: (c: CurriculumChoice | null) => Promise<void> }) {
   /**
-   * 畫面上的設定：改了馬上顯示並送出，伺服器回應後再跟著伺服器的值。
+   * 畫面上的設定：改了馬上顯示並送出，全部送完才跟著伺服器的值。
    * 不直接用 value：連續改兩個下拉時，第二次會拿到還沒更新的舊值，把第一次的修改蓋掉
    */
   // 舊版伺服器的回應沒有這個欄位（部署途中前端先更新時）：當作沒有統一
   const [local, setLocal] = useState<CurriculumChoice | null>(value ?? null);
-  useEffect(() => setLocal(value ?? null), [value]);
+  /** 還有儲存沒送完：這時的 value 是較早一次儲存的回應，跟了會把剛選的蓋掉（src/ui/latestSaver.ts） */
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    if (!busy) setLocal(value ?? null);
+  }, [value, busy]);
+  /** 最新的 onSave（每次畫面更新都是新的函式，佇列只建一次） */
+  const onSaveRef = useRef(onSave);
+  onSaveRef.current = onSave;
+  /** 只送最新的儲存佇列：同一時間只送一筆，途中的修改只留最新一筆，送完才回到閒置 */
+  const [saver] = useState(() => createLatestSaver<CurriculumChoice | null>((c) => onSaveRef.current(c), () => setBusy(false)));
   /** 下拉選單顯示的值（還沒統一時先用預設版本，打勾就用它） */
   const cur = local ?? DEFAULT_CURRICULUM;
   const save = (c: CurriculumChoice | null) => {
     setLocal(c);
-    onSave(c);
+    setBusy(true);
+    saver.save(c);
   };
   const set = (patch: Partial<CurriculumChoice>) => save({ ...cur, ...patch });
   /** 某科的版本下拉 */
@@ -1409,7 +1420,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
           <ClassCurriculum
             value={room.curriculum}
             onSave={(c) =>
-              void act(
+              act(
                 () => call('PATCH', base, { curriculum: c }),
                 c ? `班級島的教材版本：${curriculumText(BUILT_IN_EDITIONS, c)}` : '已取消統一，班級島照各孩子自己的設定',
               )
