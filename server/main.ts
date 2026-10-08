@@ -19,6 +19,7 @@ import { googleFromEnv } from './google';
 import { Hub } from './hub';
 import { createMailer } from './mail';
 import { attachRealtime } from './ws';
+import { retryConnect } from './startup';
 
 /** 預設允許的前端網址：vite dev 與 vite preview */
 const DEFAULT_ORIGINS = 'http://localhost:5173,http://localhost:4183';
@@ -38,7 +39,8 @@ async function main(): Promise<void> {
   if (mailer.kind === 'outbox') console.warn('⚠️ 測試信箱模式：信放在記憶體、GET /api/test/mails 讀得到，只能用在 e2e，正式環境絕不能開。');
   if (mailer.kind === 'disabled') console.warn('寄信停用（沒有設定 MAIL_SMTP_USERNAME／MAIL_SMTP_PASSWORD）：註冊照常，驗證信與重設密碼信不會寄出。');
   const db = await openDb({ url: process.env.DATABASE_URL, pgliteDir: process.env.PGLITE_DIR });
-  await migrate(db);
+  // 第一次碰資料庫：平台重建時資料庫常比伺服器晚好，連線錯誤每 3 秒再試、最多約 1 分鐘（server/startup.ts）
+  await retryConnect(() => migrate(db), { tries: 20, delayMs: 3000 });
   await pruneAppliedOps(db, new Date());
   const pruneTimer = setInterval(() => void pruneAppliedOps(db, new Date()).catch(console.error), DAY_MS);
 

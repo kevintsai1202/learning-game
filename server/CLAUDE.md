@@ -39,6 +39,8 @@ docker rm -f li-pg-test
 
 ## 規則
 
+- **資料庫還沒好不要崩潰**：啟動時第一次碰資料庫（`migrate`）包在 `retryConnect`（`server/startup.ts`）裡，連線錯誤（連線被拒、主機名稱查不到、逾時、`57P03` 資料庫啟動中）每 3 秒再試、最多約 1 分鐘，SQL 錯誤馬上失敗；執行中閒置連線被斷掉由 `pool.on('error')` 接住（沒接整個程序會崩潰）。2026-10-07、10-08 兩次 Zeabur 平台重建執行環境時，資料庫都比伺服器晚好，伺服器啟動就崩潰、靠平台重試才恢復。
+
 - **給伺服器 import 的 `src/` 模組必須是純邏輯**：不能 import 畫面、音訊、3D（three、react）的程式。改了之後看 `npm run server:build` 的產物，import 清單只能有 hono、pg、zod、jose、ws、nodemailer、node 內建模組與動態載入的 PGlite。
 - **改 `src/store/save.ts` 的規則等於同時改伺服器**：`tests/online/ops.test.ts` 的對照測試確認「本機原本的路徑」與 `applyOp` 結果相同。
 - 存檔只靠「操作」（`/api/ops`）與送禮的路由改變，不要新增「整份上傳存檔」的 API：會蓋掉伺服器端的變更（例如收到的禮物）。

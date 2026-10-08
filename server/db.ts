@@ -28,6 +28,9 @@ export async function openDb(opts: { url?: string; pgliteDir?: string }): Promis
 /** PostgreSQL 連線池 */
 function openPg(url: string): Db {
   const pool = new pg.Pool({ connectionString: url, max: 10 });
+  // 閒置的連線被資料庫斷掉（例如資料庫重啟）時連線池會發 error 事件，沒有人接整個程序會崩潰；
+  // 記下來就好，之後的查詢會自己拿新的連線（啟動時資料庫還沒好由 server/startup.ts 重試）
+  pool.on('error', (err: Error & { code?: string }) => console.error('資料庫連線池錯誤', err.code ?? err.message));
   return {
     async query<T>(sql: string, params: unknown[] = []) {
       return (await pool.query(sql, params)).rows as T[];
