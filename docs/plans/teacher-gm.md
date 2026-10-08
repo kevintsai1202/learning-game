@@ -1,6 +1,6 @@
 # 老師 GM 與班級內容規劃
 
-> 狀態：規劃確認（2026-10-03），使用者的決定見第 12 節；照第 11 節分期實作。**2026-10-05 開工：先做 G0＋G1**（分批上線見第 12 節第 6 點）；**G0＋G1 實作完成（2026-10-05），待上線**，實作紀錄見第 13 節。
+> 狀態：規劃確認（2026-10-03），使用者的決定見第 12 節；照第 11 節分期實作。**2026-10-05 開工：先做 G0＋G1**（分批上線見第 12 節第 6 點）；**G0＋G1 2026-10-05 12:58 上線**，實作紀錄見第 13 節。
 > **2026-10-03 更新**：身分系統改版，見 `docs/plans/accounts.md`（先做）。老師改用大人帳號登入，GM 的連線改用「大人帳號權杖＋老師身分」；G1 專屬島建立在新的帳號模型上。本文件內提到老師權杖、房間管理密碼的地方，以 accounts.md 為準。
 > 相關文件：`docs/plans/online.md`（線上版）、`docs/content-pack.md`（題庫包格式）、`src/content/editions/schema.ts`（版本包格式）。
 
@@ -160,7 +160,7 @@ WebSocket 新訊息：
 
 ## 13. 實作紀錄
 
-### G0＋G1（2026-10-05 完成，待上線）
+### G0＋G1（2026-10-05 完成，12:58 上線）
 
 - **伺服器**：資料表第 8 版 `rooms.curriculum jsonb`（既有班級升級後是 `null`）。`PATCH /api/teacher/rooms/:code` 收 `curriculum`（`null` 是取消統一，沒給是不變；格式和孩子的 `curriculum` 操作共用 `curriculumSchema`）。`RoomInfo` 多 `curriculum`：加入、登入、帶權杖加入、同步、家長的孩子清單都帶。改了版本時 `onRoomContent` → 即時中樞對全班送 `{ t: 'content' }`，裝置收到就同步一次。
 - **裝置**：`CloudLink` 多 `roomCurriculum`（伺服器給的班級版本，`withRoom` 每次同步更新；老師取消就拿掉）與 `island: 'mine'`（只記在這台裝置；換班級或退出班級時拿掉）。規則在 `src/store/island.ts`（純函式）：`islandOf`、`activeCurriculum`（班級島且老師有設定才用班級版本）、`devicePacksVisible`（班級島不顯示裝置上匯入的題庫）、`withIsland`。建築選單與益智搶答改用 `activeCurriculum`。

@@ -120,5 +120,6 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
 - **兩個網址**：`https://kevintsai1202.github.io/learning-game/`（GitHub Pages，平常用）與 `https://learning-island.zeabur.app/`（班級伺服器同時提供的前端，學校網路擋 github.io 時用）。兩邊是同一份程式，資料都在班級伺服器，換網址登入同一個帳號就好。Google 登入要在 Google Console 的「已授權的 JavaScript 來源」加上兩個網址。
 - **zeabur 網址只當備用**：前端素材（約 2.5 MB）經過「東京閘道器 → 家裡的神奇網路裝置」，實測同時下載時整體只有約每秒 450 KB（閘道器已經用 gzip 壓縮）。2026-10-03 對 zeabur 網址跑多台裝置的 e2e：只有 1～2 台時通過，同時開 2～3 個全新瀏覽器時，素材下載把路塞住，登入等 API 請求超過 15 秒時限而失敗；同一批測試改用 GitHub Pages 前端則全部通過。所以平常用 GitHub Pages，只有學校網路擋 github.io 時才用 zeabur 網址，而且避免全班在同一刻打開；大量使用時會連帶拖慢共用閘道器的班級功能。真的要靠它，就要把伺服器搬到頻寬足夠的主機。
 - **動到同專案的其他服務之後要檢查網址**：2026-10-03 暫停舊的 `class-server` 服務後，`island-server` 照常在跑，`learning-island.zeabur.app` 卻全部回 502；在後台重新綁定網域後就恢復。之後暫停、刪除或新增同專案的服務，做完都要照第 5 節的 1、2 項檢查。經由閘道器綁的網域，CLI 的 `domain list` 查不到，只能在後台看。
+- **平台重建執行環境時資料庫可能比伺服器晚好**：2026-10-07 13:04（連線被拒 ECONNREFUSED）與 2026-10-08 13:39（資料庫主機名稱查不到 EAI_AGAIN）都是 Zeabur 重建執行環境（SandboxChanged）、伺服器一啟動就崩潰，靠平台重試才恢復，資料沒有受影響。2026-10-09 起伺服器啟動時遇到連線錯誤每 3 秒再試、最多約 1 分鐘（`server/startup.ts`），執行紀錄會看到「資料庫還沒好（第 N 次連線失敗：…）」；試滿還連不上才結束程序，交給平台重啟。
 - **重新部署伺服器＝也重新部署 zeabur 網址的前端**：重啟時線上的孩子會斷線一下（會自動重連）。GitHub Pages 那一份由 push main 自動部署。
 - **伺服器停機時**：GitHub Pages 網址照樣能單機玩（讀不到伺服器設定就不顯示班級功能），只是班級功能暫時用不了；zeabur 網址則整個打不開。

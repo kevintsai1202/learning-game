@@ -63,7 +63,7 @@
 
 ## 6. 實作紀錄
 
-### 2026-10-05 完成，待上線
+### 2026-10-05 完成，18:56 上線
 
 - **伺服器**：`joinExisting`（`server/app.ts`）是兩種加入共用的一段：檢查班級、開放加入、暱稱，交易裡鎖住帳號再確認沒有班級，暱稱撞到唯一鍵時回 `nickname_taken`；`pin` 是 null 時不設密碼。加入後呼叫 `onProfileChanged` 與 `onClassChanged`。家長的兩個路由在 `server/parents.ts`。
 - **即時連線**：`hub.reconnect(帳號)` 以 4005（`CLOSE_RECONNECT`）關閉；裝置看到 4005 不算斷線、不封鎖，同步一次後馬上重新上線，換成新的班級島與朋友。
