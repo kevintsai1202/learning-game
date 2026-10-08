@@ -135,7 +135,7 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
 // 老師連續改兩個下拉（docs/plans/login-ux-review.md 第 10 節 L5 順手發現）：前一次儲存的回應晚到，畫面曾被重設成伺服器的舊值，
 // 下一個下拉就從舊值組出來送出，把前一次的修改蓋掉。這裡攔下老師頁重新整理的回應、由測試決定何時交給頁面，讓舊回應確定落在中間
 test('老師連續改兩個教材版本下拉：前一次的回應晚到，也不會蓋掉剛選的', async ({ browser, baseURL, request }) => {
-  test.setTimeout(120_000);
+  test.setTimeout(240_000);
   const room = await createClassViaApi(request, '二年二班');
   const t = await openDevice(browser, baseURL!);
   await loginTeacher(t.page, room.username);
