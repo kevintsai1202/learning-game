@@ -12,6 +12,7 @@ import type { AvatarConfig } from '../store/save';
 import { equippedOf } from '../store/catalog';
 import { classesOf, islandLook, lookWithVisit } from '../store/island';
 import { useRealtime } from '../online/realtimeClient';
+import { useGm } from '../online/gmClient';
 import { sceneLookOf } from './landmarks';
 import { TEACHER_NAME } from '../online/realtime';
 
@@ -36,6 +37,8 @@ export function GameCanvas() {
   const gm = screen === 'gm' && gmRoom !== null;
   /** 在朋友的島上（島嶼互訪 I2） */
   const visiting = useRealtime((s) => s.visiting);
+  /** 熊熊老師在班上某個孩子的島上（島嶼互訪 I2） */
+  const gmVisiting = useGm((s) => s.visiting);
   const low = quality === 'low' || (quality === 'auto' && isLowEnd());
   const onStage = screen === 'activity' || screen === 'result';
   const activity = run ? findActivity(run.activityId) : undefined;
@@ -43,7 +46,9 @@ export function GameCanvas() {
   const mode = screen === 'island' || gm ? 'play' : screen === 'title' || screen === 'profiles' ? 'attract' : 'menu';
   /** 島的外觀（L5）：標題與選角畫面是中性的白天；熊熊老師在那一班的班級島；其他時候依這個角色在哪座島 */
   const look = gm
-    ? sceneLookOf({ kind: 'class', kidName: TEACHER_NAME, classCode: gmRoom.code, className: gmRoom.name }, [gmRoom.code])
+    ? gmVisiting
+      ? sceneLookOf({ kind: 'friend', kidName: TEACHER_NAME, hostName: gmVisiting.name }, [gmRoom.code])
+      : sceneLookOf({ kind: 'class', kidName: TEACHER_NAME, classCode: gmRoom.code, className: gmRoom.name }, [gmRoom.code])
     : sceneLookOf(mode === 'attract' || !profile ? null : lookWithVisit(islandLook(profile), visiting), classesOf(profile).map((r) => r.code));
 
   return (

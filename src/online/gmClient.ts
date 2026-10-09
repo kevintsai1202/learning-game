@@ -15,7 +15,8 @@ import { BUBBLE_MS, expireBubbles } from './presence';
 import { usePresence } from './usePresence';
 import { useAccount } from './useAccount';
 import { useUi } from '../store/useUi';
-import { player } from '../world/input';
+import { player, teleport } from '../world/input';
+import { SPAWN, TEACHER_POS } from '../world/layout';
 
 /** 熊熊老師連線的狀態（GM 畫面顯示用） */
 interface GmStore {
@@ -26,9 +27,11 @@ interface GmStore {
   flags: RoomFlags;
   /** 給老師看的短訊息（公告送出了、公告太快等；id 每則不同，畫面用來重新計時） */
   notice: { id: number; text: string } | null;
+  /** 在班上某個孩子的島上（島嶼互訪 I2）：島主 */
+  visiting: { id: string; name: string } | null;
 }
 
-export const useGm = create<GmStore>(() => ({ status: 'off', error: null, flags: { chatOpen: true, giftsOpen: true }, notice: null }));
+export const useGm = create<GmStore>(() => ({ status: 'off', error: null, flags: { chatOpen: true, giftsOpen: true }, notice: null, visiting: null }));
 
 /** 給老師的短訊息流水號 */
 let noticeSeq = 0;
@@ -47,6 +50,16 @@ export function announce(text: string): void {
 export function summon(): void {
   sendGm({ t: 'summon' });
   tell('🔔 已請大家集合');
+}
+
+/** 去班上某個孩子的島（島嶼互訪 I2；孩子在自己的島上就好，不用開放） */
+export function gmVisit(id: string): void {
+  sendGm({ t: 'visit', to: id });
+}
+
+/** 回班級島 */
+export function gmBackToClass(): void {
+  sendGm({ t: 'go', island: 'class' });
 }
 
 /** 目前的連線 */
@@ -87,7 +100,10 @@ export function startGm(code: string): () => void {
         case 'welcome':
           retry = 0;
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
-          useGm.setState({ status: 'online', error: null, flags: msg.room });
+          // 到孩子的島從上岸處開始；回班級島站回廣場上 NPC 的位置（和伺服器一致）
+          if (msg.host) teleport(SPAWN);
+          else if (useGm.getState().visiting) teleport(TEACHER_POS);
+          useGm.setState({ status: 'online', error: null, flags: msg.room, visiting: msg.host ?? null });
           break;
         case 'chat':
           // 對話氣泡時間到就收起來
@@ -143,6 +159,6 @@ export function startGm(code: string): () => void {
     socket = null;
     s?.close();
     usePresence.getState().clear();
-    useGm.setState({ status: 'off', error: null, notice: null });
+    useGm.setState({ status: 'off', error: null, notice: null, visiting: null });
   };
 }

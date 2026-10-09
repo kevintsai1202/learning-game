@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from 'react';
 import { useUi } from '../../store/useUi';
-import { announce, summon, useGm } from '../../online/gmClient';
+import { announce, gmBackToClass, summon, useGm } from '../../online/gmClient';
 import { ANNOUNCE_MAX } from '../../online/realtime';
 import { Joystick } from './IslandHud';
 import { sfx } from '../../audio/sfx';
@@ -19,6 +19,8 @@ export function GmHud() {
   const status = useGm((s) => s.status);
   const error = useGm((s) => s.error);
   const notice = useGm((s) => s.notice);
+  /** 在班上某個孩子的島上（島嶼互訪 I2） */
+  const visiting = useGm((s) => s.visiting);
   const online = status === 'online';
   /** 正在輸入的公告 */
   const [text, setText] = useState('');
@@ -43,6 +45,24 @@ export function GmHud() {
               {STATUS_TEXT[status]}
             </span>
           )}
+          {visiting && (
+            <>
+              <span className="hud-chip hud-location friend" data-testid="gm-location">
+                📍 {visiting.name}的島
+              </span>
+              <button
+                className="hud-chip"
+                style={{ paddingLeft: 14 }}
+                onClick={() => {
+                  sfx.tap();
+                  gmBackToClass();
+                }}
+                data-testid="gm-back-class"
+              >
+                🏫 回班級島
+              </button>
+            </>
+          )}
           <button
             className="hud-chip"
             style={{ paddingLeft: 14 }}
@@ -58,7 +78,7 @@ export function GmHud() {
         </div>
         <button
           className="hud-chip"
-          style={{ paddingLeft: 14 }}
+          style={{ paddingLeft: 14, whiteSpace: 'nowrap', flex: 'none' }}
           onClick={() => {
             sfx.tap();
             useUi.getState().goto('teacher');
@@ -104,7 +124,9 @@ export function GmHud() {
         <button
           type="button"
           className="btn small green"
-          disabled={!online}
+          // 在孩子的島上不能集合（大家的位置是繞著班級島上的老師排的）
+          disabled={!online || !!visiting}
+          title={visiting ? '回班級島才能集合' : undefined}
           onClick={() => {
             sfx.tap();
             summon();

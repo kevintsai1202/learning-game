@@ -13,6 +13,7 @@ import { player, teleport } from '../../world/input';
 import { whereText } from '../memberWhere';
 import { sfx } from '../../audio/sfx';
 import { RewardDialog, type RewardTarget } from './RewardDialog';
+import { gmVisit } from '../../online/gmClient';
 
 /** 多久讀一次（毫秒） */
 const POLL_MS = 5000;
@@ -79,6 +80,19 @@ export function GmRoster({ code, onClose }: { code: string; onClose: () => void 
                 <button className="btn small white" disabled={!here.includes(m.id)} onClick={() => goTo(m.id)} title="移到他旁邊" data-testid={`gm-goto-${m.nickname}`}>
                   📍 過去
                 </button>
+                {m.where?.island === 'own' && (
+                  <button
+                    className="btn small white"
+                    onClick={() => {
+                      sfx.tap();
+                      gmVisit(m.id);
+                    }}
+                    title={`去${m.nickname}的島`}
+                    data-testid={`gm-visit-${m.nickname}`}
+                  >
+                    🏝️ 去他的島
+                  </button>
+                )}
                 <button className="btn small white" onClick={() => setRewardFor({ ids: [m.id], label: m.nickname })} title={`發獎勵給${m.nickname}`} data-testid={`gm-reward-${m.nickname}`}>
                   🎁
                 </button>

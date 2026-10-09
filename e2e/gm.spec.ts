@@ -239,3 +239,40 @@ test('發獎勵：班級頁給一位孩子金幣、給全班貼紙；線上的�
   for (const d of [a, b, t]) expect(pageErrors(d.page)).toEqual([]);
   await Promise.all([a.context.close(), b.context.close(), t.context.close()]);
 });
+
+test('熊熊老師去班上孩子的島（島嶼互訪 I2）：全班清單按「去他的島」，孩子看到熊熊老師來了；按「回班級島」回去', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
+  const room = await createClassViaApi(request, '二年三班');
+  const res = await request.post(`${SERVER}/api/join`, { data: { code: room.code, nickname: '阿寶', pin: '1111', avatar: { animal: 'capybara', color: '#8b5a2b', hat: null } } });
+  expect(res.ok()).toBe(true);
+  // 阿寶在自己的島（沒有開放：老師不用島主開放）
+  const a = await openDevice(browser, baseURL!);
+  await loginAndEnter(a.page, room.code, '阿寶', '1111');
+  await a.page.getByTestId('hud-island').click();
+  await expect.poll(() => islandNow(a.page)).toBe('own');
+
+  const t = await openDevice(browser, baseURL!);
+  await loginTeacher(t.page, room.username);
+  await t.page.getByTestId(`class-${room.code}`).click();
+  await t.page.getByTestId('gm-enter').click();
+  await expect.poll(() => t.page.evaluate(() => (window as any).__game.gm.getState().status)).toBe('online');
+  await t.page.getByTestId('gm-roster-toggle').click();
+  await expect(t.page.getByTestId('gm-roster-阿寶')).toContainText('自己的島');
+  await t.page.getByTestId('gm-visit-阿寶').click();
+
+  // 老師到了阿寶的島：所在地、阿寶的門牌；阿寶看到熊熊老師與泡泡
+  await expect.poll(() => t.page.evaluate(() => (window as any).__game.gm.getState().visiting?.name ?? null)).toBe('阿寶');
+  await expect(t.page.getByTestId('gm-location')).toContainText('阿寶的島');
+  await expect(t.page.getByTestId('island-plate')).toContainText('阿寶的島');
+  await expect.poll(() => teacherOn(a.page)).toMatchObject({ role: 'teacher' });
+  await expect(a.page.getByRole('status').filter({ hasText: '熊熊老師來玩了' })).toBeVisible();
+  await t.page.screenshot({ path: `${SHOTS}/08-teacher-visits-kid.png` });
+
+  // 回班級島
+  await t.page.getByTestId('gm-back-class').click();
+  await expect.poll(() => t.page.evaluate(() => (window as any).__game.gm.getState().visiting)).toBeNull();
+  await expect.poll(() => teacherOn(a.page)).toBeNull();
+
+  for (const d of [a, t]) expect(pageErrors(d.page)).toEqual([]);
+  await Promise.all([a.context.close(), t.context.close()]);
+});
