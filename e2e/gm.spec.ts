@@ -4,6 +4,7 @@
  * 廣場上的 NPC 熊熊老師藏起來，好友名單上的老師變成線上；老師按「離開」回到同一班的班級頁，孩子那邊恢復原狀。
  * 第二條：全班公告（在自己島上的孩子也收到、太快要等 10 秒）與集合（島上直接過去、自己島上按「回班級島」、建築裡按「過去」）。
  * 第三條（G3）：孩子在做什麼，老師的班級頁（每 15 秒自動更新）與進島後的全班清單都看得到；清單上可以移到孩子旁邊。
+ * 第四條（G3）：發獎勵（班級頁給一位孩子、給全班；沒上線的孩子下次上線看到；進島後的全班清單也能發）。
  * 截圖在 e2e/screenshots/gm/（不進版控）。
  */
 import { expect, test, type Page } from '@playwright/test';
@@ -176,4 +177,65 @@ test('在做什麼：孩子答題時，老師的班級頁（自動更新）與�
 
   for (const d of [a, t]) expect(pageErrors(d.page)).toEqual([]);
   await Promise.all([a.context.close(), t.context.close()]);
+});
+
+/** 這台裝置目前角色的金幣 */
+const coinsOf = (page: Page) => page.evaluate(() => (window as any).__game.game.getState().profile().coins as number);
+
+test('發獎勵：班級頁給一位孩子金幣、給全班貼紙；線上的孩子馬上看到卡片，沒上線的孩子下次上線看到；進島後的全班清單也能發', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
+  const room = await createClassViaApi(request, '二年三班');
+  for (const [nickname, pin, animal] of [
+    ['阿寶', '1111', 'capybara'],
+    ['小美', '2222', 'panda'],
+  ]) {
+    const res = await request.post(`${SERVER}/api/join`, { data: { code: room.code, nickname, pin, avatar: { animal, color: '#8b5a2b', hat: null } } });
+    expect(res.ok()).toBe(true);
+  }
+  // 阿寶在線上；小美還沒上線
+  const a = await openDevice(browser, baseURL!);
+  await loginAndEnter(a.page, room.code, '阿寶', '1111');
+  const coins0 = await coinsOf(a.page);
+
+  // ① 老師在班級頁給阿寶 10 枚金幣：阿寶馬上看到卡片，金幣多 10
+  const t = await openDevice(browser, baseURL!);
+  await loginTeacher(t.page, room.username);
+  await t.page.getByTestId(`class-${room.code}`).click();
+  await t.page.getByTestId('reward-阿寶').click();
+  await t.page.getByTestId('reward-coins-10').click();
+  await t.page.getByTestId('reward-send').click();
+  await expect(t.page.getByTestId('reward-done')).toContainText('阿寶');
+  await expect(a.page.getByTestId('reward-card')).toContainText('熊熊老師給你 10 枚金幣');
+  await expect.poll(() => coinsOf(a.page)).toBe(coins0 + 10);
+  await a.page.screenshot({ path: `${SHOTS}/06-kid-reward-card.png` });
+  await a.page.getByTestId('reward-ok').click();
+  await expect(a.page.getByTestId('reward-card')).toHaveCount(0);
+
+  // ② 給全班一張鬱金香貼紙：阿寶看到卡片；小美下次上線時看到
+  await t.page.getByTestId('reward-close').click();
+  await t.page.getByTestId('reward-all').click();
+  await t.page.getByTestId('reward-sticker-sticker.tulip').click();
+  await t.page.getByTestId('reward-send').click();
+  await expect(t.page.getByTestId('reward-done')).toContainText('全班');
+  await expect(a.page.getByTestId('reward-card')).toContainText('鬱金香貼紙');
+  await a.page.getByTestId('reward-ok').click();
+  const b = await openDevice(browser, baseURL!);
+  await loginAndEnter(b.page, room.code, '小美', '2222');
+  await expect(b.page.getByTestId('reward-card')).toContainText('鬱金香貼紙');
+  await b.page.getByTestId('reward-ok').click();
+  await expect.poll(() => b.page.evaluate(() => (window as any).__game.game.getState().profile().stickers?.['sticker.tulip'] ?? 0)).toBe(1);
+
+  // ③ 進島後的全班清單也能發：給小美 5 枚金幣
+  await t.page.getByTestId('reward-close').click();
+  await t.page.getByTestId('gm-enter').click();
+  await expect.poll(() => t.page.evaluate(() => (window as any).__game.gm.getState().status)).toBe('online');
+  await t.page.getByTestId('gm-roster-toggle').click();
+  await t.page.getByTestId('gm-reward-小美').click();
+  await t.page.getByTestId('reward-coins-5').click();
+  await t.page.getByTestId('reward-send').click();
+  await expect(b.page.getByTestId('reward-card')).toContainText('熊熊老師給你 5 枚金幣');
+  await t.page.screenshot({ path: `${SHOTS}/07-teacher-reward-dialog.png` });
+
+  for (const d of [a, b, t]) expect(pageErrors(d.page)).toEqual([]);
+  await Promise.all([a.context.close(), b.context.close(), t.context.close()]);
 });

@@ -17,6 +17,7 @@ import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from 
 import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
 import { TEACHER_POS } from '../../world/layout';
 import { whereText } from '../memberWhere';
+import { RewardDialog, type RewardTarget } from './RewardDialog';
 import { player, teleport } from '../../world/input';
 import { JoinClassPanel } from './JoinClassPanel';
 import { ClaimPanel } from './ClaimPanel';
@@ -1377,6 +1378,8 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
   const [note, setNote] = useState<string | null>(null);
   /** 剛產生的家長連結卡（L4；關掉就看不到代碼了） */
   const [claimCard, setClaimCard] = useState<ClaimIssueResponse | null>(null);
+  /** 發獎勵的視窗（老師 GM 的 G3）：給誰 */
+  const [rewardFor, setRewardFor] = useState<RewardTarget | null>(null);
   /** 開關按下後、伺服器還沒存好之前畫面先顯示的值（按下就變，不等伺服器；存完或失敗就拿掉，改顯示伺服器的值） */
   const [pending, setPending] = useState<Partial<Record<RoomFlag, boolean>>>({});
   /** 這個班級的 API 路徑 */
@@ -1486,6 +1489,11 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
         <p className="plain">還沒有孩子加入。請家長掃上面的 QR code 用家長帳號加入；或用學校平板掃 QR code、輸入教室密碼後按「新增學生」。</p>
       ) : (
         <div className="scroll-x">
+          <div style={{ margin: '6px 0' }}>
+            <button className="btn small" onClick={() => setRewardFor({ ids: 'all', label: '全班' })} data-testid="reward-all">
+              🎁 全班獎勵
+            </button>
+          </div>
           <table className="report-table" data-testid="member-table">
             <thead>
               <tr>
@@ -1518,6 +1526,14 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
                   <td>{m.coins}</td>
                   <td data-testid={`sessions-${m.nickname}`}>{m.sessions}</td>
                   <td>
+                    <button
+                      className="btn small white"
+                      onClick={() => setRewardFor({ ids: [m.id], label: m.nickname })}
+                      title={`發獎勵給${m.nickname}`}
+                      data-testid={`reward-${m.nickname}`}
+                    >
+                      🎁
+                    </button>
                     <MemberActions
                       member={m}
                       onReset={(pin) =>
@@ -1542,6 +1558,16 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
             </tbody>
           </table>
           {claimCard && room && <ClaimCard issued={claimCard} roomName={room.name} onClose={() => setClaimCard(null)} />}
+          {rewardFor && (
+            <RewardDialog
+              code={code}
+              target={rewardFor}
+              onClose={() => {
+                setRewardFor(null);
+                void reload();
+              }}
+            />
+          )}
         </div>
       )}
     </div>

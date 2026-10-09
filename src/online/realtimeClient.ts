@@ -19,6 +19,7 @@ import { usePresence } from './usePresence';
 import { getToken } from './storage';
 import { useCloud } from './useCloud';
 import { useGifts } from './useGifts';
+import { useRewards } from './useRewards';
 import { summonKind, useTeacherCalls } from './useTeacherCalls';
 import { speak } from '../audio/speech';
 import { GM_LINES } from '../ui/lines';
@@ -244,6 +245,7 @@ export function startRealtime(): () => void {
     s?.close();
     usePresence.getState().clear();
     useGifts.getState().clear();
+    useRewards.getState().clear();
     useFriends.getState().clear();
     useRealtime.setState({ island: null });
     if (useRealtime.getState().status !== 'kicked') useRealtime.setState({ status: 'off' });
@@ -272,6 +274,7 @@ export function startRealtime(): () => void {
           sendWhere(true);
           sendDoing(true);
           void useGifts.getState().load();
+          void useRewards.getState().load();
           // 進的島和要去的不一樣：要去班級島卻進了自己的島，是伺服器說沒有班級（同步一次更新本機的班級）；
           // 要去的那一班伺服器說不是成員（進了別班，例如在別台裝置退出了）：同步一次更新本機的班級清單；
           // 其他情況是連線途中換了島，補送 go。舊版伺服器的 welcome 沒有 island，不補送（舊版不認得 go）；
@@ -302,6 +305,10 @@ export function startRealtime(): () => void {
           break;
         case 'gift':
           void useGifts.getState().load();
+          break;
+        case 'reward':
+          // 老師發了獎勵（老師 GM 的 G3）：存檔另外收到 profile 會同步，這裡讀卡片
+          void useRewards.getState().load();
           break;
         case 'kicked':
           blocked = blockNow();

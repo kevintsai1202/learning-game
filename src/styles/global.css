@@ -1577,6 +1577,17 @@ button {
   font-family: var(--font-plain);
   font-weight: 700;
 }
+/* 老師發獎勵的視窗（老師 GM 的 G3）：金幣與貼紙的選項 */
+.reward-panel {
+  padding: 16px 18px 18px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
+}
+.reward-choices {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
 /* 休息的倒數（玩一段時間要休息，2026-10-09） */
 .rest-countdown {
   margin: 10px 0 0;

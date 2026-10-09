@@ -12,6 +12,7 @@ import type { MemberSummary, TeacherRoomResponse } from '../../online/protocol';
 import { player, teleport } from '../../world/input';
 import { whereText } from '../memberWhere';
 import { sfx } from '../../audio/sfx';
+import { RewardDialog, type RewardTarget } from './RewardDialog';
 
 /** 多久讀一次（毫秒） */
 const POLL_MS = 5000;
@@ -20,6 +21,8 @@ export function GmRoster({ code, onClose }: { code: string; onClose: () => void 
   const call = useAccount((s) => s.call);
   const [members, setMembers] = useState<MemberSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** 發獎勵的視窗：給誰 */
+  const [rewardFor, setRewardFor] = useState<RewardTarget | null>(null);
   /** 在這座島上、不在建築裡的孩子（只取 id；位置在按下時才讀） */
   const here = usePresence(useShallow((s) => onIsland(s).filter((m) => m.role !== 'teacher').map((m) => m.id)));
 
@@ -50,12 +53,18 @@ export function GmRoster({ code, onClose }: { code: string; onClose: () => void 
   /** 線上的排前面，其餘照暱稱 */
   const sorted = members ? [...members].sort((a, b) => Number(!!b.where || b.online) - Number(!!a.where || a.online) || a.nickname.localeCompare(b.nickname, 'zh-TW')) : null;
   return (
+    <>
     <div className="card gm-roster" role="dialog" aria-label="全班清單" data-testid="gm-roster">
       <div className="gm-roster-head">
         <strong>📋 全班{members ? `（${members.length} 人）` : ''}</strong>
-        <button className="btn small white" onClick={onClose} data-testid="gm-roster-close">
-          關閉
-        </button>
+        <span style={{ display: 'flex', gap: 6 }}>
+          <button className="btn small" onClick={() => setRewardFor({ ids: 'all', label: '全班' })} data-testid="gm-reward-all">
+            🎁 全班
+          </button>
+          <button className="btn small white" onClick={onClose} data-testid="gm-roster-close">
+            關閉
+          </button>
+        </span>
       </div>
       {error && <p className="notice">{error}</p>}
       {!sorted && !error && <p className="plain">讀取中…</p>}
@@ -66,13 +75,21 @@ export function GmRoster({ code, onClose }: { code: string; onClose: () => void 
             <li key={m.id} data-testid={`gm-roster-${m.nickname}`}>
               <span className="gm-roster-name">{m.nickname}</span>
               <span className="gm-roster-where">{whereText(m) || '離線'}</span>
-              <button className="btn small white" disabled={!here.includes(m.id)} onClick={() => goTo(m.id)} title="移到他旁邊" data-testid={`gm-goto-${m.nickname}`}>
-                📍 過去
-              </button>
+              <span style={{ display: 'flex', gap: 6 }}>
+                <button className="btn small white" disabled={!here.includes(m.id)} onClick={() => goTo(m.id)} title="移到他旁邊" data-testid={`gm-goto-${m.nickname}`}>
+                  📍 過去
+                </button>
+                <button className="btn small white" onClick={() => setRewardFor({ ids: [m.id], label: m.nickname })} title={`發獎勵給${m.nickname}`} data-testid={`gm-reward-${m.nickname}`}>
+                  🎁
+                </button>
+              </span>
             </li>
           ))}
         </ul>
       )}
     </div>
+    {/* 發獎勵的視窗放在清單卡片外面（全畫面） */}
+    {rewardFor && <RewardDialog code={code} target={rewardFor} onClose={() => setRewardFor(null)} />}
+    </>
   );
 }

@@ -136,6 +136,13 @@ const afterVerb = (itemId: string): string => (findSticker(itemId) ? giftPhrase(
 /** 收到禮物的卡片：「小安送你一張 🌷 鬱金香貼紙！」「小安送你 🎉 派對帽！」 */
 export const giftCardLine = (from: string, itemId: string): string => `${from}送你${afterVerb(itemId)}！`;
 
+/** 收到老師獎勵的卡片（老師 GM 的 G3）：金幣、貼紙或兩種都有（有數字，用裝置語音） */
+export const rewardCardLine = (coins: number, itemId: string | null): string => {
+  if (coins && itemId) return `熊熊老師給你 ${coins} 枚金幣和${giftPhrase(itemId)}！`;
+  if (coins) return `熊熊老師給你 ${coins} 枚金幣！`;
+  return `熊熊老師送你${itemId ? giftPhrase(itemId) : '一份獎勵'}！`;
+};
+
 /** 送出的禮物被收下：「小美收下了你送的 🌷 鬱金香貼紙！」 */
 export const giftAcceptedLine = (to: string, itemId: string): string => `${to}收下了你送的 ${giftEmoji(itemId)} ${giftName(itemId)}！`;
 

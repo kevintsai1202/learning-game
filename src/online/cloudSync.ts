@@ -15,6 +15,8 @@ import type {
   RoomInfo,
   SendGiftResponse,
   SessionResponse,
+  RewardInfo,
+  RewardsResponse,
 } from './protocol';
 import type { AvatarConfig, CloudLink, CloudRoom, Profile } from '../store/save';
 
@@ -320,4 +322,14 @@ export async function declineGift(deps: CloudDeps, profileId: string, giftId: st
 /** 送禮結果看過了 */
 export async function ackGiftNotices(deps: CloudDeps, profileId: string, ids: string[]): Promise<void> {
   if (ids.length) await authed(deps, profileId, 'POST', '/api/gifts/notices/ack', { ids });
+}
+
+/** 還沒看過的老師獎勵（老師 GM 的 G3） */
+export async function fetchRewards(deps: CloudDeps, profileId: string): Promise<RewardInfo[]> {
+  return (await authed<RewardsResponse>(deps, profileId, 'GET', '/api/rewards')).rewards;
+}
+
+/** 老師的獎勵看過了 */
+export async function markRewardsSeen(deps: CloudDeps, profileId: string, ids: string[]): Promise<void> {
+  if (ids.length) await authed(deps, profileId, 'POST', '/api/rewards/seen', { ids });
 }

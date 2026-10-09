@@ -13,6 +13,7 @@ import { teacherTalk } from '../teacherTips';
 import { useCloud, type CloudStatus } from '../../online/useCloud';
 import { ChatPanel } from '../ChatPanel';
 import { GiftInbox } from '../GiftInbox';
+import { RewardCard } from '../RewardCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 import { classesOf, currentClass, islandLook, nameHere, type IslandTarget } from '../../store/island';
@@ -313,6 +314,7 @@ export function IslandHud() {
       <ChatPanel />
       {/* 禮物卡片與送禮視窗：只在島上（不打斷答題） */}
       <GiftInbox />
+      <RewardCard />
       <GiftDialog />
       <FriendsPanel />
     </>
