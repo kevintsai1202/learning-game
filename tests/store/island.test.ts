@@ -5,7 +5,7 @@
  * 多班級：每一班一座班級島；沒選過時在第一個班級（最早加入的）的班級島，選的那一班不在清單裡了就回到第一個班級。
  */
 import { describe, expect, it } from 'vitest';
-import { activeCurriculum, currentClass, devicePacksVisible, islandLook, islandOf, withIsland } from '../../src/store/island';
+import { activeCurriculum, currentClass, devicePacksVisible, islandLook, islandOf, nameHere, reloginRoom, withIsland } from '../../src/store/island';
 import { DEFAULT_CURRICULUM, addProfile, createEmptySave, type CloudLink, type CurriculumChoice, type Profile } from '../../src/store/save';
 import { curriculumActivities } from '../../src/activities/resolve';
 import { BUILT_IN_EDITIONS } from '../../src/content/editions';
@@ -122,5 +122,35 @@ describe('島的外觀（L5：班級島與我的島分得出來）', () => {
 
   it('多班級：在哪一班的班級島就帶哪一班', () => {
     expect(islandLook(withIsland(kid(twoClasses), '654321'))).toEqual({ kind: 'class', kidName: '小安', classCode: '654321', className: '安親班' });
+  });
+});
+
+describe('島上顯示的名字與重新登入用哪一班（多班級）', () => {
+  /** 學校叫「小安」、安親班叫「安安」 */
+  const named: CloudLink = {
+    ...twoClasses,
+    rooms: [
+      { code: '123456', name: '二年一班', nickname: '小安' },
+      { code: '654321', name: '安親班', nickname: '安安' },
+    ],
+  };
+
+  it('班級島：那一班的暱稱（同學看到的名字）；自己的島與沒有班級：角色名字', () => {
+    expect(nameHere(kid({ ...named, island: '654321' }))).toBe('安安');
+    expect(nameHere(kid(named))).toBe('小安');
+    expect(nameHere(kid({ ...named, island: 'mine' }))).toBe('小安');
+    expect(nameHere(kid())).toBe('小安');
+  });
+
+  it('舊版伺服器沒給暱稱：用角色名字', () => {
+    expect(nameHere(kid({ ...twoClasses, island: '654321' }))).toBe('小安');
+  });
+
+  it('重新登入預設用現在所在的那一班；在自己的島時用第一個班級；沒有班級是 null', () => {
+    expect(reloginRoom(kid({ ...named, island: '654321' }))?.code).toBe('654321');
+    expect(reloginRoom(kid(named))?.code).toBe('123456');
+    expect(reloginRoom(kid({ ...named, island: 'mine' }))?.code).toBe('123456');
+    expect(reloginRoom(kid())).toBeNull();
+    expect(reloginRoom(null)).toBeNull();
   });
 });

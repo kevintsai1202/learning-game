@@ -9,7 +9,7 @@ import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
 import { useCloud } from '../../online/useCloud';
 import { getToken } from '../../online/storage';
-import { classesOf } from '../../store/island';
+import { classesOf, reloginRoom } from '../../store/island';
 import { sfx } from '../../audio/sfx';
 import { speak } from '../../audio/speech';
 import { enterIslandLine } from '../lines';
@@ -23,11 +23,13 @@ export function ClassScreen() {
   const goto = useUi((s) => s.goto);
   const active = useGame((s) => s.profile());
   const login = useCloud((s) => s.login);
-  // 目前角色是雲端角色但需要重新登入時，先填好代碼與暱稱（多班級：第一個班級的代碼與那一班的暱稱）
+  // 目前角色是雲端角色但需要重新登入時，先填好代碼與暱稱（多班級：現在所在那一班的代碼與那一班的暱稱，可以改選別班）
   const relogin = active?.cloud && !getToken(active.cloud.accountId) ? active : null;
-  const reloginRoom = classesOf(relogin)[0];
-  const [code, setCode] = useState(reloginRoom?.code ?? '');
-  const [nickname, setNickname] = useState(reloginRoom?.nickname ?? relogin?.name ?? '');
+  /** 重新登入時可以選的班級（多班級才列出來） */
+  const reloginRooms = classesOf(relogin);
+  const first = reloginRoom(relogin);
+  const [code, setCode] = useState(first?.code ?? '');
+  const [nickname, setNickname] = useState(first?.nickname ?? relogin?.name ?? '');
   const [pin, setPin] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,30 @@ export function ClassScreen() {
           </button>
         </div>
         <form className="panel-body" onSubmit={submit}>
+          {reloginRooms.length > 1 && (
+            // 多班級：各班的暱稱與密碼不同，選用哪一班登入（換成那一班的代碼與暱稱）
+            <div style={{ marginBottom: 10 }}>
+              <span className="label">用哪一班登入？</span>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {reloginRooms.map((r) => (
+                  <button
+                    key={r.code}
+                    type="button"
+                    className={`btn small ${r.code === code ? '' : 'white'}`}
+                    aria-pressed={r.code === code}
+                    onClick={() => {
+                      setCode(r.code);
+                      setNickname(r.nickname ?? relogin!.name);
+                      setError(null);
+                    }}
+                    data-testid={`class-pick-${r.code}`}
+                  >
+                    🏫 {r.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <label className="label" htmlFor="class-code">
             班級代碼（6 個數字，請問老師）
           </label>

@@ -15,7 +15,7 @@ import { ChatPanel } from '../ChatPanel';
 import { GiftInbox } from '../GiftInbox';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
-import { classesOf, currentClass, islandLook, type IslandTarget } from '../../store/island';
+import { classesOf, currentClass, islandLook, nameHere, type IslandTarget } from '../../store/island';
 import { ISLAND_LINES } from '../lines';
 import { FriendsButton, FriendsPanel } from '../FriendsPanel';
 
@@ -255,7 +255,8 @@ export function IslandHud() {
                 <AnimalIcon animal={profile.avatar.animal} />
               </span>
               <span className="hud-name">
-                {profile.name}
+                {/* 班級島上顯示那一班的暱稱（和同學看到的一樣） */}
+                {nameHere(profile)}
                 {shownTitle(profile) && (
                   <small className="hud-title" data-testid="hud-title">
                     {shownTitle(profile)}

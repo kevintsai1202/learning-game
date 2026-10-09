@@ -2,6 +2,7 @@
  * 老師 GM 的 G0＋G1（docs/plans/teacher-gm.md 第 3、4 節）：
  * - G0 班級教材版本：老師在班級頁統一版本，線上的孩子馬上收到（content → 同步），班級島的課本單元跟著老師；取消統一就照孩子自己的設定。
  * - G1 我的島：孩子切到我的島，用自己的版本、看不到同學（島嶼互訪 I1 起保持連線，在自己的島上）；切回班級島又和同學同島。
+ * - 班級頁連續操作：連改兩個教材版本下拉、連按兩個開關時，較早那次儲存的回應晚到（攔下回應控制順序）也不會蓋掉剛做的修改。
  * 截圖在 e2e/screenshots/teacher-gm/（不進版控）。
  */
 import { expect, test, type Page } from '@playwright/test';
@@ -132,37 +133,57 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   await Promise.all([a.context.close(), b.context.close(), t.context.close()]);
 });
 
+/** 攔下來的一個班級資料回應：放行的函式與「頁面收到了」的 Promise */
+type HeldReload = { release: () => void; delivered: Promise<void> };
+
+/**
+ * 攔下老師班級頁重新整理（GET 班級資料）的回應，由測試決定何時交給頁面：先跟伺服器拿到回應（當下的值），等放行才交給頁面。
+ * 進頁面那次載入完才呼叫，攔到的第一個就是第一個動作之後的重新整理；releaseAll 放行全部、之後不再攔
+ */
+async function holdRoomReloads(page: Page, code: string): Promise<{ held: HeldReload[]; releaseAll: () => void }> {
+  const held: HeldReload[] = [];
+  /** 還要不要攔 */
+  let holding = true;
+  await page.route(
+    (url) => url.pathname === `/api/teacher/rooms/${code}`,
+    async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      const res = await route.fetch();
+      if (!holding) return route.fulfill({ response: res });
+      let release!: () => void;
+      let done!: () => void;
+      const released = new Promise<void>((r) => (release = r));
+      held.push({ release, delivered: new Promise<void>((r) => (done = r)) });
+      await released;
+      await route.fulfill({ response: res });
+      done();
+    },
+  );
+  const releaseAll = () => {
+    holding = false;
+    for (const h of held) h.release();
+  };
+  return { held, releaseAll };
+}
+
+/** 放行一個攔下的回應，等頁面處理完 */
+async function deliver(page: Page, h: HeldReload): Promise<void> {
+  h.release();
+  await h.delivered;
+  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  await page.waitForTimeout(200);
+}
+
 // 老師連續改兩個下拉（docs/plans/login-ux-review.md 第 10 節 L5 順手發現）：前一次儲存的回應晚到，畫面曾被重設成伺服器的舊值，
 // 下一個下拉就從舊值組出來送出，把前一次的修改蓋掉。這裡攔下老師頁重新整理的回應、由測試決定何時交給頁面，讓舊回應確定落在中間
 test('老師連續改兩個教材版本下拉：前一次的回應晚到，也不會蓋掉剛選的', async ({ browser, baseURL, request }) => {
-  test.setTimeout(240_000);
+  test.setTimeout(300_000);
   const room = await createClassViaApi(request, '二年二班');
   const t = await openDevice(browser, baseURL!);
   await loginTeacher(t.page, room.username);
   await t.page.getByTestId(`class-${room.code}`).click();
   await expect(t.page.getByTestId('class-curriculum-toggle')).not.toBeChecked();
-
-  /** 攔下來的班級資料回應：放行的函式與「頁面收到了」的 Promise（照攔到的順序） */
-  const held: { release: () => void; delivered: Promise<void> }[] = [];
-  /** 還要不要攔（最後全部放行） */
-  let holding = true;
-  // 進頁面那次已經載入完才開始攔，攔到的第一個就是打勾之後的重新整理；先跟伺服器拿到回應（當下的值），等放行才交給頁面
-  await t.page.route(
-    (url) => url.pathname === `/api/teacher/rooms/${room.code}`,
-    async (route) => {
-      if (route.request().method() !== 'GET') return route.continue();
-      const res = await route.fetch();
-      if (holding) {
-        let release!: () => void;
-        let done!: () => void;
-        const released = new Promise<void>((r) => (release = r));
-        held.push({ release, delivered: new Promise<void>((r) => (done = r)) });
-        await released;
-        await route.fulfill({ response: res });
-        done();
-      } else await route.fulfill({ response: res });
-    },
-  );
+  const { held, releaseAll } = await holdRoomReloads(t.page, room.code);
 
   // 打勾（存預設版本：數學南一、學期自動），它的回應先攔著
   await t.page.getByTestId('class-curriculum-toggle').click();
@@ -170,15 +191,10 @@ test('老師連續改兩個教材版本下拉：前一次的回應晚到，也�
   await expect.poll(() => held.length).toBe(1);
   // 選數學翰林，之後打勾那次的舊回應才到
   await t.page.getByTestId('class-edition-math').selectOption('hanlin-math');
-  held[0].release();
-  await held[0].delivered;
-  // 等頁面處理完這個回應
-  await t.page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  await t.page.waitForTimeout(200);
+  await deliver(t.page, held[0]);
   // 再選學期：要沿用剛選的數學翰林
   await t.page.getByTestId('class-edition-term').selectOption('上');
-  holding = false;
-  for (const h of held) h.release();
+  releaseAll();
   await expect(t.page.getByText('班級島的教材版本：國語 康軒・數學 翰林・二年級上學期')).toBeVisible();
   await expect(t.page.getByTestId('class-edition-math')).toHaveValue('hanlin-math');
 
@@ -186,6 +202,41 @@ test('老師連續改兩個教材版本下拉：前一次的回應晚到，也�
   await t.page.getByTestId('teacher-reload').click();
   await expect(t.page.getByTestId('class-edition-math')).toHaveValue('hanlin-math');
   await expect(t.page.getByTestId('class-edition-term')).toHaveValue('上');
+  expect(pageErrors(t.page)).toEqual([]);
+  await t.context.close();
+});
+
+// 班級頁的開關（加入、聊天、送禮）：按下就變（不等伺服器）；連按兩個開關、重新整理的回應先後顛倒時，較早的舊回應不會把畫面拉回舊狀態
+test('老師連按兩個開關：按下馬上變，回應先後顛倒也不會被拉回舊狀態', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
+  const room = await createClassViaApi(request, '二年四班');
+  const t = await openDevice(browser, baseURL!);
+  await loginTeacher(t.page, room.username);
+  await t.page.getByTestId(`class-${room.code}`).click();
+  const chat = t.page.getByTestId('toggle-chat');
+  const gifts = t.page.getByTestId('toggle-gifts');
+  await expect(chat).toBeChecked();
+  await expect(gifts).toBeChecked();
+  const { held, releaseAll } = await holdRoomReloads(t.page, room.code);
+
+  // 關聊天：重新整理的回應還攔著，開關就已經變了
+  await chat.click();
+  await expect(chat).not.toBeChecked();
+  // 等關聊天之後的重新整理被攔下（它拿到的是「聊天關、送禮開」）才關送禮
+  await expect.poll(() => held.length).toBe(1);
+  await gifts.click();
+  await expect(gifts).not.toBeChecked();
+  await expect.poll(() => held.length).toBe(2);
+  // 回應先後顛倒：新的先到、舊的後到
+  await deliver(t.page, held[1]);
+  await deliver(t.page, held[0]);
+  await expect(chat).not.toBeChecked();
+  await expect(gifts).not.toBeChecked();
+  releaseAll();
+
+  // 伺服器上兩個都關了
+  const res = await request.get(`${SERVER}/api/teacher/rooms/${room.code}`, { headers: { authorization: `Bearer ${room.token}` } });
+  expect(((await res.json()) as { room: { chatOpen: boolean; giftsOpen: boolean } }).room).toMatchObject({ chatOpen: false, giftsOpen: false });
   expect(pageErrors(t.page)).toEqual([]);
   await t.context.close();
 });

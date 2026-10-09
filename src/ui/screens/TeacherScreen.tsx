@@ -1349,6 +1349,9 @@ function ClassList({ onOpen }: { onOpen: (code: string, created: boolean) => voi
   );
 }
 
+/** 班級頁的三個開關：允許加入、聊天、送禮 */
+type RoomFlag = 'joinOpen' | 'chatOpen' | 'giftsOpen';
+
 /** 老師：一個班級的代碼、開關與成員列表 */
 function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreated: boolean; onBack: () => void }) {
   const call = useAccount((s) => s.call);
@@ -1358,16 +1361,23 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
   const [note, setNote] = useState<string | null>(null);
   /** 剛產生的家長連結卡（L4；關掉就看不到代碼了） */
   const [claimCard, setClaimCard] = useState<ClaimIssueResponse | null>(null);
+  /** 開關按下後、伺服器還沒存好之前畫面先顯示的值（按下就變，不等伺服器；存完或失敗就拿掉，改顯示伺服器的值） */
+  const [pending, setPending] = useState<Partial<Record<RoomFlag, boolean>>>({});
   /** 這個班級的 API 路徑 */
   const base = `/api/teacher/rooms/${code}`;
 
+  /** 重新整理的序號：只採用最後一次的回應（連按兩個開關時，較早那次的回應可能比較晚到，是舊的狀態） */
+  const reloadSeq = useRef(0);
   const reload = useCallback(async () => {
+    const seq = ++reloadSeq.current;
     try {
       const r = await call<TeacherRoomResponse>('GET', base);
+      if (seq !== reloadSeq.current) return;
       setRoom(r.room);
       setMembers(r.members);
       setError(null);
     } catch (err) {
+      if (seq !== reloadSeq.current) return;
       setError(messageOf(err));
     }
   }, [call, base]);
@@ -1386,6 +1396,20 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
       setError(messageOf(err));
     }
   };
+
+  /** 切換一個開關：畫面馬上變，送出後重新整理；同一個開關又按了一次時，前一次的完成不會清掉後一次的顯示 */
+  const toggle = (flag: RoomFlag, v: boolean, done: string) => {
+    setPending((p) => ({ ...p, [flag]: v }));
+    void act(() => call('PATCH', base, { [flag]: v }), done).then(() =>
+      setPending((p) => {
+        if (p[flag] !== v) return p;
+        const { [flag]: _done, ...rest } = p;
+        return rest;
+      }),
+    );
+  };
+  /** 開關現在要顯示的值 */
+  const flagOf = (flag: RoomFlag) => pending[flag] ?? room?.[flag] ?? false;
 
   return (
     <div className="panel-body">
@@ -1407,16 +1431,16 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
             <ClassName name={room.name} onSave={(name) => act(() => call('PATCH', base, { name }), `班級名稱改成「${name}」`)} />
           </div>
           <ClassPassword has={!!room.hasClassPassword} onSave={(classPassword) => act(() => call('PATCH', base, { classPassword }), '教室密碼設定好了。已經解鎖的平板要重新輸入。')} />
-          <Check checked={room.joinOpen} onChange={(v) => void act(() => call('PATCH', base, { joinOpen: v }), v ? '已開放加入' : '已停止加入')} testId="toggle-join">
+          <Check checked={flagOf('joinOpen')} onChange={(v) => toggle('joinOpen', v, v ? '已開放加入' : '已停止加入')} testId="toggle-join">
             允許新的孩子加入（全班都加入後可以關掉，避免代碼外流後有陌生人加入）
           </Check>
-          <Check checked={room.chatOpen} onChange={(v) => void act(() => call('PATCH', base, { chatOpen: v }), v ? '已開放聊天' : '已關閉聊天')} testId="toggle-chat">
+          <Check checked={flagOf('chatOpen')} onChange={(v) => toggle('chatOpen', v, v ? '已開放聊天' : '已關閉聊天')} testId="toggle-chat">
             允許公頻聊天（孩子只能選預設短句，不能自由打字）
           </Check>
-          <Check checked={room.giftsOpen} onChange={(v) => void act(() => call('PATCH', base, { giftsOpen: v }), v ? '已開放送禮' : '已關閉送禮')} testId="toggle-gifts">
+          <Check checked={flagOf('giftsOpen')} onChange={(v) => toggle('giftsOpen', v, v ? '已開放送禮' : '已關閉送禮')} testId="toggle-gifts">
             允許送禮物（用金幣買貼紙或外觀送同學；關掉後不能送新的，已送出的還是可以收下）
           </Check>
-          <JoinQr code={room.code} name={room.name} joinOpen={room.joinOpen} />
+          <JoinQr code={room.code} name={room.name} joinOpen={flagOf('joinOpen')} />
           <ClassCurriculum
             value={room.curriculum}
             onSave={(c) =>

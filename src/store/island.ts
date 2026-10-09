@@ -51,6 +51,23 @@ export function islandOf(p: Profile): Island {
 }
 
 /**
+ * 這個角色在現在這座島上的名字（島上左上角的角色鈕）：班級島用那一班的暱稱（同學在那一班看到的名字，多班級時各班可能不同），
+ * 自己的島、沒有班級、或舊版伺服器沒給暱稱時用角色名字
+ */
+export function nameHere(p: Profile): string {
+  return currentClass(p)?.nickname ?? p.name;
+}
+
+/**
+ * 重新登入（這台裝置的權杖失效）時預設用哪一班：現在所在的那一班；在自己的島時沒有「現在這一班」，用第一個班級；沒有班級是 null。
+ * 多班級時各班的暱稱與密碼不同，登入畫面另外列出所有班級讓孩子改選
+ */
+export function reloginRoom(p: Profile | null): CloudRoom | null {
+  if (!p) return null;
+  return currentClass(p) ?? classesOf(p)[0] ?? null;
+}
+
+/**
  * 現在要用的教材版本：在班級島而且那一班的老師統一了版本，就用班級版本；
  * 其他情況（老師沒有統一、在我的島、沒有班級）用孩子自己的設定。
  */
