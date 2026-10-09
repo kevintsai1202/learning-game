@@ -39,7 +39,7 @@ const SHOW_MS = 1100;
 export default function MemoryGame({ run, onFinish, onExit }: PuzzleGameProps) {
   const vs = run.mode === 'vs';
   const deck = useMemo(() => makeMemoryDeck(run.seed, run.level), [run.seed, run.level]);
-  const [s, dispatch] = useReducer(reducer, deck, (d) => startMemory(d, run.mode));
+  const [s, dispatch] = useReducer(reducer, deck, (d) => startMemory(d, run.mode === 'solo' ? 'solo' : 'vs'));
   const pairs = PAIRS_BY_LEVEL[run.level];
   /** 機器人記得的牌（由舊到新） */
   const memory = useRef<number[]>([]);

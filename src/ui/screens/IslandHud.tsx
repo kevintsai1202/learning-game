@@ -14,6 +14,7 @@ import { useCloud, type CloudStatus } from '../../online/useCloud';
 import { ChatPanel } from '../ChatPanel';
 import { GiftInbox } from '../GiftInbox';
 import { RewardCard } from '../RewardCard';
+import { DuelInviteCard } from '../DuelInviteCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 import { classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
@@ -409,6 +410,8 @@ export function IslandHud() {
       {/* 禮物卡片與送禮視窗：只在島上（不打斷答題） */}
       <GiftInbox />
       <RewardCard />
+      {/* 朋友的益智對戰邀請（島嶼互訪 I4） */}
+      <DuelInviteCard />
       <GiftDialog />
       <FriendsPanel />
     </>

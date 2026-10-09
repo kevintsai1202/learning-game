@@ -8,6 +8,7 @@
  * - 收到 profile（自己的存檔在伺服器端變了）就同步一次
  * - 連上時與收到 gift（禮物狀態有變）時重新讀取禮物
  */
+import { bindDuelSender, duelConnectionLost, handleDuelMessage } from './useFriendDuel';
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
 import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
@@ -204,9 +205,11 @@ interface RealtimeStore {
   visiting: { id: string; name: string } | null;
   /** 自己的島開放中（島嶼互訪 I2） */
   open: boolean;
+  /** 伺服器支援和朋友益智對戰（welcome 的 caps 有 duel，島嶼互訪 I4；舊伺服器收到對戰訊息會斷線） */
+  duel: boolean;
 }
 
-export const useRealtime = create<RealtimeStore>(() => ({ status: 'off', flags: { chatOpen: true, giftsOpen: true }, notice: null, island: null, visiting: null, open: false }));
+export const useRealtime = create<RealtimeStore>(() => ({ status: 'off', flags: { chatOpen: true, giftsOpen: true }, notice: null, island: null, visiting: null, open: false, duel: false }));
 
 /** 目前的連線（說短句用） */
 let socket: WebSocket | null = null;
@@ -309,7 +312,8 @@ export function startRealtime(): () => void {
     useGifts.getState().clear();
     useRewards.getState().clear();
     useFriends.getState().clear();
-    useRealtime.setState({ island: null, visiting: null, open: false });
+    duelConnectionLost();
+    useRealtime.setState({ island: null, visiting: null, open: false, duel: false });
     if (useRealtime.getState().status !== 'kicked') useRealtime.setState({ status: 'off' });
   };
 
@@ -332,9 +336,11 @@ export function startRealtime(): () => void {
         case 'welcome':
           retry = 0;
           visitPending = false;
-          useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null, visiting: msg.host ?? null, open: false });
-          last = { x: NaN, z: NaN, h: NaN, at: 0 };
           caps = msg.caps ?? [];
+          useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null, visiting: msg.host ?? null, open: false, duel: caps.includes('duel') });
+          last = { x: NaN, z: NaN, h: NaN, at: 0 };
+          // 進了一座島（剛連上、重新連線、換島）：伺服器那邊之前的對戰已經結束、邀請作廢（島嶼互訪 I4）
+          duelConnectionLost();
           sendWhere(true);
           sendDoing(true);
           void useGifts.getState().load();
@@ -422,12 +428,23 @@ export function startRealtime(): () => void {
         case 'summon':
           onSummon(msg.room, msg.x, msg.z);
           break;
+        // 和朋友益智對戰（島嶼互訪 I4）
+        case 'duelInvite':
+        case 'duelCancelled':
+        case 'duelDeclined':
+        case 'duelStart':
+        case 'duelMove':
+        case 'duelEnd':
+          handleDuelMessage(msg, usePresence.getState().selfId);
+          break;
       }
     };
     ws.onclose = (ev) => {
       if (socket !== ws) return;
       socket = null;
       usePresence.getState().clear();
+      duelConnectionLost();
+      useRealtime.setState({ duel: false });
       if (useRealtime.getState().status === 'kicked') return;
       // 換了班級（家長掃 QR code 讓孩子加入班級）：不算斷線，同步一次拿到新的班級後馬上重新上線
       if (ev.code === CLOSE_RECONNECT) {
@@ -514,6 +531,7 @@ export function startRealtime(): () => void {
   });
   const offPuzzle = usePuzzleNow.subscribe(() => sendDoing());
   controls = { evaluate, send };
+  bindDuelSender(send);
   // 在朋友的島上只能進益智遊戲館（島嶼互訪 I2）
   useUi.setState({
     zoneGate: (zone) => {
@@ -531,6 +549,7 @@ export function startRealtime(): () => void {
     offUi();
     offPuzzle();
     controls = null;
+    bindDuelSender(null);
     useUi.setState({ zoneGate: null });
     disconnect();
   };

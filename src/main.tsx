@@ -20,6 +20,7 @@ import { puzzleDebug } from './puzzle/debug';
 import { musicDebug } from './audio/music';
 import { useGm } from './online/gmClient';
 import { sceneDebug } from './world/sceneDebug';
+import { useFriendDuel } from './online/useFriendDuel';
 import './styles/global.css';
 
 declare global {
@@ -53,6 +54,8 @@ declare global {
       gm: typeof useGm;
       /** 3D 場景的除錯狀態（NPC 熊熊老師有沒有畫出來） */
       scene: typeof sceneDebug;
+      /** 和朋友益智對戰（島嶼互訪 I4）：送出與收到的邀請、進行中的一局 */
+      duel: typeof useFriendDuel;
     };
   }
 }
@@ -75,6 +78,7 @@ window.__game = {
   music: musicDebug,
   gm: useGm,
   scene: sceneDebug,
+  duel: useFriendDuel,
 };
 
 createRoot(document.getElementById('root')!).render(

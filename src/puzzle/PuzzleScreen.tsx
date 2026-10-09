@@ -3,7 +3,7 @@
  * 選單、遊戲、結算都在這個畫面（screen 'puzzle'），休息提醒依這個畫面累計益智遊戲的時間。
  * 今天的益智遊戲時間用完時不能開新局；正在玩的那一局可以玩完。
  */
-import { useEffect, useRef, useState, type ComponentType } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from 'react';
 import { useUi } from '../store/useUi';
 import { useGame } from '../store/useGame';
 import { PUZZLE_DAILY_COIN_CAP, type PuzzleGameId } from '../store/puzzle';
@@ -26,6 +26,10 @@ import MemoryGame from './memory/MemoryGame';
 import SpotGame from './spot/SpotGame';
 import BlocksGame from './blocks/BlocksGame';
 import TangramGame from './tangram/TangramGame';
+import { useRealtime } from '../online/realtimeClient';
+import { usePresence } from '../online/usePresence';
+import { cancelInvite, clearDuelNote, duelCandidates, duelNoteText, inviteFriend, leaveDuel, useFriendDuel } from '../online/useFriendDuel';
+import { DuelInviteCard } from '../ui/DuelInviteCard';
 
 /** 各遊戲的元件（目錄 catalog.ts 是純資料，元件的對照放這裡） */
 const GAME_COMPONENTS: Partial<Record<PuzzleGameId, ComponentType<PuzzleGameProps>>> = {
@@ -58,6 +62,15 @@ export function PuzzleScreen() {
   useEffect(() => () => usePuzzleNow.setState({ title: null }), []);
   const [picking, setPicking] = useState<PuzzleGameInfo | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
+  /** 和朋友對戰（島嶼互訪 I4）：送出的邀請、按了接受等開局、邀請的結果、進行中的一局 */
+  const outgoing = useFriendDuel((s) => s.outgoing);
+  const joining = useFriendDuel((s) => s.joining);
+  const note = useFriendDuel((s) => s.note);
+  const live = useFriendDuel((s) => s.live);
+  /** 自己的連線斷了、這一局不算（顯示一次） */
+  const [abortMsg, setAbortMsg] = useState<string | null>(null);
+  /** 已經開始的對戰（同一局只開一次） */
+  const startedDuel = useRef<string | null>(null);
   /** 已經結算過的那一局（種子）：遊戲元件萬一回報兩次，也只存一次檔、只給一次金幣 */
   const finishedSeed = useRef<number | null>(null);
   const zone = zoneById('puzzle');
@@ -66,12 +79,40 @@ export function PuzzleScreen() {
   const left = profile ? puzzleSecondsLeft(profile, limitMin, now) : null;
   const timeUp = left !== null && left <= 0;
   const coinsToday = profile ? puzzleToday(profile, now).coins : 0;
+  /** 可以和朋友對戰：即時連線上線中、伺服器支援（島嶼互訪 I4） */
+  const friendOnline = useRealtime((s) => s.status === 'online' && s.duel);
+  const members = usePresence((s) => s.members);
+  const selfId = usePresence((s) => s.selfId);
+  /** 島上可以邀請的人 */
+  const candidates = useMemo(() => duelCandidates(members, selfId), [members, selfId]);
 
   // 時間用完時在選單唸一次提醒
   const menuTimeUp = view.t === 'menu' && timeUp;
   useEffect(() => {
     if (menuTimeUp) speak(PUZZLE_LINES.timeUp);
   }, [menuTimeUp]);
+
+  // 對戰開始（自己送的邀請被接受、或接受了別人的邀請）：換到對戰畫面
+  useEffect(() => {
+    if (!live || live.end || startedDuel.current === live.id) return;
+    startedDuel.current = live.id;
+    stopSpeaking();
+    setPicking(null);
+    setConfirmExit(false);
+    setView({ t: 'play', run: { game: live.game, mode: 'friend', level: live.level, seed: live.seed, friend: { name: live.opponent.name, first: live.first } } });
+  }, [live]);
+  // 邀請的結果：唸固定的句子（畫面上寫名字）
+  useEffect(() => {
+    if (note) speak(duelNoteText(note).speech);
+  }, [note]);
+  // 離開益智遊戲館：收回送出的邀請；正在對戰就算離開（例如老師請大家集合）
+  useEffect(
+    () => () => {
+      cancelInvite();
+      leaveDuel();
+    },
+    [],
+  );
 
   /** 開始一局（每局用新的種子） */
   const begin = (game: PuzzleGameId, mode: PuzzleMode, level: BotLevel) => {
@@ -86,6 +127,8 @@ export function PuzzleScreen() {
     if (finishedSeed.current === run.seed) return;
     finishedSeed.current = run.seed;
     const { coins, newBadges } = finishPuzzle({ game: run.game, stars: outcome.stars, answers: outcome.answers });
+    // 和朋友對戰玩完了：讓伺服器收掉這一局（對方已經玩完，收到的 duelEnd 不理）
+    if (run.mode === 'friend') leaveDuel();
     puzzleDebug.state = null;
     setConfirmExit(false);
     setView({ t: 'result', run, outcome, coins, newBadges });
@@ -101,21 +144,33 @@ export function PuzzleScreen() {
     teleport(doorOf(zone));
     goto('island');
   };
+  /** 確認離開這一局：和朋友對戰時對方直接贏 */
+  const exitGame = () => {
+    leaveDuel();
+    backToMenu();
+  };
+  /** 和朋友對戰時自己的連線斷了：這一局不算 */
+  const abortGame = (message: string) => {
+    leaveDuel();
+    backToMenu();
+    setAbortMsg(message);
+    speak(message);
+  };
 
   if (view.t === 'play') {
     const Game = GAME_COMPONENTS[view.run.game];
     return (
       <div className="panel-screen">
-        {Game && <Game key={view.run.seed} run={view.run} onFinish={(o) => finish(view.run, o)} onExit={() => setConfirmExit(true)} />}
+        {Game && <Game key={view.run.seed} run={view.run} onFinish={(o) => finish(view.run, o)} onExit={() => setConfirmExit(true)} onAbort={abortGame} />}
         {confirmExit && (
           <div className="panel-screen" style={{ zIndex: 5 }}>
             <div className="card pop-in" style={{ padding: 24, textAlign: 'center', width: 'min(480px, 100%)' }} role="alertdialog">
-              <p style={{ fontSize: 26, margin: '4px 0 18px' }}>要離開嗎？這一局不會記錄喔。</p>
+              <p style={{ fontSize: 26, margin: '4px 0 18px' }}>{view.run.mode === 'friend' ? '要離開嗎？這一局會算朋友贏喔。' : '要離開嗎？這一局不會記錄喔。'}</p>
               <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
                 <button className="btn white" onClick={() => setConfirmExit(false)}>
                   繼續玩
                 </button>
-                <button className="btn red" onClick={backToMenu} data-testid="confirm-exit">
+                <button className="btn red" onClick={exitGame} data-testid="confirm-exit">
                   離開
                 </button>
               </div>
@@ -126,8 +181,53 @@ export function PuzzleScreen() {
     );
   }
 
+  // 和朋友玩（島嶼互訪 I4）的對話框：等對方接受、等開局、邀請的結果、連線斷了
+  const duelDialogs = (
+    <>
+      {outgoing && (
+        <DuelDialog testId="duel-waiting">
+          <p>
+            等 <b>{outgoing.name}</b> 接受邀請……
+          </p>
+          <button className="btn white" onClick={cancelInvite} data-testid="duel-cancel">
+            取消
+          </button>
+        </DuelDialog>
+      )}
+      {joining && (
+        <DuelDialog testId="duel-joining">
+          <p>
+            準備和 <b>{joining.name}</b> 一起玩……
+          </p>
+        </DuelDialog>
+      )}
+      {note && (
+        <DuelDialog testId="duel-note">
+          <p>{duelNoteText(note).text}</p>
+          <button className="btn green" onClick={clearDuelNote} data-testid="duel-note-ok">
+            好
+          </button>
+        </DuelDialog>
+      )}
+      {abortMsg && (
+        <DuelDialog testId="duel-abort">
+          <p>{abortMsg}</p>
+          <button className="btn green" onClick={() => setAbortMsg(null)} data-testid="duel-abort-ok">
+            好
+          </button>
+        </DuelDialog>
+      )}
+    </>
+  );
+
   if (view.t === 'result') {
-    return <PuzzleResult view={view} timeUp={timeUp} onAgain={() => begin(view.run.game, view.run.mode, view.run.level)} onMenu={backToMenu} onLeave={leave} />;
+    return (
+      <>
+        <PuzzleResult view={view} timeUp={timeUp} onAgain={view.run.mode === 'friend' ? undefined : () => begin(view.run.game, view.run.mode, view.run.level)} onMenu={backToMenu} onLeave={leave} />
+        <DuelInviteCard />
+        {duelDialogs}
+      </>
+    );
   }
 
   return (
@@ -172,7 +272,7 @@ export function PuzzleScreen() {
               >
                 <span className="icon">{g.icon}</span>
                 <span className="name">{g.title}</span>
-                <span className="puzzle-modes">👤 自己玩・🤖 和機器人</span>
+                <span className="puzzle-modes">👤 自己玩・🤖 和機器人{friendOnline ? '・👫 和朋友' : ''}</span>
                 <span className="stars">{starText(profile?.puzzle?.best[g.id] ?? 0)}</span>
               </button>
             ))}
@@ -180,13 +280,55 @@ export function PuzzleScreen() {
         </div>
       </div>
       {/* 時間用完時不顯示選玩法（按了也不能開始） */}
-      {picking && !timeUp && <ModePicker game={picking} onPick={(mode, level) => begin(picking.id, mode, level)} onClose={() => setPicking(null)} />}
+      {picking && !timeUp && (
+        <ModePicker
+          game={picking}
+          onPick={(mode, level) => begin(picking.id, mode, level)}
+          onClose={() => setPicking(null)}
+          friends={friendOnline ? candidates : null}
+          onInvite={(id, name, level) => {
+            sfx.tap();
+            setPicking(null);
+            inviteFriend(id, name, picking.id, level);
+          }}
+        />
+      )}
+      <DuelInviteCard />
+      {duelDialogs}
     </div>
   );
 }
 
-/** 選玩法：自己玩，或和機器人比賽（簡單／普通／厲害） */
-function ModePicker({ game, onPick, onClose }: { game: PuzzleGameInfo; onPick: (mode: PuzzleMode, level: BotLevel) => void; onClose: () => void }) {
+/** 和朋友玩的小對話框 */
+function DuelDialog({ testId, children }: { testId: string; children: ReactNode }) {
+  return (
+    <div className="panel-screen" style={{ zIndex: 5, background: 'rgba(43,42,76,.35)' }}>
+      <div className="card pop-in duel-dialog" role="alertdialog" data-testid={testId}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 選玩法：自己玩，或和機器人比賽（簡單／普通／厲害）；連上線時還有和朋友玩（島嶼互訪 I4）：
+ * 選難度（益智搶答不分）、點島上的朋友送出邀請。friends 是 null 表示不能和朋友玩（沒連線或伺服器不支援）
+ */
+function ModePicker({
+  game,
+  onPick,
+  onClose,
+  friends,
+  onInvite,
+}: {
+  game: PuzzleGameInfo;
+  onPick: (mode: PuzzleMode, level: BotLevel) => void;
+  onClose: () => void;
+  friends: { id: string; nickname: string }[] | null;
+  onInvite: (id: string, name: string, level: BotLevel) => void;
+}) {
+  /** 和朋友玩的難度（預設普通） */
+  const [friendLevel, setFriendLevel] = useState<BotLevel>(2);
   return (
     <div className="panel-screen" style={{ background: 'rgba(43,42,76,.35)' }}>
       <div className="card pop-in" style={{ padding: 22, width: 'min(560px, 100%)' }} role="dialog" aria-label="選玩法">
@@ -220,6 +362,41 @@ function ModePicker({ game, onPick, onClose }: { game: PuzzleGameInfo; onPick: (
             </button>
           ))}
         </div>
+        {friends && (
+          <>
+            <p className="puzzle-mode-title">👫 和朋友玩：{game.friend}</p>
+            {friends.length === 0 ? (
+              <p className="notice" data-testid="duel-no-friends">
+                島上現在沒有其他小朋友，等朋友來了再邀請吧！
+              </p>
+            ) : (
+              <>
+                {game.soloLevels && (
+                  <div className="level-pick">
+                    {LEVELS.map((l) => (
+                      <button
+                        key={l.level}
+                        className={`btn ${l.color}`}
+                        aria-pressed={friendLevel === l.level}
+                        onClick={() => setFriendLevel(l.level)}
+                        data-testid={`duel-level-${l.level}`}
+                      >
+                        {l.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                <div className="duel-friends">
+                  {friends.map((f) => (
+                    <button key={f.id} className="btn" onClick={() => onInvite(f.id, f.nickname, game.soloLevels ? friendLevel : 1)} data-testid={`duel-invite-${f.nickname}`}>
+                      👫 邀請 {f.nickname}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
@@ -235,7 +412,8 @@ function PuzzleResult({
 }: {
   view: Extract<View, { t: 'result' }>;
   timeUp: boolean;
-  onAgain: () => void;
+  /** 再玩一次（和朋友對戰時沒有：要重新邀請） */
+  onAgain?: () => void;
   onMenu: () => void;
   onLeave: () => void;
 }) {
@@ -297,7 +475,7 @@ function PuzzleResult({
         )}
         {timeUp && <p className="puzzle-time-up">⏰ {PUZZLE_LINES.timeUp}</p>}
         <div className="result-actions">
-          {!timeUp && (
+          {!timeUp && onAgain && (
             <button className="btn green" onClick={onAgain} data-testid="puzzle-again">
               ↻ 再玩一次
             </button>

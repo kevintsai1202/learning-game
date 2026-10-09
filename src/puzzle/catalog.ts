@@ -15,6 +15,8 @@ export interface PuzzleGameInfo {
   solo: string;
   /** 和機器人比賽的玩法 */
   vs: string;
+  /** 和朋友對戰的玩法（島嶼互訪 I4） */
+  friend: string;
   /** 自己玩也要選難度（簡單／普通／厲害）；益智搶答自己玩不分難度 */
   soloLevels: boolean;
 }
@@ -28,6 +30,7 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     description: '國語、數學、英語、生活的題目都有，看誰答得又快又對！',
     solo: '連續答對挑戰：答錯 3 題就結束，看你最多能連對幾題',
     vs: '和機器人搶答 10 題：先答對的得分',
+    friend: '和朋友搶答 10 題：先答對的得分',
     soloLevels: false,
   },
   {
@@ -37,6 +40,7 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     description: '翻兩張牌，一樣的就配成一對！英文單字配圖、乘法算式配答案、中文配圖輪流出現。',
     solo: '用越少步配完越好（簡單 6 對、普通 8 對、厲害 10 對）',
     vs: '和機器人輪流翻牌：配對成功可以再翻一次，配到比較多對的贏',
+    friend: '和朋友輪流翻牌（邀請的人先翻）：配對成功可以再翻一次，配到比較多對的贏',
     soloLevels: true,
   },
   {
@@ -46,6 +50,7 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     description: '兩張島上的風景圖，右邊的圖有幾個地方不一樣，找出來點一下！',
     solo: '限時找完（簡單 3 處、普通 5 處、厲害 7 處），亂點會扣 3 秒',
     vs: '和機器人一起找：誰先點到就是誰的，找到比較多處的贏',
+    friend: '和朋友一起找：誰先點到就是誰的，找到比較多處的贏',
     soloLevels: true,
   },
   {
@@ -55,6 +60,7 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     description: '數數看，一堆積木共有幾個？被擋住看不到的也要算喔！',
     solo: '數數看 8 題（簡單 3～7 個、普通 5～10 個、厲害 8～15 個）',
     vs: '和機器人搶答 8 題：先答對的得分',
+    friend: '和朋友搶答 8 題：先答對的得分',
     soloLevels: true,
   },
   {
@@ -64,6 +70,7 @@ export const PUZZLE_GAMES: PuzzleGameInfo[] = [
     description: '把七塊板子拖進剪影裡，拼出帳篷、房子、貓咪……點一下板子可以轉方向。',
     solo: '簡單有分割線、普通只有外框、厲害沒有提示',
     vs: '和機器人比賽：機器人每隔幾秒拼好一塊，看誰先拼完',
+    friend: '和朋友拼同一個剪影：先拼好的贏',
     soloLevels: true,
   },
 ];

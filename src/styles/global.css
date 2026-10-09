@@ -2380,6 +2380,26 @@ button {
   font-weight: 800;
   margin: 16px 0 6px;
 }
+/* 和朋友玩（島嶼互訪 I4）：選好的難度、島上的朋友 */
+.level-pick .btn[aria-pressed='true'] {
+  outline: 4px solid #2b2a4c;
+  outline-offset: 2px;
+}
+.duel-friends {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+.duel-dialog {
+  padding: 24px;
+  text-align: center;
+  width: min(480px, 100%);
+}
+.duel-dialog p {
+  font-size: 24px;
+  margin: 4px 0 18px;
+}
 /* 遊戲畫面：置中的大卡片（島嶼在背景） */
 .puzzle-play {
   width: min(920px, 100%);

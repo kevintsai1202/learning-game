@@ -11,12 +11,13 @@ import { outcomeStars, vsOutcome } from '../../engine/puzzle/common';
 import { BLOCKS_QUESTIONS, blocksStars, botBlocksMove, buildBlocksRound, type BlocksQuestion } from '../../engine/puzzle/blocks';
 import { ChoiceInput } from '../../quiz/inputs';
 import { quizDebug } from '../../quiz/debug';
-import { PRAISE, PUZZLE_LINES } from '../../ui/lines';
+import { DUEL_LINES, PRAISE, PUZZLE_LINES } from '../../ui/lines';
 import { speak } from '../../audio/speech';
 import { sfx } from '../../audio/sfx';
 import { puzzleDebug } from '../debug';
 import type { PuzzleGameProps } from '../types';
-import { useDuel } from '../useDuel';
+import { useDuel, type DuelView } from '../useDuel';
+import { useFriendEnd, useFriendQuizDuel } from '../useFriendGame';
 import { BlocksView } from './BlocksView';
 
 /** 換成單選題的格式（沿用 ChoiceInput 與 e2e 的自動作答） */
@@ -41,7 +42,7 @@ function useAskBlocks(choice: ChoiceQuestion) {
   }, [choice]);
 }
 
-export default function BlocksGame({ run, onFinish, onExit }: PuzzleGameProps) {
+export default function BlocksGame({ run, onFinish, onExit, onAbort }: PuzzleGameProps) {
   const round = useMemo(() => buildBlocksRound(run.seed, run.level), [run.seed, run.level]);
   const choices = useMemo(() => round.map(asChoice), [round]);
   useEffect(
@@ -51,6 +52,7 @@ export default function BlocksGame({ run, onFinish, onExit }: PuzzleGameProps) {
     },
     [],
   );
+  if (run.mode === 'friend') return <FriendBlocks round={round} choices={choices} run={run} onFinish={onFinish} onExit={onExit} onAbort={onAbort} />;
   return run.mode === 'solo' ? (
     <SoloBlocks round={round} choices={choices} onFinish={onFinish} onExit={onExit} />
   ) : (
@@ -148,7 +150,18 @@ function SoloBlocks({ round, choices, onFinish, onExit }: { round: BlocksQuestio
   );
 }
 
-// ---------- 和機器人搶答 ----------
+// ---------- 和機器人搶答（../useDuel.ts）、和朋友搶答（../useFriendGame.ts） ----------
+
+/** 搶答時的對手：比分上的名字、狀態列開頭（「🤖 機器人」或「👫 小美」）、圖示、在數的時候 */
+interface Opponent {
+  name: string;
+  who: string;
+  icon: string;
+  thinking: string;
+}
+
+/** 和機器人比賽的對手 */
+const BOT: Opponent = { name: '機器人', who: '🤖 機器人', icon: '🤖', thinking: '🤖 機器人在數……' };
 
 function DuelBlocks({
   round,
@@ -184,28 +197,101 @@ function DuelBlocks({
     },
   });
   const { duel } = view;
-  const q = round[duel.index];
-  const choice = choices[duel.index];
-  useAskBlocks(choice);
+  useAskBlocks(choices[duel.index]);
   useEffect(() => {
     puzzleDebug.state = { game: 'blocks', mode: 'vs', ...duel };
   }, [duel]);
   /** 孩子作答（這一題已經有結果或已經答錯過就不算） */
   const kidPick = (i: number) => {
-    const ok = i === q.answer;
+    const ok = i === round[duel.index].answer;
     if (pick(i) && !ok) sfx.oops();
   };
+  return <DuelBlocksBoard round={round} choices={choices} view={view} opponent={BOT} onPick={kidPick} onExit={onExit} mode="vs" />;
+}
 
+/** 和朋友搶答 8 題（島嶼互訪 I4）：同一個種子出同一組積木，先收到的答對得分 */
+function FriendBlocks({
+  round,
+  choices,
+  run,
+  onFinish,
+  onExit,
+  onAbort,
+}: {
+  round: BlocksQuestion[];
+  choices: ChoiceQuestion[];
+  run: PuzzleGameProps['run'];
+  onFinish: PuzzleGameProps['onFinish'];
+  onExit: () => void;
+  onAbort: PuzzleGameProps['onAbort'];
+}) {
+  const name = run.friend?.name ?? '朋友';
+  const { view, pick, waiting } = useFriendQuizDuel({
+    total: round.length,
+    answer: (i) => round[i].answer,
+    onResolve: (phase, i) => {
+      if (phase === 'kid') {
+        sfx.correct();
+        speak(PRAISE[i % PRAISE.length]);
+      } else {
+        sfx.oops();
+        speak(phase === 'bot' ? DUEL_LINES.friendGotIt : PUZZLE_LINES.bothMissed);
+      }
+    },
+    onDone: (duel) => {
+      const outcome = vsOutcome(duel.kid, duel.bot);
+      onFinish({ stars: outcomeStars(outcome), vs: outcome, summary: `你 ${duel.kid}：${duel.bot} ${name}` });
+    },
+  });
+  const { duel } = view;
+  useAskBlocks(choices[duel.index]);
+  useFriendEnd(duel.done, name, onFinish, onAbort);
+  useEffect(() => {
+    puzzleDebug.state = { game: 'blocks', mode: 'friend', ...duel };
+  }, [duel]);
+  // 自己答錯（回音回來之後）叮一聲
+  const kidWrong = view.kidPick !== null && view.kidPick !== round[duel.index].answer;
+  useEffect(() => {
+    if (kidWrong) sfx.oops();
+  }, [kidWrong]);
+  const opponent: Opponent = { name, who: `👫 ${name}`, icon: '👫', thinking: `👫 ${name}也在數……` };
+  return <DuelBlocksBoard round={round} choices={choices} view={view} opponent={opponent} onPick={pick} onExit={onExit} mode="friend" waiting={waiting} />;
+}
+
+/** 搶答的畫面（和機器人、和朋友共用）：比分、積木、選項、狀態列 */
+function DuelBlocksBoard({
+  round,
+  choices,
+  view,
+  opponent,
+  onPick,
+  onExit,
+  mode,
+  waiting = false,
+}: {
+  round: BlocksQuestion[];
+  choices: ChoiceQuestion[];
+  view: DuelView;
+  opponent: Opponent;
+  onPick: (i: number) => void;
+  onExit: () => void;
+  mode: 'vs' | 'friend';
+  /** 送出作答、等回音（和朋友對戰） */
+  waiting?: boolean;
+}) {
+  const { duel } = view;
+  const q = round[duel.index];
+  const choice = choices[duel.index];
   const resolved = duel.phase !== 'open';
   const marks: Record<number, 'correct' | 'wrong'> = {};
   if (view.kidPick !== null && view.kidPick !== q.answer) marks[view.kidPick] = 'wrong';
   if (resolved) marks[q.answer] = 'correct';
   const botOption = view.botPick !== null ? q.options[view.botPick] : null;
   return (
-    <div className="card puzzle-play" data-testid="blocks-game" data-mode="vs">
+    <div className="card puzzle-play" data-testid="blocks-game" data-mode={mode}>
       <Head onExit={onExit}>
         <span className="scoreboard" data-testid="duel-score">
-          🙋 你 {duel.kid}：{duel.bot} 機器人 🤖
+          🙋 你 {duel.kid}：{duel.bot} {opponent.name} {opponent.icon}
         </span>
         <span className="hud-chip">
           第 {duel.index + 1}／{round.length} 題
@@ -216,15 +302,19 @@ function DuelBlocks({
           {PUZZLE_LINES.blocksAsk}
         </div>
         <BlocksView key={duel.index} heights={q.heights} reveal={resolved} />
-        <ChoiceInput key={choice.id} q={choice} disabled={resolved || duel.kidOut} marks={marks} onPick={kidPick} />
+        <ChoiceInput key={choice.id} q={choice} disabled={resolved || duel.kidOut || waiting} marks={marks} onPick={onPick} />
       </div>
       <div className="duel-status" role="status" data-testid="duel-status">
         {duel.phase === 'kid' && <span className="feedback good pop-in">⭐ 你搶到了！</span>}
-        {duel.phase === 'bot' && <span className="feedback reveal pop-in">🤖 機器人搶先答對了！</span>}
+        {duel.phase === 'bot' && <span className="feedback reveal pop-in">{opponent.who}搶先答對了！</span>}
         {duel.phase === 'none' && <span className="feedback reveal pop-in">都答錯了，看看每一疊有幾個。</span>}
-        {duel.phase === 'open' && duel.kidOut && <span className="feedback retry">答錯了，這一題換機器人想想看……</span>}
-        {duel.phase === 'open' && duel.botOut && botOption !== null && <span className="feedback retry">🤖 機器人說 {botOption} 個，答錯了！換你搶答！</span>}
-        {duel.phase === 'open' && !duel.kidOut && !duel.botOut && <span className="bot-thinking">🤖 機器人在數……</span>}
+        {duel.phase === 'open' && duel.kidOut && <span className="feedback retry">答錯了，這一題換{opponent.name}想想看……</span>}
+        {duel.phase === 'open' && duel.botOut && botOption !== null && (
+          <span className="feedback retry">
+            {opponent.who}說 {botOption} 個，答錯了！換你搶答！
+          </span>
+        )}
+        {duel.phase === 'open' && !duel.kidOut && !duel.botOut && <span className="bot-thinking">{opponent.thinking}</span>}
       </div>
     </div>
   );
