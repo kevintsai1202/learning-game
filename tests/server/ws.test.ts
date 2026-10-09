@@ -330,7 +330,7 @@ describe('熊熊老師進島（老師 GM 的 G2）', () => {
     const { room, a } = await setup();
     const ca = await connect(a.token);
     const t = await hello(room.token, room.code);
-    expect(await t.waitFor('welcome')).toMatchObject({ island: 'class', classCode: room.code, caps: ['gm'] });
+    expect(await t.waitFor('welcome')).toMatchObject({ island: 'class', classCode: room.code, caps: ['gm', 'duel'] });
     expect((await ca.waitFor('join', (m) => m.member.role === 'teacher')).member.nickname).toBe('熊熊老師');
     await ca.waitFor('friend', (m) => m.friend.id === `teacher:${room.code}` && m.friend.online);
     t.ws.close();
@@ -375,5 +375,24 @@ it('在做什麼（G3）：孩子回報後，老師的成員表看得到活動�
     }
     expect(where).toEqual({ island: 'class', zone: 'math', doing: '加法練習' });
     expect(JSON.stringify(cb.msgs)).not.toContain('加法練習');
+  });
+
+  it('和朋友益智對戰（I4）：邀請、接受、動作依同一個順序轉給兩個人；格式不對的動作斷線', async () => {
+    const { a, b } = await setup();
+    const ca = await connect(a.token);
+    const cb = await connect(b.token);
+    const wb = await cb.waitFor('welcome');
+    expect(wb.caps).toContain('duel');
+    const aId = (await ca.waitFor('welcome')).self;
+    ca.send({ t: 'duelInvite', to: wb.self, game: 'memory', level: 1, seed: 99, check: 'x1' });
+    expect(await cb.waitFor('duelInvite')).toMatchObject({ from: aId, game: 'memory', level: 1, seed: 99, check: 'x1' });
+    cb.send({ t: 'duelReply', from: aId, accept: true });
+    expect(await ca.waitFor('duelStart')).toMatchObject({ first: aId, opponent: { id: wb.self } });
+    expect(await cb.waitFor('duelStart')).toMatchObject({ first: aId, opponent: { id: aId } });
+    ca.send({ t: 'duelMove', k: 'flip', i: 3 });
+    expect(await cb.waitFor('duelMove')).toEqual({ t: 'duelMove', by: aId, k: 'flip', i: 3 });
+    expect(await ca.waitFor('duelMove')).toEqual({ t: 'duelMove', by: aId, k: 'flip', i: 3 });
+    cb.send({ t: 'duelMove', k: 'jump', i: 3 });
+    expect(await ca.waitFor('duelEnd')).toEqual({ t: 'duelEnd', reason: 'gone' });
   });
 });

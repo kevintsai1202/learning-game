@@ -38,6 +38,8 @@ import { equippedOf } from '../src/store/catalog';
 import { shownTitle } from '../src/store/badges';
 import type { AvatarConfig, Profile } from '../src/store/save';
 import type { ZoneId } from '../src/store/useUi';
+import type { PuzzleGameId } from '../src/store/puzzle';
+import type { DuelDeclineReason, DuelMoveKind } from '../src/engine/puzzle/duelMoves';
 import { SPAWN, TEACHER_POS, WALK_RADIUS } from '../src/world/layout';
 import { isClassLogin, type TokenVia } from './tokens';
 
@@ -103,7 +105,9 @@ const MAX_ISLAND_KIDS = 8;
 /** 熊熊老師的公告：每條連線至少隔多久（毫秒） */
 const ANNOUNCE_GAP_MS = 10_000;
 /** 這個伺服器支援的新訊息（welcome 帶給裝置，見 ServerCap） */
-const CAPS: ServerCap[] = ['gm'];
+const CAPS: ServerCap[] = ['gm', 'duel'];
+/** 一局對戰最多轉送幾則動作（島嶼互訪 I4；正常一局不到 200 則） */
+const DUEL_MAX_MOVES = 2000;
 
 /** 老師進島需要的資料（ws.ts 確認是這一班的老師後從資料庫讀出來） */
 export interface TeacherJoin {
@@ -149,6 +153,28 @@ interface Member {
   friends: Map<string, { nickname: string; avatar: AvatarConfig; classmate?: boolean }>;
   /** 朋友看到的我的名字：帳號 id → 名字（還不在對方名單上時，用它加進去） */
   myNames: Map<string, string>;
+  /** 正在進行的益智對戰（島嶼互訪 I4；只放記憶體） */
+  duel: Duel | null;
+  /** 送出、對方還沒回覆的對戰邀請（同時只有一個） */
+  invite: PendingInvite | null;
+}
+
+/** 一局和朋友的益智對戰（島嶼互訪 I4）：a 是邀請的人（先手）；伺服器只轉送動作，不懂遊戲規則 */
+interface Duel {
+  id: string;
+  a: Member;
+  b: Member;
+  /** 已經轉送幾則動作 */
+  moves: number;
+}
+
+/** 送出、還沒回覆的對戰邀請：邀請誰、這一局的遊戲、難度、種子與指紋 */
+interface PendingInvite {
+  to: Member;
+  game: PuzzleGameId;
+  level: 1 | 2 | 3;
+  seed: number;
+  check: string;
 }
 
 /** 一座島 */
@@ -183,6 +209,8 @@ export class Hub {
   private gmCount = new Map<string, number>();
   /** 老師成員 id 的流水號 */
   private gmSeq = 0;
+  /** 對戰 id 的流水號 */
+  private duelSeq = 0;
   private readonly now: () => number;
 
   constructor(opts: { now?: () => number } = {}) {
@@ -245,6 +273,8 @@ export class Hub {
 
   /** 把成員從他所在的島拿下來：島上其他人收到 leave（notifyLeave 為 false 時不送，例如同一座島換連線） */
   private exit(m: Member, notifyLeave = true): void {
+    // 離開這座島（換島、斷線、另一台裝置登入）：對戰結束、邀請作廢
+    this.dropDuel(m);
     const island = this.islands.get(m.islandId);
     if (!island || island.members.get(m.state.id) !== m) return;
     island.members.delete(m.state.id);
@@ -387,6 +417,8 @@ export class Hub {
       islandId: '',
       friends: new Map(seeds.map((f) => [f.id, { nickname: f.nickname, avatar: f.avatar, ...(f.classmate ? { classmate: true } : {}) }])),
       myNames: new Map(seeds.filter((f) => f.myName !== undefined).map((f) => [f.id, f.myName!])),
+      duel: null,
+      invite: null,
     };
     const islandId = this.islandIdFor(m, info.island ?? 'class', info.room);
     const sameIsland = old?.islandId === islandId;
@@ -446,6 +478,8 @@ export class Hub {
       islandId: '',
       friends: new Map(),
       myNames: new Map(),
+      duel: null,
+      invite: null,
     };
     this.conns.set(conn, m);
     this.enter(m, classIsland(info.room), false);
@@ -579,6 +613,111 @@ export class Hub {
   }
 
   /** 孩子回報在做什麼（老師 GM 的 G3）：只記在記憶體，老師的成員表（whereOf）看得到，不廣播給同學；熊熊老師不做事 */
+  // ---------- 和朋友益智對戰（島嶼互訪 I4，docs/plans/islands.md 第 12 節） ----------
+
+  /**
+   * 邀請同一座島上的孩子對戰：新的邀請取代舊的。對方不在這座島、是熊熊老師、是自己時回 gone，正在對戰時回 busy。
+   * 熊熊老師與對戰中的人送的不做事
+   */
+  duelInvite(conn: HubConn, msg: { to: string; game: PuzzleGameId; level: 1 | 2 | 3; seed: number; check: string }): void {
+    const m = this.conns.get(conn);
+    if (!m || m.role !== 'kid' || m.duel) return;
+    this.cancelInvite(m);
+    const target = this.islands.get(m.islandId)?.members.get(msg.to);
+    if (!target || target === m || target.role !== 'kid') return m.conn.send({ t: 'duelDeclined', to: msg.to, reason: 'gone' });
+    if (target.duel) return m.conn.send({ t: 'duelDeclined', to: msg.to, reason: 'busy' });
+    const { game, level, seed, check } = msg;
+    m.invite = { to: target, game, level, seed, check };
+    target.conn.send({ t: 'duelInvite', from: m.state.id, name: m.state.nickname, game, level, seed, check });
+  }
+
+  /** 取消自己送出的邀請 */
+  duelCancel(conn: HubConn): void {
+    const m = this.conns.get(conn);
+    if (m) this.cancelInvite(m);
+  }
+
+  /**
+   * 回覆邀請：不接受時邀請的人收到原因；接受時兩個人還在同一座島、都不在對戰才開局（兩個人收到同一局的 duelStart），
+   * 兩個人送出的其他邀請作廢、別人送給他們的邀請回 busy。邀請已經不在（取消、取代、邀請的人離開）時接受的人收到 duelCancelled
+   */
+  duelReply(conn: HubConn, msg: { from: string; accept: boolean; reason?: DuelDeclineReason }): void {
+    const m = this.conns.get(conn);
+    if (!m || m.role !== 'kid') return;
+    const inviter = this.accounts.get(msg.from);
+    const invite = inviter?.invite;
+    if (!inviter || !invite || invite.to !== m) {
+      if (msg.accept) m.conn.send({ t: 'duelCancelled', from: msg.from });
+      return;
+    }
+    inviter.invite = null;
+    if (!msg.accept) return inviter.conn.send({ t: 'duelDeclined', to: m.state.id, reason: msg.reason ?? 'no' });
+    if (inviter.islandId !== m.islandId || inviter.duel || m.duel) {
+      m.conn.send({ t: 'duelCancelled', from: msg.from });
+      inviter.conn.send({ t: 'duelDeclined', to: m.state.id, reason: 'gone' });
+      return;
+    }
+    const duel: Duel = { id: `duel:${++this.duelSeq}`, a: inviter, b: m, moves: 0 };
+    inviter.duel = duel;
+    m.duel = duel;
+    for (const p of [inviter, m]) {
+      this.cancelInvite(p);
+      this.declineInvitesTo(p, 'busy');
+    }
+    const start = { t: 'duelStart' as const, id: duel.id, game: invite.game, level: invite.level, seed: invite.seed, first: inviter.state.id };
+    inviter.conn.send({ ...start, opponent: { id: m.state.id, name: m.state.nickname } });
+    m.conn.send({ ...start, opponent: { id: inviter.state.id, name: inviter.state.nickname } });
+  }
+
+  /** 對戰中的一則動作：依收到的順序轉給兩個人（自己的也回去，兩邊才用同一個順序套用），每局最多 DUEL_MAX_MOVES 則 */
+  duelMove(conn: HubConn, msg: { k: DuelMoveKind; i?: number; n?: number }): void {
+    const m = this.conns.get(conn);
+    const duel = m?.duel;
+    if (!m || !duel || duel.moves >= DUEL_MAX_MOVES) return;
+    duel.moves++;
+    const out: ServerMessage = { t: 'duelMove', by: m.state.id, k: msg.k, ...(msg.i !== undefined ? { i: msg.i } : {}), ...(msg.n !== undefined ? { n: msg.n } : {}) };
+    duel.a.conn.send(out);
+    duel.b.conn.send(out);
+  }
+
+  /** 中途離開對戰（按 ✕、休息鎖定）：對方收到 duelEnd（left），直接贏 */
+  duelLeave(conn: HubConn): void {
+    const m = this.conns.get(conn);
+    if (m) this.endDuel(m, 'left');
+  }
+
+  /** 結束這個人的對戰：對方收到 duelEnd */
+  private endDuel(m: Member, reason: 'left' | 'gone'): void {
+    const duel = m.duel;
+    if (!duel) return;
+    duel.a.duel = null;
+    duel.b.duel = null;
+    (duel.a === m ? duel.b : duel.a).conn.send({ t: 'duelEnd', reason });
+  }
+
+  /** 收回這個人送出的邀請：對方收到 duelCancelled */
+  private cancelInvite(m: Member): void {
+    if (!m.invite) return;
+    m.invite.to.conn.send({ t: 'duelCancelled', from: m.state.id });
+    m.invite = null;
+  }
+
+  /** 別人送給這個人、還沒回覆的邀請都作廢：邀請的人收到 duelDeclined（邀請的人一定在同一座島上，離開時邀請就收回了） */
+  private declineInvitesTo(m: Member, reason: 'busy' | 'gone'): void {
+    for (const x of this.islands.get(m.islandId)?.members.values() ?? []) {
+      if (x.invite?.to !== m) continue;
+      x.invite = null;
+      x.conn.send({ t: 'duelDeclined', to: m.state.id, reason });
+    }
+  }
+
+  /** 離開這座島（換島、斷線、另一台裝置登入）：對戰結束（對方收到 gone）、送出與收到的邀請作廢 */
+  private dropDuel(m: Member): void {
+    this.endDuel(m, 'gone');
+    this.cancelInvite(m);
+    this.declineInvitesTo(m, 'gone');
+  }
+
   doing(conn: HubConn, label: string | null): void {
     const m = this.conns.get(conn);
     if (!m || m.role === 'teacher') return;

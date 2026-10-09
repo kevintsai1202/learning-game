@@ -220,6 +220,21 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
         case 'kickVisitor':
           hub.kickVisitor(conn, msg.id);
           break;
+        case 'duelInvite':
+          hub.duelInvite(conn, msg);
+          break;
+        case 'duelCancel':
+          hub.duelCancel(conn);
+          break;
+        case 'duelReply':
+          hub.duelReply(conn, msg);
+          break;
+        case 'duelMove':
+          hub.duelMove(conn, msg);
+          break;
+        case 'duelLeave':
+          hub.duelLeave(conn);
+          break;
         case 'hello':
           ws.close(1008, 'already logged in');
           break;

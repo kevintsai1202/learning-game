@@ -41,3 +41,30 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'nope' }))).toBeNull();
   });
 });
+
+describe('和朋友益智對戰的訊息（島嶼互訪 I4）', () => {
+  const invite = { t: 'duelInvite', to: 'b', game: 'quiz', level: 2, seed: 4242, check: 'abc123' };
+  it('邀請：遊戲要是益智遊戲館的遊戲、難度 1～3、種子是非負整數、指紋是 1～16 個英數字', () => {
+    expect(parseClientMessage(JSON.stringify(invite))).toEqual(invite);
+    expect(parseClientMessage(JSON.stringify({ ...invite, game: 'chess' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ ...invite, level: 4 }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ ...invite, seed: -1 }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ ...invite, seed: 1.5 }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ ...invite, check: 'ABC' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ ...invite, check: 'a'.repeat(17) }))).toBeNull();
+  });
+  it('回覆、取消、離開', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'duelReply', from: 'a', accept: false, reason: 'busy' }))).toMatchObject({ reason: 'busy' });
+    expect(parseClientMessage(JSON.stringify({ t: 'duelReply', from: 'a', accept: true }))).toMatchObject({ accept: true });
+    expect(parseClientMessage(JSON.stringify({ t: 'duelReply', from: 'a', accept: false, reason: 'gone' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'duelCancel' }))).toEqual({ t: 'duelCancel' });
+    expect(parseClientMessage(JSON.stringify({ t: 'duelLeave' }))).toEqual({ t: 'duelLeave' });
+  });
+  it('動作：種類要認得，i、n 是 0～999 的整數', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'duelMove', k: 'pick', i: 3, n: 1 }))).toEqual({ t: 'duelMove', k: 'pick', i: 3, n: 1 });
+    expect(parseClientMessage(JSON.stringify({ t: 'duelMove', k: 'done' }))).toEqual({ t: 'duelMove', k: 'done' });
+    expect(parseClientMessage(JSON.stringify({ t: 'duelMove', k: 'jump' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'duelMove', k: 'pick', i: 1000 }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'duelMove', k: 'pick', n: -1 }))).toBeNull();
+  });
+});

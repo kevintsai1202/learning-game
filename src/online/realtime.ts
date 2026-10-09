@@ -7,6 +7,8 @@ import { z } from 'zod';
 import type { AvatarConfig } from '../store/save';
 import type { ZoneId } from '../store/useUi';
 import type { ChatLine } from './presence';
+import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
+import { DUEL_DECLINE_REASONS, DUEL_MOVE_KINDS, type DuelDeclineReason, type DuelMoveKind } from '../engine/puzzle/duelMoves';
 
 /**
  * WebSocket 關閉代碼：角色沒有班級；和權杖無效（4003）分開，裝置不再重連。
@@ -43,9 +45,16 @@ export const DOING_MAX = 40;
 export const teacherFriendId = (code: string): string => `teacher:${code}`;
 /**
  * 新伺服器在 welcome 告訴裝置支援哪些新訊息（部署途中新網頁可能連到舊伺服器，舊伺服器收到不認得的訊息會斷線）：
- * gm 是老師 GM 的 G2＋G3（孩子回報在做什麼等）
+ * gm 是老師 GM 的 G2＋G3（孩子回報在做什麼等）；duel 是和朋友益智對戰（島嶼互訪 I4）
  */
-export type ServerCap = 'gm';
+export type ServerCap = 'gm' | 'duel';
+
+/** 對戰的難度（益智搶答不分難度，照樣帶一個） */
+const duelLevel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
+/** 對戰一局的指紋（出好的題目的雜湊，見 src/puzzle/friendRound.ts） */
+const duelCheck = z.string().regex(/^[0-9a-z]{1,16}$/);
+/** 對戰動作裡的數字（第幾題、第幾張、選項、放好幾塊） */
+const duelNumber = z.number().int().min(0).max(999);
 
 /** 裝置 → 伺服器 */
 export const clientMessage = z.discriminatedUnion('t', [
@@ -84,6 +93,26 @@ export const clientMessage = z.discriminatedUnion('t', [
    * 伺服器只放記憶體、只給老師的成員表；裝置只在 welcome 的 caps 有 gm 時才送（舊版伺服器不認得會斷線）
    */
   z.object({ t: z.literal('doing'), label: z.string().trim().min(1).max(DOING_MAX).nullable() }),
+  /**
+   * 邀請同一座島上的朋友益智對戰（島嶼互訪 I4）：遊戲、難度、種子由邀請的人決定，check 是這一局的指紋（對方比對版本）。
+   * 裝置只在 welcome 的 caps 有 duel 時才送
+   */
+  z.object({
+    t: z.literal('duelInvite'),
+    to: z.string().min(1).max(64),
+    game: z.enum(PUZZLE_GAME_IDS),
+    level: duelLevel,
+    seed: z.number().int().min(0).max(2147483647),
+    check: duelCheck,
+  }),
+  /** 取消自己送出的邀請 */
+  z.object({ t: z.literal('duelCancel') }),
+  /** 回覆某人的邀請：接受，或不接受與原因（沒給是 no） */
+  z.object({ t: z.literal('duelReply'), from: z.string().min(1).max(64), accept: z.boolean(), reason: z.enum(DUEL_DECLINE_REASONS).optional() }),
+  /** 對戰中的一則動作（伺服器排好順序轉給兩個人，規則在 src/engine/puzzle/friend.ts） */
+  z.object({ t: z.literal('duelMove'), k: z.enum(DUEL_MOVE_KINDS), i: duelNumber.optional(), n: duelNumber.optional() }),
+  /** 中途離開對戰（按 ✕、休息鎖定）：對方直接贏 */
+  z.object({ t: z.literal('duelLeave') }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 
@@ -180,6 +209,18 @@ export type ServerMessage =
    * 緊接著伺服器把他送回自己的島（新的 welcome）
    */
   | { t: 'visitEnded'; reason: 'closed' | 'kicked'; host: string }
+  /** 有人邀請你益智對戰（島嶼互訪 I4）：name 是他在這座島上的名字。舊版網頁不認得，會忽略 */
+  | { t: 'duelInvite'; from: string; name: string; game: PuzzleGameId; level: 1 | 2 | 3; seed: number; check: string }
+  /** 邀請取消了（邀請的人取消、送了新的邀請、離開這座島，或回覆時邀請已經不在） */
+  | { t: 'duelCancelled'; from: string }
+  /** 對方不接受你的邀請；gone 是對方不在這座島（或不能被邀請）、busy 是對方正在對戰 */
+  | { t: 'duelDeclined'; to: string; reason: DuelDeclineReason | 'gone' }
+  /** 對戰開始：兩個人收到同一局；first 是先手（邀請的人），opponent 是對方與他在這座島上的名字 */
+  | { t: 'duelStart'; id: string; game: PuzzleGameId; level: 1 | 2 | 3; seed: number; first: string; opponent: { id: string; name: string } }
+  /** 對戰中的一則動作（兩個人照同一個順序收到，自己的也會回來） */
+  | { t: 'duelMove'; by: string; k: DuelMoveKind; i?: number; n?: number }
+  /** 對方離開了對戰：按 ✕（left）、斷線或離開這座島（gone）；你直接贏 */
+  | { t: 'duelEnd'; reason: 'left' | 'gone' }
   | { t: 'error'; message: string };
 
 /** 解析裝置送來的訊息；格式不符回傳 null（呼叫端斷線） */

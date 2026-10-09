@@ -537,9 +537,9 @@ describe('熊熊老師進島（老師 GM 的 G2，docs/plans/teacher-gm.md 第 1
     expect(j).toMatchObject({ nickname: '熊熊老師', role: 'teacher', avatar: { animal: 'bear' } });
     expect(j.id.startsWith('gm:')).toBe(true);
     const w = t.of('welcome')[0];
-    expect(w).toMatchObject({ island: 'class', classCode: '123456', caps: ['gm'], room: FLAGS });
+    expect(w).toMatchObject({ island: 'class', classCode: '123456', caps: ['gm', 'duel'], room: FLAGS });
     expect(w.members.map((m) => m.nickname)).toEqual(['阿寶']);
-    expect(a.of('welcome')[0].caps).toEqual(['gm']);
+    expect(a.of('welcome')[0].caps).toEqual(['gm', 'duel']);
   });
 
   it('老師不是孩子帳號：不算在線上、沒有位置；同一班兩台老師裝置各自是一位熊熊老師', () => {
@@ -863,5 +863,202 @@ describe('島嶼互訪 I2：去朋友的島（docs/plans/islands.md 第 12 節 I
     hub.leave(t);
     expect(lastFriend(mate, 'teacher:123456')).toMatchObject({ online: false });
     expect(other.of('join')).toEqual([]);
+  });
+});
+
+describe('島嶼互訪 I4：和朋友益智對戰（docs/plans/islands.md 第 12 節 I4 實作設計）', () => {
+  /** 一則邀請的內容 */
+  const INVITE = { game: 'quiz' as const, level: 2 as const, seed: 4242, check: 'abc123' };
+  /** a 邀請 b、b 接受（都在同一班的班級島） */
+  function playing() {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    hub.duelReply(b, { from: 'a', accept: true });
+    return { a, b };
+  }
+
+  it('伺服器宣告支援對戰（welcome 的 caps 有 duel）', () => {
+    expect(join('a', '阿寶').of('welcome')[0].caps).toContain('duel');
+  });
+
+  it('邀請：對方收到邀請（名字是島上的暱稱）；接受後兩個人收到同一局的 duelStart，島上其他人收不到', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    const c = join('c', '旁觀');
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    expect(b.of('duelInvite')).toEqual([{ t: 'duelInvite', from: 'a', name: '阿寶', ...INVITE }]);
+    hub.duelReply(b, { from: 'a', accept: true });
+    const sa = a.of('duelStart')[0];
+    const sb = b.of('duelStart')[0];
+    expect(sa).toMatchObject({ game: 'quiz', level: 2, seed: 4242, first: 'a', opponent: { id: 'b', name: '小美' } });
+    expect(sb).toMatchObject({ id: sa.id, game: 'quiz', level: 2, seed: 4242, first: 'a', opponent: { id: 'a', name: '阿寶' } });
+    expect(c.sent.filter((m) => m.t.startsWith('duel'))).toEqual([]);
+  });
+
+  it('動作依同一個順序轉給兩個人（自己的也回來），島上其他人收不到；不在對戰的人送的不轉', () => {
+    const { a, b } = playing();
+    const c = join('c', '旁觀');
+    hub.duelMove(b, { k: 'pick', i: 0, n: 2 });
+    hub.duelMove(a, { k: 'pick', i: 0, n: 1 });
+    hub.duelMove(c, { k: 'pick', i: 0, n: 1 });
+    const expected = [
+      { t: 'duelMove', by: 'b', k: 'pick', i: 0, n: 2 },
+      { t: 'duelMove', by: 'a', k: 'pick', i: 0, n: 1 },
+    ];
+    expect(a.of('duelMove')).toEqual(expected);
+    expect(b.of('duelMove')).toEqual(expected);
+    expect(c.of('duelMove')).toEqual([]);
+  });
+
+  it('沒有 i、n 的動作轉送時也沒有這兩個欄位', () => {
+    const { a, b } = playing();
+    hub.duelMove(a, { k: 'done' });
+    expect(b.of('duelMove')).toEqual([{ t: 'duelMove', by: 'a', k: 'done' }]);
+  });
+
+  it('每局最多轉 2000 則動作', () => {
+    const { a, b } = playing();
+    for (let i = 0; i < 2005; i++) hub.duelMove(a, { k: 'ready', i: 0 });
+    expect(b.of('duelMove')).toHaveLength(2000);
+  });
+
+  it('拒絕：邀請的人收到 duelDeclined 與原因；之後再接受，對方收到 duelCancelled', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    hub.duelReply(b, { from: 'a', accept: false, reason: 'tired' });
+    expect(a.of('duelDeclined')).toEqual([{ t: 'duelDeclined', to: 'b', reason: 'tired' }]);
+    hub.duelReply(b, { from: 'a', accept: false });
+    expect(a.of('duelDeclined')).toHaveLength(1);
+    hub.duelReply(b, { from: 'a', accept: true });
+    expect(b.of('duelCancelled')).toEqual([{ t: 'duelCancelled', from: 'a' }]);
+    expect(a.of('duelStart')).toEqual([]);
+  });
+
+  it('沒有給原因的拒絕是 no', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    hub.duelReply(b, { from: 'a', accept: false });
+    expect(a.of('duelDeclined')).toEqual([{ t: 'duelDeclined', to: 'b', reason: 'no' }]);
+  });
+
+  it('對方不在這座島、是熊熊老師、是自己、不存在：gone；對方正在對戰：busy', () => {
+    const a = join('a', '阿寶');
+    join('x', '別班', '654321');
+    const t = new FakeConn();
+    hub.joinTeacher(t, { room: '123456', name: '二年一班', flags: FLAGS });
+    const tid = t.of('welcome')[0].self;
+    hub.duelInvite(a, { to: 'x', ...INVITE });
+    hub.duelInvite(a, { to: tid, ...INVITE });
+    hub.duelInvite(a, { to: 'a', ...INVITE });
+    hub.duelInvite(a, { to: 'nobody', ...INVITE });
+    expect(a.of('duelDeclined').map((m) => [m.to, m.reason])).toEqual([
+      ['x', 'gone'],
+      [tid, 'gone'],
+      ['a', 'gone'],
+      ['nobody', 'gone'],
+    ]);
+    expect(t.of('duelInvite')).toEqual([]);
+    const c = join('c', '小明');
+    const d = join('d', '小華');
+    hub.duelInvite(c, { to: 'd', ...INVITE });
+    hub.duelReply(d, { from: 'c', accept: true });
+    hub.duelInvite(a, { to: 'd', ...INVITE });
+    expect(a.of('duelDeclined').at(-1)).toEqual({ t: 'duelDeclined', to: 'd', reason: 'busy' });
+    expect(d.of('duelInvite')).toHaveLength(1);
+  });
+
+  it('熊熊老師送的邀請不做事；對戰中的人再送邀請不做事', () => {
+    const t = new FakeConn();
+    hub.joinTeacher(t, { room: '123456', name: '二年一班', flags: FLAGS });
+    const k = join('k', '小芳');
+    hub.duelInvite(t, { to: 'k', ...INVITE });
+    expect(k.of('duelInvite')).toEqual([]);
+    const { a } = playing();
+    hub.duelInvite(a, { to: 'k', ...INVITE });
+    expect(k.of('duelInvite')).toEqual([]);
+  });
+
+  it('新的邀請取代舊的（舊的對方收到 duelCancelled）；取消邀請時對方收到 duelCancelled', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    const c = join('c', '小明');
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    hub.duelInvite(a, { to: 'c', ...INVITE });
+    expect(b.of('duelCancelled')).toEqual([{ t: 'duelCancelled', from: 'a' }]);
+    hub.duelReply(b, { from: 'a', accept: true });
+    expect(a.of('duelStart')).toEqual([]);
+    hub.duelCancel(a);
+    expect(c.of('duelCancelled')).toEqual([{ t: 'duelCancelled', from: 'a' }]);
+    hub.duelReply(c, { from: 'a', accept: true });
+    expect(a.of('duelStart')).toEqual([]);
+  });
+
+  it('按 ✕ 離開：對方收到 duelEnd（left），之後的動作不轉；兩個人都可以再邀請別人', () => {
+    const { a, b } = playing();
+    hub.duelLeave(a);
+    expect(b.of('duelEnd')).toEqual([{ t: 'duelEnd', reason: 'left' }]);
+    expect(a.of('duelEnd')).toEqual([]);
+    hub.duelMove(b, { k: 'ready', i: 0 });
+    expect(a.of('duelMove')).toEqual([]);
+    hub.duelInvite(b, { to: 'a', ...INVITE });
+    expect(a.of('duelInvite')).toHaveLength(1);
+  });
+
+  it('斷線：對方收到 duelEnd（gone）', () => {
+    const { a, b } = playing();
+    hub.leave(a);
+    expect(b.of('duelEnd')).toEqual([{ t: 'duelEnd', reason: 'gone' }]);
+  });
+
+  it('換島：對方收到 duelEnd（gone）', () => {
+    const { a, b } = playing();
+    hub.goTo(b, 'own');
+    expect(a.of('duelEnd')).toEqual([{ t: 'duelEnd', reason: 'gone' }]);
+  });
+
+  it('在另一台裝置登入（同一座島）：對方收到 duelEnd（gone）', () => {
+    const { b } = playing();
+    join('a', '阿寶');
+    expect(b.of('duelEnd')).toEqual([{ t: 'duelEnd', reason: 'gone' }]);
+  });
+
+  it('邀請還沒回覆時邀請的人離開：對方收到 duelCancelled；被邀請的人離開：邀請的人收到 duelDeclined（gone）', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    hub.leave(a);
+    expect(b.of('duelCancelled')).toEqual([{ t: 'duelCancelled', from: 'a' }]);
+    const c = join('c', '小明');
+    hub.duelInvite(c, { to: 'b', ...INVITE });
+    hub.goTo(b, 'own');
+    expect(c.of('duelDeclined')).toEqual([{ t: 'duelDeclined', to: 'b', reason: 'gone' }]);
+    hub.duelReply(b, { from: 'c', accept: true });
+    expect(c.of('duelStart')).toEqual([]);
+  });
+
+  it('接受時兩個人已經不在同一座島：對方收到 duelCancelled，不開局', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    hub.goTo(a, 'own');
+    hub.duelReply(b, { from: 'a', accept: true });
+    expect(a.of('duelStart')).toEqual([]);
+    expect(b.of('duelStart')).toEqual([]);
+    expect(b.of('duelCancelled').at(-1)).toEqual({ t: 'duelCancelled', from: 'a' });
+  });
+
+  it('開局時兩個人送出的其他邀請都作廢', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    const c = join('c', '小明');
+    hub.duelInvite(b, { to: 'c', ...INVITE });
+    hub.duelInvite(a, { to: 'b', ...INVITE });
+    hub.duelReply(b, { from: 'a', accept: true });
+    expect(c.of('duelCancelled')).toEqual([{ t: 'duelCancelled', from: 'b' }]);
+    hub.duelReply(c, { from: 'b', accept: true });
+    expect(c.of('duelStart')).toEqual([]);
   });
 });

@@ -7,16 +7,12 @@
 import { TANGRAM_PIECES } from './tangram';
 import { duelAnswer, duelNext, startDuel, type DuelState } from './quizBattle';
 import { flipCard, settle, startMemory, type MemoryDeck, type MemoryState } from './memory';
+import type { DuelMoveKind } from './duelMoves';
+
+export { DUEL_MOVE_KINDS, type DuelMoveKind } from './duelMoves';
 
 /** 動作是誰做的：自己（kid）或朋友（bot） */
 export type DuelSide = 'kid' | 'bot';
-
-/**
- * 動作的種類：pick 作答（i 第幾題、n 選項）、ready 看完這一題的結果（i 第幾題）、flip 翻牌（i 第幾張）、
- * claim 找到一處（i 第幾處）、time 時間到、progress 放好幾塊（n）、done 拼完
- */
-export const DUEL_MOVE_KINDS = ['pick', 'ready', 'flip', 'claim', 'time', 'progress', 'done'] as const;
-export type DuelMoveKind = (typeof DUEL_MOVE_KINDS)[number];
 
 /** 伺服器排好順序的一則動作（by 已經換成這台裝置的視角） */
 export interface DuelEvent {
