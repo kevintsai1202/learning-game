@@ -147,3 +147,127 @@ test('拒絕與中途離開：小美按「不要」阿寶看到說明；積木�
   expect(pageErrors(a)).toEqual([]);
   expect(pageErrors(b)).toEqual([]);
 });
+
+/** 記憶翻牌：翻開某一對的兩張牌（等配對成功） */
+async function flipPair(page: Page, pair: number): Promise<void> {
+  const s = await puzzleState(page);
+  const [x, y] = (s.pairs as number[]).map((p, i) => (p === pair ? i : -1)).filter((i) => i >= 0);
+  await page.getByTestId(`memory-card-${x}`).click();
+  await page.getByTestId(`memory-card-${y}`).click();
+  await expect.poll(async () => {
+    const now = await puzzleState(page);
+    return !now || now.owner[x] !== null;
+  }).toBe(true);
+}
+
+/** 找不同：在右圖點風景座標 (x, y) */
+async function tapScene(page: Page, x: number, y: number): Promise<void> {
+  const p = await page.evaluate(
+    ({ x, y }) => {
+      const svg = document.querySelector('[data-testid="spot-right"]') as SVGSVGElement;
+      const pt = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()!);
+      return { x: pt.x, y: pt.y };
+    },
+    { x, y },
+  );
+  await page.mouse.click(p.x, p.y);
+}
+
+/** 七巧板：盤面座標換成畫面座標 */
+async function boardToScreen(page: Page, x: number, y: number): Promise<{ x: number; y: number }> {
+  return page.evaluate(
+    ({ x, y }) => {
+      const svg = document.querySelector('[data-testid="tangram-board"]') as SVGSVGElement;
+      const pt = new DOMPoint(x, y).matrixTransform(svg.getScreenCTM()!);
+      return { x: pt.x, y: pt.y };
+    },
+    { x, y },
+  );
+}
+
+/** 七巧板：照題庫的擺法放好一塊（轉方向、翻面、拖到位置；和 puzzle.spec.ts 相同） */
+async function placeTangramPiece(page: Page, target: { piece: string; rot: number; flip: boolean; cx: number; cy: number }): Promise<void> {
+  const pieceNow = async () => (await puzzleState(page)).pieces[target.piece];
+  let s = await pieceNow();
+  if (s.flip !== target.flip) {
+    const c = await boardToScreen(page, s.cx, s.cy);
+    await page.mouse.click(c.x, c.y);
+    await page.getByTestId('tangram-flip').click();
+    s = await pieceNow();
+  }
+  const taps = (((target.rot - s.rot) % 4) + 4) % 4;
+  for (let i = 0; i < taps; i++) {
+    const c = await boardToScreen(page, s.cx, s.cy);
+    await page.mouse.click(c.x, c.y);
+    await expect.poll(async () => (await pieceNow()).rot).toBe((s.rot + 1) % 4);
+    s = await pieceNow();
+  }
+  const from = await boardToScreen(page, s.cx, s.cy);
+  const to = await boardToScreen(page, target.cx, target.cy);
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(async () => (await puzzleState(page))?.pieces?.[target.piece]?.placed ?? true).toBe(true);
+}
+
+test('記憶翻牌輪流翻、找不同搶找、七巧板先拼好的贏：兩邊的結果一致', async ({ browser, baseURL, request }) => {
+  test.setTimeout(600_000);
+  const { a, b } = await twoKids(browser, baseURL!, request);
+
+  // 記憶翻牌（簡單 6 對）：阿寶先翻，配到第 0 對再翻一次；翻錯換小美，小美配完剩下 5 對
+  await startDuel(a, b, 'memory', 'memory-game', 1);
+  await expect(a.getByTestId('memory-turn')).toHaveText('輪到你翻牌');
+  await expect(b.getByTestId('memory-turn')).toHaveText('👫 阿寶翻牌中……');
+  // 兩邊的牌一樣
+  expect((await puzzleState(b)).pairs).toEqual((await puzzleState(a)).pairs);
+  await flipPair(a, 0);
+  await expect(b.getByTestId('memory-score')).toContainText('你 0：1 阿寶');
+  const pairs = (await puzzleState(a)).pairs as number[];
+  await a.getByTestId(`memory-card-${pairs.indexOf(1)}`).click();
+  await a.getByTestId(`memory-card-${pairs.indexOf(2)}`).click();
+  await expect(b.getByTestId('memory-turn')).toHaveText('輪到你翻牌');
+  await expect(a.getByTestId('memory-turn')).toHaveText('👫 小美翻牌中……');
+  await a.screenshot({ path: `${SHOTS}/07-memory-friend-turn.png` });
+  for (let p = 1; p < 6; p++) await flipPair(b, p);
+  for (const p of [a, b]) await expect(p.getByTestId('puzzle-result')).toBeVisible();
+  await expect(a.getByTestId('puzzle-summary')).toHaveText('你 1：5 小美');
+  await expect(b.getByTestId('puzzle-summary')).toHaveText('你 5：1 阿寶');
+  await a.getByTestId('puzzle-back-menu').click();
+  await b.getByTestId('back-to-island').click();
+
+  // 找不同（簡單 3 處）：阿寶找第 1、3 處，小美找第 2 處
+  await startDuel(a, b, 'spot', 'spot-game', 1);
+  const diffs = (await puzzleState(a)).diffs as { x: number; y: number }[];
+  expect((await puzzleState(b)).diffs).toEqual(diffs);
+  await tapScene(a, diffs[0].x, diffs[0].y);
+  await expect(b.getByTestId('spot-score')).toContainText('你 0：1 阿寶');
+  await tapScene(b, diffs[1].x, diffs[1].y);
+  await expect(a.getByTestId('spot-score')).toContainText('你 1：1 小美');
+  // 找到的地方畫圈（自己綠色、朋友紫色）
+  for (const p of [a, b]) await expect(p.locator('[data-testid="spot-right"] .spot-found')).toHaveCount(2);
+  // 圈圈有彈出動畫：兩台裝置同時跑軟體 3D 時每秒只畫幾格，等久一點再截圖
+  await a.waitForTimeout(2000);
+  await a.screenshot({ path: `${SHOTS}/08-spot-friend.png` });
+  await tapScene(a, diffs[2].x, diffs[2].y);
+  for (const p of [a, b]) await expect(p.getByTestId('puzzle-result')).toBeVisible();
+  await expect(a.getByTestId('puzzle-summary')).toHaveText('你 2：1 小美');
+  await expect(b.getByTestId('puzzle-summary')).toHaveText('你 1：2 阿寶');
+  await a.getByTestId('puzzle-back-menu').click();
+  await b.getByTestId('back-to-island').click();
+
+  // 七巧板（簡單）：小美放一塊，阿寶照擺法拼完 → 阿寶贏
+  await startDuel(a, b, 'tangram', 'tangram-game', 1);
+  expect((await puzzleState(b)).shape).toBe((await puzzleState(a)).shape);
+  const targetsB = (await puzzleState(b)).targets;
+  await placeTangramPiece(b, targetsB[0]);
+  await expect(a.getByTestId('tangram-bot')).toContainText('👫 小美 1／7');
+  const targets = (await puzzleState(a)).targets as { piece: string; rot: number; flip: boolean; cx: number; cy: number }[];
+  for (const t of targets) await placeTangramPiece(a, t);
+  for (const p of [a, b]) await expect(p.getByTestId('puzzle-result')).toBeVisible();
+  await expect(a.getByTestId('puzzle-summary')).toContainText('你先拼好了');
+  await expect(b.getByTestId('puzzle-summary')).toContainText('阿寶先拼好了');
+  await b.screenshot({ path: `${SHOTS}/09-tangram-friend-lost.png` });
+  expect(pageErrors(a)).toEqual([]);
+  expect(pageErrors(b)).toEqual([]);
+});

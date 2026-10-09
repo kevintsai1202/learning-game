@@ -13,6 +13,7 @@ import { EMPTY_REST, isActive, restLeftSec } from '../store/rest';
 import { speak } from '../audio/speech';
 import { REST_LINE, REST_LINES } from './lines';
 import { playTimeKind } from '../puzzle/time';
+import { answerInvite, cancelInvite, leaveDuel, setDuelBlocked, useFriendDuel } from '../online/useFriendDuel';
 
 /** 多久累計一次（秒） */
 const TICK_SECONDS = 30;
@@ -94,6 +95,15 @@ export function RestGuard() {
   useEffect(() => {
     if (dailyOver) speak(REST_LINE);
   }, [dailyOver]);
+  // 和朋友益智對戰（島嶼互訪 I4）：鎖定時當作離開這一局（對方贏）、收回與回絕邀請；鎖定期間收到邀請自動回「正在忙」
+  const locked = resting || dailyOver;
+  useEffect(() => {
+    setDuelBlocked(locked);
+    if (!locked) return;
+    leaveDuel();
+    cancelInvite();
+    if (useFriendDuel.getState().incoming) answerInvite(false, 'busy');
+  }, [locked]);
 
   if (resting) {
     return (

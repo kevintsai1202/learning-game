@@ -4,6 +4,7 @@
  * - 放開時靠近格點、整塊都在剪影裡、不和別塊重疊就吸附固定；不合就留在放開的地方。蓋滿剪影就完成（擺法不必和題庫一樣）。
  * - 簡單：剪影畫出分割線；普通：只有外框；厲害：只有外框、沒有提示。
  * - 自己玩：沒用提示 3 星；和機器人：機器人依難度每隔幾秒拼好一塊，比誰先拼完。
+ * - 和朋友（島嶼互訪 I4）：拼同一個剪影，放好幾塊送給對方看；拼完送 done，伺服器先收到誰的誰贏。
  *
  * 板子的位置放在 ref（拖曳時每次移動都要讀到最新的位置），改完再觸發重繪。
  */
@@ -23,7 +24,10 @@ import {
   type Pose,
 } from '../../engine/puzzle/tangram';
 import { normalizedShape, pickShape, solutionCells } from '../../engine/puzzle/tangramShapes';
-import { PUZZLE_LINES } from '../../ui/lines';
+import { DUEL_LINES, PUZZLE_LINES } from '../../ui/lines';
+import { foldDuel, friendTangramStep, startFriendTangram } from '../../engine/puzzle/friend';
+import { sendDuelMove } from '../../online/useFriendDuel';
+import { useFriendEnd, useFriendEvents } from '../useFriendGame';
 import { speak } from '../../audio/speech';
 import { sfx } from '../../audio/sfx';
 import { puzzleDebug } from '../debug';
@@ -83,8 +87,13 @@ const pointsOf = (poly: [number, number][]) => poly.map(([x, y]) => `${x},${y}`)
 /** 依 id 找板子的顏色 */
 const colorOf = (id: string) => TANGRAM_PIECES.find((p) => p.id === id)!.color;
 
-export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) {
+export default function TangramGame({ run, onFinish, onExit, onAbort }: PuzzleGameProps) {
   const vs = run.mode === 'vs';
+  /** 和朋友對戰（島嶼互訪 I4） */
+  const friend = run.mode === 'friend';
+  /** 有對手（機器人或朋友）：顯示對手的進度、沒有提示 */
+  const versus = vs || friend;
+  const friendName = run.friend?.name ?? '朋友';
   const shape = useMemo(() => pickShape(run.seed, run.level), [run.seed, run.level]);
   const norm = useMemo(() => normalizedShape(shape), [shape]);
   const [layout] = useState<Layout>(() => (typeof window !== 'undefined' && window.matchMedia?.('(orientation: portrait)').matches ? PORTRAIT : LANDSCAPE));
@@ -124,6 +133,13 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
   const [over, setOver] = useState(false);
   /** 已經結算（機器人的計時器和放好最後一塊可能在同一瞬間發生，只結算一次） */
   const finished = useRef(false);
+  /** 和朋友對戰：伺服器排好順序的動作算出朋友放好幾塊、誰先拼完 */
+  const events = useFriendEvents();
+  const friendState = useMemo(() => (friend ? foldDuel(events, startFriendTangram(), friendTangramStep) : null), [friend, events]);
+  /** 對手拼好幾塊（機器人或朋友） */
+  const opponentDone = friendState ? friendState.botPlaced : botDone;
+  /** 和朋友對戰時自己拼完了、已經送出 done（等伺服器排順序） */
+  const sentDone = useRef(false);
   const svgRef = useRef<SVGSVGElement>(null);
   /** 正在拖的板子：哪一塊、哪一根手指（別的手指或手掌不算）、起點與原本的位置 */
   const drag = useRef<{ id: string; pointerId: number; start: [number, number]; origin: [number, number]; moved: boolean } | null>(null);
@@ -154,7 +170,7 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
       mode: run.mode,
       shape: shape.id,
       done: over,
-      botDone,
+      botDone: opponentDone,
       pieces: Object.fromEntries(
         Object.entries(pieces.current).map(([id, p]) => {
           const [cx, cy] = polygonCentroid(piecePolygon(pieceType(id), p, p.x, p.y));
@@ -187,6 +203,23 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vs, over, botDone]);
 
+  // 和朋友對戰：放好的塊數變了就告訴對方；伺服器先收到誰的 done 誰贏
+  useEffect(() => {
+    if (friend && !over && !sentDone.current) sendDuelMove('progress', undefined, placedCount);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [friend, placedCount]);
+  const winner = friendState?.winner ?? null;
+  useEffect(() => {
+    if (winner === 'kid') end({ stars: 3, vs: 'win', summary: `你先拼好了「${shape.name}」！` });
+    else if (winner === 'bot') {
+      sfx.oops();
+      speak(DUEL_LINES.friendDone);
+      end({ stars: 1, vs: 'lose', summary: `${friendName}先拼好了「${shape.name}」，你放好 ${placedCount}／7 塊` });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [winner]);
+  useFriendEnd(winner !== null || finished.current, friendName, end, onAbort);
+
   /** 轉動或翻面：重心留在原地；吸附中的板子會鬆開 */
   const turn = (id: string, change: (p: PieceState) => Pose) => {
     const p = pieces.current[id];
@@ -211,7 +244,12 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
       sfx.correct();
       redraw();
       if (isComplete(target, placedList())) {
-        if (vs) end({ stars: 3, vs: 'win', summary: `你先拼好了「${shape.name}」！` });
+        if (friend) {
+          // 拼完了：送 done，等伺服器排好順序再判輸贏（對方可能先拼完）
+          if (!sentDone.current) sendDuelMove('done');
+          sentDone.current = true;
+          setOver(true);
+        } else if (vs) end({ stars: 3, vs: 'win', summary: `你先拼好了「${shape.name}」！` });
         else end({ stars: tangramStars(hints), summary: hints === 0 ? `拼好了「${shape.name}」！沒有用提示` : `拼好了「${shape.name}」！用了 ${hints} 次提示` });
       }
       return;
@@ -291,9 +329,9 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
           <span className="hud-chip" data-testid="tangram-placed">
             🧩 {placedCount}／7
           </span>
-          {vs && (
+          {versus && (
             <span className="hud-chip" data-testid="tangram-bot">
-              🤖 機器人 {botDone}／7
+              {friend ? `👫 ${friendName}` : '🤖 機器人'} {opponentDone}／7
             </span>
           )}
         </div>
@@ -302,7 +340,7 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
         <button className="btn small white" disabled={!canFlip} onClick={() => selected && turn(selected, (p) => ({ rot: p.rot, flip: !p.flip }))} data-testid="tangram-flip">
           ↔️ 翻面
         </button>
-        {!vs && run.level < 3 && (
+        {!versus && run.level < 3 && (
           <button className="btn small white" disabled={over} onClick={showHint} data-testid="tangram-hint">
             💡 提示{hints > 0 ? `（${hints}）` : ''}
           </button>
@@ -349,16 +387,16 @@ export default function TangramGame({ run, onFinish, onExit }: PuzzleGameProps) 
           );
         })}
       </svg>
-      {vs && <BotBoard solution={solution} done={botDone} />}
+      {versus && <BotBoard solution={solution} done={opponentDone} icon={friend ? '👫' : '🤖'} name={friend ? friendName : '機器人'} />}
     </div>
   );
 }
 
-/** 機器人的小盤面：剪影上依序填上機器人拼好的板子 */
-function BotBoard({ solution, done }: { solution: Placed[]; done: number }) {
+/** 對手（機器人或朋友）的小盤面：剪影上依序填上對手拼好的塊數（朋友的擺法可能不同，只表示進度） */
+function BotBoard({ solution, done, icon, name }: { solution: Placed[]; done: number; icon: string; name: string }) {
   return (
-    <div className="tangram-bot" aria-label={`機器人拼好 ${done} 塊`}>
-      <span>🤖</span>
+    <div className="tangram-bot" aria-label={`${name}拼好 ${done} 塊`}>
+      <span>{icon}</span>
       <svg viewBox={`-0.3 -0.3 ${FRAME + 0.6} ${FRAME + 0.6}`}>
         {solution.map((s, i) => (
           <polygon

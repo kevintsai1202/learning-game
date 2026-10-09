@@ -1,8 +1,10 @@
 /**
  * 裝置端的和朋友益智對戰狀態（島嶼互訪 I4）：收到伺服器的對戰訊息怎麼改狀態、什麼時候自動回「正在忙」。
  */
-import { describe, expect, it } from 'vitest';
-import { applyDuelMessage, duelCandidates, duelNoteText, emptyDuel, inviteBusy, type FriendDuelState } from '../../src/online/useFriendDuel';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { applyDuelMessage, bindDuelSender, duelCandidates, duelNoteText, emptyDuel, handleDuelMessage, inviteBusy, setDuelBlocked, useFriendDuel, type FriendDuelState } from '../../src/online/useFriendDuel';
+import { useUi } from '../../src/store/useUi';
+import { duelCheck } from '../../src/puzzle/friendRound';
 import { DUEL_LINES } from '../../src/ui/lines';
 
 const INVITE = { game: 'memory' as const, level: 2 as const, seed: 7, check: 'abc' };
@@ -109,5 +111,36 @@ describe('duelNoteText：邀請結果的文字（畫面有名字）與要唸的�
     expect(duelNoteText({ kind: 'declined', name: '小美', reason: 'version' })).toEqual({ text: DUEL_LINES.version, speech: DUEL_LINES.version });
     expect(duelNoteText({ kind: 'noAnswer', name: '小美' })).toEqual({ text: '小美沒有回應，等一下再邀請吧！', speech: DUEL_LINES.noAnswer });
     expect(duelNoteText({ kind: 'cancelled', name: '阿寶' })).toEqual({ text: '阿寶的邀請取消了。', speech: DUEL_LINES.cancelled });
+  });
+});
+
+describe('handleDuelMessage：收到邀請時自動回覆', () => {
+  const sent: object[] = [];
+  beforeEach(() => {
+    sent.length = 0;
+    bindDuelSender((m) => sent.push(m));
+    useFriendDuel.setState(emptyDuel());
+    useUi.setState({ screen: 'island' });
+    setDuelBlocked(false);
+  });
+  afterEach(() => bindDuelSender(null));
+
+  it('在島上：記下邀請、不自動回覆', () => {
+    handleDuelMessage({ t: 'duelInvite', from: 'a', name: '阿寶', ...INVITE, check: duelCheck('memory', 7, 2) }, 'me');
+    expect(useFriendDuel.getState().incoming?.from).toBe('a');
+    expect(sent).toEqual([]);
+  });
+
+  it('休息鎖定中：自動回「正在忙」', () => {
+    setDuelBlocked(true);
+    handleDuelMessage({ t: 'duelInvite', from: 'a', name: '阿寶', ...INVITE, check: duelCheck('memory', 7, 2) }, 'me');
+    expect(useFriendDuel.getState().incoming).toBeNull();
+    expect(sent).toEqual([{ t: 'duelReply', from: 'a', accept: false, reason: 'busy' }]);
+  });
+
+  it('指紋不一樣（網頁版本不同）：自動回「版本不同」', () => {
+    handleDuelMessage({ t: 'duelInvite', from: 'a', name: '阿寶', ...INVITE, check: 'zzz' }, 'me');
+    expect(useFriendDuel.getState().incoming).toBeNull();
+    expect(sent).toEqual([{ t: 'duelReply', from: 'a', accept: false, reason: 'version' }]);
   });
 });

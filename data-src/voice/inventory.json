@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 373,
-  "全部": 3456,
-  "zh": 1835,
+  "介面": 384,
+  "全部": 3467,
+  "zh": 1846,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 35023,
+ "chars": 35163,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -27706,6 +27706,15 @@
    ]
   },
   {
+   "key": "zh-TW|有朋友邀請你一起玩益智遊戲！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "有朋友邀請你一起玩益智遊戲！",
+   "sources": [
+    "ui:duel"
+   ]
+  },
+  {
    "key": "zh-TW|有很硬的殼",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27907,6 +27916,15 @@
    "sources": [
     "life.emotion",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|你們的網頁版本不一樣，請兩個人都重新整理網頁。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "你們的網頁版本不一樣，請兩個人都重新整理網頁。",
+   "sources": [
+    "ui:duel"
    ]
   },
   {
@@ -28755,12 +28773,48 @@
    ]
   },
   {
+   "key": "zh-TW|朋友今天的益智遊戲時間用完了，明天再一起玩吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "朋友今天的益智遊戲時間用完了，明天再一起玩吧！",
+   "sources": [
+    "ui:duel"
+   ]
+  },
+  {
    "key": "zh-TW|朋友可以來玩囉。",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "朋友可以來玩囉。",
    "sources": [
     "ui:visit"
+   ]
+  },
+  {
+   "key": "zh-TW|朋友先拼好了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "朋友先拼好了！",
+   "sources": [
+    "ui:duel"
+   ]
+  },
+  {
+   "key": "zh-TW|朋友沒有回應，等一下再邀請吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "朋友沒有回應，等一下再邀請吧！",
+   "sources": [
+    "ui:duel"
+   ]
+  },
+  {
+   "key": "zh-TW|朋友現在不能玩，等一下再邀請吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "朋友現在不能玩，等一下再邀請吧！",
+   "sources": [
+    "ui:duel"
    ]
   },
   {
@@ -28771,6 +28825,24 @@
    "sources": [
     "life.emotion",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|朋友搶先答對了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "朋友搶先答對了！",
+   "sources": [
+    "ui:duel"
+   ]
+  },
+  {
+   "key": "zh-TW|朋友離開了，你贏了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "朋友離開了，你贏了！",
+   "sources": [
+    "ui:duel"
    ]
   },
   {
@@ -31704,6 +31776,15 @@
    ]
   },
   {
+   "key": "zh-TW|連線中斷了，這一局不算。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "連線中斷了，這一局不算。",
+   "sources": [
+    "ui:duel"
+   ]
+  },
+  {
    "key": "zh-TW|部首",
    "lang": "zh-TW",
    "voice": "zh",
@@ -31954,6 +32035,15 @@
    "text": "描一描這個注音符號，一筆一畫慢慢寫。",
    "sources": [
     "zh.zhuyin-write"
+   ]
+  },
+  {
+   "key": "zh-TW|換朋友翻牌。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "換朋友翻牌。",
+   "sources": [
+    "ui:duel"
    ]
   },
   {
@@ -33768,6 +33858,15 @@
    "sources": [
     "life.emotion",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|邀請取消了。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "邀請取消了。",
+   "sources": [
+    "ui:duel"
    ]
   },
   {

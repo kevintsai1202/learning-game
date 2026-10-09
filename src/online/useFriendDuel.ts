@@ -138,6 +138,13 @@ let sender: ((msg: object) => void) | null = null;
 let inviteTimer: ReturnType<typeof setTimeout> | null = null;
 /** 收到的邀請多久沒處理就收起來（邀請的人那邊會先取消，這是保險） */
 let incomingTimer: ReturnType<typeof setTimeout> | null = null;
+/** 休息鎖定中（RestGuard 設定）：收到邀請自動回「正在忙」 */
+let blocked = false;
+
+/** 休息鎖定開始或結束（RestGuard 呼叫） */
+export function setDuelBlocked(on: boolean): void {
+  blocked = on;
+}
 
 /** 即時連線綁上送訊息的函式（null 是連線停止） */
 export function bindDuelSender(fn: ((msg: object) => void) | null): void {
@@ -209,7 +216,7 @@ export function clearDuelNote(): void {
 export function handleDuelMessage(msg: ServerMessage, selfId: string | null): void {
   if (msg.t === 'duelInvite') {
     const s = useFriendDuel.getState();
-    if (inviteBusy(useUi.getState().screen, usePuzzleNow.getState().title !== null, s)) {
+    if (blocked || inviteBusy(useUi.getState().screen, usePuzzleNow.getState().title !== null, s)) {
       sender?.({ t: 'duelReply', from: msg.from, accept: false, reason: 'busy' });
       return;
     }

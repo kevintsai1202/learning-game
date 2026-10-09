@@ -1,6 +1,6 @@
 # 島嶼互訪與好友規劃
 
-> 狀態：**規劃確認（2026-10-05）**，使用者的決定見第 10 節；和老師 GM 合併的總分期見 `docs/plans/roadmap.md`。**I1 2026-10-05 14:38 上線**；**I2 2026-10-09 20:58 上線**（和 G2＋G3、休息時間的修改一起），實作紀錄見第 12 節。
+> 狀態：**規劃確認（2026-10-05）**，使用者的決定見第 10 節；和老師 GM 合併的總分期見 `docs/plans/roadmap.md`。**I1 2026-10-05 14:38 上線**；**I2 2026-10-09 20:58 上線**（和 G2＋G3、休息時間的修改一起）；**I4 完成（2026-10-09），待上線**；實作紀錄見第 12 節。
 > 相關文件：`docs/plans/teacher-gm.md`（班級島、我的島、熊熊老師 GM）、`docs/plans/online.md`（即時連線、送禮）、`docs/plans/puzzle-house.md`（益智遊戲館）、`docs/plans/accounts.md`（家長、老師帳號）。
 
 ## 1. 使用者的需求（2026-10-05）
@@ -215,3 +215,17 @@
 - 對戰畫面沿用和機器人比賽的畫面，「機器人 🤖」換成朋友的名字。
 
 **分段（每段先寫會失敗的測試）**：① 規則（`friend.ts`：五個遊戲的動作套用、兩邊視角、指紋）→ ② 伺服器（邀請、接受、拒絕、轉送、離開與斷線、能力宣告）→ ③ 裝置的連線與邀請畫面（邀請、等待、邀請卡、自動回正在忙）→ ④ 益智搶答與積木大師 → ⑤ 記憶翻牌 → ⑥ 找不同與七巧板 → ⑦ 隱私權政策、預錄語音、文件、全套測試、上線。
+
+### I4（2026-10-09 完成，待上線）
+
+照上一節的設計（含顧問建議的兩點：第一個 ready 就換題、對戰中休息鎖定當作離開），分段實作（每段先寫會失敗的測試）：
+
+- **規則（`src/engine/puzzle/friend.ts`、`duelMoves.ts`）**：五個遊戲的動作套用（搶答 `friendDuelStep`、記憶翻牌 `friendMemoryStep`、找不同 `friendSpotStep`、七巧板 `friendTangramStep`）與 `foldDuel`；自己是 kid、對方是 bot，同一串動作兩邊互為鏡像。動作種類與拒絕原因放在不 import 任何東西的 `duelMoves.ts`（伺服器打包不會帶進出題器）。一局的題目與指紋在 `src/puzzle/friendRound.ts`（益智搶答只用各科固定活動 `FRIEND_QUIZ_ACTIVITIES`；指紋是遊戲、種子、難度與出好的內容的 FNV-1a 雜湊）。
+- **伺服器（`server/hub.ts`、`server/ws.ts`）**：`duelInvite`、`duelCancel`、`duelReply`、`duelMove`、`duelLeave`；成員記 `duel` 與送出的 `invite`。動作只用 `conn.send` 轉給兩個人（不是整座島），每局最多 2000 則。離開這座島的三條路（換島、斷線、另一台裝置登入）都經過 `exit`，在那裡結束對戰（`duelEnd gone`）、收回與回絕邀請。開局時兩個人送出的其他邀請作廢、別人送給他們的回 busy。`welcome.caps` 多 `duel`。
+- **裝置的連線（`src/online/useFriendDuel.ts`）**：送出與收到的邀請、按了接受等開局（`joining`）、進行中的一局（`live.events`）、邀請的結果（`note`）；`applyDuelMessage` 是純函式。收到邀請時不在島上或益智遊戲館選單（`inviteBusy`）、休息鎖定中（`setDuelBlocked`）自動回 busy，指紋不同回 version。`realtimeClient.ts` 轉交對戰訊息、綁上送訊息的函式；進了一座島（welcome）或斷線時 `duelConnectionLost`（這一局記成 lost）。
+- **畫面**：益智遊戲館選玩法多「👫 和朋友玩」（`realtime.duel` 而且島上有其他孩子；有難度的遊戲先選難度，再點「👫 邀請 ○○」）；等待、準備開始、邀請結果、連線斷了的小對話框（`duel-waiting`、`duel-joining`、`duel-note`、`duel-abort`）；邀請卡 `src/ui/DuelInviteCard.tsx`（島上 HUD、益智遊戲館選單與結算）。對戰畫面沿用和機器人比賽的畫面（`DuelBoard`、`DuelBlocksBoard`、`MemoryBoard` 抽出來共用），「機器人 🤖」換成朋友的名字與 👫；共用流程在 `src/puzzle/useFriendGame.ts`（`useFriendEvents`、`useFriendEnd`、`useFriendQuizDuel`）。和朋友玩的結算沒有「再玩一次」；✕ 的確認寫「這一局會算朋友贏」。
+- **休息鎖定（`src/ui/RestGuard.tsx`）**：鎖定時 `leaveDuel`（對方贏）、收回與回絕邀請；`PuzzleScreen` 看到這一局被收掉就回選單。
+- **隱私權政策**：「和朋友益智對戰」從第 12 節搬進第 2 節（記憶體裡的邀請與作答、什麼時候移除）與第 5 節（對方看得到什麼），中英文。
+- **預錄語音**：`DUEL_LINES` 11 句（畫面上的文字寫名字，唸的是不含名字的固定句子）。
+- **測試**：`tests/engine/puzzle/friend.test.ts`（19 條）、`tests/puzzle/friendRound.test.ts`、`tests/online/friendDuel.test.ts`、`tests/server/hub.test.ts`（I4 17 條）、`ws.test.ts`、`tests/online/realtime.test.ts`；e2e `e2e/duel.spec.ts`（益智搶答整局與錯題本、拒絕與正在忙、積木大師中途離開、記憶翻牌輪流翻、找不同搶找、七巧板先拼好的贏）。
+- **已知限制**：記憶翻牌輪到的人把畫面切到背景時，對方要等他回來（真的斷線時心跳逾時送 `duelEnd`）。e2e 兩台裝置同時跑軟體 3D 時每秒只畫幾格，找不同的圈圈彈出動畫要等久一點才截得到（不是程式問題）。部署途中還開著的舊版網頁收不到邀請（邀請的人等 30 秒後看到「沒有回應」）。

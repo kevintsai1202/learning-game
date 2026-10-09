@@ -101,6 +101,12 @@ export function PuzzleScreen() {
     setConfirmExit(false);
     setView({ t: 'play', run: { game: live.game, mode: 'friend', level: live.level, seed: live.seed, friend: { name: live.opponent.name, first: live.first } } });
   }, [live]);
+  // 和朋友對戰中這一局被收掉了（休息鎖定時當作離開）：回選單
+  const liveId = live?.id ?? null;
+  useEffect(() => {
+    if (view.t === 'play' && view.run.mode === 'friend' && !liveId) backToMenu();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [liveId, view]);
   // 邀請的結果：唸固定的句子（畫面上寫名字）
   useEffect(() => {
     if (note) speak(duelNoteText(note).speech);

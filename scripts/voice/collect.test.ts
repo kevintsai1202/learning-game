@@ -131,6 +131,8 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
   Object.values(LINES.REST_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:rest'));
   // 去朋友的島（島嶼互訪 I2）：只能進益智遊戲館、開放與關閉自己的島
   Object.values(LINES.VISIT_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:visit'));
+  // 和朋友益智對戰（島嶼互訪 I4）：邀請、回覆、對戰中的固定句子
+  Object.values(LINES.DUEL_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:duel'));
   PUZZLE_GAMES.forEach((g) => addSpoken(g.title, 'zh-TW', 'ui:puzzle'));
   // 選單上的活動名稱（含三家版本的課本單元與期中期末模擬）
   const menu: ActivityDef[] = [...ALL_ACTIVITIES];

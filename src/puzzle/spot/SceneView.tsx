@@ -150,7 +150,7 @@ function Background() {
   );
 }
 
-/** 一張風景：物件、找到的圈圈（孩子綠色、機器人紫色）、點錯的叉叉 */
+/** 一張風景：物件、找到的圈圈（孩子綠色、機器人或朋友紫色，旁邊標 botIcon）、點錯的叉叉 */
 export function SceneView({
   objects,
   diffs,
@@ -159,6 +159,7 @@ export function SceneView({
   onTap,
   testId,
   label,
+  botIcon = '🤖',
 }: {
   objects: SceneObject[];
   diffs: SpotDiff[];
@@ -167,6 +168,8 @@ export function SceneView({
   onTap: (x: number, y: number) => void;
   testId: string;
   label: string;
+  /** 對手找到的圈圈旁邊的圖示（機器人 🤖、朋友 👫） */
+  botIcon?: string;
 }) {
   const tap = (e: PointerEvent<SVGSVGElement>) => {
     const p = svgPoint(e.currentTarget, e.clientX, e.clientY);
@@ -186,7 +189,7 @@ export function SceneView({
             <circle cx={d.x} cy={d.y} r={d.r} fill="none" stroke={found[i] === 'kid' ? '#16a34a' : '#7c3aed'} strokeWidth={4} />
             {found[i] === 'bot' && (
               <text x={d.x + d.r * 0.7} y={d.y - d.r * 0.7} fontSize={14} textAnchor="middle">
-                🤖
+                {botIcon}
               </text>
             )}
           </g>
