@@ -17,7 +17,9 @@ import { RewardCard } from '../RewardCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 import { classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
-import { goHome, setIslandOpen, useRealtime } from '../../online/realtimeClient';
+import { goHome, kickVisitor, setIslandOpen, useRealtime } from '../../online/realtimeClient';
+import { usePresence } from '../../online/usePresence';
+import { useShallow } from 'zustand/react/shallow';
 import { VISIT_LINES } from '../lines';
 import { ISLAND_LINES } from '../lines';
 import { FriendsButton, FriendsPanel } from '../FriendsPanel';
@@ -157,6 +159,44 @@ function OpenToggle() {
     >
       {open ? '🔒 關閉島嶼' : '🔓 開放島嶼'}
     </button>
+  );
+}
+
+/** 自己的島上有訪客時（島嶼互訪 I2）：訪客名單，可以請他回家（熊熊老師不列） */
+function Visitors() {
+  const show = useRealtime((s) => s.status === 'online' && s.island === 'own' && s.visiting === null);
+  /** 島上的訪客：「帳號 id|暱稱」（字串陣列，useShallow 才比得出沒變） */
+  const visitors = usePresence(useShallow((s) => Object.values(s.members).filter((m) => m.id !== s.selfId && m.role !== 'teacher').map((m) => `${m.id}|${m.nickname}`)));
+  const [open, setOpen] = useState(false);
+  if (!show || !visitors.length) return null;
+  return (
+    <div className="island-menu-wrap">
+      <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="hud-visitors">
+        👥 訪客 {visitors.length}
+      </button>
+      {open && (
+        <div className="island-menu card" role="menu" data-testid="visitors-panel">
+          {visitors.map((v) => {
+            const [id, nickname] = [v.slice(0, v.indexOf('|')), v.slice(v.indexOf('|') + 1)];
+            return (
+              <button
+                key={id}
+                role="menuitem"
+                className="btn small white"
+                onClick={() => {
+                  sfx.tap();
+                  kickVisitor(id);
+                  setOpen(false);
+                }}
+                data-testid={`visitor-kick-${nickname}`}
+              >
+                👋 請{nickname}回家
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -328,6 +368,7 @@ export function IslandHud() {
           <IslandSwitch />
           <VisitHome />
           <OpenToggle />
+          <Visitors />
           <FriendsButton />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
