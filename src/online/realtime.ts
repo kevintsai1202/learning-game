@@ -32,13 +32,31 @@ export type IslandKind = (typeof ISLAND_KINDS)[number];
 /** 班級代碼（6 位數字；多班級時說要去哪一班的班級島） */
 const roomCode = z.string().regex(/^\d{6}$/);
 
+/** 熊熊老師（老師 GM 的 G2）：名字與外觀（舊版網頁不認得 role，畫成一隻叫熊熊老師的棕色熊） */
+export const TEACHER_NAME = '熊熊老師';
+export const TEACHER_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
+/** 好友名單上某一班老師的 id（每一班一筆） */
+export const teacherFriendId = (code: string): string => `teacher:${code}`;
+/**
+ * 新伺服器在 welcome 告訴裝置支援哪些新訊息（部署途中新網頁可能連到舊伺服器，舊伺服器收到不認得的訊息會斷線）：
+ * gm 是老師 GM 的 G2＋G3（孩子回報在做什麼等）
+ */
+export type ServerCap = 'gm';
+
 /** 裝置 → 伺服器 */
 export const clientMessage = z.discriminatedUnion('t', [
   /**
    * 連上後第一則：登入權杖；island 是要去的島（沒給是班級島，舊版網頁不會送；沒有班級的孩子一律進自己的島）；
    * room 是要去哪一班的班級島（多班級，docs/plans/multi-class.md；沒給或不是成員是第一個班級）
    */
-  z.object({ t: z.literal('hello'), token: z.string().min(10).max(200), island: z.enum(ISLAND_KINDS).optional(), room: roomCode.optional() }),
+  z.object({
+    t: z.literal('hello'),
+    token: z.string().min(10).max(200),
+    island: z.enum(ISLAND_KINDS).optional(),
+    room: roomCode.optional(),
+    /** 老師以熊熊老師進島（老師 GM 的 G2）：大人權杖＋自己班級的代碼，進那一班的班級島 */
+    gm: roomCode.optional(),
+  }),
   /** 換島（不斷線）：班級島（room 是哪一班，沒給是第一個班級）、自己的島 */
   z.object({ t: z.literal('go'), island: z.enum(ISLAND_KINDS), room: roomCode.optional() }),
   /** 位置與朝向（zod 4 的 number 本身就拒絕 Infinity、NaN） */
@@ -67,6 +85,8 @@ export interface MemberState {
   z: number;
   h: number;
   zone: ZoneId | null;
+  /** 熊熊老師（老師 GM 的 G2）；孩子沒有這個欄位 */
+  role?: 'teacher';
 }
 
 /** 好友名單上的一位朋友：只有在線上與在哪座島，不含建築（使用者決定，docs/plans/islands.md） */
@@ -83,9 +103,9 @@ export interface FriendState {
 export type ServerMessage =
   /**
    * 進到一座島：island 是進了哪一種島（舊版伺服器沒有這個欄位）；classCode 是哪一班的班級島（自己的島是 null；
-   * 多班級之前的伺服器沒有這個欄位）
+   * 多班級之前的伺服器沒有這個欄位）；caps 是伺服器支援的新訊息（舊版伺服器沒有）
    */
-  | { t: 'welcome'; self: string; island: IslandKind; classCode?: string | null; room: RoomFlags; members: MemberState[]; chat: ChatLine[] }
+  | { t: 'welcome'; self: string; island: IslandKind; classCode?: string | null; room: RoomFlags; members: MemberState[]; chat: ChatLine[]; caps?: ServerCap[] }
   /** 上線時的完整好友名單（離線的朋友也在裡面） */
   | { t: 'friends'; list: FriendState[] }
   /** 某位朋友上線、下線、換島或換外觀（名單裡沒有的就加進去） */

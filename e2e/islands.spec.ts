@@ -11,12 +11,16 @@ const SHOTS = 'e2e/screenshots/islands';
 
 test.afterEach(async ({}, testInfo) => flushDeviceLogs(testInfo));
 
-/** 好友名單（暱稱 → 狀態文字） */
-async function friendsOf(page: Page): Promise<Record<string, string>> {
-  return page.evaluate(() => {
-    const s = (window as any).__game.friends.getState().friends as Record<string, { nickname: string; online: boolean; island: string | null }>;
-    return Object.fromEntries(Object.values(s).map((f) => [f.nickname, f.online ? (f.island === 'own' ? '在自己的島' : '在班級島') : '離線']));
-  });
+/** 好友名單（暱稱 → 狀態文字）；teachers 為 true 時只列熊熊老師（老師 GM 的 G2），否則只列同學與兄弟姊妹 */
+async function friendsOf(page: Page, teachers = false): Promise<Record<string, string>> {
+  return page.evaluate((teachers) => {
+    const s = (window as any).__game.friends.getState().friends as Record<string, { id: string; nickname: string; online: boolean; island: string | null }>;
+    return Object.fromEntries(
+      Object.values(s)
+        .filter((f) => f.id.startsWith('teacher:') === teachers)
+        .map((f) => [f.nickname, f.online ? (f.island === 'own' ? '在自己的島' : '在班級島') : '離線']),
+    );
+  }, teachers);
 }
 
 /** 同島狀態裡某位成員（用暱稱找） */
@@ -83,11 +87,12 @@ test('好友名單、在自己的島、老師看到每個孩子在哪裡、改�
   await expect(c.page.getByTestId('hud-island')).toHaveCount(0);
   await expect(c.page.getByTestId('chat-panel')).toHaveCount(0);
 
-  // 哥哥：同學阿寶在班級島、妹妹在自己的島；名單面板線上的排前面
+  // 哥哥：同學阿寶在班級島、妹妹在自己的島；名單面板線上的排前面。班上的熊熊老師也在名單上（老師 GM 的 G2；老師沒進島是離線）
   await expect.poll(() => friendsOf(b.page)).toEqual({ 阿寶: '在班級島', 妹妹: '在自己的島' });
   await expect.poll(() => friendsOf(a.page)).toEqual({ 哥哥: '在班級島' });
+  expect(await friendsOf(b.page, true)).toEqual({ 熊熊老師: '離線' });
   await b.page.getByTestId('hud-friends').click();
-  await expect(b.page.getByTestId('friend-row')).toHaveCount(2);
+  await expect(b.page.getByTestId('friend-row')).toHaveCount(3);
   await expect(b.page.locator('[data-friend="妹妹"] [data-testid="friend-status"]')).toContainText('在自己的島');
   await b.page.screenshot({ path: `${SHOTS}/01-friends-panel.png` });
   await b.page.getByTestId('friends-close').click();

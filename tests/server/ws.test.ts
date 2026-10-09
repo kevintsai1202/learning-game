@@ -277,14 +277,16 @@ describe('島嶼互訪 I1：選島、換島、好友名單（docs/plans/islands.
 
     const cBig = await connectTo(big.token);
     const list = (await cBig.waitFor('friends')).list;
+    // 最後是班上的熊熊老師（老師 GM 的 G2；老師沒進島是離線）
     expect(list.map((f) => [f.nickname, f.online]).sort()).toEqual([
       ['同學', false],
       ['妹妹', false],
+      ['熊熊老師', false],
     ]);
     // 妹妹上線（在她自己的班級島）：哥哥收到「在班級島」
     const cSmall = await connectTo(small.token);
     await cBig.waitFor('friend', (m) => m.friend.nickname === '妹妹' && m.friend.online && m.friend.island === 'class');
-    expect((await cSmall.waitFor('friends')).list.map((f) => f.nickname).sort()).toEqual(['哥哥', '妹妹的同學']);
+    expect((await cSmall.waitFor('friends')).list.map((f) => f.nickname).sort()).toEqual(['哥哥', '妹妹的同學', '熊熊老師']);
     // 同學上線後去自己的島
     await connectTo(mate.token, 'own');
     await cBig.waitFor('friend', (m) => m.friend.id === mate.account.id && m.friend.island === 'own');
@@ -307,6 +309,50 @@ describe('家長掃 QR code 讓孩子加入班級時，孩子線上的裝置重�
     await again.opened;
     again.send({ t: 'hello', token: up.token, island: 'class' });
     expect((await again.waitFor('welcome')).island).toBe('class');
-    expect((await again.waitFor('friends')).list.map((f) => f.nickname)).toEqual(['同學']);
+    expect((await again.waitFor('friends')).list.map((f) => f.nickname)).toEqual(['同學', '熊熊老師']);
+  });
+});
+
+describe('熊熊老師進島（老師 GM 的 G2）', () => {
+  /** 用某個權杖以老師身分連線（gm 是班級代碼），回傳用戶端 */
+  async function hello(token: string, gm: string) {
+    const c = new Client();
+    await c.opened;
+    c.send({ t: 'hello', token, gm });
+    return c;
+  }
+
+  it('老師用自己的大人權杖＋自己班級的代碼：進那一班的班級島，島上的孩子看到熊熊老師', async () => {
+    const { room, a } = await setup();
+    const ca = await connect(a.token);
+    const t = await hello(room.token, room.code);
+    expect(await t.waitFor('welcome')).toMatchObject({ island: 'class', classCode: room.code, caps: ['gm'] });
+    expect((await ca.waitFor('join', (m) => m.member.role === 'teacher')).member.nickname).toBe('熊熊老師');
+    await ca.waitFor('friend', (m) => m.friend.id === `teacher:${room.code}` && m.friend.online);
+    t.ws.close();
+    await ca.waitFor('friend', (m) => m.friend.id === `teacher:${room.code}` && !m.friend.online);
+  });
+
+  it('別班的老師、家長帳號、孩子的權杖帶 gm、不存在的班級：4003', async () => {
+    const { room, a } = await setup();
+    const other = await createRoom(call, '二年二班');
+    const parent = await createUser(call, { parent: true, teacher: false });
+    for (const [token, code] of [
+      [other.token, room.code],
+      [parent.token, room.code],
+      [a.token, room.code],
+      [room.token, '999999'],
+    ]) {
+      const c = await hello(token, code);
+      expect(await c.closed).toBe(4003);
+    }
+  });
+
+  it('大人權杖沒有帶 gm：和以前一樣 4003', async () => {
+    const { room } = await setup();
+    const c = new Client();
+    await c.opened;
+    c.send({ t: 'hello', token: room.token });
+    expect(await c.closed).toBe(4003);
   });
 });

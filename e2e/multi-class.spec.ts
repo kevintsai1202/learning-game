@@ -73,12 +73,15 @@ test('哥哥在學校與安親班：家長掃兩個 QR code 加入、換島選�
     island: after.code,
   });
 
-  // ③ 好友名單：兩班的同學都在
-  await expect
-    .poll(async () =>
-      p.page.evaluate(() => Object.values((window as any).__game.friends.getState().friends as Record<string, { nickname: string }>).map((f) => f.nickname).sort()),
-    )
-    .toEqual(['小美', '阿寶']);
+  // ③ 好友名單：兩班的同學都在；兩班的熊熊老師各一位，名字寫上班級（老師 GM 的 G2）
+  /** 好友名單上的名字：同學與老師分開 */
+  const friendNames = () =>
+    p.page.evaluate(() => {
+      const list = Object.values((window as any).__game.friends.getState().friends as Record<string, { id: string; nickname: string }>);
+      const names = (teacher: boolean) => list.filter((f) => f.id.startsWith('teacher:') === teacher).map((f) => f.nickname).sort();
+      return { kids: names(false), teachers: names(true) };
+    });
+  await expect.poll(friendNames).toEqual({ kids: ['小美', '阿寶'], teachers: ['熊熊老師（二年三班）', '熊熊老師（安親班）'].sort() });
 
   // ④ 換島選單：我的島、二年三班、安親班（勾在安親班）→ 換到學校 → 換到我的島
   await expect(p.page.getByTestId('hud-island')).toHaveText('🏝️ 換島');

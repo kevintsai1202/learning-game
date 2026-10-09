@@ -278,12 +278,14 @@ describe('島嶼互訪 I1：每個人一座島、一直連線、好友的在線�
 
   it('好友名單：上線時收到全部朋友（離線的也有）；朋友上線、換島、下線時收到 friend（只有在哪座島，不含建築）', () => {
     const a = online('a', '阿寶', { friends: ['b', 'c'] });
+    // 最後一筆是班上的熊熊老師（老師 GM 的 G2；老師沒進島是離線）
     expect(a.of('friends')[0].list).toEqual([
       { id: 'b', nickname: '朋友b', avatar: { animal: 'cat', color: '#ffffff', hat: null }, online: false, island: null },
       { id: 'c', nickname: '朋友c', avatar: { animal: 'cat', color: '#ffffff', hat: null }, online: false, island: null },
+      expect.objectContaining({ id: 'teacher:123456', nickname: '熊熊老師', online: false }),
     ]);
     const b = online('b', '小美', { friends: ['a'] });
-    expect(b.of('friends')[0].list).toEqual([expect.objectContaining({ id: 'a', online: true, island: 'class' })]);
+    expect(b.of('friends')[0].list).toEqual([expect.objectContaining({ id: 'a', online: true, island: 'class' }), expect.objectContaining({ id: 'teacher:123456' })]);
     // 名字照我名單上記的（共同班級的暱稱；多班級起不換成他現在所在那一班的暱稱）
     expect(a.of('friend').at(-1)?.friend).toMatchObject({ id: 'b', nickname: '朋友b', online: true, island: 'class' });
     hub.where(b, 'math');
@@ -501,5 +503,104 @@ describe('多班級：一個孩子在學校的班級與安親班（docs/plans/mu
       friends: [{ id: 'mei', nickname: '小美', avatar: { animal: 'cat', color: '#ffffff', hat: null }, myName: '小安' }],
     });
     expect(conn.of('friend').at(-1)?.friend).toMatchObject({ id: 'an', nickname: '小安', online: true });
+  });
+});
+
+describe('熊熊老師進島（老師 GM 的 G2，docs/plans/teacher-gm.md 第 13 節 G2＋G3 實作設計）', () => {
+  /** 老師進某一班的班級島 */
+  function teacher(room = '123456', name = '二年一班') {
+    const conn = new FakeConn();
+    hub.joinTeacher(conn, { room, name, flags: FLAGS });
+    return conn;
+  }
+  /** 孩子上線：classes 是 [代碼, 班級名稱]；island 是要去的島 */
+  function kid(accountId: string, nickname: string, classes: [string, string][] = [['123456', '二年一班']], island?: 'class' | 'own') {
+    const conn = new FakeConn();
+    hub.join(conn, {
+      accountId,
+      name: nickname,
+      classes: classes.map(([code, name]) => ({ code, name, nickname, flags: FLAGS })),
+      profile: profileOf(nickname),
+      via: 'class',
+      tokenRoom: classes[0]?.[0] ?? null,
+      island,
+    });
+    return conn;
+  }
+  /** 好友名單上的老師項目（friend 訊息） */
+  const teacherFriends = (c: FakeConn) => c.of('friend').filter((m) => m.friend.id.startsWith('teacher:')).map((m) => m.friend);
+
+  it('老師進島：島上的孩子收到 join（role teacher、熊熊老師、熊的外觀）；老師的 welcome 列出島上的孩子；welcome 都帶 caps', () => {
+    const a = kid('a', '阿寶');
+    const t = teacher();
+    const j = a.of('join')[0].member;
+    expect(j).toMatchObject({ nickname: '熊熊老師', role: 'teacher', avatar: { animal: 'bear' } });
+    expect(j.id.startsWith('gm:')).toBe(true);
+    const w = t.of('welcome')[0];
+    expect(w).toMatchObject({ island: 'class', classCode: '123456', caps: ['gm'], room: FLAGS });
+    expect(w.members.map((m) => m.nickname)).toEqual(['阿寶']);
+    expect(a.of('welcome')[0].caps).toEqual(['gm']);
+  });
+
+  it('老師不是孩子帳號：不算在線上、沒有位置；同一班兩台老師裝置各自是一位熊熊老師', () => {
+    const a = kid('a', '阿寶');
+    teacher();
+    teacher();
+    const ids = a.of('join').map((m) => m.member.id);
+    expect(new Set(ids).size).toBe(2);
+    expect(hub.isOnline(ids[0])).toBe(false);
+    expect(hub.whereOf(ids[0])).toBeNull();
+  });
+
+  it('老師走動：島上的孩子收到 moves；老師離開時收到 leave', () => {
+    const a = kid('a', '阿寶');
+    const t = teacher();
+    const id = a.of('join')[0].member.id;
+    hub.move(t, 3, 4, 0);
+    hub.flush();
+    expect(a.of('moves').at(-1)!.list).toEqual([[id, 3, 4, 0]]);
+    hub.leave(t);
+    expect(a.of('leave')).toEqual([{ t: 'leave', id }]);
+  });
+
+  it('老師不能說短句、不能換島（不會斷線，只是不做事）', () => {
+    const a = kid('a', '阿寶');
+    const t = teacher();
+    hub.say(t, 'hi');
+    hub.goTo(t, 'own');
+    expect(a.of('chat')).toEqual([]);
+    expect(a.of('leave')).toEqual([]);
+    expect(t.closed).toBeNull();
+  });
+
+  it('好友名單：孩子的名單有熊熊老師（老師沒進島是離線）；老師進島時同班線上的孩子（在自己島上的也是）收到上線，最後一台老師裝置離開才收到離線；別班的孩子不會收到', () => {
+    const a = kid('a', '阿寶');
+    expect(a.of('friends')[0].list).toContainEqual({ id: 'teacher:123456', nickname: '熊熊老師', avatar: expect.objectContaining({ animal: 'bear' }), online: false, island: null });
+    const own = kid('b', '小美', [['123456', '二年一班']], 'own');
+    const other = kid('c', '別班', [['654321', '二年二班']]);
+    const t1 = teacher();
+    const t2 = teacher();
+    expect(teacherFriends(a)).toEqual([{ id: 'teacher:123456', nickname: '熊熊老師', avatar: expect.objectContaining({ animal: 'bear' }), online: true, island: 'class' }]);
+    expect(teacherFriends(own).map((f) => f.online)).toEqual([true]);
+    expect(teacherFriends(other)).toEqual([]);
+    hub.leave(t1);
+    expect(teacherFriends(a)).toHaveLength(1);
+    hub.leave(t2);
+    expect(teacherFriends(a).at(-1)).toMatchObject({ id: 'teacher:123456', online: false, island: null });
+  });
+
+  it('老師在線上時才上線的孩子：名單上的老師是線上（在班級島）', () => {
+    teacher();
+    const a = kid('a', '阿寶');
+    expect(a.of('friends')[0].list).toContainEqual(expect.objectContaining({ id: 'teacher:123456', online: true, island: 'class' }));
+  });
+
+  it('在好幾班的孩子：每一班一位老師，名字寫上班級名稱', () => {
+    const a = kid('a', '阿寶', [
+      ['123456', '二年一班'],
+      ['654321', '安親班'],
+    ]);
+    const names = a.of('friends')[0].list.filter((f) => f.id.startsWith('teacher:')).map((f) => f.nickname);
+    expect(names).toEqual(['熊熊老師（二年一班）', '熊熊老師（安親班）']);
   });
 });

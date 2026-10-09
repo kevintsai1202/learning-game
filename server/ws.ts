@@ -2,14 +2,16 @@
  * WebSocket 連線層：掛在同一個 HTTP 伺服器的 /ws，負責檢查來源、登入（第一則 hello 帶權杖）、
  * 心跳、格式驗證，然後把訊息交給即時中樞（server/hub.ts）。
  *
- * 關閉代碼：4001 被踢（另一台裝置登入、老師移除或重設密碼）、4002 逾時沒有 hello、4003 權杖不對、
+ * 老師以熊熊老師進島（老師 GM 的 G2）：hello 帶 gm（班級代碼），用大人權杖，要是那一班的老師。
+ *
+ * 關閉代碼：4001 被踢（另一台裝置登入、老師移除或重設密碼）、4002 逾時沒有 hello、4003 權杖不對（老師進島：不是那一班的老師）、
  * 4005 換了班級要重新上線（家長掃 QR code 讓孩子加入班級）、1008 格式錯誤。
  */
 import type { IncomingMessage } from 'node:http';
 import type { Duplex } from 'node:stream';
 import { WebSocketServer, type WebSocket } from 'ws';
 import type { Db } from './db';
-import type { Hub, HubConn, JoinInfo } from './hub';
+import type { Hub, HubConn, JoinInfo, TeacherJoin } from './hub';
 import { lookupToken } from './tokens';
 import { flagsOf, membershipsOf, sharedClassNames, sharedMembershipsOf } from './classes';
 import { parseClientMessage, type IslandKind } from '../src/online/realtime';
@@ -90,7 +92,7 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
     if (!who || who.kind !== 'kid') return 'bad';
     const row = (await db.query<{ id: string; profile: Profile; parent_id: string | null }>('SELECT id, profile, parent_id FROM accounts WHERE id = $1', [who.accountId]))[0];
     if (!row) return 'bad';
-    const classes = (await membershipsOf(db, row.id)).map((m) => ({ code: m.room_code, nickname: m.nickname, flags: flagsOf(m) }));
+    const classes = (await membershipsOf(db, row.id)).map((m) => ({ code: m.room_code, name: m.name, nickname: m.nickname, flags: flagsOf(m) }));
     const names = sharedClassNames(await sharedMembershipsOf(db, row.id));
     const siblings = row.parent_id
       ? (await db.query<{ id: string }>('SELECT id FROM accounts WHERE parent_id = $1 AND id <> $2', [row.parent_id, row.id])).map((r) => r.id)
@@ -113,6 +115,22 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
         return { id: f.id, nickname: shared?.nickname ?? f.profile.name, avatar: equippedOf(f.profile), myName: shared?.myName ?? row.profile.name };
       }),
     };
+  }
+
+  /**
+   * 老師進島：權杖要是大人、有老師身分，而且 gm 是他自己的班級；不是的話回傳 'bad'（4003，不透露班級存不存在）
+   */
+  async function teacherJoinOf(token: string, gm: string): Promise<TeacherJoin | 'bad'> {
+    const who = await lookupToken(db, token, now());
+    if (!who || who.kind !== 'user') return 'bad';
+    const room = (
+      await db.query<{ code: string; name: string; chat_open: boolean; gifts_open: boolean }>(
+        `SELECT r.code, r.name, r.chat_open, r.gifts_open FROM rooms r JOIN users u ON u.id = r.owner_id
+         WHERE r.code = $1 AND r.owner_id = $2 AND u.is_teacher`,
+        [gm, who.userId],
+      )
+    )[0];
+    return room ? { room: room.code, name: room.name, flags: flagsOf(room) } : 'bad';
   }
 
   /** 一條新的連線 */
@@ -145,16 +163,22 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
           return;
         }
         authing = true;
-        void joinInfoOf(msg.token, msg.island, msg.room)
-          .then((info) => {
+        // 老師進島（gm）與孩子上線分開驗證：孩子的權杖帶 gm、大人的權杖沒帶 gm 都是 4003
+        const gm = msg.gm;
+        /** 驗證通過時回傳「加進中樞」的函式，不通過是 null */
+        const lookup: Promise<(() => void) | null> = gm
+          ? teacherJoinOf(msg.token, gm).then((info) => (info === 'bad' ? null : () => hub.joinTeacher(conn, info)))
+          : joinInfoOf(msg.token, msg.island, msg.room).then((info) => (info === 'bad' ? null : () => hub.join(conn, info)));
+        void lookup
+          .then((enter) => {
             if (ws.readyState !== ws.OPEN) return;
-            if (info === 'bad') {
+            if (!enter) {
               ws.close(4003, 'bad token');
               return;
             }
             authed = true;
             clearTimeout(helloTimer);
-            hub.join(conn, info);
+            enter();
           })
           .catch(() => ws.close(1011, 'server error'));
         return;

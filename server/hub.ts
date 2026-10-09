@@ -8,9 +8,25 @@
  * 全班的通知（班級內容更新、老師改開關）照帳號的班級送，不管他現在在哪座島。
  * 多班級（docs/plans/multi-class.md）：一個孩子可以在好幾個班級，每一班一座班級島；在班級島上顯示那一班的暱稱，
  * 好友名單上的名字照「各自看到的」（同學是共同班級的暱稱，ws.ts 算好放在 FriendSeed）。
+ *
+ * 熊熊老師（老師 GM 的 G2，docs/plans/teacher-gm.md 第 13 節 G2＋G3 實作設計）：老師用大人權杖進自己班級的班級島，
+ * 成員 id 是每條連線各自的 gm:<流水號>（同一班可以有兩台老師裝置）。老師成員只在 conns 與島的 members 裡，
+ * 不在 accounts（不是孩子帳號：不收禮、不算在線上的孩子，kick、leftClass、classmates 都碰不到老師）。
+ * 孩子的好友名單每一班有一筆老師（teacher:<代碼>），那一班有老師連線就是線上。
  */
 import type { ChatLine } from '../src/online/presence';
-import { CLOSE_RECONNECT, type FriendState, type IslandKind, type MemberState, type RoomFlags, type ServerMessage } from '../src/online/realtime';
+import {
+  CLOSE_RECONNECT,
+  TEACHER_AVATAR,
+  TEACHER_NAME,
+  teacherFriendId,
+  type FriendState,
+  type IslandKind,
+  type MemberState,
+  type RoomFlags,
+  type ServerCap,
+  type ServerMessage,
+} from '../src/online/realtime';
 import { CHAT_PHRASES } from '../src/ui/lines';
 import { equippedOf } from '../src/store/catalog';
 import { shownTitle } from '../src/store/badges';
@@ -38,6 +54,8 @@ export interface FriendSeed {
 /** 孩子所在的一個班級（多班級）：這一班的暱稱與開關 */
 export interface JoinClass {
   code: string;
+  /** 班級名稱（好友名單上的老師在好幾班時寫「熊熊老師（班級名稱）」；沒給時當作沒有名稱） */
+  name?: string;
   nickname: string;
   /** 這一班的聊天、送禮開關 */
   flags: RoomFlags;
@@ -72,18 +90,32 @@ const SAY_REFILL_MS = 2500;
 export const CLOSE_KICKED = 4001;
 /** 自己的島的開關：I1 島上只有自己，不能聊天、送禮（I2 開放朋友來玩時再依家長設定） */
 const OWN_ISLAND_FLAGS: RoomFlags = { chatOpen: false, giftsOpen: false };
+/** 這個伺服器支援的新訊息（welcome 帶給裝置，見 ServerCap） */
+const CAPS: ServerCap[] = ['gm'];
+
+/** 老師進島需要的資料（ws.ts 確認是這一班的老師後從資料庫讀出來） */
+export interface TeacherJoin {
+  /** 班級代碼 */
+  room: string;
+  /** 班級名稱 */
+  name: string;
+  /** 這一班的聊天、送禮開關 */
+  flags: RoomFlags;
+}
 
 /** 線上的一位成員 */
 interface Member {
   conn: HubConn;
+  /** 孩子或熊熊老師（老師 GM 的 G2） */
+  role: 'kid' | 'teacher';
   state: MemberState;
   /** 這 100 毫秒內有沒有移動 */
   dirty: boolean;
   /** 說話的額度（連發上限 SAY_BURST，每 SAY_REFILL_MS 恢復一則） */
   sayTokens: number;
   sayAt: number;
-  /** 權杖來源（見 JoinInfo.via） */
-  via: TokenVia;
+  /** 權杖來源（見 JoinInfo.via）；老師是 null */
+  via: TokenVia | null;
   /** class 權杖是用哪一班的代碼登入的；家長權杖是 null */
   tokenRoom: string | null;
   /** 角色自己的名字（自己的島上顯示） */
@@ -92,7 +124,7 @@ interface Member {
    * 他的班級：代碼 → 這一班的暱稱與開關（全班的通知照這個送；開關在回到那一班的班級島、班級島還沒有人時用，
    * 老師改開關時一起更新）。Map 保持加入順序，第一個是第一個班級
    */
-  classes: Map<string, { nickname: string; flags: RoomFlags }>;
+  classes: Map<string, { name: string; nickname: string; flags: RoomFlags }>;
   /** 現在在哪座島（島的 id） */
   islandId: string;
   /** 朋友：帳號 id → 我看到的他的名字與外觀（名字照共同班級，外觀在朋友上線後換成他現在的） */
@@ -123,8 +155,12 @@ export class Hub {
   private islands = new Map<string, Island>();
   /** 線上的帳號 → 成員 */
   private accounts = new Map<string, Member>();
-  /** 連線 → 成員（已經被新連線取代的舊連線不在這裡） */
+  /** 連線 → 成員（已經被新連線取代的舊連線不在這裡；老師也在這裡） */
   private conns = new Map<HubConn, Member>();
+  /** 每一班有幾台老師裝置在島上（好友名單上的老師是否在線上） */
+  private gmCount = new Map<string, number>();
+  /** 老師成員 id 的流水號 */
+  private gmSeq = 0;
   private readonly now: () => number;
 
   constructor(opts: { now?: () => number } = {}) {
@@ -168,7 +204,7 @@ export class Hub {
     m.state.nickname = code !== null ? (m.classes.get(code)?.nickname ?? m.name) : m.name;
     island.members.set(m.state.id, m);
     const others = [...island.members.values()].filter((x) => x !== m).map((x) => x.state);
-    m.conn.send({ t: 'welcome', self: m.state.id, island: kindOf(islandId), classCode: code, room: { ...island.flags }, members: others, chat: [...island.chat] });
+    m.conn.send({ t: 'welcome', self: m.state.id, island: kindOf(islandId), classCode: code, room: { ...island.flags }, members: others, chat: [...island.chat], caps: CAPS });
     this.broadcast(island, replaced ? { t: 'member', member: m.state } : { t: 'join', member: m.state }, m.state.id);
   }
 
@@ -184,6 +220,19 @@ export class Hub {
   /** 這位成員在好友名單上的樣子（線上） */
   private friendStateOf(m: Member): FriendState {
     return { id: m.state.id, nickname: m.state.nickname, avatar: m.state.avatar, online: true, island: kindOf(m.islandId) };
+  }
+
+  /** 某位孩子的好友名單上，某一班的老師：只在一班時叫熊熊老師，好幾班時寫上班級名稱；那一班有老師裝置在島上就是線上 */
+  private teacherFriendOf(kid: Member, code: string): FriendState {
+    const className = kid.classes.get(code)?.name;
+    const name = kid.classes.size > 1 && className ? `${TEACHER_NAME}（${className}）` : TEACHER_NAME;
+    const online = (this.gmCount.get(code) ?? 0) > 0;
+    return { id: teacherFriendId(code), nickname: name, avatar: TEACHER_AVATAR, online, island: online ? 'class' : null };
+  }
+
+  /** 某一班的老師上線或離線：那一班線上的孩子（不管在哪座島）收到 friend */
+  private tellClassAboutTeacher(code: string): void {
+    for (const kid of this.classmates(code)) kid.conn.send({ t: 'friend', friend: this.teacherFriendOf(kid, code) });
   }
 
   /** 把一則好友狀態送給這位成員線上的朋友：名字照每位朋友看到的（他名單上記的名字） */
@@ -204,6 +253,7 @@ export class Hub {
     const seeds = (info.friends ?? []).filter((f) => f.id !== info.accountId);
     const m: Member = {
       conn,
+      role: 'kid',
       state: {
         id: info.accountId,
         nickname: info.name,
@@ -220,7 +270,7 @@ export class Hub {
       via: info.via,
       tokenRoom: info.tokenRoom ?? null,
       name: info.name,
-      classes: new Map(info.classes.map((c) => [c.code, { nickname: c.nickname, flags: { ...c.flags } }])),
+      classes: new Map(info.classes.map((c) => [c.code, { name: c.name ?? '', nickname: c.nickname, flags: { ...c.flags } }])),
       islandId: '',
       friends: new Map(seeds.map((f) => [f.id, { nickname: f.nickname, avatar: f.avatar }])),
       myNames: new Map(seeds.filter((f) => f.myName !== undefined).map((f) => [f.id, f.myName!])),
@@ -238,11 +288,12 @@ export class Hub {
     this.conns.set(conn, m);
     this.enter(m, islandId, sameIsland);
 
-    // 完整的好友名單：名字照我看到的（共同班級的暱稱）；線上的朋友用他現在的外觀與所在的島
+    // 完整的好友名單：名字照我看到的（共同班級的暱稱）；線上的朋友用他現在的外觀與所在的島；最後是每一班的熊熊老師
     const list: FriendState[] = [...m.friends].map(([id, seed]) => {
       const f = this.accounts.get(id);
       return f ? { ...this.friendStateOf(f), nickname: seed.nickname } : { id, nickname: seed.nickname, avatar: seed.avatar, online: false, island: null };
     });
+    for (const code of m.classes.keys()) list.push(this.teacherFriendOf(m, code));
     conn.send({ t: 'friends', list });
     // 朋友關係是雙向的：線上的朋友名單裡沒有他就加進去（名字用他看到的我的名字）
     const me = this.friendStateOf(m);
@@ -255,6 +306,33 @@ export class Hub {
     }
   }
 
+  /**
+   * 熊熊老師進島（老師 GM 的 G2）：每條連線是一位新的熊熊老師（gm:<流水號>），直接進那一班的班級島。
+   * 這一班第一台老師裝置進島時，班上線上的孩子收到好友名單上的老師上線
+   */
+  joinTeacher(conn: HubConn, info: TeacherJoin): void {
+    const m: Member = {
+      conn,
+      role: 'teacher',
+      state: { id: `gm:${++this.gmSeq}`, nickname: TEACHER_NAME, avatar: TEACHER_AVATAR, title: null, x: SPAWN.x, z: SPAWN.z, h: Math.PI, zone: null, role: 'teacher' },
+      dirty: false,
+      sayTokens: 0,
+      sayAt: this.now(),
+      via: null,
+      tokenRoom: null,
+      name: TEACHER_NAME,
+      classes: new Map([[info.room, { name: info.name, nickname: TEACHER_NAME, flags: { ...info.flags } }]]),
+      islandId: '',
+      friends: new Map(),
+      myNames: new Map(),
+    };
+    this.conns.set(conn, m);
+    this.enter(m, classIsland(info.room), false);
+    const count = (this.gmCount.get(info.room) ?? 0) + 1;
+    this.gmCount.set(info.room, count);
+    if (count === 1) this.tellClassAboutTeacher(info.room);
+  }
+
   /** 連線關閉：離開所在的島，朋友收到下線。已經被新連線取代的舊連線不做事 */
   leave(conn: HubConn): void {
     const m = this.conns.get(conn);
@@ -264,10 +342,24 @@ export class Hub {
 
   /** 讓一位成員下線（連線關閉、被踢） */
   private remove(m: Member): void {
+    if (m.role === 'teacher') return this.removeTeacher(m);
     this.exit(m);
     this.conns.delete(m.conn);
     this.accounts.delete(m.state.id);
     this.tellFriends(m, { id: m.state.id, nickname: m.state.nickname, avatar: m.state.avatar, online: false, island: null });
+  }
+
+  /** 熊熊老師離開：離開班級島；這一班最後一台老師裝置離開時，班上線上的孩子收到老師離線 */
+  private removeTeacher(m: Member): void {
+    this.exit(m);
+    this.conns.delete(m.conn);
+    const code = codeOf(m.islandId)!;
+    const count = (this.gmCount.get(code) ?? 1) - 1;
+    if (count > 0) this.gmCount.set(code, count);
+    else {
+      this.gmCount.delete(code);
+      this.tellClassAboutTeacher(code);
+    }
   }
 
   /**
@@ -276,7 +368,8 @@ export class Hub {
    */
   goTo(conn: HubConn, kind: IslandKind, room?: string): void {
     const m = this.conns.get(conn);
-    if (!m) return;
+    // 熊熊老師只在自己班級的班級島（去孩子的島要等島嶼互訪 I2）
+    if (!m || m.role === 'teacher') return;
     const islandId = this.islandIdFor(m, kind, room);
     if (islandId === m.islandId) return;
     this.exit(m);
@@ -314,7 +407,7 @@ export class Hub {
   /** 進出建築：只告訴同一座島上的人（朋友名單不顯示建築） */
   where(conn: HubConn, zone: ZoneId | null): void {
     const m = this.conns.get(conn);
-    if (!m) return;
+    if (!m || m.role === 'teacher') return;
     m.state.zone = zone;
     const island = this.islands.get(m.islandId);
     if (island) this.broadcast(island, { t: 'member', member: m.state }, m.state.id);
@@ -324,7 +417,8 @@ export class Hub {
   say(conn: HubConn, phraseId: string): void {
     const m = this.conns.get(conn);
     const island = m && this.islands.get(m.islandId);
-    if (!m || !island) return;
+    // 熊熊老師不說短句（用全班公告）
+    if (!m || !island || m.role === 'teacher') return;
     const phrase = CHAT_PHRASES.find((p) => p.id === phraseId);
     if (!phrase) return conn.send({ t: 'error', message: '只能說短句盤裡的句子' });
     if (!island.flags.chatOpen) return conn.send({ t: 'error', message: kindOf(m.islandId) === 'class' ? '老師把聊天關起來了' : '這裡不能聊天' });
@@ -390,7 +484,7 @@ export class Hub {
   leftClass(accountId: string, room: string, reason: string): void {
     const m = this.accounts.get(accountId);
     if (!m) return;
-    if (isClassLogin(m.via) && m.tokenRoom === room) return this.kick(accountId, reason);
+    if (m.via && isClassLogin(m.via) && m.tokenRoom === room) return this.kick(accountId, reason);
     m.conn.send({ t: 'notice', message: reason });
     this.reconnect(accountId);
   }
