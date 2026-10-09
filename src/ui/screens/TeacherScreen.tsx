@@ -1387,10 +1387,11 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
 
   /** 重新整理的序號：只採用最後一次的回應（連按兩個開關時，較早那次的回應可能比較晚到，是舊的狀態） */
   const reloadSeq = useRef(0);
-  const reload = useCallback(async () => {
+  /** 重新讀取班級與成員；auto 是每 15 秒的自動更新（網址帶 ?auto=1，伺服器不管，e2e 攔回應時靠它分辨） */
+  const reload = useCallback(async (auto = false) => {
     const seq = ++reloadSeq.current;
     try {
-      const r = await call<TeacherRoomResponse>('GET', base);
+      const r = await call<TeacherRoomResponse>('GET', auto ? `${base}?auto=1` : base);
       if (seq !== reloadSeq.current) return;
       setRoom(r.room);
       setMembers(r.members);
@@ -1407,7 +1408,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
 
   // 成員表每 15 秒自動更新：看得到孩子現在在哪裡、在做什麼（老師 GM 的 G3）
   useEffect(() => {
-    const timer = setInterval(() => void reload(), 15_000);
+    const timer = setInterval(() => void reload(true), 15_000);
     return () => clearInterval(timer);
   }, [reload]);
 

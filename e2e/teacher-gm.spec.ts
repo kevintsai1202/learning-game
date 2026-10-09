@@ -147,7 +147,8 @@ async function holdRoomReloads(page: Page, code: string): Promise<{ held: HeldRe
   await page.route(
     (url) => url.pathname === `/api/teacher/rooms/${code}`,
     async (route) => {
-      if (route.request().method() !== 'GET') return route.continue();
+      // 班級頁每 15 秒的自動更新（?auto=1）不攔，只攔老師操作之後的重新整理
+      if (route.request().method() !== 'GET' || new URL(route.request().url()).searchParams.has('auto')) return route.continue();
       const res = await route.fetch();
       if (!holding) return route.fulfill({ response: res });
       let release!: () => void;
@@ -203,6 +204,7 @@ test('老師連續改兩個教材版本下拉：前一次的回應晚到，也�
   await expect(t.page.getByTestId('class-edition-math')).toHaveValue('hanlin-math');
   await expect(t.page.getByTestId('class-edition-term')).toHaveValue('上');
   expect(pageErrors(t.page)).toEqual([]);
+  await t.page.unrouteAll({ behavior: 'ignoreErrors' });
   await t.context.close();
 });
 
@@ -238,5 +240,6 @@ test('老師連按兩個開關：按下馬上變，回應先後顛倒也不會�
   const res = await request.get(`${SERVER}/api/teacher/rooms/${room.code}`, { headers: { authorization: `Bearer ${room.token}` } });
   expect(((await res.json()) as { room: { chatOpen: boolean; giftsOpen: boolean } }).room).toMatchObject({ chatOpen: false, giftsOpen: false });
   expect(pageErrors(t.page)).toEqual([]);
+  await t.page.unrouteAll({ behavior: 'ignoreErrors' });
   await t.context.close();
 });
