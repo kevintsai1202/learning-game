@@ -210,6 +210,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 - 裝置 → 伺服器：`hello { token, island?, room? }`（`island` 是 `class`／`own`，沒給是班級島；`room` 是哪一班的班級島，多班級，沒給或不是成員是第一個班級）、`go { island, room? }`（換島，不斷線）、`move { x, z, h, m }`、`where { zone }`、`say { phrase }`
 - 伺服器 → 裝置：`welcome { self, island, classCode, room, members, chat }`（`island` 是進了哪一種島，`classCode` 是哪一班的班級島、自己的島是 null）、`friends { list }`（上線時的整份好友名單；同學的名字是共同班級的暱稱）、`friend { friend }`（某位朋友上線、下線、換島、換外觀）、`join`、`leave`、`moves`（打包的位置）、`member`（外觀或所在建築變了）、`chat`、`gift`（禮物有新狀態：收到新禮物，或送出的禮物有結果；裝置重新讀 `GET /api/gifts`）、`profile { rev }`（存檔有變）、`room`（老師改了設定）、`content`（老師改了班級教材版本：裝置同步一次，從回應的 `rooms[].curriculum` 拿新的設定）、`kicked { reason }`、`notice { message }`（多班級：離開了其中一班，緊接著以 4005 重新上線）
 - 島嶼互訪 I1（`docs/plans/islands.md`）起中樞以「島」為單位：班級島與每個人自己的島；沒有班級的孩子進自己的島。
+- 老師 GM 的 G2＋G3（`docs/plans/teacher-gm.md` 第 13 節）：老師 `hello { token, gm }`（大人權杖＋自己班級的代碼）以熊熊老師進班級島，成員多 `role: 'teacher'`；老師 → 伺服器 `announce { text }`（1～60 字）、`summon`；孩子 → 伺服器 `doing { label }`（活動名稱，最多 40 字，只給老師的成員表）；伺服器 → 孩子 `announce { room, text }`、`summon { room, x, z }`、`reward`（讀 `GET /api/rewards`）。`welcome` 多 `caps: ['gm']`，孩子的裝置看到才送 `doing`（舊版伺服器收到不認得的訊息會斷線）。好友名單多每一班的老師（`teacher:<代碼>`）。
 - 關閉代碼：權杖無效 4003；角色沒有班級 4004（I1 起伺服器不再送，裝置保留處理）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
 
 ## 11. 資料表（PostgreSQL）

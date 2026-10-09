@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 363,
-  "全部": 3446,
-  "zh": 1825,
+  "介面": 368,
+  "全部": 3451,
+  "zh": 1830,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34899,
+ "chars": 34966,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -26963,6 +26963,15 @@
    ]
   },
   {
+   "key": "zh-TW|休息好了，可以繼續玩囉！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "休息好了，可以繼續玩囉！",
+   "sources": [
+    "ui:rest"
+   ]
+  },
+  {
    "key": "zh-TW|光腳去踩",
    "lang": "zh-TW",
    "voice": "zh",
@@ -28831,6 +28840,15 @@
    "text": "玩一段時間要讓眼睛休息，看看遠方的綠色植物。",
    "sources": [
     "ui:teacher"
+   ]
+  },
+  {
+   "key": "zh-TW|玩了好一陣子囉！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "玩了好一陣子囉！",
+   "sources": [
+    "ui:rest"
    ]
   },
   {
@@ -32925,6 +32943,24 @@
    ]
   },
   {
+   "key": "zh-TW|熊熊老師請大家回到班級島集合！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "熊熊老師請大家回到班級島集合！",
+   "sources": [
+    "ui:gm"
+   ]
+  },
+  {
+   "key": "zh-TW|熊熊老師請大家集合！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "熊熊老師請大家集合！",
+   "sources": [
+    "ui:gm"
+   ]
+  },
+  {
    "key": "zh-TW|熊貓",
    "lang": "zh-TW",
    "voice": "zh",
@@ -34061,6 +34097,15 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "讓眼睛休息一下，看看遠方吧。",
+   "sources": [
+    "ui:rest"
+   ]
+  },
+  {
+   "key": "zh-TW|讓眼睛休息一下，起來動一動，等一下再來玩吧。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "讓眼睛休息一下，起來動一動，等一下再來玩吧。",
    "sources": [
     "ui:rest"
    ]
