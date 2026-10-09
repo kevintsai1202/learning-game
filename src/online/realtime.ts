@@ -73,6 +73,12 @@ export const clientMessage = z.discriminatedUnion('t', [
   z.object({ t: z.literal('announce'), text: z.string().trim().min(1).max(ANNOUNCE_MAX) }),
   /** 熊熊老師請大家集合（只有老師的連線有效） */
   z.object({ t: z.literal('summon') }),
+  /** 開放或關閉自己的島（島嶼互訪 I2；只在自己的島上有效，下線、離開自己的島就關閉） */
+  z.object({ t: z.literal('island'), open: z.boolean() }),
+  /** 去某位朋友的島（島嶼互訪 I2；熊熊老師也可以去班上孩子的島）；回自己的島用 go own */
+  z.object({ t: z.literal('visit'), to: z.string().min(1).max(64) }),
+  /** 島主請某位訪客回家（島嶼互訪 I2） */
+  z.object({ t: z.literal('kickVisitor'), id: z.string().min(1).max(64) }),
   /**
    * 孩子回報在做什麼（老師 GM 的 G3）：活動或遊戲的名稱（最多 40 字），沒有在做什麼是 null。
    * 伺服器只放記憶體、只給老師的成員表；裝置只在 welcome 的 caps 有 gm 時才送（舊版伺服器不認得會斷線）
@@ -108,8 +114,14 @@ export interface FriendState {
   nickname: string;
   avatar: AvatarConfig;
   online: boolean;
-  /** 在哪座島（離線是 null）：班級島（不管是哪一班）、他自己的島 */
+  /** 在哪座島（離線是 null）：班級島（不管是哪一班）、自己的島（在別人的島上也是 own，見 host） */
   island: IslandKind | null;
+  /** 他在自己的島而且開放中：朋友可以去玩（島嶼互訪 I2；沒開放時沒有這個欄位） */
+  open?: boolean;
+  /** 他在別人的島上：島主的名字（照各自看到的；不認識島主時是空字串，畫面寫「在朋友的島」） */
+  host?: string;
+  /** 有共同班級（在朋友的島上可以送禮給他；只是兄弟姊妹時沒有這個欄位） */
+  classmate?: boolean;
 }
 
 /** 伺服器 → 裝置 */
@@ -118,7 +130,18 @@ export type ServerMessage =
    * 進到一座島：island 是進了哪一種島（舊版伺服器沒有這個欄位）；classCode 是哪一班的班級島（自己的島是 null；
    * 多班級之前的伺服器沒有這個欄位）；caps 是伺服器支援的新訊息（舊版伺服器沒有）
    */
-  | { t: 'welcome'; self: string; island: IslandKind; classCode?: string | null; room: RoomFlags; members: MemberState[]; chat: ChatLine[]; caps?: ServerCap[] }
+  | {
+      t: 'welcome';
+      self: string;
+      island: IslandKind;
+      classCode?: string | null;
+      room: RoomFlags;
+      members: MemberState[];
+      chat: ChatLine[];
+      caps?: ServerCap[];
+      /** 在別人的島上時：島主（name 照自己看到的；島嶼互訪 I2） */
+      host?: { id: string; name: string };
+    }
   /** 上線時的完整好友名單（離線的朋友也在裡面） */
   | { t: 'friends'; list: FriendState[] }
   /** 某位朋友上線、下線、換島或換外觀（名單裡沒有的就加進去） */
@@ -152,6 +175,11 @@ export type ServerMessage =
   | { t: 'summon'; room: string; x: number; z: number }
   /** 收到老師的獎勵（老師 GM 的 G3）：裝置讀 GET /api/rewards 顯示卡片。舊版網頁不認得，會忽略（存檔照樣同步） */
   | { t: 'reward' }
+  /**
+   * 拜訪結束（島嶼互訪 I2）：島主離開或下線（closed）、島主請你回家（kicked）；host 是島主的名字。
+   * 緊接著伺服器把他送回自己的島（新的 welcome）
+   */
+  | { t: 'visitEnded'; reason: 'closed' | 'kicked'; host: string }
   | { t: 'error'; message: string };
 
 /** 解析裝置送來的訊息；格式不符回傳 null（呼叫端斷線） */

@@ -669,3 +669,199 @@ it('在做什麼（G3）：孩子回報的活動名稱只放在記憶體，老�
     expect(JSON.stringify(t.sent)).not.toContain('加法練習');
   });
 });
+
+describe('島嶼互訪 I2：去朋友的島（docs/plans/islands.md 第 12 節 I2 實作設計）', () => {
+  const AV = { animal: 'cat' as const, color: '#ffffff', hat: null };
+  /** 孩子上線（預設在自己的島）：friends 是 [帳號 id, 我看到的名字, 有沒有共同班級] */
+  function kid(id: string, name: string, opts: { room?: string | null; island?: 'class' | 'own'; friends?: [string, string, boolean?][] } = {}) {
+    const conn = new FakeConn();
+    const room = opts.room === undefined ? '123456' : opts.room;
+    hub.join(conn, {
+      accountId: id,
+      name,
+      classes: room ? [{ code: room, name: '二年一班', nickname: name, flags: FLAGS }] : [],
+      profile: profileOf(name),
+      via: 'parent',
+      tokenRoom: null,
+      island: opts.island ?? 'own',
+      friends: (opts.friends ?? []).map(([fid, n, classmate]) => ({ id: fid, nickname: n, avatar: AV, classmate: classmate ?? true })),
+    });
+    return conn;
+  }
+  /** 熊熊老師進某一班的班級島 */
+  const teacherIn = (room = '123456') => {
+    const c = new FakeConn();
+    hub.joinTeacher(c, { room, name: '二年一班', flags: FLAGS });
+    return c;
+  };
+  /** 某人收到的最後一則某位朋友的狀態 */
+  const lastFriend = (c: FakeConn, id: string) => c.of('friend').filter((m) => m.friend.id === id).at(-1)?.friend;
+  /** 最後一則 welcome */
+  const lastWelcome = (c: FakeConn) => c.of('welcome').at(-1)!;
+
+  it('開放島嶼：線上的朋友收到 open；不在自己的島上時不能開；離開自己的島就關閉並通知', () => {
+    const a = kid('a', '阿寶', { friends: [['b', '小美']] });
+    const b = kid('b', '小美', { friends: [['a', '阿寶']] });
+    hub.setOpen(b, true);
+    expect(lastFriend(a, 'b')).toMatchObject({ online: true, island: 'own', open: true });
+    hub.setOpen(b, false);
+    expect(lastFriend(a, 'b')?.open).toBeUndefined();
+    hub.setOpen(b, true);
+    hub.goTo(b, 'class');
+    expect(lastFriend(a, 'b')).toMatchObject({ island: 'class' });
+    expect(lastFriend(a, 'b')?.open).toBeUndefined();
+    hub.setOpen(b, true);
+    expect(lastFriend(a, 'b')?.open).toBeUndefined();
+  });
+
+  it('後上線的朋友：名單上看得到開放中的島', () => {
+    const b = kid('b', '小美', { friends: [['a', '阿寶']] });
+    hub.setOpen(b, true);
+    const a = kid('a', '阿寶', { friends: [['b', '小美']] });
+    expect(a.of('friends')[0].list).toContainEqual(expect.objectContaining({ id: 'b', open: true }));
+  });
+
+  it('去朋友的島：訪客的 welcome 帶島主（名字照自己看到的）、島主看到訪客 join；朋友名單寫訪客在誰的島；老師成員表照舊是自己的島', () => {
+    const a = kid('a', '阿寶', { friends: [['b', '美美']] });
+    const b = kid('b', '小美', { friends: [['a', '阿寶']] });
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    expect(lastWelcome(a)).toMatchObject({ island: 'own', host: { id: 'b', name: '美美' } });
+    expect(lastWelcome(a).members.map((m) => m.nickname)).toEqual(['小美']);
+    expect(b.of('join').at(-1)!.member.nickname).toBe('阿寶');
+    expect(lastFriend(b, 'a')).toMatchObject({ online: true, island: 'own', host: '小美' });
+    expect(hub.whereOf('a')?.island).toBe('own');
+  });
+
+  it('拜訪被拒：不是朋友、島主離線、島主不在自己的島、沒開放、島上已經 8 個孩子；訪客留在原地並收到 error', () => {
+    const a = kid('a', '阿寶', { friends: [['b', '小美'], ['x', '小華']] });
+    const b = kid('b', '小美', { friends: [['a', '阿寶']] });
+    const stranger = kid('s', '陌生人');
+    hub.setOpen(b, true);
+    const welcomes = a.of('welcome').length;
+    hub.visit(stranger, 'b');
+    hub.visit(a, 'x');
+    hub.goTo(b, 'class');
+    hub.visit(a, 'b');
+    hub.goTo(b, 'own');
+    hub.visit(a, 'b');
+    expect(a.of('welcome')).toHaveLength(welcomes);
+    expect(a.of('error').length).toBeGreaterThanOrEqual(3);
+    expect(stranger.of('error')).toHaveLength(1);
+    // 島上已經 8 個孩子（島主＋7 位訪客）：第 9 位進不去
+    hub.setOpen(b, true);
+    const guests = Array.from({ length: 7 }, (_, i) => kid(`g${i}`, `訪客${i}`, { friends: [['b', '小美']] }));
+    for (const g of guests) hub.visit(g, 'b');
+    expect(guests.every((g) => lastWelcome(g).host?.id === 'b')).toBe(true);
+    hub.visit(a, 'b');
+    expect(a.of('error').at(-1)!.message).toContain('滿');
+    expect(lastWelcome(a).host).toBeUndefined();
+  });
+
+  it('請回家：訪客先收到 visitEnded（kicked）再回到自己的島；島主看到 leave；不是島主送的不做事', () => {
+    const a = kid('a', '阿寶', { friends: [['b', '小美']] });
+    const c = kid('c', '阿明', { friends: [['b', '小美']] });
+    const b = kid('b', '小美', { friends: [['a', '阿寶'], ['c', '阿明']] });
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    hub.visit(c, 'b');
+    hub.kickVisitor(c, 'a');
+    expect(a.of('visitEnded')).toEqual([]);
+    hub.kickVisitor(b, 'a');
+    expect(a.of('visitEnded')).toEqual([{ t: 'visitEnded', reason: 'kicked', host: '小美' }]);
+    const order = a.sent.map((m) => m.t);
+    expect(order.lastIndexOf('welcome')).toBeGreaterThan(order.lastIndexOf('visitEnded'));
+    expect(lastWelcome(a).host).toBeUndefined();
+    expect(b.of('leave').at(-1)).toEqual({ t: 'leave', id: 'a' });
+  });
+
+  it('島主離開（換島、斷線）：訪客都收到 visitEnded（closed）回自己的島；島上的熊熊老師回班級島；島關閉', () => {
+    const a = kid('a', '阿寶', { friends: [['b', '小美']] });
+    const b = kid('b', '小美', { friends: [['a', '阿寶']] });
+    const t = teacherIn();
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    hub.visit(t, 'b');
+    expect(lastWelcome(t).host?.id).toBe('b');
+    hub.goTo(b, 'class');
+    expect(a.of('visitEnded').at(-1)).toEqual({ t: 'visitEnded', reason: 'closed', host: '小美' });
+    expect(lastWelcome(a).host).toBeUndefined();
+    expect(lastWelcome(t)).toMatchObject({ island: 'class', classCode: '123456' });
+    // 回到自己的島再開放、又有訪客，然後斷線
+    hub.goTo(b, 'own');
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    hub.leave(b);
+    expect(a.of('visitEnded')).toHaveLength(2);
+    expect(lastWelcome(a).host).toBeUndefined();
+  });
+
+  it('訪客出門去別人的島：他自己島上的訪客也被送回', () => {
+    const d = kid('d', '小德', { friends: [['a', '阿寶']] });
+    const a = kid('a', '阿寶', { friends: [['b', '小美'], ['d', '小德']] });
+    const b = kid('b', '小美', { friends: [['a', '阿寶']] });
+    hub.setOpen(a, true);
+    hub.visit(d, 'a');
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    expect(d.of('visitEnded').at(-1)).toMatchObject({ reason: 'closed', host: '阿寶' });
+  });
+
+  it('島主在第二台裝置登入同一座島：訪客留著（收到 member，不是 visitEnded）', () => {
+    const a = kid('a', '阿寶', { friends: [['b', '小美']] });
+    const b1 = kid('b', '小美', { friends: [['a', '阿寶']] });
+    hub.setOpen(b1, true);
+    hub.visit(a, 'b');
+    kid('b', '小美', { friends: [['a', '阿寶']] });
+    expect(a.of('visitEnded')).toEqual([]);
+    expect(a.of('member').at(-1)!.member.id).toBe('b');
+  });
+
+  it('自己的島的聊天：有訪客時開、只剩自己時關（一個人時照舊沒有聊天）', () => {
+    const a = kid('a', '阿寶', { friends: [['b', '小美']] });
+    const b = kid('b', '小美', { friends: [['a', '阿寶']] });
+    expect(lastWelcome(b).room.chatOpen).toBe(false);
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    expect(lastWelcome(a).room.chatOpen).toBe(true);
+    expect(b.of('room').at(-1)!.room.chatOpen).toBe(true);
+    hub.say(a, 'hi');
+    expect(b.of('chat').at(-1)!.line.text).toBe('你好！');
+    hub.goTo(a, 'own');
+    expect(b.of('room').at(-1)!.room.chatOpen).toBe(false);
+  });
+
+  it('好友名單上的島主名字只給認識島主的人：兄弟姊妹看到哥哥「在朋友的島」，不寫不認識的島主名字', () => {
+    const sib = kid('sib', '妹妹', { room: null, friends: [['a', '哥哥', false]] });
+    const a = kid('a', '哥哥', { friends: [['b', '小美'], ['sib', '妹妹', false]] });
+    const b = kid('b', '小美', { friends: [['a', '哥哥']] });
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    expect(lastFriend(sib, 'a')).toMatchObject({ island: 'own', host: '' });
+    expect(a.of('friends')[0].list.find((f) => f.id === 'sib')?.classmate).toBeUndefined();
+    expect(a.of('friends')[0].list).toContainEqual(expect.objectContaining({ id: 'b', classmate: true }));
+    expect(lastFriend(b, 'a')?.host).toBe('小美');
+  });
+
+  it('熊熊老師去班上孩子的島：不用開放、不佔 8 人；不是班上的孩子不能去；可以回班級島；在孩子島上照樣能公告，離開時好友名單上的老師變離線', () => {
+    const a = kid('a', '阿寶');
+    const other = kid('o', '別班', { room: '654321' });
+    const mate = kid('m', '同學', { island: 'class' });
+    const t = teacherIn();
+    hub.visit(t, 'o');
+    expect(t.of('error')).toHaveLength(1);
+    hub.visit(t, 'a');
+    expect(lastWelcome(t)).toMatchObject({ island: 'own', host: { id: 'a', name: '阿寶' } });
+    expect(a.of('join').at(-1)!.member.role).toBe('teacher');
+    hub.announce(t, '大家好');
+    expect(mate.of('announce').at(-1)).toEqual({ t: 'announce', room: '123456', text: '大家好' });
+    hub.summon(t);
+    expect(mate.of('summon')).toEqual([]);
+    hub.goTo(t, 'class');
+    expect(lastWelcome(t)).toMatchObject({ island: 'class', classCode: '123456' });
+    hub.visit(t, 'a');
+    hub.leave(t);
+    expect(lastFriend(mate, 'teacher:123456')).toMatchObject({ online: false });
+    expect(other.of('join')).toEqual([]);
+  });
+});

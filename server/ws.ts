@@ -112,7 +112,13 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
       room,
       friends: friends.map((f) => {
         const shared = names.get(f.id);
-        return { id: f.id, nickname: shared?.nickname ?? f.profile.name, avatar: equippedOf(f.profile), myName: shared?.myName ?? row.profile.name };
+        return {
+          id: f.id,
+          nickname: shared?.nickname ?? f.profile.name,
+          avatar: equippedOf(f.profile),
+          myName: shared?.myName ?? row.profile.name,
+          ...(shared ? { classmate: true } : {}),
+        };
       }),
     };
   }
@@ -204,6 +210,15 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
           break;
         case 'doing':
           hub.doing(conn, msg.label);
+          break;
+        case 'island':
+          hub.setOpen(conn, msg.open);
+          break;
+        case 'visit':
+          hub.visit(conn, msg.to);
+          break;
+        case 'kickVisitor':
+          hub.kickVisitor(conn, msg.id);
           break;
         case 'hello':
           ws.close(1008, 'already logged in');

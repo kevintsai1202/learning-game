@@ -284,6 +284,9 @@ describe('島嶼互訪 I1：選島、換島、好友名單（docs/plans/islands.
       ['妹妹', false],
       ['熊熊老師', false],
     ]);
+    // 有共同班級的同學 classmate，只是兄弟姊妹（不同班）的沒有（島嶼互訪 I2：在朋友的島上只能送禮給同班同學）
+    expect(list.find((f) => f.nickname === '同學')?.classmate).toBe(true);
+    expect(list.find((f) => f.nickname === '妹妹')?.classmate).toBeUndefined();
     // 妹妹上線（在她自己的班級島）：哥哥收到「在班級島」
     const cSmall = await connectTo(small.token);
     await cBig.waitFor('friend', (m) => m.friend.nickname === '妹妹' && m.friend.online && m.friend.island === 'class');

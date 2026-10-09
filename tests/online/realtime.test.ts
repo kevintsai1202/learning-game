@@ -29,6 +29,13 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'doing', label: '字'.repeat(41) }))).toBeNull();
   });
 
+  it('島嶼互訪 I2：開放島嶼、去朋友的島（帳號 id 最長 64 字）、請訪客回家', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'island', open: true }))).toEqual({ t: 'island', open: true });
+    expect(parseClientMessage(JSON.stringify({ t: 'visit', to: 'a_123' }))).toEqual({ t: 'visit', to: 'a_123' });
+    expect(parseClientMessage(JSON.stringify({ t: 'visit', to: 'x'.repeat(65) }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'kickVisitor', id: 'a_123' }))).toEqual({ t: 'kickVisitor', id: 'a_123' });
+  });
+
   it('格式不對或不認得的訊息：null', () => {
     expect(parseClientMessage('not json')).toBeNull();
     expect(parseClientMessage(JSON.stringify({ t: 'nope' }))).toBeNull();
