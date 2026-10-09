@@ -62,6 +62,9 @@ test('隱私權政策：中英文都有 Google 使用者資料與有限使用聲
   await expect(body).toContainText('熊熊老師發的獎勵紀錄');
   await expect(body).toContainText('在做什麼（正在玩的活動或遊戲名稱）');
   await expect(body).not.toContainText('老師進島（熊熊老師）：');
+  // I2 上線（2026-10-09）：去朋友的島搬進正文
+  await expect(body).toContainText('到朋友的島上玩：');
+  await expect(body).not.toContainText('去朋友的島：');
   // 英文版（Google 審核人員看得懂的版本）
   const en = page.locator('#english');
   await expect(en).toContainText('Learning Island (知識島大冒險) Privacy Policy');
@@ -81,6 +84,8 @@ test('隱私權政策：中英文都有 Google 使用者資料與有限使用聲
   await expect(en).toContainText("both children's parents approve it");
   await expect(en).toContainText('Bear Teacher reward records');
   await expect(en).not.toContainText('Teacher on the island ("Bear Teacher"):');
+  await expect(en).toContainText("Playing on a friend's island:");
+  await expect(en).not.toContainText("Visiting a friend's island:");
   // 中英文各有一個連到 Google API 服務使用者資料政策的連結
   await expect(page.locator('a[href="https://developers.google.com/terms/api-services-user-data-policy"]')).toHaveCount(2);
 

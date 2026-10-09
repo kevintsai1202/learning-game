@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 368,
-  "全部": 3451,
-  "zh": 1830,
+  "介面": 373,
+  "全部": 3456,
+  "zh": 1835,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 34966,
+ "chars": 35023,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -27194,6 +27194,15 @@
    ]
   },
   {
+   "key": "zh-TW|回自己的島再練習吧。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "回自己的島再練習吧。",
+   "sources": [
+    "ui:visit"
+   ]
+  },
+  {
    "key": "zh-TW|回到班級島囉！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -27250,6 +27259,15 @@
    "sources": [
     "life.traffic",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|在朋友的島上只能玩益智遊戲館喔！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "在朋友的島上只能玩益智遊戲館喔！",
+   "sources": [
+    "ui:visit"
    ]
   },
   {
@@ -28737,6 +28755,15 @@
    ]
   },
   {
+   "key": "zh-TW|朋友可以來玩囉。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "朋友可以來玩囉。",
+   "sources": [
+    "ui:visit"
+   ]
+  },
+  {
    "key": "zh-TW|朋友跌倒了，哭得很傷心，你可以怎麼做？",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29687,6 +29714,24 @@
    "sources": [
     "life.community",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|島開放了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "島開放了！",
+   "sources": [
+    "ui:visit"
+   ]
+  },
+  {
+   "key": "zh-TW|島關起來了，已經來的朋友可以繼續玩。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "島關起來了，已經來的朋友可以繼續玩。",
+   "sources": [
+    "ui:visit"
    ]
   },
   {

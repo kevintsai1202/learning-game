@@ -1,6 +1,6 @@
 # 島嶼互訪與好友規劃
 
-> 狀態：**規劃確認（2026-10-05）**，使用者的決定見第 10 節；和老師 GM 合併的總分期見 `docs/plans/roadmap.md`。**I1 2026-10-05 14:38 上線**，實作紀錄見第 12 節。
+> 狀態：**規劃確認（2026-10-05）**，使用者的決定見第 10 節；和老師 GM 合併的總分期見 `docs/plans/roadmap.md`。**I1 2026-10-05 14:38 上線**；**I2 完成（2026-10-09），待上線**（和 G2＋G3 一起），實作紀錄見第 12 節。
 > 相關文件：`docs/plans/teacher-gm.md`（班級島、我的島、熊熊老師 GM）、`docs/plans/online.md`（即時連線、送禮）、`docs/plans/puzzle-house.md`（益智遊戲館）、`docs/plans/accounts.md`（家長、老師帳號）。
 
 ## 1. 使用者的需求（2026-10-05）
@@ -164,3 +164,15 @@
 - 好友名單的「在○○的島」：收件人的朋友裡有島主才給名字，不然只寫「在朋友的島」。
 
 **分段（每段先寫會失敗的測試）**：① 伺服器（開放、拜訪、人數、請回家、島主離開、老師拜訪、好友名單欄位）→ ② 去朋友的島的畫面（好友名單去玩、上岸、島主的小屋門牌、回自己的島、只能進益智遊戲館）→ ③ 島主的管理（開放、訪客名單、請回家、島主離開時的提示）→ ④ 熊熊老師去孩子的島 → ⑤ 在朋友的島上聊天與送禮給同班同學 → ⑥ 隱私權政策、預錄語音、文件、全套測試（沒改到語音就不跑語音的 e2e）。
+
+### I2（2026-10-09 完成，待上線）
+
+照上一節的設計與補充，分六段實作（每段先寫會失敗的測試）：
+
+- **伺服器（`server/hub.ts`、`server/ws.ts`）**：`island { open }`、`visit { to }`、`kickVisitor { id }`；`welcome.host`、`visitEnded`。換島統一走 `moveTo`：離開自己的島時 `closeOwnIsland` 送回訪客（熊熊老師回班級島）；同一座島換裝置不算離開。自己的島依人數開關聊天（`updateOwnFlags`）。好友狀態依看的人計算（`friendStateFor`）：`open`、`host`（不認識島主時空字串）、`classmate`（ws.ts 從資料庫算）。熊熊老師的班級記在成員的 `room`。
+- **孩子的畫面**：`realtimeClient.ts` 記拜訪中的島主（`desiredHost`，不寫存檔），`islandAction` 純函式決定送 `go` 或 `visit`，重新連線補送拜訪，拜訪中送出的 `error` 當成被拒；好友名單「✈️ 去玩」與「在○○的島」；島主的小屋門牌（`lookWithVisit`、`IslandLook` 的 `friend`）、所在地與橫幅、「🏠 回自己的島」；「🔓 開放島嶼」、「👥 訪客」名單請他回家；`useUi.zoneGate` 讓朋友的島上只能進益智遊戲館。
+- **熊熊老師**：全班清單上在自己島上的孩子有「🏝️ 去他的島」；`useGm.visiting`、所在地與「🏫 回班級島」；在孩子的島上「集合」停用。
+- **聊天與送禮**：公頻面板在自己的島上依伺服器的聊天開關顯示；名牌與送禮視窗在不在班級島時只限同班同學（`nameTagGiftable`、`giftButtonShown`）；沒有班級的孩子沒有送禮按鈕。
+- **預錄語音**：`VISIT_LINES` 三句已預錄（Whisper 聽寫：「益智」寫成同音的「意志」，其他完全一致）；有名字的句子（「○○來玩了！」、拜訪結束）用裝置語音。
+- **隱私權政策**：「去朋友的島」從第 12 節搬進第 2、5 節（中英文）；送禮擴大成朋友併進第 12 節的跨班朋友。
+- **測試**：`tests/server/hub.test.ts`（I2 12 條）、`ws.test.ts`（同班標記）、`tests/online/realtime.test.ts`、`friends.test.ts`、`realtimeClient.test.ts`（`islandAction`）、`tests/store/island.test.ts`、`tests/world/landmarks.test.ts`；e2e `e2e/visit.spec.ts`（去朋友的島、島主管理、三台裝置的聊天與送禮）、`e2e/gm.spec.ts` 第 5 條（老師去孩子的島）。
