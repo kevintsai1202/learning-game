@@ -4,9 +4,10 @@
  * 島上的「換島」選單列出我的島與兩班 → 兩位老師看到的位置（自己班的班級島／別的班級島）→
  * 好友名單有兩班的同學 → 家長讓哥哥退出安親班，只剩學校。
  * 第二條：兩班的暱稱不同時，左上角的名字跟著所在的島；重新登入預設填現在所在的那一班，可以改選。
+ * 第三條：安親班的學校平板從名單點孩子，進安親班的班級島（不是第一個班級）。
  * 截圖在 e2e/screenshots/multi-class/（不進版控）。
  */
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Browser, type Page } from '@playwright/test';
 import { SERVER, TEST_PASSWORD, createClassViaApi, flushDeviceLogs, loginAndEnter, openDevice, pageErrors, uniqueUsername } from './onlineDevice';
 
 const SHOTS = 'e2e/screenshots/multi-class';
@@ -121,21 +122,22 @@ test('哥哥在學校與安親班：家長掃兩個 QR code 加入、換島選�
 });
 
 /** 直接呼叫伺服器 API（準備資料用），回傳 JSON */
-async function callApi(request: APIRequestContext, method: 'POST' | 'GET', path: string, data?: unknown, token?: string): Promise<any> {
+async function callApi(request: APIRequestContext, method: 'POST' | 'GET' | 'PATCH', path: string, data?: unknown, token?: string): Promise<any> {
   const res = await request.fetch(`${SERVER}${path}`, { method, data, headers: token ? { authorization: `Bearer ${token}` } : {} });
   expect(res.ok(), `${path} ${res.status()}`).toBe(true);
   return res.json();
 }
 
-// 兩班的暱稱不同（docs/plans/multi-class.md 第 10 節原本「還沒做的」）：哥哥在學校叫「哥哥」、在安親班叫「大雄」。
-// 左上角的名字跟著所在的島（班級島是那一班的暱稱、自己的島是角色名字）；要重新登入時可以選用哪一班，預設是現在所在的那一班
-test('兩班的暱稱不同：左上角的名字跟著島換，重新登入可以選用哪一班', async ({ browser, baseURL, request }) => {
-  test.setTimeout(300_000);
+/**
+ * 準備一個在兩班的孩子：家長帳號與雲端角色「哥哥」，用 API 加入學校（暱稱「哥哥」）與安親班（暱稱「大雄」）。
+ * 回傳兩個班級（含老師權杖）與孩子的帳號 id
+ */
+async function kidInTwoClasses(browser: Browser, baseURL: string, request: APIRequestContext) {
   const school = await createClassViaApi(request, '二年三班');
   const after = await createClassViaApi(request, '安親班');
-  // 家長帳號與雲端角色「哥哥」，用 API 加入兩班（安親班的暱稱是「大雄」），兩位老師各自設定這一班的密碼
   const momName = uniqueUsername();
   const mom = await callApi(request, 'POST', '/api/users', { username: momName, password: TEST_PASSWORD, email: `${momName}@example.com`, parent: true, teacher: false });
+  // 用裝置的存檔格式產生角色再上傳
   const tmp = await (await browser.newContext({ baseURL })).newPage();
   await tmp.goto('./');
   const profile = await tmp.evaluate(() => {
@@ -146,6 +148,15 @@ test('兩班的暱稱不同：左上角的名字跟著島換，重新登入可�
   const id = ((await callApi(request, 'POST', '/api/parent/kids', { profile }, mom.token)) as { account: { id: string } }).account.id;
   await callApi(request, 'POST', `/api/parent/kids/${id}/class`, { code: school.code, nickname: '哥哥' }, mom.token);
   await callApi(request, 'POST', `/api/parent/kids/${id}/class`, { code: after.code, nickname: '大雄' }, mom.token);
+  return { school, after, id };
+}
+
+// 兩班的暱稱不同（docs/plans/multi-class.md 第 10 節原本「還沒做的」）：哥哥在學校叫「哥哥」、在安親班叫「大雄」。
+// 左上角的名字跟著所在的島（班級島是那一班的暱稱、自己的島是角色名字）；要重新登入時可以選用哪一班，預設是現在所在的那一班
+test('兩班的暱稱不同：左上角的名字跟著島換，重新登入可以選用哪一班', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
+  const { school, after, id } = await kidInTwoClasses(browser, baseURL!, request);
+  // 兩位老師各自設定這一班的密碼
   await callApi(request, 'POST', `/api/teacher/rooms/${school.code}/members/${id}/pin`, { pin: '1111' }, school.token);
   await callApi(request, 'POST', `/api/teacher/rooms/${after.code}/members/${id}/pin`, { pin: '2222' }, after.token);
 
@@ -202,4 +213,28 @@ test('兩班的暱稱不同：左上角的名字跟著島換，重新登入可�
 
   expect(pageErrors(d.page)).toEqual([]);
   await d.context.close();
+});
+
+// 學校平板（L3 教室密碼）：安親班的平板從名單點孩子，進安親班的班級島（不是第一個班級），安親班的老師看到他在班級島
+test('兩個班級的孩子在安親班的平板上進島：到安親班的班級島', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
+  const { school, after } = await kidInTwoClasses(browser, baseURL!, request);
+  await callApi(request, 'PATCH', `/api/teacher/rooms/${after.code}`, { classPassword: 'after-class-1' }, after.token);
+
+  const tablet = await openDevice(browser, baseURL!);
+  await tablet.page.goto(`./?join=${after.code}`);
+  await tablet.page.getByTestId('join-as-teacher').click();
+  await expect(tablet.page.getByTestId('classroom-code')).toHaveValue(after.code);
+  await tablet.page.getByTestId('classroom-password').fill('after-class-1');
+  await tablet.page.getByTestId('classroom-unlock').click();
+  await tablet.page.getByTestId('classroom-kid-大雄').click();
+  await expect.poll(() => screenOf(tablet.page), { timeout: 30_000 }).toBe('island');
+  await expect.poll(() => tablet.page.evaluate(() => (window as any).__game.realtime.getState().status), { timeout: 20_000 }).toBe('online');
+  await expect(tablet.page.getByTestId('hud-location')).toContainText('安親班');
+  await expect(tablet.page.locator('[data-testid="hud-profile"] .hud-name')).toContainText('大雄');
+  await expect.poll(() => whereSeenBy(request, after, '大雄')).toBe('class');
+  await expect.poll(() => whereSeenBy(request, school)).toBe('otherClass');
+
+  expect(pageErrors(tablet.page)).toEqual([]);
+  await tablet.context.close();
 });
