@@ -64,6 +64,7 @@ async function main(): Promise<void> {
     onKick: (id, reason, via, room) => hub.kick(id, reason, via, room),
     onLeftClass: (id, room, reason) => hub.leftClass(id, room, reason),
     onGift: (id) => hub.notify(id, { t: 'gift' }),
+    onReward: (id) => hub.notify(id, { t: 'reward' }),
     staticDir: process.env.STATIC_DIR || undefined,
   });
   // 過期的禮物：啟動時與每小時退款給送禮人（退款一樣通知送禮人的裝置）

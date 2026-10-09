@@ -14,6 +14,7 @@ import { emitGiftEvents, registerGiftRoutes, removeMemberWithRefunds } from './g
 import { registerStatic } from './static';
 import { registerUserRoutes } from './users';
 import { registerParentRoutes } from './parents';
+import { registerRewardRoutes } from './rewards';
 import { registerEmailRoutes } from './email';
 import { registerUserGoogleRoutes } from './userGoogle';
 import { createMailer, type Mailer } from './mail';
@@ -86,6 +87,8 @@ export interface AppOptions {
   onLeftClass?: (accountId: string, roomCode: string, reason: string) => void;
   /** 某位孩子的禮物狀態有變（收到新禮物，或送出的禮物有結果）：即時中樞通知他的裝置重新讀取 */
   onGift?: (accountId: string) => void;
+  /** 某位孩子收到老師的獎勵（老師 GM 的 G3）：即時中樞通知他的裝置讀取並顯示卡片 */
+  onReward?: (accountId: string) => void;
   /** Google 快速登入（備選）；沒有時 Google 相關 API 回 404 */
   google?: GoogleConfig | null;
   /** 寄信（驗證 email、忘記密碼；server/mail.ts 的 createMailer）；沒有時停用寄信 */
@@ -801,6 +804,7 @@ export function createApp(opts: AppOptions) {
 
   // ---------- 送禮物（P3） ----------
   registerGiftRoutes(app, { db, now, authenticate, isOnline, onProfileChanged: opts.onProfileChanged, onGift: opts.onGift });
+  registerRewardRoutes(app, { db, now, authenticate, authenticateTeacher, loadOwnRoom, onProfileChanged: opts.onProfileChanged, onReward: opts.onReward });
 
   // ---------- 前端靜態檔（最後註冊，不蓋掉上面的路由） ----------
   if (opts.staticDir) registerStatic(app, opts.staticDir);

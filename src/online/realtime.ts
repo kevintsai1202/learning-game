@@ -150,6 +150,8 @@ export type ServerMessage =
    * 在建築裡或別座島的跳卡片讓孩子選。舊版網頁不認得，會忽略
    */
   | { t: 'summon'; room: string; x: number; z: number }
+  /** 收到老師的獎勵（老師 GM 的 G3）：裝置讀 GET /api/rewards 顯示卡片。舊版網頁不認得，會忽略（存檔照樣同步） */
+  | { t: 'reward' }
   | { t: 'error'; message: string };
 
 /** 解析裝置送來的訊息；格式不符回傳 null（呼叫端斷線） */

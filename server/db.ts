@@ -332,6 +332,23 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS claim_codes_account ON claim_codes (account_id)`,
     ],
   },
+  {
+    // 老師 GM 的 G3 發獎勵（docs/plans/teacher-gm.md 第 13 節）：老師給孩子金幣或貼紙時每人記一筆（存檔在同一個交易裡改好），
+    // 孩子的裝置讀還沒看過的顯示卡片；班級或孩子的角色刪除時跟著刪
+    version: 13,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS rewards (
+        id text PRIMARY KEY,
+        room_code text NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        to_id text NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
+        coins integer NOT NULL DEFAULT 0,
+        item_id text,
+        seen_at timestamptz,
+        created_at timestamptz NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS rewards_unseen ON rewards (to_id, created_at) WHERE seen_at IS NULL`,
+    ],
+  },
 ];
 
 /**

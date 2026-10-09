@@ -318,4 +318,26 @@ describe('升級到第 5 版（家長的雲端角色）', () => {
       await d.close();
     }
   });
+
+  it('v12 → v13（老師 GM 的 G3 發獎勵）：新增 rewards；孩子或班級刪除時跟著刪', async () => {
+    const d = await openDb({});
+    try {
+      await migrate(d, { upTo: 12 });
+      await d.query("INSERT INTO rooms (code, name, teacher_hash, created_at) VALUES ('777777', '二年七班', 'h', $1::timestamptz)", [T]);
+      await d.query(
+        "INSERT INTO accounts (id, room_code, nickname, nickname_key, profile, rev, created_at, last_seen) VALUES ('k7', NULL, '小安', '小安', '{}'::jsonb, 1, $1::timestamptz, $1::timestamptz)",
+        [T],
+      );
+
+      await migrate(d);
+
+      await d.query("INSERT INTO rewards (id, room_code, to_id, coins, item_id, created_at) VALUES ('r1', '777777', 'k7', 10, NULL, $1::timestamptz)", [T]);
+      expect((await d.query('SELECT seen_at FROM rewards'))[0].seen_at).toBeNull();
+      await d.query("DELETE FROM rooms WHERE code = '777777'");
+      expect((await d.query('SELECT 1 FROM rewards')).length).toBe(0);
+      await migrate(d);
+    } finally {
+      await d.close();
+    }
+  });
 });

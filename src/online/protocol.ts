@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import type { AvatarConfig, CurriculumChoice, Profile } from '../store/save';
 import { avatarSchema, curriculumSchema } from './ops';
+import { REWARD_COINS_MAX, isRewardSticker } from '../store/rewards';
 
 /** 房間代碼：6 位數字 */
 export const roomCodeSchema = z.string().regex(/^\d{6}$/);
@@ -113,6 +114,38 @@ export const uploadKidRequest = z.object({ profile: z.unknown() });
 export const attachClassRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40), pin: pinSchema });
 /** 家長讓名下的雲端角色加入班級（掃 QR code 加入，不用密碼；docs/plans/class-join.md） */
 export const parentJoinClassRequest = z.object({ code: roomCodeSchema, nickname: z.string().max(40) });
+/**
+ * 老師發獎勵（老師 GM 的 G3）：給這一班的某些孩子（帳號 id）或全班；金幣 1～50、貼紙 8 種之一，至少給一種
+ */
+export const rewardRequest = z
+  .object({
+    to: z.union([z.literal('all'), z.array(z.string().max(64)).min(1).max(200)]),
+    coins: z.number().int().min(1).max(REWARD_COINS_MAX).optional(),
+    sticker: z.string().max(40).refine(isRewardSticker, { message: '只能送那 8 種貼紙' }).optional(),
+  })
+  .refine((v) => v.coins !== undefined || v.sticker !== undefined, { message: '要給金幣或貼紙' });
+export type RewardRequest = z.infer<typeof rewardRequest>;
+/** 孩子把看過的獎勵標記起來 */
+export const rewardsSeenRequest = z.object({ ids: z.array(z.string().max(64)).min(1).max(50) });
+/** 發獎勵的回應：發給了幾個孩子 */
+export interface RewardResponse {
+  given: number;
+}
+/** 孩子還沒看過的一份獎勵（卡片顯示用） */
+export interface RewardInfo {
+  id: string;
+  /** 金幣（沒有是 0） */
+  coins: number;
+  /** 貼紙（沒有是 null） */
+  itemId: string | null;
+  /** 哪一班的老師發的 */
+  className: string;
+  at: string;
+}
+export interface RewardsResponse {
+  rewards: RewardInfo[];
+}
+
 /** 家長讓孩子退出班級：code 是要退出哪一班（多班級）；舊版網頁不給，只有一個班級時退出那一班 */
 export const parentLeaveClassRequest = z.object({ code: roomCodeSchema.optional() });
 
