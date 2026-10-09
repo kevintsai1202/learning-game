@@ -23,6 +23,8 @@ export interface RemoteMember {
   zone: ZoneId | null;
   /** 顯示的稱號（名牌上方；沒有時為 null 或省略） */
   title?: string | null;
+  /** 熊熊老師（老師 GM 的 G2）；孩子沒有 */
+  role?: 'teacher';
 }
 
 /** 公頻的一則訊息 */

@@ -3,8 +3,9 @@
  * 頭上用 DOM 顯示暱稱與對話氣泡（drei Html；照專案規則，文字不用 three 渲染）。
  * 在建築裡的玩家不畫在島上。資料來自 usePresence（P2 由伺服器驅動，現在可以用 presenceDemo 模擬）。
  * 連上班級而且老師開放送禮時，點名牌可以送禮物給那位同學（多人上線模擬的假同學不行）。
+ * 熊熊老師（老師 GM 的 G2，role teacher）畫熊熊老師模型與金色名牌，不能送禮。
  */
-import { useMemo, useRef } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -19,6 +20,7 @@ import { PetFollower } from './Pets';
 import { useRealtime } from '../online/realtimeClient';
 import { useGifts } from '../online/useGifts';
 import { sfx } from '../audio/sfx';
+import { Teacher } from './Teacher';
 
 /** 內插的走路速度（公尺／秒），比自己的角色稍慢，看起來比較從容 */
 const WALK_SPEED = 4.2;
@@ -46,11 +48,21 @@ export function RemotePlayers() {
 /** 一位其他玩家 */
 function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture }) {
   // 只在外觀、暱稱改變時重畫（移動時外觀物件沿用同一個，見 presence.ts 的 moveMember）
-  const look = usePresence(useShallow((s) => ({ nickname: s.members[id]?.nickname ?? '', avatar: s.members[id]?.avatar, title: s.members[id]?.title ?? null })));
+  const look = usePresence(
+    useShallow((s) => ({ nickname: s.members[id]?.nickname ?? '', avatar: s.members[id]?.avatar, title: s.members[id]?.title ?? null, teacher: s.members[id]?.role === 'teacher' })),
+  );
   const bubble = usePresence((s) => s.bubbles[id]?.text ?? null);
-  /** 名牌點了可以送禮（真的連上班級、老師開放送禮時） */
-  const giftable = useRealtime((s) => s.status === 'online' && s.flags.giftsOpen);
+  /** 名牌點了可以送禮（真的連上班級、老師開放送禮時；熊熊老師不行） */
+  const giftable = useRealtime((s) => s.status === 'online' && s.flags.giftsOpen) && !look.teacher;
   const group = useRef<THREE.Group>(null);
+  /**
+   * 第一次畫出來就放在他目前的位置：名牌（drei Html）每格依群組的位置計算，
+   * 群組若從原點開始，畫面剛好只更新一格時名牌會停在原點（e2e 的背景分頁就是這樣）
+   */
+  const [start] = useState<[number, number, number]>(() => {
+    const m = usePresence.getState().members[id];
+    return m ? [m.x, 0, m.z] : [0, 0, 0];
+  });
   const motion = useRef<MotionState>({ speed: 0 });
   /** 畫面上目前的位置與朝向（往最新位置內插） */
   const pos = useRef<Vec2 | null>(null);
@@ -83,10 +95,10 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
   return (
     <>
       {/* 走路特效與寵物在世界座標（不跟著角色的群組旋轉） */}
-      {look.avatar.trail && <Trail kind={look.avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
-      {look.avatar.pet && <PetFollower pet={look.avatar.pet} getPos={getPos} getHeading={() => heading.current} getSpeed={getSpeed} />}
-      <group ref={group}>
-        <Avatar config={look.avatar} motion={motion} />
+      {!look.teacher && look.avatar.trail && <Trail kind={look.avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
+      {!look.teacher && look.avatar.pet && <PetFollower pet={look.avatar.pet} getPos={getPos} getHeading={() => heading.current} getSpeed={getSpeed} />}
+      <group ref={group} position={start}>
+        {look.teacher ? <Teacher waving={false} /> : <Avatar config={look.avatar} motion={motion} />}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
@@ -100,8 +112,8 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
               </div>
             )}
             <div
-              className={`name-tag ${giftable ? 'giftable' : ''}`}
-              data-testid="name-tag"
+              className={`name-tag ${giftable ? 'giftable' : ''} ${look.teacher ? 'teacher-tag' : ''}`}
+              data-testid={look.teacher ? 'teacher-tag' : 'name-tag'}
               // 攔下 pointerdown：不然同一下也會點到地面，角色走過去
               onPointerDown={giftable ? (e) => e.stopPropagation() : undefined}
               onClick={
@@ -116,6 +128,7 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
               title={giftable ? `送禮物給${look.nickname}` : undefined}
             >
               {look.title && <small className="name-title">{look.title}</small>}
+              {look.teacher && '🐻 '}
               {look.nickname}
               {giftable && (
                 <span className="gift-hint" aria-hidden>

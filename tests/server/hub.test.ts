@@ -603,4 +603,49 @@ describe('熊熊老師進島（老師 GM 的 G2，docs/plans/teacher-gm.md 第 1
     const names = a.of('friends')[0].list.filter((f) => f.id.startsWith('teacher:')).map((f) => f.nickname);
     expect(names).toEqual(['熊熊老師（二年一班）', '熊熊老師（安親班）']);
   });
+it('公告：班上線上的孩子不管在哪座島都收到 announce；班級島的公頻記一則「熊熊老師：…」；別班的孩子收不到', () => {
+    const a = kid('a', '阿寶');
+    const own = kid('b', '小美', [['123456', '二年一班']], 'own');
+    const other = kid('c', '別班', [['654321', '二年二班']]);
+    const t = teacher();
+    hub.announce(t, '下課前五分鐘要收拾喔');
+    for (const c of [a, own]) expect(c.of('announce')).toEqual([{ t: 'announce', room: '123456', text: '下課前五分鐘要收拾喔' }]);
+    expect(other.of('announce')).toEqual([]);
+    expect(a.of('chat').at(-1)!.line).toMatchObject({ nickname: '熊熊老師', text: '下課前五分鐘要收拾喔' });
+    expect(t.of('chat').at(-1)!.line.text).toBe('下課前五分鐘要收拾喔');
+    expect(own.of('chat')).toEqual([]);
+  });
+
+  it('公告每 10 秒最多一則（太快回 error，不送出）；孩子送公告不做事', () => {
+    const a = kid('a', '阿寶');
+    const t = teacher();
+    hub.announce(t, '第一則');
+    clock += 5_000;
+    hub.announce(t, '第二則');
+    expect(a.of('announce').map((m) => m.text)).toEqual(['第一則']);
+    expect(t.of('error').at(-1)!.message).toContain('10 秒');
+    clock += 5_000;
+    hub.announce(t, '第三則');
+    expect(a.of('announce').map((m) => m.text)).toEqual(['第一則', '第三則']);
+    hub.announce(a, '我是孩子');
+    expect(a.of('announce').map((m) => m.text)).toEqual(['第一則', '第三則']);
+  });
+
+  it('集合：班上線上的孩子各收到一個老師身邊的位置（不重疊）；別班的收不到；孩子送集合不做事', () => {
+    const a = kid('a', '阿寶');
+    const b = kid('b', '小美', [['123456', '二年一班']], 'own');
+    const other = kid('c', '別班', [['654321', '二年二班']]);
+    const t = teacher();
+    hub.move(t, 2, 3, 0);
+    hub.summon(t);
+    const sa = a.of('summon')[0];
+    const sb = b.of('summon')[0];
+    expect(sa).toMatchObject({ t: 'summon', room: '123456' });
+    expect(sb).toMatchObject({ t: 'summon', room: '123456' });
+    for (const s of [sa, sb]) expect(Math.hypot(s.x - 2, s.z - 3)).toBeLessThan(4);
+    expect(Math.hypot(sa.x - sb.x, sa.z - sb.z)).toBeGreaterThan(1);
+    expect(other.of('summon')).toEqual([]);
+    hub.summon(a);
+    expect(b.of('summon')).toHaveLength(1);
+  });
 });

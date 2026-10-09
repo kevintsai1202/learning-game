@@ -67,6 +67,12 @@ export const ISLAND_LINES = {
   toClass: '回到班級島囉！可以和同學一起玩。',
 };
 
+/** 熊熊老師進島（老師 GM 的 G2）：請大家集合（在班級島上直接過去、在建築裡的卡片）、在別座島的卡片 */
+export const GM_LINES = {
+  summon: '熊熊老師請大家集合！',
+  backToClass: '熊熊老師請大家回到班級島集合！',
+};
+
 /** 在百寶屋買到帽子 */
 export const boughtLine = (name: string): string => `買到${name}了！`;
 

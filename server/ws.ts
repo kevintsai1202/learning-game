@@ -196,6 +196,12 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
         case 'go':
           hub.goTo(conn, msg.island, msg.room);
           break;
+        case 'announce':
+          hub.announce(conn, msg.text);
+          break;
+        case 'summon':
+          hub.summon(conn);
+          break;
         case 'hello':
           ws.close(1008, 'already logged in');
           break;

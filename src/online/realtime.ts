@@ -35,6 +35,8 @@ const roomCode = z.string().regex(/^\d{6}$/);
 /** 熊熊老師（老師 GM 的 G2）：名字與外觀（舊版網頁不認得 role，畫成一隻叫熊熊老師的棕色熊） */
 export const TEACHER_NAME = '熊熊老師';
 export const TEACHER_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
+/** 全班公告最多幾個字（老師 GM 的 G2） */
+export const ANNOUNCE_MAX = 60;
 /** 好友名單上某一班老師的 id（每一班一筆） */
 export const teacherFriendId = (code: string): string => `teacher:${code}`;
 /**
@@ -65,6 +67,10 @@ export const clientMessage = z.discriminatedUnion('t', [
   z.object({ t: z.literal('where'), zone: z.enum(ZONE_IDS).nullable() }),
   /** 說一句公頻短句（只送 id） */
   z.object({ t: z.literal('say'), phrase: z.string().max(40) }),
+  /** 熊熊老師的全班公告（老師自己輸入，去掉前後空白後 1～60 字；只有老師的連線有效） */
+  z.object({ t: z.literal('announce'), text: z.string().trim().min(1).max(ANNOUNCE_MAX) }),
+  /** 熊熊老師請大家集合（只有老師的連線有效） */
+  z.object({ t: z.literal('summon') }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 
@@ -130,6 +136,13 @@ export type ServerMessage =
   | { t: 'notice'; message: string }
   /** 禮物狀態有變（收到新禮物，或送出的禮物有結果）：裝置重新讀 GET /api/gifts */
   | { t: 'gift' }
+  /** 熊熊老師的全班公告（老師 GM 的 G2）：room 是哪一班；班上線上的孩子不管在哪座島都收到。舊版網頁不認得，會忽略 */
+  | { t: 'announce'; room: string; text: string }
+  /**
+   * 熊熊老師請大家集合（老師 GM 的 G2）：x、z 是這個孩子在老師身邊的位置。在那一班的班級島上的孩子直接過去，
+   * 在建築裡或別座島的跳卡片讓孩子選。舊版網頁不認得，會忽略
+   */
+  | { t: 'summon'; room: string; x: number; z: number }
   | { t: 'error'; message: string };
 
 /** 解析裝置送來的訊息；格式不符回傳 null（呼叫端斷線） */

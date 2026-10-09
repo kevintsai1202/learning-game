@@ -18,6 +18,8 @@ import { useFriends } from './online/useFriends';
 import { useGifts } from './online/useGifts';
 import { puzzleDebug } from './puzzle/debug';
 import { musicDebug } from './audio/music';
+import { useGm } from './online/gmClient';
+import { sceneDebug } from './world/sceneDebug';
 import './styles/global.css';
 
 declare global {
@@ -47,6 +49,10 @@ declare global {
       friends: typeof useFriends;
       /** 背景配樂：想播的曲目與實際在播的曲目（L5：班級島與自己的島不同曲） */
       music: typeof musicDebug;
+      /** 熊熊老師進島的連線狀態（老師 GM 的 G2） */
+      gm: typeof useGm;
+      /** 3D 場景的除錯狀態（NPC 熊熊老師有沒有畫出來） */
+      scene: typeof sceneDebug;
     };
   }
 }
@@ -67,6 +73,8 @@ window.__game = {
   puzzle: puzzleDebug,
   friends: useFriends,
   music: musicDebug,
+  gm: useGm,
+  scene: sceneDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

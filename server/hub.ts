@@ -28,11 +28,12 @@ import {
   type ServerMessage,
 } from '../src/online/realtime';
 import { CHAT_PHRASES } from '../src/ui/lines';
+import { summonSpots } from '../src/online/summon';
 import { equippedOf } from '../src/store/catalog';
 import { shownTitle } from '../src/store/badges';
 import type { AvatarConfig, Profile } from '../src/store/save';
 import type { ZoneId } from '../src/store/useUi';
-import { SPAWN, WALK_RADIUS } from '../src/world/layout';
+import { SPAWN, TEACHER_POS, WALK_RADIUS } from '../src/world/layout';
 import { isClassLogin, type TokenVia } from './tokens';
 
 /** 一條連線（WebSocket 包起來的介面） */
@@ -90,6 +91,8 @@ const SAY_REFILL_MS = 2500;
 export const CLOSE_KICKED = 4001;
 /** 自己的島的開關：I1 島上只有自己，不能聊天、送禮（I2 開放朋友來玩時再依家長設定） */
 const OWN_ISLAND_FLAGS: RoomFlags = { chatOpen: false, giftsOpen: false };
+/** 熊熊老師的公告：每條連線至少隔多久（毫秒） */
+const ANNOUNCE_GAP_MS = 10_000;
 /** 這個伺服器支援的新訊息（welcome 帶給裝置，見 ServerCap） */
 const CAPS: ServerCap[] = ['gm'];
 
@@ -114,6 +117,8 @@ interface Member {
   /** 說話的額度（連發上限 SAY_BURST，每 SAY_REFILL_MS 恢復一則） */
   sayTokens: number;
   sayAt: number;
+  /** 熊熊老師上一則公告的時間（孩子用不到） */
+  announceAt: number;
   /** 權杖來源（見 JoinInfo.via）；老師是 null */
   via: TokenVia | null;
   /** class 權杖是用哪一班的代碼登入的；家長權杖是 null */
@@ -267,6 +272,7 @@ export class Hub {
       dirty: false,
       sayTokens: SAY_BURST,
       sayAt: this.now(),
+      announceAt: -Infinity,
       via: info.via,
       tokenRoom: info.tokenRoom ?? null,
       name: info.name,
@@ -314,10 +320,12 @@ export class Hub {
     const m: Member = {
       conn,
       role: 'teacher',
-      state: { id: `gm:${++this.gmSeq}`, nickname: TEACHER_NAME, avatar: TEACHER_AVATAR, title: null, x: SPAWN.x, z: SPAWN.z, h: Math.PI, zone: null, role: 'teacher' },
+      // 站在廣場上 NPC 熊熊老師平常站的地方（不和剛上岸的孩子擠在出生點），面向出生點
+      state: { id: `gm:${++this.gmSeq}`, nickname: TEACHER_NAME, avatar: TEACHER_AVATAR, title: null, x: TEACHER_POS.x, z: TEACHER_POS.z, h: 0, zone: null, role: 'teacher' },
       dirty: false,
       sayTokens: 0,
       sayAt: this.now(),
+      announceAt: -Infinity,
       via: null,
       tokenRoom: null,
       name: TEACHER_NAME,
@@ -431,6 +439,37 @@ export class Hub {
     const line: ChatLine = { id: island.nextChatId++, from: m.state.id, nickname: m.state.nickname, text: phrase.text, at: t };
     island.chat = [...island.chat, line].slice(-CHAT_KEEP);
     this.broadcast(island, { t: 'chat', line });
+  }
+
+  /**
+   * 熊熊老師的全班公告（老師 GM 的 G2）：這一班線上的孩子不管在哪座島都收到 announce；
+   * 班級島的公頻記一則「熊熊老師：…」。每條老師連線每 10 秒最多一則；不是老師的連線不做事
+   */
+  announce(conn: HubConn, text: string): void {
+    const m = this.conns.get(conn);
+    const island = m && this.islands.get(m.islandId);
+    if (!m || !island || m.role !== 'teacher') return;
+    const t = this.now();
+    if (t - m.announceAt < ANNOUNCE_GAP_MS) return conn.send({ t: 'error', message: `公告要隔 ${ANNOUNCE_GAP_MS / 1000} 秒才能再發` });
+    m.announceAt = t;
+    const code = codeOf(m.islandId)!;
+    const line: ChatLine = { id: island.nextChatId++, from: m.state.id, nickname: m.state.nickname, text, at: t };
+    island.chat = [...island.chat, line].slice(-CHAT_KEEP);
+    this.broadcast(island, { t: 'chat', line });
+    for (const kid of this.classmates(code)) kid.conn.send({ t: 'announce', room: code, text });
+  }
+
+  /**
+   * 熊熊老師請大家集合（老師 GM 的 G2）：這一班線上的孩子（不管在哪座島）各收到一個老師身邊的位置（summonSpots，不重疊）。
+   * 不是老師的連線不做事
+   */
+  summon(conn: HubConn): void {
+    const m = this.conns.get(conn);
+    if (!m || m.role !== 'teacher') return;
+    const code = codeOf(m.islandId)!;
+    const kids = this.classmates(code);
+    const spots = summonSpots({ x: m.state.x, z: m.state.z }, kids.length);
+    kids.forEach((kid, i) => kid.conn.send({ t: 'summon', room: code, x: spots[i].x, z: spots[i].z }));
   }
 
   /** 某位孩子的存檔在伺服器端變了：更新別人看到的外觀與稱號（同島的人與朋友），並通知他自己的裝置同步 */

@@ -8,7 +8,7 @@ import type { SessionResult } from '../core/types';
  * 畫面（class：孩子用班級代碼登入；classroom：學校平板用教室密碼看班上名單進島（L3）；teacher：老師的班級管理；
  * badges：獎章簿；puzzle：益智遊戲館，選單與遊戲都在這個畫面）
  */
-export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'classroom' | 'teacher' | 'badges' | 'puzzle';
+export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'classroom' | 'teacher' | 'badges' | 'puzzle' | 'gm';
 
 /** 島上的區域（建築） */
 export type ZoneId = 'math' | 'zh' | 'en' | 'life' | 'tower' | 'shop' | 'puzzle';
@@ -44,7 +44,11 @@ interface UiStore {
   moodTick: number;
   /** 熊熊老師的對話泡泡 */
   bubble: { text: string; id: number } | null;
+  /** 老師以熊熊老師進島的班級（老師 GM 的 G2）；離開後保留，老師頁回到同一班的班級頁 */
+  gmRoom: { code: string; name: string } | null;
   goto: (screen: Screen) => void;
+  /** 以熊熊老師進某一班的班級島 */
+  enterGm: (room: { code: string; name: string }) => void;
   /** 顯示對話泡泡（幾秒後由介面自動收起） */
   say: (text: string) => void;
   clearBubble: () => void;
@@ -65,7 +69,9 @@ export const useUi = create<UiStore>((set) => ({
   mood: 'idle',
   moodTick: 0,
   bubble: null,
+  gmRoom: null,
   goto: (screen) => set({ screen }),
+  enterGm: (gmRoom) => set({ gmRoom, screen: 'gm', nearZone: null }),
   say: (text) => set((s) => ({ bubble: { text, id: (s.bubble?.id ?? 0) + 1 } })),
   clearBubble: () => set({ bubble: null }),
   enterZone: (zone) => set({ zone, screen: OWN_SCREEN[zone] ?? 'zone' }),

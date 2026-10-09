@@ -15,7 +15,8 @@ import { GoogleButton } from '../GoogleButton';
 import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
 import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from '../../content/editions';
 import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
-import { zoneName } from '../../world/layout';
+import { TEACHER_POS, zoneName } from '../../world/layout';
+import { player, teleport } from '../../world/input';
 import { JoinClassPanel } from './JoinClassPanel';
 import { ClaimPanel } from './ClaimPanel';
 import { ClaimCard } from './ClaimCard';
@@ -1349,6 +1350,28 @@ function ClassList({ onOpen }: { onOpen: (code: string, created: boolean) => voi
   );
 }
 
+/** 以熊熊老師進這一班的班級島（老師 GM 的 G2）：站在廣場上 NPC 熊熊老師平常站的地方，GM 畫面離開時回到這一班的班級頁 */
+function GmEnter({ code, name }: { code: string; name: string }) {
+  return (
+    <div style={{ margin: '12px 0' }}>
+      <button
+        className="btn small"
+        onClick={() => {
+          teleport(TEACHER_POS);
+          player.heading = 0;
+          useUi.getState().enterGm({ code, name });
+        }}
+        data-testid="gm-enter"
+      >
+        🐻 以熊熊老師進島
+      </button>
+      <span className="plain" style={{ marginLeft: 8 }}>
+        進這一班的班級島，孩子會看到熊熊老師在島上走動
+      </span>
+    </div>
+  );
+}
+
 /** 班級頁的三個開關：允許加入、聊天、送禮 */
 type RoomFlag = 'joinOpen' | 'chatOpen' | 'giftsOpen';
 
@@ -1440,6 +1463,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
           <Check checked={flagOf('giftsOpen')} onChange={(v) => toggle('giftsOpen', v, v ? '已開放送禮' : '已關閉送禮')} testId="toggle-gifts">
             允許送禮物（用金幣買貼紙或外觀送同學；關掉後不能送新的，已送出的還是可以收下）
           </Check>
+          <GmEnter code={room.code} name={room.name} />
           <JoinQr code={room.code} name={room.name} joinOpen={flagOf('joinOpen')} />
           <ClassCurriculum
             value={room.curriculum}
@@ -1533,9 +1557,14 @@ function AccountHome() {
   const [error, setError] = useState<string | null>(null);
   /** 使用者選的身分頁；沒選過時老師優先 */
   const [mode, setMode] = useState<'teacher' | 'parent' | null>(null);
-  /** 老師點開的班級 */
-  const [openClass, setOpenClass] = useState<{ code: string; created: boolean } | null>(null);
+  /** 老師點開的班級（從熊熊老師進島回來時，打開剛才那一班） */
+  const [openClass, setOpenClass] = useState<{ code: string; created: boolean } | null>(() => {
+    const gm = useUi.getState().gmRoom;
+    return gm ? { code: gm.code, created: false } : null;
+  });
   const [showSettings, setShowSettings] = useState(false);
+  // 熊熊老師進島的班級已經用來打開班級頁了：清掉，之後從別處進老師頁不會又打開那一班
+  useEffect(() => useUi.setState({ gmRoom: null }), []);
 
   // 重新整理頁面後只剩權杖：向伺服器讀回帳號資料
   useEffect(() => {

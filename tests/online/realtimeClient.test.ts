@@ -36,6 +36,13 @@ describe('伺服器訊息寫進同島狀態', () => {
     expect(s.members.a).toBeUndefined();
   });
 
+  it('熊熊老師（老師 GM 的 G2）：join 的成員保留 role，畫面才知道要畫熊熊老師；孩子沒有 role', () => {
+    let s = applyServerMessage(emptyPresence(), { t: 'welcome', island: 'class', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [member('a', '阿寶')], chat: [] }, self, 1);
+    s = applyServerMessage(s, { t: 'join', member: member('gm:1', '熊熊老師', { role: 'teacher' }) }, self, 2);
+    expect(s.members['gm:1'].role).toBe('teacher');
+    expect(s.members.a.role).toBeUndefined();
+  });
+
   it('chat：公頻多一則、說話的人頭上有氣泡（包含自己）', () => {
     let s = applyServerMessage(emptyPresence(), { t: 'welcome', island: 'class', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [], chat: [] }, self, 1);
     s = applyServerMessage(s, { t: 'chat', line: { id: 7, from: 'me', nickname: '小安', text: '一起玩吧！', at: 1000 } }, self, 1000);

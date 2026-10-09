@@ -16,12 +16,15 @@ import { usePresence } from './usePresence';
 import { getToken } from './storage';
 import { useCloud } from './useCloud';
 import { useGifts } from './useGifts';
+import { summonKind, useTeacherCalls } from './useTeacherCalls';
+import { speak } from '../audio/speech';
+import { GM_LINES } from '../ui/lines';
 import { useGame } from '../store/useGame';
 import { useUi, type Screen, type ZoneId } from '../store/useUi';
 import { equippedOf } from '../store/catalog';
 import { classesOf, currentClass } from '../store/island';
 import type { AvatarConfig, CloudLink } from '../store/save';
-import { player } from '../world/input';
+import { player, teleport } from '../world/input';
 
 /** 自己的資料（welcome 時放進成員：說話才有氣泡，但不畫在島上） */
 export interface SelfInfo {
@@ -30,7 +33,17 @@ export interface SelfInfo {
 }
 
 /** 伺服器的成員資料轉成畫面用的格式 */
-const toRemote = (m: MemberState): RemoteMember => ({ id: m.id, nickname: m.nickname, avatar: m.avatar, x: m.x, z: m.z, heading: m.h, zone: m.zone, title: m.title });
+const toRemote = (m: MemberState): RemoteMember => ({
+  id: m.id,
+  nickname: m.nickname,
+  avatar: m.avatar,
+  x: m.x,
+  z: m.z,
+  heading: m.h,
+  zone: m.zone,
+  title: m.title,
+  ...(m.role ? { role: m.role } : {}),
+});
 
 /** 把一則伺服器訊息套進同島狀態（純函式；連線狀態類的訊息不在這裡處理） */
 export function applyServerMessage(s: PresenceState, msg: ServerMessage, self: SelfInfo, now: number): PresenceState {
@@ -108,8 +121,26 @@ export function roomsKey(cloud: CloudLink | undefined): string | undefined {
   return codes.length ? codes.join(',') : undefined;
 }
 
-/** 不在遊戲裡的畫面（不連線） */
-const OFFLINE_SCREENS: Screen[] = ['title', 'profiles', 'class', 'classroom', 'teacher'];
+/**
+ * 熊熊老師請大家集合（老師 GM 的 G2）：在那一班的班級島上就直接站到老師身邊；
+ * 在建築裡或別座島時跳卡片讓孩子選（summonKind）。答題時不唸
+ */
+function onSummon(room: string, x: number, z: number): void {
+  const p = useGame.getState().profile();
+  const { screen } = useUi.getState();
+  const kind = summonKind(!!p && currentClass(p)?.code === room, screen);
+  if (kind === 'now') {
+    teleport({ x, z });
+    useUi.getState().say(GM_LINES.summon);
+    speak(GM_LINES.summon);
+    return;
+  }
+  useTeacherCalls.getState().showSummon({ room, x, z, kind });
+  if (screen !== 'activity') speak(kind === 'back' ? GM_LINES.backToClass : GM_LINES.summon);
+}
+
+/** 不在遊戲裡的畫面（不連線）；gm 是老師以熊熊老師進島，用老師自己的連線（gmClient.ts） */
+const OFFLINE_SCREENS: Screen[] = ['title', 'profiles', 'class', 'classroom', 'teacher', 'gm'];
 
 /** 即時連線的狀態（畫面顯示用） */
 interface RealtimeStore {
@@ -264,6 +295,14 @@ export function startRealtime(): () => void {
         case 'notice':
           // 離開了其中一班（多班級）：熊熊老師的泡泡說明，接著伺服器以 4005 讓這台重新上線（不封鎖）
           useUi.getState().say(msg.message);
+          break;
+        case 'announce':
+          // 熊熊老師的全班公告（老師 GM 的 G2）：上方大字幕；答題時只顯示不唸，以免蓋過題目
+          useTeacherCalls.getState().showAnnounce(msg.room, msg.text);
+          if (useUi.getState().screen !== 'activity') speak(msg.text);
+          break;
+        case 'summon':
+          onSummon(msg.room, msg.x, msg.z);
           break;
       }
     };

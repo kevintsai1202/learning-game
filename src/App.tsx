@@ -26,11 +26,17 @@ import { PuzzleScreen } from './puzzle/PuzzleScreen';
 import { RestGuard } from './ui/RestGuard';
 import { startCloudSync } from './online/useCloud';
 import { startRealtime } from './online/realtimeClient';
+import { startGm } from './online/gmClient';
+import { GmHud } from './ui/screens/GmHud';
+import { AnnounceBanner, SummonCard } from './ui/TeacherCalls';
 import { useAccount } from './online/useAccount';
 import { readEmailLink, stripEmailLink } from './online/emailLinks';
 import { readJoinCode, stripJoinCode } from './online/joinLink';
 import { readClaimCode, stripClaimCode } from './online/claimLink';
 import { islandLook } from './store/island';
+
+/** 不顯示熊熊老師公告與集合卡片的畫面（不在遊戲裡，或是老師自己） */
+const NO_TEACHER_CALLS: Screen[] = ['title', 'profiles', 'class', 'classroom', 'teacher', 'gm'];
 
 /** 在島上走、進建築時的畫面（配樂依島：有班級的孩子在自己的島播 home，L5） */
 const ON_ISLAND: Screen[] = ['island', 'zone'];
@@ -50,6 +56,7 @@ const SCREEN_MUSIC: Record<Screen, Track> = {
   teacher: 'shop',
   badges: 'shop',
   puzzle: 'quiz',
+  gm: 'island',
 };
 
 export function App() {
@@ -72,6 +79,9 @@ export function App() {
   // 雲端角色的同步排程與即時連線（沒有雲端角色時什麼都不做）
   useEffect(() => startCloudSync(), []);
   useEffect(() => startRealtime(), []);
+  // 老師以熊熊老師進島（老師 GM 的 G2）：在 GM 畫面時連線，離開就斷線
+  const gmCode = useUi((s) => (s.screen === 'gm' ? (s.gmRoom?.code ?? null) : null));
+  useEffect(() => (gmCode ? startGm(gmCode) : undefined), [gmCode]);
 
   // 掃老師的 QR code 打開（?join=班級代碼）：先從網址拿掉，到帳號頁讓家長登入並選孩子加入（docs/plans/class-join.md）
   useEffect(() => {
@@ -134,6 +144,13 @@ export function App() {
         {screen === 'teacher' && <TeacherScreen />}
         {screen === 'badges' && <BadgesScreen />}
         {screen === 'puzzle' && <PuzzleScreen />}
+        {screen === 'gm' && <GmHud />}
+        {!NO_TEACHER_CALLS.includes(screen) && (
+          <>
+            <AnnounceBanner />
+            <SummonCard />
+          </>
+        )}
         <RestGuard />
       </div>
     </>

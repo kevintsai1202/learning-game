@@ -17,6 +17,7 @@ import { PetFollower } from './Pets';
 import { Html } from '@react-three/drei';
 import { usePresence } from '../online/usePresence';
 import { LABEL_DISTANCE_FACTOR } from './RemotePlayers';
+import { Teacher } from './Teacher';
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -30,9 +31,11 @@ interface PlayerProps {
   obstacles: Obstacle[];
   /** 是否接受操作（選單打開時暫停） */
   active: boolean;
+  /** 老師以熊熊老師進島（老師 GM 的 G2）：畫熊熊老師、不偵測建築門口（老師不進建築） */
+  teacher?: boolean;
 }
 
-export function Player({ avatar, obstacles, active }: PlayerProps) {
+export function Player({ avatar, obstacles, active, teacher = false }: PlayerProps) {
   const group = useRef<THREE.Group>(null);
   const motion = useRef<MotionState>({ speed: 0 });
   const lastNear = useRef<ZoneId | null>(null);
@@ -86,7 +89,7 @@ export function Player({ avatar, obstacles, active }: PlayerProps) {
     }
 
     // 門口偵測：變更時才寫入 store
-    const near = active ? nearestDoor(next, DOORS, DOOR_RANGE) : null;
+    const near = active && !teacher ? nearestDoor(next, DOORS, DOOR_RANGE) : null;
     if (near !== lastNear.current) {
       lastNear.current = near;
       useUi.getState().setNearZone(near);
@@ -108,7 +111,7 @@ export function Player({ avatar, obstacles, active }: PlayerProps) {
   return (
     <>
       <group ref={group}>
-        <Avatar config={avatar} motion={motion} />
+        {teacher ? <Teacher waving={false} /> : <Avatar config={avatar} motion={motion} />}
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
@@ -123,8 +126,8 @@ export function Player({ avatar, obstacles, active }: PlayerProps) {
           </Html>
         )}
       </group>
-      {avatar.trail && <Trail kind={avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
-      {avatar.pet && <PetFollower pet={avatar.pet} getPos={getPos} getHeading={() => player.heading} getSpeed={getSpeed} />}
+      {!teacher && avatar.trail && <Trail kind={avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
+      {!teacher && avatar.pet && <PetFollower pet={avatar.pet} getPos={getPos} getHeading={() => player.heading} getSpeed={getSpeed} />}
     </>
   );
 }

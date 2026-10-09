@@ -15,6 +15,14 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'hello', token: TOKEN, gm: '12345' }))).toBeNull();
   });
 
+  it('老師的公告（去掉前後空白後 1～60 字）與集合', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'announce', text: '  要收拾囉  ' }))).toEqual({ t: 'announce', text: '要收拾囉' });
+    expect(parseClientMessage(JSON.stringify({ t: 'announce', text: '字'.repeat(60) }))).not.toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'announce', text: '字'.repeat(61) }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'announce', text: '   ' }))).toBeNull();
+    expect(parseClientMessage(JSON.stringify({ t: 'summon' }))).toEqual({ t: 'summon' });
+  });
+
   it('格式不對或不認得的訊息：null', () => {
     expect(parseClientMessage('not json')).toBeNull();
     expect(parseClientMessage(JSON.stringify({ t: 'nope' }))).toBeNull();

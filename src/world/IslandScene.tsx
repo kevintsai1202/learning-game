@@ -2,8 +2,10 @@
  * 島嶼場景：天空、海、地面、建築、熊熊老師、玩家角色、同房間的其他玩家。
  * mode：play 可操作；menu 背景顯示（選單打開時）；attract 標題畫面鏡頭環繞。
  * look（L5）：班級島白天＋班級旗子；有班級的孩子在自己的島是黃昏；自己的島有小屋與門牌（小屋地上的樹拿掉）。
+ * gm（老師 GM 的 G2）：老師以熊熊老師進島，自己畫成熊熊老師、點建築只走到門口不進去；
+ * 島上有熊熊老師（老師自己，或孩子看到老師進島）時，廣場上的 NPC 熊熊老師藏起來。
  */
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BUILDINGS } from './Buildings';
@@ -22,6 +24,8 @@ import { teacherTalk } from '../ui/teacherTips';
 import { ClassFlag, IslandPlate, KidHouse } from './IslandLandmarks';
 import { treesAway, type SceneLook } from './landmarks';
 import { FLAGPOLE, HOUSE, PLATE } from './layout';
+import { usePresence } from '../online/usePresence';
+import { sceneDebug } from './sceneDebug';
 
 /** 天空與燈光（L5）：白天是原本的樣子；黃昏是暖橘的地平線、偏紫的天頂、低而偏橘的太陽 */
 const SKY = {
@@ -65,7 +69,27 @@ function AttractCamera() {
 /** 預設角色（還沒選角色時在島上走的是小黑熊） */
 const DEFAULT_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
 
-export function IslandScene({ mode, avatar, shadows, look }: { mode: 'play' | 'menu' | 'attract'; avatar: AvatarConfig | null; shadows: boolean; look: SceneLook }) {
+export function IslandScene({
+  mode,
+  avatar,
+  shadows,
+  look,
+  gm = false,
+}: {
+  mode: 'play' | 'menu' | 'attract';
+  avatar: AvatarConfig | null;
+  shadows: boolean;
+  look: SceneLook;
+  /** 老師以熊熊老師進島 */
+  gm?: boolean;
+}) {
+  /** 島上有別人是熊熊老師（老師進島了；在建築裡的不算） */
+  const teacherHere = usePresence((s) => Object.values(s.members).some((m) => m.role === 'teacher' && m.id !== s.selfId && m.zone === null));
+  /** 廣場上的 NPC 熊熊老師要不要藏起來：真的熊熊老師在島上時（標題畫面不藏） */
+  const hideNpc = mode !== 'attract' && (gm || teacherHere);
+  useEffect(() => {
+    sceneDebug.npcTeacher = !hideNpc;
+  }, [hideNpc]);
   const allTrees = useMemo(() => placeTrees(), []);
   const hasHome = look.home !== null;
   const hasFlag = look.flag !== null;
@@ -99,7 +123,8 @@ export function IslandScene({ mode, avatar, shadows, look }: { mode: 'play' | 'm
     sfx.tap();
     const zone = ZONES.find((z) => z.id === id)!;
     player.target = doorOf(zone);
-    player.autoEnter = id;
+    // 熊熊老師不進建築，只走到門口
+    player.autoEnter = gm ? null : id;
   };
 
   return (
@@ -149,22 +174,24 @@ export function IslandScene({ mode, avatar, shadows, look }: { mode: 'play' | 'm
           </group>
         );
       })}
-      <group
-        position={[TEACHER_POS.x, 0, TEACHER_POS.z]}
-        rotation={[0, -0.3, 0]}
-        onPointerDown={(e) => {
-          if (!interactive) return;
-          e.stopPropagation();
-          teacherTalk();
-        }}
-      >
-        <Teacher />
-      </group>
+      {!hideNpc && (
+        <group
+          position={[TEACHER_POS.x, 0, TEACHER_POS.z]}
+          rotation={[0, -0.3, 0]}
+          onPointerDown={(e) => {
+            if (!interactive) return;
+            e.stopPropagation();
+            teacherTalk();
+          }}
+        >
+          <Teacher />
+        </group>
+      )}
       {mode === 'attract' ? (
         <AttractCamera />
       ) : (
         <>
-          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} />
+          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} />
           <TargetMarker />
           {/* 同房間的其他玩家（沒有人在線上時什麼都不畫） */}
           <RemotePlayers />

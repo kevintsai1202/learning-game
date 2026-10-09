@@ -1535,6 +1535,123 @@ button {
   margin-left: 4px;
   font-size: 0.85em;
 }
+/* 熊熊老師的名牌（老師 GM 的 G2）：金色，和同學分得出來 */
+.name-tag.teacher-tag {
+  background: #ffd75e;
+  border-color: #8a5a00;
+}
+/* 熊熊老師進島的畫面：工具列的班級名稱與進不去的提示 */
+.gm-chip {
+  padding-left: 14px;
+  background: #ffd75e;
+}
+/* 熊熊老師的工具列：公告輸入與集合（畫面下方） */
+.gm-tools {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  translate: -50% 0;
+  width: min(720px, calc(100% - 24px));
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  pointer-events: auto;
+}
+.gm-tools .text-input {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.gm-notice {
+  position: absolute;
+  left: 50%;
+  bottom: 92px;
+  translate: -50% 0;
+  margin: 0;
+  max-width: calc(100% - 24px);
+  background: var(--paper);
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-family: var(--font-plain);
+  font-weight: 700;
+}
+/* 熊熊老師的全班公告（孩子的畫面上方大字幕）；在禮物卡片與集合卡片之下、HUD 之上 */
+.announce-banner {
+  position: absolute;
+  top: 84px;
+  left: 50%;
+  translate: -50% 0;
+  z-index: 2;
+  width: min(760px, calc(100% - 24px));
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  background: #ffd75e;
+  border: 4px solid var(--ink);
+  border-radius: 20px;
+  padding: 12px 18px;
+  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.15);
+  pointer-events: none;
+  animation: pop-in 0.3s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+.announce-who {
+  flex: none;
+  font-weight: 700;
+}
+.announce-text {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+/* 集合卡片（和禮物卡片同一層） */
+.summon-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  z-index: 3;
+  width: min(440px, calc(100% - 24px));
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 16px 18px 18px;
+  text-align: center;
+  font-size: 22px;
+  pointer-events: auto;
+  animation: pop-in 0.3s cubic-bezier(0.3, 1.4, 0.6, 1) both;
+}
+.summon-big {
+  font-size: 56px;
+  line-height: 1;
+}
+.summon-text {
+  margin: 0;
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  .announce-text {
+    font-size: 20px;
+  }
+  .summon-card {
+    font-size: 18px;
+  }
+}
+.gm-error {
+  position: absolute;
+  top: 72px;
+  left: 12px;
+  right: 12px;
+  margin: 0;
+  background: var(--paper);
+  color: #c0392b;
+  border: 3px solid var(--ink);
+  border-radius: 16px;
+  padding: 10px 14px;
+  pointer-events: auto;
+}
 /* 送禮視窗與禮物卡片：畫在「進去玩」泡泡（z-index 1）上面、休息提醒（50）下面 */
 .gift-layer {
   z-index: 3;

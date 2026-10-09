@@ -157,8 +157,8 @@ function IslandBanner() {
   );
 }
 
-/** 觸控搖桿：拖曳圓鈕控制方向 */
-function Joystick() {
+/** 觸控搖桿：拖曳圓鈕控制方向（島上與熊熊老師進島的畫面共用） */
+export function Joystick() {
   const knob = useRef<HTMLDivElement>(null);
   const origin = useRef<{ x: number; y: number } | null>(null);
   const RADIUS = 50;
