@@ -289,7 +289,7 @@ describe('班級教材版本與我的島（老師 GM 的 G0＋G1）', () => {
     expect(d.profiles.get(p.id)!.cloud!.rooms![0]).not.toHaveProperty('curriculum');
   });
 
-  it('本機選了我的島：同步後還在我的島；用班級代碼登入時班級版本一起帶回來', async () => {
+  it('本機選了我的島：同步後還在我的島；用班級代碼登入時班級版本一起帶回來，而且在那一班的班級島', async () => {
     const app = createApp({ db });
     const code = await newRoom(app);
     await patchRoom(app, code, { curriculum: CLASS });
@@ -302,7 +302,8 @@ describe('班級教材版本與我的島（老師 GM 的 G0＋G1）', () => {
     const other = device(app);
     const again = await loginClass(other.deps, SERVER, { code, nickname: '小安', pin: '1234' });
     expect(again.cloud!.rooms![0].curriculum).toEqual(CLASS);
-    expect(again.cloud!.island).toBeUndefined();
+    // 用哪一班的代碼登入，就在那一班的班級島（2026-10-09；多班級時不再一律回到第一個班級）
+    expect(again.cloud!.island).toBe(code);
   });
 
   it('withRooms（多班級）：班級清單換成伺服器的（暱稱、班級版本；沒有統一版本時拿掉）；我的島保留，選的班級還在才保留，沒有班級時都拿掉', () => {

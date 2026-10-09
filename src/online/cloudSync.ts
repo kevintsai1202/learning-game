@@ -58,8 +58,9 @@ export interface LoginInput {
 }
 
 /** 由加入／登入的回應組出本機的雲端標記；沒有班級（家長名下的雲端角色）就不帶班級 */
-function cloudOf(server: string, res: SessionResponse): CloudLink {
-  return withRooms({ server, accountId: res.account.id }, res);
+function cloudOf(server: string, res: SessionResponse, island?: string): CloudLink {
+  // island：用哪一班登入就在那一班的班級島（withRooms 只在那一班在清單裡時保留）
+  return withRooms({ server, accountId: res.account.id, ...(island ? { island } : {}) }, res);
 }
 
 /** 伺服器回應裡的班級（多班級的 rooms；多班級之前的伺服器只有 room） */
@@ -178,7 +179,8 @@ export async function joinClass(deps: CloudDeps, server: string, input: JoinInpu
  */
 export async function loginClass(deps: CloudDeps, server: string, input: LoginInput): Promise<Profile> {
   const res = await deps.call<SessionResponse>('POST', '/api/login', { base: server, body: input });
-  const cloud = cloudOf(server, res);
+  // 用哪一班登入就到那一班的班級島（多班級：不再一律回到第一個班級，2026-10-09）
+  const cloud = cloudOf(server, res, input.code);
   deps.setToken(cloud.accountId, res.token);
   const profile = rebase(res.profile, deps.loadOutbox(cloud.accountId), cloud, deps.now());
   deps.putProfile(profile);

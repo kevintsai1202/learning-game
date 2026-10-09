@@ -13,11 +13,11 @@ const SHOTS = 'e2e/screenshots/multi-class';
 
 test.afterEach(async ({}, testInfo) => flushDeviceLogs(testInfo));
 
-/** 老師看自己班的成員表：哥哥在哪裡（class 自己班的班級島、otherClass 別班的、own 自己的島） */
-async function whereSeenBy(request: APIRequestContext, room: { code: string; token: string }): Promise<string | null> {
+/** 老師看自己班的成員表：哥哥（或這一班的另一個暱稱）在哪裡（class 自己班的班級島、otherClass 別班的、own 自己的島） */
+async function whereSeenBy(request: APIRequestContext, room: { code: string; token: string }, nickname = '哥哥'): Promise<string | null> {
   const res = await request.get(`${SERVER}/api/teacher/rooms/${room.code}`, { headers: { authorization: `Bearer ${room.token}` } });
   const members = ((await res.json()) as { members: { nickname: string; where: { island: string } | null }[] }).members;
-  return members.find((m) => m.nickname === '哥哥')?.where?.island ?? null;
+  return members.find((m) => m.nickname === nickname)?.where?.island ?? null;
 }
 
 /** 目前的畫面 */
@@ -190,11 +190,15 @@ test('兩班的暱稱不同：左上角的名字跟著島換，重新登入可�
   await d.page.getByTestId(`class-pick-${after.code}`).click();
   await expect(d.page.getByTestId('class-code')).toHaveValue(after.code);
   await expect(d.page.getByTestId('class-nickname')).toHaveValue('大雄');
-  // 用安親班的密碼登入
+  // 用安親班的密碼登入：登入後在安親班的班級島（不是第一個班級），安親班的老師也看到他在班級島
   await d.page.getByTestId('class-pin').fill('2222');
   await d.page.getByTestId('class-submit').click();
   await expect.poll(() => screenOf(d.page)).toBe('island');
   await expect.poll(() => d.page.evaluate(() => (window as any).__game.realtime.getState().status), { timeout: 20_000 }).toBe('online');
+  await expect(d.page.getByTestId('hud-location')).toContainText('安親班');
+  await expect(name).toContainText('大雄');
+  await expect.poll(() => whereSeenBy(request, after, '大雄')).toBe('class');
+  await expect.poll(() => whereSeenBy(request, school)).toBe('otherClass');
 
   expect(pageErrors(d.page)).toEqual([]);
   await d.context.close();
