@@ -23,6 +23,12 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'summon' }))).toEqual({ t: 'summon' });
   });
 
+  it('孩子回報在做什麼（G3）：活動名稱最多 40 字，沒有在做什麼是 null', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'doing', label: '加法練習' }))).toEqual({ t: 'doing', label: '加法練習' });
+    expect(parseClientMessage(JSON.stringify({ t: 'doing', label: null }))).toEqual({ t: 'doing', label: null });
+    expect(parseClientMessage(JSON.stringify({ t: 'doing', label: '字'.repeat(41) }))).toBeNull();
+  });
+
   it('格式不對或不認得的訊息：null', () => {
     expect(parseClientMessage('not json')).toBeNull();
     expect(parseClientMessage(JSON.stringify({ t: 'nope' }))).toBeNull();

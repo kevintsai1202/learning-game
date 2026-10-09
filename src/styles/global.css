@@ -1577,6 +1577,46 @@ button {
   font-family: var(--font-plain);
   font-weight: 700;
 }
+/* 熊熊老師進島後的全班清單（右側面板） */
+.gm-roster {
+  position: absolute;
+  top: 72px;
+  right: 12px;
+  width: min(420px, calc(100% - 24px));
+  max-height: calc(100% - 180px);
+  overflow-y: auto;
+  padding: 12px 14px;
+  pointer-events: auto;
+  z-index: 2;
+}
+.gm-roster-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.gm-roster-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+  font-family: var(--font-plain);
+}
+.gm-roster-list li {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+}
+.gm-roster-name {
+  font-weight: 700;
+}
+.gm-roster-where {
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
 /* 熊熊老師的全班公告（孩子的畫面上方大字幕）；在禮物卡片與集合卡片之下、HUD 之上 */
 .announce-banner {
   position: absolute;

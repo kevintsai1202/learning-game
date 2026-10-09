@@ -19,6 +19,7 @@ import type { BotLevel } from '../engine/puzzle/common';
 import { PUZZLE_GAMES, puzzleGame, type PuzzleGameInfo } from './catalog';
 import { puzzleSecondsLeft } from './time';
 import { puzzleDebug } from './debug';
+import { usePuzzleNow } from './now';
 import type { PuzzleGameProps, PuzzleMode, PuzzleOutcome, PuzzleRun } from './types';
 import QuizGame from './quiz/QuizGame';
 import MemoryGame from './memory/MemoryGame';
@@ -51,6 +52,10 @@ export function PuzzleScreen() {
   const limitMin = useGame((s) => s.save.settings.puzzleLimitMin);
   const finishPuzzle = useGame((s) => s.finishPuzzle);
   const [view, setView] = useState<View>({ t: 'menu' });
+  // 正在玩的遊戲名稱（回報給老師「在做什麼」，老師 GM 的 G3）；離開益智遊戲館就清掉
+  const playing = view.t === 'play' ? (puzzleGame(view.run.game)?.title ?? null) : null;
+  useEffect(() => usePuzzleNow.setState({ title: playing }), [playing]);
+  useEffect(() => () => usePuzzleNow.setState({ title: null }), []);
   const [picking, setPicking] = useState<PuzzleGameInfo | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
   /** 已經結算過的那一局（種子）：遊戲元件萬一回報兩次，也只存一次檔、只給一次金幣 */

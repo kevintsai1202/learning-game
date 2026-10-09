@@ -648,4 +648,24 @@ it('公告：班上線上的孩子不管在哪座島都收到 announce；班級�
     hub.summon(a);
     expect(b.of('summon')).toHaveLength(1);
   });
+it('在做什麼（G3）：孩子回報的活動名稱只放在記憶體，老師的成員表（whereOf）看得到；沒在做什麼時不帶；熊熊老師回報不做事', () => {
+    const a = kid('a', '阿寶');
+    const t = teacher();
+    hub.where(a, 'math');
+    hub.doing(a, '加法練習');
+    expect(hub.whereOf('a', '123456')).toEqual({ island: 'class', zone: 'math', doing: '加法練習' });
+    hub.doing(a, null);
+    expect(hub.whereOf('a', '123456')).toEqual({ island: 'class', zone: 'math' });
+    hub.doing(t, '老師不會回報');
+    expect(t.closed).toBeNull();
+  });
+
+  it('同學看不到在做什麼（只給老師，使用者決定 teacher-gm.md 第 12 節第 3 點）', () => {
+    const a = kid('a', '阿寶');
+    const b = kid('b', '小美');
+    const t = teacher();
+    hub.doing(a, '加法練習');
+    expect(JSON.stringify(b.sent)).not.toContain('加法練習');
+    expect(JSON.stringify(t.sent)).not.toContain('加法練習');
+  });
 });

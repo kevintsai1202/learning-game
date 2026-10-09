@@ -10,7 +10,10 @@
  */
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
-import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type RoomFlags, type ServerMessage } from './realtime';
+import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
+import { doingLabel } from './doing';
+import { findActivity } from '../activities/resolve';
+import { usePuzzleNow } from '../puzzle/now';
 import { useFriends } from './useFriends';
 import { usePresence } from './usePresence';
 import { getToken } from './storage';
@@ -177,6 +180,10 @@ export function startRealtime(): () => void {
   const blockNow = (): RealtimeBlock | null => (accountId ? { accountId, room: roomsKey(useGame.getState().profile()?.cloud), token: getToken(accountId) } : null);
   let last = { x: NaN, z: NaN, h: NaN, at: 0 };
   let lastZone: ZoneId | null | undefined;
+  /** 伺服器支援的新訊息（welcome 的 caps；舊版伺服器沒有，就不送它不認得的訊息） */
+  let caps: ServerCap[] = [];
+  /** 上一次回報的在做什麼（老師 GM 的 G3） */
+  let lastDoing: string | null | undefined;
 
   /**
    * 要去的島（送 hello 與 go 用）：連線途中換島時更新，welcome 回來時比對。
@@ -217,6 +224,17 @@ export function startRealtime(): () => void {
     }
   };
 
+  /** 回報在做什麼（有變才送；伺服器支援才送） */
+  const sendDoing = (force = false) => {
+    if (!caps.includes('gm')) return;
+    const { screen, run } = useUi.getState();
+    const label = doingLabel(screen, run ? (findActivity(run.activityId)?.title ?? null) : null, usePuzzleNow.getState().title);
+    if (force || label !== lastDoing) {
+      lastDoing = label;
+      send({ t: 'doing', label });
+    }
+  };
+
   const disconnect = () => {
     if (retryTimer) clearTimeout(retryTimer);
     retryTimer = null;
@@ -250,7 +268,9 @@ export function startRealtime(): () => void {
           retry = 0;
           useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null });
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
+          caps = msg.caps ?? [];
           sendWhere(true);
+          sendDoing(true);
           void useGifts.getState().load();
           // 進的島和要去的不一樣：要去班級島卻進了自己的島，是伺服器說沒有班級（同步一次更新本機的班級）；
           // 要去的那一班伺服器說不是成員（進了別班，例如在別台裝置退出了）：同步一次更新本機的班級清單；
@@ -389,13 +409,16 @@ export function startRealtime(): () => void {
       evaluate();
       sendWhere();
     }
+    if (s.screen !== prev.screen || s.run !== prev.run) sendDoing();
   });
+  const offPuzzle = usePuzzleNow.subscribe(() => sendDoing());
   evaluate();
 
   return () => {
     clearInterval(tick);
     offGame();
     offUi();
+    offPuzzle();
     disconnect();
   };
 }

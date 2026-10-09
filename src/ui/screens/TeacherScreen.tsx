@@ -15,14 +15,14 @@ import { GoogleButton } from '../GoogleButton';
 import { checkEmail, checkPassword, checkUsername, PASSWORD_MIN } from '../../online/userRules';
 import { BUILT_IN_EDITIONS, GENERIC_EDITION, curriculumText, editionsFor } from '../../content/editions';
 import { DEFAULT_CURRICULUM, type CurriculumChoice } from '../../store/save';
-import { TEACHER_POS, zoneName } from '../../world/layout';
+import { TEACHER_POS } from '../../world/layout';
+import { whereText } from '../memberWhere';
 import { player, teleport } from '../../world/input';
 import { JoinClassPanel } from './JoinClassPanel';
 import { ClaimPanel } from './ClaimPanel';
 import { ClaimCard } from './ClaimCard';
 import { JoinQr } from './JoinQr';
 import { createLatestSaver } from '../latestSaver';
-import type { ZoneId } from '../../store/useUi';
 import { CLASS_PASSWORD_MIN, MAX_CLASSES, kidRooms } from '../../online/protocol';
 import { addDeclined, profilesToOffer, readDeclined } from '../../online/uploadOffer';
 import type { ClaimIssueResponse, KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
@@ -128,13 +128,6 @@ function ClassCurriculum({ value, onSave }: { value: CurriculumChoice | null; on
   );
 }
 
-/** 成員表的「在哪裡」：班級島或自己的島＋建築（島嶼互訪 I1）；舊版伺服器只有 online 時顯示 🟢；離線空白 */
-function whereText(m: MemberSummary): string {
-  /** 哪座島：這一班的班級島、別班的班級島（多班級，不寫是哪一班）、自己的島 */
-  const island = { class: '班級島', otherClass: '別的班級島', own: '自己的島' } as const;
-  if (m.where) return `🟢 ${island[m.where.island] ?? '班級島'}${m.where.zone ? `・${zoneName(m.where.zone as ZoneId)}` : ''}`;
-  return m.online ? '🟢' : '';
-}
 
 /**
  * 教室密碼（L3，docs/plans/login-ux-review.md 第 7.1 節）：只存雜湊，看不到目前的密碼，忘了就直接設新的。
@@ -1407,6 +1400,12 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
 
   useEffect(() => {
     void reload();
+  }, [reload]);
+
+  // 成員表每 15 秒自動更新：看得到孩子現在在哪裡、在做什麼（老師 GM 的 G3）
+  useEffect(() => {
+    const timer = setInterval(() => void reload(), 15_000);
+    return () => clearInterval(timer);
   }, [reload]);
 
   /** 執行一個管理動作後重新整理列表 */

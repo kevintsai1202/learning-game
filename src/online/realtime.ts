@@ -37,6 +37,8 @@ export const TEACHER_NAME = '熊熊老師';
 export const TEACHER_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
 /** 全班公告最多幾個字（老師 GM 的 G2） */
 export const ANNOUNCE_MAX = 60;
+/** 孩子回報「在做什麼」的名稱最多幾個字（老師 GM 的 G3） */
+export const DOING_MAX = 40;
 /** 好友名單上某一班老師的 id（每一班一筆） */
 export const teacherFriendId = (code: string): string => `teacher:${code}`;
 /**
@@ -71,6 +73,11 @@ export const clientMessage = z.discriminatedUnion('t', [
   z.object({ t: z.literal('announce'), text: z.string().trim().min(1).max(ANNOUNCE_MAX) }),
   /** 熊熊老師請大家集合（只有老師的連線有效） */
   z.object({ t: z.literal('summon') }),
+  /**
+   * 孩子回報在做什麼（老師 GM 的 G3）：活動或遊戲的名稱（最多 40 字），沒有在做什麼是 null。
+   * 伺服器只放記憶體、只給老師的成員表；裝置只在 welcome 的 caps 有 gm 時才送（舊版伺服器不認得會斷線）
+   */
+  z.object({ t: z.literal('doing'), label: z.string().trim().min(1).max(DOING_MAX).nullable() }),
 ]);
 export type ClientMessage = z.infer<typeof clientMessage>;
 

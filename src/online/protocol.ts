@@ -282,7 +282,12 @@ export interface MemberSummary {
    * 在哪裡（島嶼互訪 I1）：這一班的班級島、自己的島、別的班級島（多班級；不寫是哪一班）＋建築；離線是 null。
    * 舊版伺服器只有 class、own
    */
-  where: { island: 'class' | 'own' | 'otherClass'; zone: string | null } | null;
+  where: {
+    island: 'class' | 'own' | 'otherClass';
+    zone: string | null;
+    /** 在做什麼：活動或遊戲的名稱（老師 GM 的 G3；只在記憶體，沒在做什麼或舊版伺服器沒有） */
+    doing?: string;
+  } | null;
   /** 有沒有班級密碼（家長掃 QR code 加入的孩子沒有，老師要設了孩子才能用班級代碼登入） */
   hasPin: boolean;
   /** 有沒有家長帳號（L4：沒有的才能產生家長連結卡）；舊版伺服器沒有 */

@@ -33,6 +33,7 @@ beforeEach(async () => {
   const app = createApp({
     db,
     isOnline: (id) => hub.isOnline(id),
+    whereOf: (id, room) => hub.whereOf(id, room),
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),
     onKick: (id, reason, via, room) => hub.kick(id, reason, via, room),
@@ -354,5 +355,22 @@ describe('熊熊老師進島（老師 GM 的 G2）', () => {
     await c.opened;
     c.send({ t: 'hello', token: room.token });
     expect(await c.closed).toBe(4003);
+  });
+it('在做什麼（G3）：孩子回報後，老師的成員表看得到活動名稱（同學收不到）', async () => {
+    const { room, a, b } = await setup();
+    const ca = await connect(a.token);
+    const cb = await connect(b.token);
+    ca.send({ t: 'where', zone: 'math' });
+    ca.send({ t: 'doing', label: '加法練習' });
+    const deadline = Date.now() + 3000;
+    let where: any = null;
+    while (Date.now() < deadline) {
+      const list = await call('GET', `/api/teacher/rooms/${room.code}`, undefined, room.token);
+      where = list.body.members.find((m: { nickname: string }) => m.nickname === '阿寶')?.where;
+      if (where?.doing) break;
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    expect(where).toEqual({ island: 'class', zone: 'math', doing: '加法練習' });
+    expect(JSON.stringify(cb.msgs)).not.toContain('加法練習');
   });
 });

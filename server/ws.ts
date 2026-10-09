@@ -202,6 +202,9 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
         case 'summon':
           hub.summon(conn);
           break;
+        case 'doing':
+          hub.doing(conn, msg.label);
+          break;
         case 'hello':
           ws.close(1008, 'already logged in');
           break;

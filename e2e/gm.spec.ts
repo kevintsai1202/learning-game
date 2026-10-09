@@ -3,6 +3,7 @@
  * 老師在班級頁按「以熊熊老師進島」→ 進那一班的班級島、自己是熊熊老師；島上的孩子看到熊熊老師（金色名牌），
  * 廣場上的 NPC 熊熊老師藏起來，好友名單上的老師變成線上；老師按「離開」回到同一班的班級頁，孩子那邊恢復原狀。
  * 第二條：全班公告（在自己島上的孩子也收到、太快要等 10 秒）與集合（島上直接過去、自己島上按「回班級島」、建築裡按「過去」）。
+ * 第三條（G3）：孩子在做什麼，老師的班級頁（每 15 秒自動更新）與進島後的全班清單都看得到；清單上可以移到孩子旁邊。
  * 截圖在 e2e/screenshots/gm/（不進版控）。
  */
 import { expect, test, type Page } from '@playwright/test';
@@ -138,4 +139,41 @@ test('公告與集合：班級島與自己島上的孩子都收到公告；集�
 
   for (const d of [a, b, t]) expect(pageErrors(d.page)).toEqual([]);
   await Promise.all([a.context.close(), b.context.close(), t.context.close()]);
+});
+
+test('在做什麼：孩子答題時，老師的班級頁（自動更新）與進島後的全班清單都看得到活動名稱；清單上點孩子可以移到他旁邊', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
+  const room = await createClassViaApi(request, '二年三班');
+  const res = await request.post(`${SERVER}/api/join`, { data: { code: room.code, nickname: '阿寶', pin: '1111', avatar: { animal: 'capybara', color: '#8b5a2b', hat: null } } });
+  expect(res.ok()).toBe(true);
+  const a = await openDevice(browser, baseURL!);
+  await loginAndEnter(a.page, room.code, '阿寶', '1111');
+
+  // 老師的班級頁：阿寶在班級島
+  const t = await openDevice(browser, baseURL!);
+  await loginTeacher(t.page, room.username);
+  await t.page.getByTestId(`class-${room.code}`).click();
+  await expect(t.page.getByTestId('online-阿寶')).toContainText('班級島');
+
+  // 阿寶進數學城堡做直式加法：老師的班級頁不用按重新整理就看到（每 15 秒自動更新）
+  await enterZone(a.page, 'math');
+  await a.page.evaluate(() => (window as any).__game.ui.getState().startActivity({ activityId: 'math.add', level: 1, seed: 1 }));
+  await expect(t.page.getByTestId('online-阿寶')).toContainText('數學城堡・直式加法', { timeout: 30_000 });
+
+  // 老師進島，打開全班清單：一樣看得到
+  await t.page.getByTestId('gm-enter').click();
+  await expect.poll(() => t.page.evaluate(() => (window as any).__game.gm.getState().status)).toBe('online');
+  await t.page.getByTestId('gm-roster-toggle').click();
+  await expect(t.page.getByTestId('gm-roster-阿寶')).toContainText('直式加法');
+  await t.page.screenshot({ path: `${SHOTS}/05-teacher-roster.png` });
+
+  // 阿寶回到島上：清單更新（不再寫活動名稱）；點清單上的「過去」，熊熊老師移到他旁邊
+  await a.page.evaluate(() => (window as any).__game.ui.getState().goto('island'));
+  await expect(t.page.getByTestId('gm-roster-阿寶')).not.toContainText('直式加法', { timeout: 15_000 });
+  await expect(t.page.getByTestId('gm-goto-阿寶')).toBeEnabled({ timeout: 15_000 });
+  await t.page.getByTestId('gm-goto-阿寶').click();
+  await expect.poll(async () => dist(await posOf(t.page), await posOf(a.page))).toBeLessThan(3);
+
+  for (const d of [a, t]) expect(pageErrors(d.page)).toEqual([]);
+  await Promise.all([a.context.close(), t.context.close()]);
 });

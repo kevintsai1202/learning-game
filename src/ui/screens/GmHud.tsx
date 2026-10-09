@@ -1,7 +1,7 @@
 /**
  * 熊熊老師進島的畫面（老師 GM 的 G2，docs/plans/teacher-gm.md 第 13 節 G2＋G3 實作設計）：
  * 老師在 3D 班級島上以熊熊老師走動（點地面或觸控搖桿），上方是 GM 工具列：哪一班、連線狀態、離開。
- * 不進建築、沒有金幣與商店。下方工具列：全班公告（最多 60 字，每 10 秒一則）、請大家集合。
+ * 不進建築、沒有金幣與商店。下方工具列：全班公告（最多 60 字，每 10 秒一則）、請大家集合；上方「📋 全班」打開全班清單（GmRoster）。
  */
 import { useEffect, useState } from 'react';
 import { useUi } from '../../store/useUi';
@@ -9,6 +9,7 @@ import { announce, summon, useGm } from '../../online/gmClient';
 import { ANNOUNCE_MAX } from '../../online/realtime';
 import { Joystick } from './IslandHud';
 import { sfx } from '../../audio/sfx';
+import { GmRoster } from './GmRoster';
 
 /** 連線狀態的文字 */
 const STATUS_TEXT = { off: '', connecting: '連線中…', online: '🟢 在島上', error: '' } as const;
@@ -21,6 +22,8 @@ export function GmHud() {
   const online = status === 'online';
   /** 正在輸入的公告 */
   const [text, setText] = useState('');
+  /** 全班清單打開了沒 */
+  const [rosterOpen, setRosterOpen] = useState(false);
   const touch = typeof window !== 'undefined' && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
   // 給老師的短訊息 4 秒後收起
   useEffect(() => {
@@ -40,6 +43,18 @@ export function GmHud() {
               {STATUS_TEXT[status]}
             </span>
           )}
+          <button
+            className="hud-chip"
+            style={{ paddingLeft: 14 }}
+            aria-expanded={rosterOpen}
+            onClick={() => {
+              sfx.tap();
+              setRosterOpen((v) => !v);
+            }}
+            data-testid="gm-roster-toggle"
+          >
+            📋 全班
+          </button>
         </div>
         <button
           className="hud-chip"
@@ -53,6 +68,7 @@ export function GmHud() {
           ← 離開
         </button>
       </div>
+      {rosterOpen && room && <GmRoster code={room.code} onClose={() => setRosterOpen(false)} />}
       {error && (
         <p className="notice gm-error" role="alert" data-testid="gm-error">
           {error}

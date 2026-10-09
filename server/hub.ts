@@ -119,6 +119,8 @@ interface Member {
   sayAt: number;
   /** 熊熊老師上一則公告的時間（孩子用不到） */
   announceAt: number;
+  /** 在做什麼（老師 GM 的 G3）：孩子回報的活動名稱，只給老師的成員表；沒在做什麼是 null */
+  doing: string | null;
   /** 權杖來源（見 JoinInfo.via）；老師是 null */
   via: TokenVia | null;
   /** class 權杖是用哪一班的代碼登入的；家長權杖是 null */
@@ -273,6 +275,7 @@ export class Hub {
       sayTokens: SAY_BURST,
       sayAt: this.now(),
       announceAt: -Infinity,
+      doing: null,
       via: info.via,
       tokenRoom: info.tokenRoom ?? null,
       name: info.name,
@@ -326,6 +329,7 @@ export class Hub {
       sayTokens: 0,
       sayAt: this.now(),
       announceAt: -Infinity,
+      doing: null,
       via: null,
       tokenRoom: null,
       name: TEACHER_NAME,
@@ -419,6 +423,13 @@ export class Hub {
     m.state.zone = zone;
     const island = this.islands.get(m.islandId);
     if (island) this.broadcast(island, { t: 'member', member: m.state }, m.state.id);
+  }
+
+  /** 孩子回報在做什麼（老師 GM 的 G3）：只記在記憶體，老師的成員表（whereOf）看得到，不廣播給同學；熊熊老師不做事 */
+  doing(conn: HubConn, label: string | null): void {
+    const m = this.conns.get(conn);
+    if (!m || m.role === 'teacher') return;
+    m.doing = label;
   }
 
   /** 說一句公頻短句：只收短句清單裡的 id；有頻率限制；島上關閉聊天時不收 */
@@ -547,14 +558,15 @@ export class Hub {
   }
 
   /**
-   * 某個帳號在哪裡（老師的成員表用）：哪一種島＋建築；離線是 null。
+   * 某個帳號在哪裡（老師的成員表用）：哪一種島＋建築＋在做什麼；離線是 null。
    * room 是老師看的那一班：在別班的班級島時是 otherClass（不寫是哪一班）；沒給時任何班級島都算 class
    */
-  whereOf(accountId: string, room?: string): { island: IslandKind | 'otherClass'; zone: ZoneId | null } | null {
+  whereOf(accountId: string, room?: string): { island: IslandKind | 'otherClass'; zone: ZoneId | null; doing?: string } | null {
     const m = this.accounts.get(accountId);
     if (!m) return null;
     const code = codeOf(m.islandId);
     const island = code === null ? 'own' : room === undefined || code === room ? 'class' : 'otherClass';
-    return { island, zone: m.state.zone };
+    // 在做什麼只在有的時候帶（老師 GM 的 G3）
+    return { island, zone: m.state.zone, ...(m.doing ? { doing: m.doing } : {}) };
   }
 }
