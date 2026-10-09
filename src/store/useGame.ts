@@ -3,6 +3,7 @@
  * 存檔壞掉時，先把原始字串備份到另一個鍵再重置，避免孩子的進度直接消失。
  * 雲端角色（有 cloud 欄位）的動作改用 applyOp 套用（與伺服器同一套規則），並放進待送佇列。
  */
+import { EMPTY_REST, addActive } from './rest';
 import { create } from 'zustand';
 import type { SessionResult } from '../core/types';
 import { applyOp, newOpId, type Op, type OpBody } from '../online/ops';
@@ -80,6 +81,10 @@ interface GameStore {
   chooseTitle: (badgeId: string | null) => boolean;
   /** 累計遊玩時間；puzzle 表示在益智遊戲館（同時算進益智遊戲的每日時間） */
   tickPlayTime: (seconds: number, puzzle?: boolean) => void;
+  /** 目前角色多玩了幾秒有操作的時間（玩一段時間要休息，src/store/rest.ts）；滿了就開始休息 */
+  addRestTime: (seconds: number, now: number) => void;
+  /** 結束目前角色的休息（休息時間到、家長 PIN 解鎖） */
+  endRest: () => void;
   purchase: (itemId: string, price: number) => boolean;
   updateSettings: (patch: Partial<Settings>) => void;
   setParentPin: (pin: string) => void;
@@ -173,6 +178,19 @@ export const useGame = create<GameStore>((set, get) => {
       } catch {
         return false;
       }
+    },
+    addRestTime: (seconds, now) => {
+      const { save } = get();
+      const id = save.activeProfileId;
+      if (!id) return;
+      const next = addActive(save.rest?.[id] ?? EMPTY_REST, seconds, now, save.settings.sessionLimitMin, save.settings.restMin);
+      commit({ ...save, rest: { ...save.rest, [id]: next } });
+    },
+    endRest: () => {
+      const { save } = get();
+      const id = save.activeProfileId;
+      if (!id) return;
+      commit({ ...save, rest: { ...save.rest, [id]: { ...EMPTY_REST } } });
     },
     updateSettings: (patch) => commit({ ...get().save, settings: { ...get().save.settings, ...patch } }),
     setParentPin: (pin) => commit(setPin(get().save, pin)),

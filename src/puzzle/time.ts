@@ -5,9 +5,12 @@
 import type { Screen } from '../store/useUi';
 import { puzzleToday, type Profile } from '../store/save';
 
-/** 這個畫面的遊玩時間怎麼算：不算（標題、選角、家長區）、一般、益智遊戲館 */
+/** 不算遊玩時間的畫面：標題、選角、家長區，以及大人的畫面（帳號頁、班級登入、教室平板、熊熊老師進島） */
+const NOT_PLAY: Screen[] = ['title', 'profiles', 'parent', 'teacher', 'class', 'classroom', 'gm'];
+
+/** 這個畫面的遊玩時間怎麼算：不算、一般、益智遊戲館 */
 export function playTimeKind(screen: Screen): 'none' | 'play' | 'puzzle' {
-  if (screen === 'title' || screen === 'profiles' || screen === 'parent') return 'none';
+  if (NOT_PLAY.includes(screen)) return 'none';
   return screen === 'puzzle' ? 'puzzle' : 'play';
 }
 

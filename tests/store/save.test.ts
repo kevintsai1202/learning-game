@@ -4,6 +4,7 @@ import {
   addProfile,
   buyItem,
   createEmptySave,
+  isValidSave,
   loadSave,
   recordSession,
   secondsPlayedOn,
@@ -222,6 +223,28 @@ describe('存檔：載入與相容', () => {
     const s = createEmptySave();
     const off = { ...s, settings: { ...s.settings, voiceClips: false } };
     expect(loadSave(JSON.stringify(off)).settings.voiceClips).toBe(false);
+  });
+
+  it('玩一段時間要休息（2026-10-09）：新存檔連續 30 分鐘、休息 15 分鐘、每日上限不限制', () => {
+    expect(createEmptySave().settings).toMatchObject({ sessionLimitMin: 30, restMin: 15, dailyLimitMin: 0 });
+  });
+
+  it('舊存檔（沒有連續上限）：補上連續 30、休息 15；每日上限是原本的預設 30 分鐘時改成不限制，家長改過的值照舊', () => {
+    const s = createEmptySave();
+    const { sessionLimitMin: _a, restMin: _b, ...old } = s.settings;
+    const at30 = loadSave(JSON.stringify({ ...s, settings: { ...old, dailyLimitMin: 30 } }));
+    expect(at30.settings).toMatchObject({ sessionLimitMin: 30, restMin: 15, dailyLimitMin: 0 });
+    expect(isValidSave(JSON.stringify({ ...s, settings: { ...old, dailyLimitMin: 30 } }))).toBe(true);
+    expect(loadSave(JSON.stringify({ ...s, settings: { ...old, dailyLimitMin: 45 } })).settings.dailyLimitMin).toBe(45);
+    // 已經有連續上限的存檔：每日上限 30 是家長自己選的，不動
+    const now = loadSave(JSON.stringify({ ...s, settings: { ...s.settings, dailyLimitMin: 30, sessionLimitMin: 45, restMin: 10 } }));
+    expect(now.settings).toMatchObject({ dailyLimitMin: 30, sessionLimitMin: 45, restMin: 10 });
+  });
+
+  it('休息狀態存在存檔裡（每個角色一份），可以存回來', () => {
+    const s = { ...createEmptySave(), rest: { p1: { activeSec: 120, restUntil: 1_800_000_000_000 } } };
+    expect(loadSave(JSON.stringify(s)).rest).toEqual({ p1: { activeSec: 120, restUntil: 1_800_000_000_000 } });
+    expect(loadSave(JSON.stringify(createEmptySave())).rest).toBeUndefined();
   });
 });
 

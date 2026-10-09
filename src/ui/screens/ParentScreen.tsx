@@ -348,16 +348,40 @@ function SettingsTab() {
       <VoicePicker lang="en-US" label="英文聲音" />
       {row('音效', toggle('sfx'))}
       {row('背景音樂', toggle('music'))}
+      {/* 玩一段時間要休息（2026-10-09）：只算有操作的時間，1 分鐘沒操作就不算；休息照真實時間倒數 */}
       {row(
-        '每日遊玩上限',
-        <select value={settings.dailyLimitMin} onChange={(e) => update({ dailyLimitMin: Number(e.target.value) })} style={{ fontSize: 18 }}>
-          {[0, 20, 30, 45, 60, 90].map((m) => (
+        '連續遊玩多久要休息',
+        <select value={settings.sessionLimitMin} onChange={(e) => update({ sessionLimitMin: Number(e.target.value) })} style={{ fontSize: 18 }} data-testid="setting-sessionLimitMin">
+          {[20, 30, 45, 60, 0].map((m) => (
             <option key={m} value={m}>
               {m === 0 ? '不限制' : `${m} 分鐘`}
             </option>
           ))}
         </select>,
       )}
+      {row(
+        '休息多久',
+        <select value={settings.restMin} onChange={(e) => update({ restMin: Number(e.target.value) })} style={{ fontSize: 18 }} data-testid="setting-restMin">
+          {[10, 15, 20].map((m) => (
+            <option key={m} value={m}>
+              {`${m} 分鐘`}
+            </option>
+          ))}
+        </select>,
+      )}
+      {row(
+        '每日遊玩上限',
+        <select value={settings.dailyLimitMin} onChange={(e) => update({ dailyLimitMin: Number(e.target.value) })} style={{ fontSize: 18 }} data-testid="setting-dailyLimitMin">
+          {[0, 20, 30, 45, 60, 90, 120].map((m) => (
+            <option key={m} value={m}>
+              {m === 0 ? '不限制' : `${m} 分鐘`}
+            </option>
+          ))}
+        </select>,
+      )}
+      <p className="notice" style={{ margin: '4px 0 10px' }}>
+        遊玩時間只算有操作的時間（1 分鐘沒有點、滑、按鍵就不算）；休息照真實時間倒數，關掉遊戲再打開也要等滿，家長可以輸入 PIN 提早解鎖。
+      </p>
       {row(
         '益智遊戲館每日上限',
         <select value={settings.puzzleLimitMin} onChange={(e) => update({ puzzleLimitMin: Number(e.target.value) })} style={{ fontSize: 18 }} data-testid="setting-puzzleLimitMin">

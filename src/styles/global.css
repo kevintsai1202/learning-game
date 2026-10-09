@@ -1577,6 +1577,12 @@ button {
   font-family: var(--font-plain);
   font-weight: 700;
 }
+/* 休息的倒數（玩一段時間要休息，2026-10-09） */
+.rest-countdown {
+  margin: 10px 0 0;
+  font-size: 30px;
+  font-weight: 800;
+}
 /* 熊熊老師進島後的全班清單（右側面板） */
 .gm-roster {
   position: absolute;

@@ -2,6 +2,7 @@
  * 存檔資料結構與更新規則（純函式、不可變更新）。
  * zustand store 只是把這些函式接上 localStorage；邏輯都在這裡，方便單元測試。
  */
+import type { RestState } from './rest';
 import { z } from 'zod';
 import { hashString } from '../core/rng';
 import type { AnswerRecord, Question, SessionResult, SubjectId } from '../core/types';
@@ -213,8 +214,12 @@ export interface Settings {
   sfx: boolean;
   /** 背景音樂 */
   music: boolean;
-  /** 每日遊玩上限（分鐘），0 表示不限制 */
+  /** 每日遊玩上限（分鐘），0 表示不限制（2026-10-09 起預設不限制，改用連續上限＋休息） */
   dailyLimitMin: number;
+  /** 連續遊玩多久要休息（分鐘，只算有操作的時間），0 表示不限制；2026-10-09 新增，預設 30 */
+  sessionLimitMin: number;
+  /** 休息多久（分鐘，照真實時間）；2026-10-09 新增，預設 15 */
+  restMin: number;
   /** 益智遊戲館每日上限（分鐘），0 表示不另外限制（仍受每日遊玩上限）；2026-10 新增 */
   puzzleLimitMin: number;
   /** 3D 畫質 */
@@ -228,6 +233,8 @@ export interface SaveData {
   activeProfileId: string | null;
   parent: { pinHash: string | null };
   settings: Settings;
+  /** 每個角色的休息狀態（角色 id → 狀態；只在這台裝置，不跟雲端同步；src/store/rest.ts）。還沒玩過的沒有 */
+  rest?: Record<string, RestState>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -237,7 +244,9 @@ export const DEFAULT_SETTINGS: Settings = {
   voiceClips: true,
   sfx: true,
   music: true,
-  dailyLimitMin: 30,
+  dailyLimitMin: 0,
+  sessionLimitMin: 30,
+  restMin: 15,
   puzzleLimitMin: DEFAULT_PUZZLE_LIMIT_MIN,
   quality: 'auto',
 };
@@ -597,10 +606,14 @@ const saveSchema = z.object({
     sfx: z.boolean(),
     music: z.boolean(),
     dailyLimitMin: int.min(0).max(240),
+    // 2026-10-09 新增：舊存檔在 migrateSave 補上（每日上限的舊預設值一起改成不限制）
+    sessionLimitMin: int.min(0).max(240).default(30),
+    restMin: int.min(1).max(120).default(15),
     // 2026-10 新增：舊存檔沒有這個欄位時補成預設值
     puzzleLimitMin: int.min(0).max(240).default(DEFAULT_PUZZLE_LIMIT_MIN),
     quality: z.enum(['auto', 'low', 'high']),
   }),
+  rest: z.record(z.string(), z.object({ activeSec: int.min(0), restUntil: z.number().nullable() })).optional(),
 });
 
 /** 驗證一位小朋友的資料（伺服器收上傳的進度用）；格式不符回傳 null。錯題本的題目只做寬鬆檢查 */
@@ -620,13 +633,24 @@ export function migrateSave(data: unknown): unknown {
   if (!data || typeof data !== 'object') return data;
   const d = data as { schemaVersion?: number; profiles?: Record<string, unknown>[] };
   if (d.schemaVersion === 1 && Array.isArray(d.profiles)) {
-    return {
+    return upgradeRestSettings({
       ...d,
       schemaVersion: 2,
       profiles: d.profiles.map((p) => ({ recent: {}, curriculum: { ...DEFAULT_CURRICULUM }, ...p })),
-    };
+    });
   }
-  return data;
+  return upgradeRestSettings(data);
+}
+
+/**
+ * 玩一段時間要休息（2026-10-09）：還沒有連續上限的存檔補上連續 30、休息 15 分鐘；
+ * 每日上限是原本的預設 30 分鐘時改成不限制（使用者要拿掉「一天只能玩 30 分鐘」），家長改過的值照舊
+ */
+function upgradeRestSettings(data: unknown): unknown {
+  const d = data as { settings?: Record<string, unknown> };
+  const s = d?.settings;
+  if (!s || typeof s !== 'object' || s.sessionLimitMin !== undefined) return data;
+  return { ...d, settings: { ...s, sessionLimitMin: 30, restMin: 15, dailyLimitMin: s.dailyLimitMin === 30 ? 0 : s.dailyLimitMin } };
 }
 
 /** 多班級之前的雲端標記（一個班級）：載入時轉成班級清單 */

@@ -12,6 +12,8 @@ describe('遊玩時間怎麼算', () => {
     expect(playTimeKind('title')).toBe('none');
     expect(playTimeKind('profiles')).toBe('none');
     expect(playTimeKind('parent')).toBe('none');
+    // 大人的畫面不替孩子累計（帳號頁、班級登入、教室平板、熊熊老師進島；2026-10-09）
+    for (const screen of ['teacher', 'class', 'classroom', 'gm'] as const) expect(playTimeKind(screen)).toBe('none');
     expect(playTimeKind('puzzle')).toBe('puzzle');
     expect(playTimeKind('island')).toBe('play');
     expect(playTimeKind('activity')).toBe('play');
