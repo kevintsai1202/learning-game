@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyServerMessage, updateBlock, wsUrlOf, zoneOfScreen } from '../../src/online/realtimeClient';
+import { applyServerMessage, islandAction, updateBlock, wsUrlOf, zoneOfScreen } from '../../src/online/realtimeClient';
 import { emptyPresence, onIsland } from '../../src/online/presence';
 import type { MemberState } from '../../src/online/realtime';
 
@@ -100,5 +100,18 @@ describe('被踢線之後的封鎖（同一個帳號、同一個班級、同一�
 
   it('沒有封鎖：什麼都不做', () => {
     expect(updateBlock(null, { accountId: 'a_1', room: '123456' }, 't_1')).toEqual({ blocked: null, clearNotice: false });
+  });
+});
+
+describe('要去哪座島（島嶼互訪 I2）', () => {
+  const own = { island: 'own' as const };
+  it('一樣：不送；要去朋友的島：visit；回自己的島或換班級島：go', () => {
+    expect(islandAction(own, own)).toBe('none');
+    expect(islandAction({ island: 'class', room: '123456' }, { island: 'class', room: '123456' })).toBe('none');
+    expect(islandAction(own, { island: 'own', host: 'b' })).toBe('visit');
+    expect(islandAction({ island: 'own', host: 'b' }, { island: 'own', host: 'c' })).toBe('visit');
+    expect(islandAction({ island: 'own', host: 'b' }, own)).toBe('go');
+    expect(islandAction({ island: 'own', host: 'b' }, { island: 'class', room: '123456' })).toBe('go');
+    expect(islandAction({ island: 'class', room: '123456' }, { island: 'class', room: '654321' })).toBe('go');
   });
 });

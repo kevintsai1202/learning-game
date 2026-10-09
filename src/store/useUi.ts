@@ -44,6 +44,8 @@ interface UiStore {
   moodTick: number;
   /** 熊熊老師的對話泡泡 */
   bubble: { text: string; id: number } | null;
+  /** 進建築前的檢查（島嶼互訪 I2：在朋友的島上只能進益智遊戲館，即時連線註冊）；回傳 false 就不進去 */
+  zoneGate: ((zone: ZoneId) => boolean) | null;
   /** 老師以熊熊老師進島的班級（老師 GM 的 G2）；離開後保留，老師頁回到同一班的班級頁 */
   gmRoom: { code: string; name: string } | null;
   goto: (screen: Screen) => void;
@@ -59,7 +61,7 @@ interface UiStore {
   setMood: (mood: StageMood) => void;
 }
 
-export const useUi = create<UiStore>((set) => ({
+export const useUi = create<UiStore>((set, get) => ({
   screen: 'title',
   zone: null,
   nearZone: null,
@@ -69,12 +71,17 @@ export const useUi = create<UiStore>((set) => ({
   mood: 'idle',
   moodTick: 0,
   bubble: null,
+  zoneGate: null,
   gmRoom: null,
   goto: (screen) => set({ screen }),
   enterGm: (gmRoom) => set({ gmRoom, screen: 'gm', nearZone: null }),
   say: (text) => set((s) => ({ bubble: { text, id: (s.bubble?.id ?? 0) + 1 } })),
   clearBubble: () => set({ bubble: null }),
-  enterZone: (zone) => set({ zone, screen: OWN_SCREEN[zone] ?? 'zone' }),
+  enterZone: (zone) => {
+    const gate = get().zoneGate;
+    if (gate && !gate(zone)) return;
+    set({ zone, screen: OWN_SCREEN[zone] ?? 'zone' });
+  },
   setNearZone: (nearZone) => set({ nearZone }),
   startActivity: (run) => set({ run, screen: 'activity', mood: 'idle' }),
   showResult: (lastResult, newBadges = []) => set({ lastResult, lastNewBadges: newBadges, screen: 'result', mood: 'cheer' }),

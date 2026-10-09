@@ -1588,6 +1588,13 @@ button {
   gap: 6px;
   flex-wrap: wrap;
 }
+/* 去朋友的島（島嶼互訪 I2）：所在地標籤是橘色；開放中的「關閉島嶼」按鈕亮黃 */
+.hud-chip.hud-location.friend {
+  background: #e07a1f;
+}
+.hud-chip.island-open-on {
+  background: #ffd75e;
+}
 /* 休息的倒數（玩一段時間要休息，2026-10-09） */
 .rest-countdown {
   margin: 10px 0 0;

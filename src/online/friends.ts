@@ -29,8 +29,15 @@ export function onlineFriendCount(s: FriendsState): number {
   return Object.values(s).filter((f) => f.online).length;
 }
 
-/** 狀態文字：在班級島、在自己的島、離線 */
+/** 狀態文字：在班級島、在自己的島（開放中）、在○○的島（不認識島主時「在朋友的島」）、離線 */
 export function friendStatusText(f: FriendState): string {
   if (!f.online) return '離線';
-  return f.island === 'own' ? '在自己的島' : '在班級島';
+  if (f.host !== undefined) return `在${f.host || '朋友'}的島`;
+  if (f.island !== 'own') return '在班級島';
+  return f.open ? '在自己的島（開放中）' : '在自己的島';
+}
+
+/** 能不能去他的島玩（島嶼互訪 I2）：線上、在自己的島而且開放中；熊熊老師不是島主 */
+export function canVisit(f: FriendState): boolean {
+  return f.online && f.island === 'own' && f.host === undefined && !!f.open && !f.id.startsWith('teacher:');
 }

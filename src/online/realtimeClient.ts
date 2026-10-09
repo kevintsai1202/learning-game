@@ -22,7 +22,7 @@ import { useGifts } from './useGifts';
 import { useRewards } from './useRewards';
 import { summonKind, useTeacherCalls } from './useTeacherCalls';
 import { speak } from '../audio/speech';
-import { GM_LINES } from '../ui/lines';
+import { GM_LINES, VISIT_LINES, visitEndedLine, visitorCameLine } from '../ui/lines';
 import { useGame } from '../store/useGame';
 import { useUi, type Screen, type ZoneId } from '../store/useUi';
 import { equippedOf } from '../store/catalog';
@@ -143,6 +143,52 @@ function onSummon(room: string, x: number, z: number): void {
   if (screen !== 'activity') speak(kind === 'back' ? GM_LINES.backToClass : GM_LINES.summon);
 }
 
+/** 要去的島（送 hello、go、visit 用）：island、班級島是哪一班、要去哪位朋友的島（島嶼互訪 I2） */
+export interface IslandTarget {
+  island: IslandKind;
+  room?: string;
+  host?: string;
+}
+
+/**
+ * 從上一次要去的島換到新的要去的島，要送什麼（純函式）：一樣就不送；要去朋友的島（或換一位朋友）送 visit；
+ * 其他（回自己的島、換班級島、換到另一班）送 go
+ */
+export function islandAction(prev: IslandTarget, next: IslandTarget): 'none' | 'visit' | 'go' {
+  if (prev.island === next.island && prev.room === next.room && prev.host === next.host) return 'none';
+  return next.host ? 'visit' : 'go';
+}
+
+/** 拜訪中（或要去）的朋友帳號 id（島嶼互訪 I2；只在這台裝置的這次開啟，不寫存檔） */
+let desiredHost: string | null = null;
+/** 連線管理器提供給下面幾個函式用的動作（startRealtime 啟動後才有） */
+let controls: { evaluate: () => void; send: (msg: object) => void } | null = null;
+
+/** 去某位朋友的島（島嶼互訪 I2）：班級角色先切到自己的島（不然下一次檢查會拉回班級島），再送拜訪 */
+export function visitFriend(id: string): void {
+  desiredHost = id;
+  const p = useGame.getState().profile();
+  if (p && currentClass(p)) useGame.getState().setIsland(p.id, 'mine');
+  controls?.evaluate();
+}
+
+/** 從朋友的島回自己的島 */
+export function goHome(): void {
+  desiredHost = null;
+  controls?.evaluate();
+}
+
+/** 開放或關閉自己的島（伺服器只在自己的島上收） */
+export function setIslandOpen(open: boolean): void {
+  controls?.send({ t: 'island', open });
+  useRealtime.setState({ open });
+}
+
+/** 請某位訪客回家（島主） */
+export function kickVisitor(id: string): void {
+  controls?.send({ t: 'kickVisitor', id });
+}
+
 /** 不在遊戲裡的畫面（不連線）；gm 是老師以熊熊老師進島，用老師自己的連線（gmClient.ts） */
 const OFFLINE_SCREENS: Screen[] = ['title', 'profiles', 'class', 'classroom', 'teacher', 'gm'];
 
@@ -154,9 +200,13 @@ interface RealtimeStore {
   notice: string | null;
   /** 現在在哪一種島（伺服器的 welcome 說的；沒連線是 null）。島嶼互訪 I1 */
   island: IslandKind | null;
+  /** 在朋友的島上：島主（島嶼互訪 I2；伺服器的 welcome 說的） */
+  visiting: { id: string; name: string } | null;
+  /** 自己的島開放中（島嶼互訪 I2） */
+  open: boolean;
 }
 
-export const useRealtime = create<RealtimeStore>(() => ({ status: 'off', flags: { chatOpen: true, giftsOpen: true }, notice: null, island: null }));
+export const useRealtime = create<RealtimeStore>(() => ({ status: 'off', flags: { chatOpen: true, giftsOpen: true }, notice: null, island: null, visiting: null, open: false }));
 
 /** 目前的連線（說短句用） */
 let socket: WebSocket | null = null;
@@ -193,6 +243,10 @@ export function startRealtime(): () => void {
   let desiredIsland: IslandKind = 'class';
   /** 要去哪一班的班級島（多班級；在自己的島時沒有） */
   let desiredRoom: string | undefined;
+  /** 已經要求去的朋友的島（島嶼互訪 I2；和 desiredHost 比對決定要不要再送 visit） */
+  let sentHost: string | undefined;
+  /** 送出拜訪、還沒收到 welcome：這時收到的 error 是拜訪被拒 */
+  let visitPending = false;
 
   /**
    * 應該連到哪個帳號、去哪座島；不該連線時回傳 null。
@@ -204,7 +258,15 @@ export function startRealtime(): () => void {
     const token = getToken(p.cloud.accountId);
     const cls = currentClass(p);
     const island: IslandKind = cls ? 'class' : 'own';
-    return token ? { profile: p, token, url: wsUrlOf(p.cloud.server), island, room: cls?.code } : null;
+    // 換到班級島就不再拜訪朋友
+    if (cls) desiredHost = null;
+    return token ? { profile: p, token, url: wsUrlOf(p.cloud.server), island, room: cls?.code, host: desiredHost ?? undefined } : null;
+  };
+
+  /** 送出拜訪 */
+  const sendVisit = (to: string) => {
+    visitPending = true;
+    send({ t: 'visit', to });
   };
 
   /** 送出換島（不斷線）：班級島帶班級代碼 */
@@ -247,7 +309,7 @@ export function startRealtime(): () => void {
     useGifts.getState().clear();
     useRewards.getState().clear();
     useFriends.getState().clear();
-    useRealtime.setState({ island: null });
+    useRealtime.setState({ island: null, visiting: null, open: false });
     if (useRealtime.getState().status !== 'kicked') useRealtime.setState({ status: 'off' });
   };
 
@@ -255,6 +317,7 @@ export function startRealtime(): () => void {
     accountId = target.profile.cloud!.accountId;
     desiredIsland = target.island;
     desiredRoom = target.room;
+    sentHost = target.host;
     useRealtime.setState({ status: 'connecting', notice: null });
     const ws = new WebSocket(target.url);
     socket = ws;
@@ -268,7 +331,8 @@ export function startRealtime(): () => void {
       switch (msg.t) {
         case 'welcome':
           retry = 0;
-          useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null });
+          visitPending = false;
+          useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null, visiting: msg.host ?? null, open: false });
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
           caps = msg.caps ?? [];
           sendWhere(true);
@@ -285,8 +349,28 @@ export function startRealtime(): () => void {
           } else if (msg.island === 'class' && msg.classCode && desiredRoom && msg.classCode !== desiredRoom) {
             if (classesOf(useGame.getState().profile()).some((r) => r.code === desiredRoom)) void useCloud.getState().syncNow();
             else sendGo();
+          } else if (msg.island === 'own' && sentHost && msg.host?.id !== sentHost) {
+            // 重新連線（或剛連上）時要去朋友的島：補送拜訪（舊版伺服器沒有 host，拜訪會被當成不認得的訊息，只在新伺服器送）
+            if (caps.includes('gm')) sendVisit(sentHost);
           }
           break;
+        case 'visitEnded':
+          // 島主離開或請你回家（島嶼互訪 I2）：接著伺服器送自己的島的 welcome
+          desiredHost = null;
+          sentHost = undefined;
+          useUi.getState().say(visitEndedLine(msg.reason, msg.host));
+          speak(visitEndedLine(msg.reason, msg.host));
+          break;
+        case 'join': {
+          // 有人來自己的島玩（島嶼互訪 I2）：熊熊老師的泡泡說一聲
+          const rt = useRealtime.getState();
+          if (rt.island === 'own' && !rt.visiting) {
+            const line = visitorCameLine(msg.member.nickname);
+            useUi.getState().say(line);
+            speak(line);
+          }
+          break;
+        }
         case 'friends':
         case 'friend':
           useFriends.getState().apply(msg);
@@ -317,7 +401,14 @@ export function startRealtime(): () => void {
           void useCloud.getState().syncNow();
           break;
         case 'error':
-          useRealtime.setState({ notice: msg.message });
+          // 拜訪被拒（不是朋友、沒開放、人數滿了…）：熊熊老師的泡泡說明，留在原本的島
+          if (visitPending) {
+            visitPending = false;
+            desiredHost = null;
+            sentHost = undefined;
+            useUi.getState().say(msg.message);
+            speak(msg.message);
+          } else useRealtime.setState({ notice: msg.message });
           break;
         case 'notice':
           // 離開了其中一班（多班級）：熊熊老師的泡泡說明，接著伺服器以 4005 讓這台重新上線（不封鎖）
@@ -381,14 +472,17 @@ export function startRealtime(): () => void {
       return;
     }
     if (accountId === id && (socket || retryTimer)) {
-      // 同一個帳號換島（多班級：也可能是換到另一班的班級島）：連著的話送 go（不斷線），先清掉原本島上的人，
-      // 免得新的島上還畫著舊同學
-      if (target.island !== desiredIsland || target.room !== desiredRoom) {
+      // 同一個帳號換島（多班級：也可能是換到另一班的班級島；島嶼互訪 I2：去朋友的島）：連著的話送 go 或 visit（不斷線），
+      // 先清掉原本島上的人，免得新的島上還畫著舊同學
+      const action = islandAction({ island: desiredIsland, room: desiredRoom, host: sentHost }, { island: target.island, room: target.room, host: target.host });
+      if (action !== 'none') {
         desiredIsland = target.island;
         desiredRoom = target.room;
+        sentHost = target.host;
         if (useRealtime.getState().status === 'online') {
           usePresence.getState().clear();
-          sendGo();
+          if (action === 'visit') sendVisit(target.host!);
+          else sendGo();
         }
       }
       return;
@@ -419,6 +513,16 @@ export function startRealtime(): () => void {
     if (s.screen !== prev.screen || s.run !== prev.run) sendDoing();
   });
   const offPuzzle = usePuzzleNow.subscribe(() => sendDoing());
+  controls = { evaluate, send };
+  // 在朋友的島上只能進益智遊戲館（島嶼互訪 I2）
+  useUi.setState({
+    zoneGate: (zone) => {
+      if (!useRealtime.getState().visiting || zone === 'puzzle') return true;
+      useUi.getState().say(VISIT_LINES.onlyPuzzle);
+      speak(VISIT_LINES.onlyPuzzle);
+      return false;
+    },
+  });
   evaluate();
 
   return () => {
@@ -426,6 +530,8 @@ export function startRealtime(): () => void {
     offGame();
     offUi();
     offPuzzle();
+    controls = null;
+    useUi.setState({ zoneGate: null });
     disconnect();
   };
 }

@@ -5,7 +5,7 @@
  * 多班級：每一班一座班級島；沒選過時在第一個班級（最早加入的）的班級島，選的那一班不在清單裡了就回到第一個班級。
  */
 import { describe, expect, it } from 'vitest';
-import { activeCurriculum, currentClass, devicePacksVisible, islandLook, islandOf, nameHere, reloginRoom, withIsland } from '../../src/store/island';
+import { activeCurriculum, currentClass, devicePacksVisible, islandLook, islandOf, lookWithVisit, nameHere, reloginRoom, withIsland } from '../../src/store/island';
 import { DEFAULT_CURRICULUM, addProfile, createEmptySave, type CloudLink, type CurriculumChoice, type Profile } from '../../src/store/save';
 import { curriculumActivities } from '../../src/activities/resolve';
 import { BUILT_IN_EDITIONS } from '../../src/content/editions';
@@ -152,5 +152,14 @@ describe('島上顯示的名字與重新登入用哪一班（多班級）', () =
     expect(reloginRoom(kid({ ...named, island: 'mine' }))?.code).toBe('123456');
     expect(reloginRoom(kid())).toBeNull();
     expect(reloginRoom(null)).toBeNull();
+  });
+});
+
+describe('在朋友的島上（島嶼互訪 I2）', () => {
+  it('拜訪中：外觀換成朋友的島（島主的名字）；沒在拜訪：照原本的', () => {
+    const look = islandLook(kid({ server: 'https://island.example', accountId: 'a_1', rooms: [{ code: '123456', name: '二年一班' }], island: 'mine' }));
+    expect(lookWithVisit(look, { id: 'b', name: '小美' })).toEqual({ kind: 'friend', kidName: '小安', hostName: '小美' });
+    expect(lookWithVisit(look, null)).toBe(look);
+    expect(lookWithVisit(null, { id: 'b', name: '小美' })).toBeNull();
   });
 });

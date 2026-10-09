@@ -3,7 +3,7 @@
  * 線上的排前面，狀態只寫在哪座島（使用者決定，不顯示建築）。
  */
 import { describe, expect, it } from 'vitest';
-import { applyFriendMessage, friendStatusText, onlineFriendCount, sortedFriends, type FriendsState } from '../../src/online/friends';
+import { applyFriendMessage, canVisit, friendStatusText, onlineFriendCount, sortedFriends, type FriendsState } from '../../src/online/friends';
 import type { FriendState } from '../../src/online/realtime';
 
 const AVATAR = { animal: 'cat' as const, color: '#ffffff', hat: null };
@@ -33,5 +33,24 @@ describe('好友名單的顯示', () => {
     expect(friendStatusText(f('a', '阿寶', true, 'class'))).toBe('在班級島');
     expect(friendStatusText(f('a', '阿寶', true, 'own'))).toBe('在自己的島');
     expect(friendStatusText(f('a', '阿寶', false))).toBe('離線');
+  });
+});
+
+describe('去朋友的島（島嶼互訪 I2）', () => {
+  const base: FriendState = { id: 'b', nickname: '小美', avatar: { animal: 'cat', color: '#ffffff', hat: null }, online: true, island: 'own' };
+
+  it('狀態文字：開放中、在別人的島（認識島主寫名字，不認識寫「朋友」）', () => {
+    expect(friendStatusText({ ...base, open: true })).toBe('在自己的島（開放中）');
+    expect(friendStatusText({ ...base, host: '阿寶' })).toBe('在阿寶的島');
+    expect(friendStatusText({ ...base, host: '' })).toBe('在朋友的島');
+  });
+
+  it('能去玩：線上、在自己的島、開放中；熊熊老師、離線、在別人的島上、沒開放都不行', () => {
+    expect(canVisit({ ...base, open: true })).toBe(true);
+    expect(canVisit(base)).toBe(false);
+    expect(canVisit({ ...base, open: true, online: false })).toBe(false);
+    expect(canVisit({ ...base, open: true, host: '阿寶' })).toBe(false);
+    expect(canVisit({ ...base, open: true, island: 'class' })).toBe(false);
+    expect(canVisit({ ...base, id: 'teacher:123456', open: true })).toBe(false);
   });
 });

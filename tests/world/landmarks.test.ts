@@ -57,6 +57,10 @@ describe('場景外觀（3D 島嶼依島切換）', () => {
     expect(look).toEqual({ sky: 'day', flag: { name: '二年一班', color: flagColorOf('123456', ['123456', '654321']) }, home: null });
   });
 
+  it('在朋友的島上（島嶼互訪 I2）：白天、島主的小屋與門牌', () => {
+    expect(sceneLookOf({ kind: 'friend', kidName: '小安', hostName: '小美' }, ['123456'])).toEqual({ sky: 'day', flag: null, home: { name: '小美' } });
+  });
+
   it('有班級的孩子在自己的島：黃昏、小屋與門牌，沒有旗子', () => {
     expect(sceneLookOf({ kind: 'mine', kidName: '小安' }, ['123456'])).toEqual({ sky: 'sunset', flag: null, home: { name: '小安' } });
   });

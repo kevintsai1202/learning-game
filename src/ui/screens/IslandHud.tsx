@@ -16,7 +16,9 @@ import { GiftInbox } from '../GiftInbox';
 import { RewardCard } from '../RewardCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
-import { classesOf, currentClass, islandLook, nameHere, type IslandTarget } from '../../store/island';
+import { classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
+import { goHome, setIslandOpen, useRealtime } from '../../online/realtimeClient';
+import { VISIT_LINES } from '../lines';
 import { ISLAND_LINES } from '../lines';
 import { FriendsButton, FriendsPanel } from '../FriendsPanel';
 
@@ -65,10 +67,12 @@ function CloudChip() {
 function IslandSwitch() {
   const profile = useGame((s) => s.profile());
   const setIsland = useGame((s) => s.setIsland);
+  /** 在朋友的島上時改顯示「回自己的島」（VisitHome） */
+  const visiting = useRealtime((s) => s.visiting !== null);
   /** 換島選單打開了沒（有好幾個班級時） */
   const [open, setOpen] = useState(false);
   const rooms = classesOf(profile);
-  if (!profile || !rooms.length) return null;
+  if (!profile || !rooms.length || visiting) return null;
   /** 現在在哪一班的班級島；在我的島是 null */
   const here = currentClass(profile);
   /** 去一座島：'mine' 或班級代碼；已經在那裡就只收起選單 */
@@ -112,16 +116,61 @@ function IslandSwitch() {
   );
 }
 
+/** 在朋友的島上（島嶼互訪 I2）：回自己的島 */
+function VisitHome() {
+  const visiting = useRealtime((s) => s.visiting);
+  if (!visiting) return null;
+  return (
+    <button
+      className="hud-chip"
+      style={{ paddingLeft: 14 }}
+      onClick={() => {
+        sfx.tap();
+        goHome();
+      }}
+      data-testid="hud-visit-home"
+    >
+      🏠 回自己的島
+    </button>
+  );
+}
+
+/** 在自己的島上（島嶼互訪 I2）：開放或關閉，讓朋友來玩 */
+function OpenToggle() {
+  const isCloud = useGame((s) => !!s.profile()?.cloud);
+  const show = useRealtime((s) => s.status === 'online' && s.island === 'own' && s.visiting === null);
+  const open = useRealtime((s) => s.open);
+  if (!isCloud || !show) return null;
+  return (
+    <button
+      className={`hud-chip ${open ? 'island-open-on' : ''}`}
+      style={{ paddingLeft: 14 }}
+      onClick={() => {
+        sfx.tap();
+        setIslandOpen(!open);
+        const line = open ? VISIT_LINES.closed : VISIT_LINES.opened;
+        useUi.getState().say(line);
+        speak(line);
+      }}
+      aria-pressed={open}
+      data-testid="island-open"
+    >
+      {open ? '🔒 關閉島嶼' : '🔓 開放島嶼'}
+    </button>
+  );
+}
+
 /**
  * 所在地標籤（L5，docs/plans/login-ux-review.md 第 4.5 節）：寫「現在在哪」，和寫「要去哪」的換島按鈕分開。
- * 班級島綠色、自己的島藍色；沒有班級的角色只有一座島，不顯示
+ * 班級島綠色、自己的島藍色、朋友的島橘色（島嶼互訪 I2）；沒有班級的角色只有一座島，不顯示（在朋友的島上時顯示）
  */
 function LocationChip() {
   // 先取存檔裡的角色（同一個物件，不會每次都是新的），再算外觀；selector 直接回傳新物件會一直重畫
   const profile = useGame((s) => s.profile());
-  const look = profile ? islandLook(profile) : null;
+  const visiting = useRealtime((s) => s.visiting);
+  const look = profile ? lookWithVisit(islandLook(profile), visiting) : null;
   if (!look || look.kind === 'solo') return null;
-  const text = look.kind === 'class' ? `📍 班級島・${look.className}` : `📍 ${look.kidName}的島`;
+  const text = look.kind === 'class' ? `📍 班級島・${look.className}` : look.kind === 'friend' ? `📍 ${look.hostName}的島` : `📍 ${look.kidName}的島`;
   return (
     <span className={`hud-chip hud-location ${look.kind}`} data-testid="hud-location" data-island={look.kind}>
       {text}
@@ -138,11 +187,13 @@ let lastBannerKey: string | null = null;
 function IslandBanner() {
   // 先取存檔裡的角色（同一個物件，不會每次都是新的），再算外觀；selector 直接回傳新物件會一直重畫
   const profile = useGame((s) => s.profile());
-  const look = profile ? islandLook(profile) : null;
+  const visiting = useRealtime((s) => s.visiting);
+  const look = profile ? lookWithVisit(islandLook(profile), visiting) : null;
   const profileId = useGame((s) => s.save.activeProfileId);
   const [shown, setShown] = useState<string | null>(null);
-  const key = look && look.kind !== 'solo' ? `${profileId}:${look.kind === 'class' ? look.classCode : 'mine'}` : null;
-  const text = !look || look.kind === 'solo' ? null : look.kind === 'class' ? `🏫 ${look.className}的班級島` : `🏝️ ${look.kidName}的島`;
+  const key = look && look.kind !== 'solo' ? `${profileId}:${look.kind === 'class' ? look.classCode : look.kind === 'friend' ? `friend:${visiting?.id}` : 'mine'}` : null;
+  const text =
+    !look || look.kind === 'solo' ? null : look.kind === 'class' ? `🏫 ${look.className}的班級島` : look.kind === 'friend' ? `🏝️ ${look.hostName}的島` : `🏝️ ${look.kidName}的島`;
   useEffect(() => {
     if (!key || key === lastBannerKey) return;
     lastBannerKey = key;
@@ -275,6 +326,8 @@ export function IslandHud() {
           {profile?.cloud && <CloudChip />}
           <LocationChip />
           <IslandSwitch />
+          <VisitHome />
+          <OpenToggle />
           <FriendsButton />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>

@@ -6,7 +6,8 @@
 import { useShallow } from 'zustand/react/shallow';
 import { useFriends } from '../online/useFriends';
 import { useRealtime } from '../online/realtimeClient';
-import { friendStatusText, onlineFriendCount, sortedFriends } from '../online/friends';
+import { canVisit, friendStatusText, onlineFriendCount, sortedFriends } from '../online/friends';
+import { visitFriend } from '../online/realtimeClient';
 import { AnimalIcon } from './AnimalIcon';
 import { sfx } from '../audio/sfx';
 
@@ -63,6 +64,19 @@ export function FriendsPanel() {
                   <span className="friend-status" data-testid="friend-status">
                     {f.online ? '🟢' : '⚪'} {friendStatusText(f)}
                   </span>
+                  {canVisit(f) && (
+                    <button
+                      className="btn small"
+                      onClick={() => {
+                        sfx.tap();
+                        setOpen(false);
+                        visitFriend(f.id);
+                      }}
+                      data-testid={`friend-visit-${f.nickname}`}
+                    >
+                      ✈️ 去玩
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

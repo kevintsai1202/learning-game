@@ -35,7 +35,9 @@ export function currentClass(p: Profile): CloudRoom | null {
 export type IslandLook =
   | { kind: 'solo'; kidName: string }
   | { kind: 'class'; kidName: string; classCode: string; className: string }
-  | { kind: 'mine'; kidName: string };
+  | { kind: 'mine'; kidName: string }
+  /** 在朋友的島上（島嶼互訪 I2）：島主的小屋與門牌 */
+  | { kind: 'friend'; kidName: string; hostName: string };
 
 /** 這個角色現在看到的島長什麼樣子 */
 export function islandLook(p: Profile): IslandLook {
@@ -43,6 +45,12 @@ export function islandLook(p: Profile): IslandLook {
   if (!classesOf(p).length) return { kind: 'solo', kidName };
   const room = currentClass(p);
   return room ? { kind: 'class', kidName, classCode: room.code, className: room.name } : { kind: 'mine', kidName };
+}
+
+/** 拜訪朋友時的外觀（島嶼互訪 I2；拜訪中的島主由即時連線告訴）：換成朋友的島；沒在拜訪照原本的 */
+export function lookWithVisit(look: IslandLook | null, visiting: { id: string; name: string } | null): IslandLook | null {
+  if (!look || !visiting) return look;
+  return { kind: 'friend', kidName: look.kidName, hostName: visiting.name };
 }
 
 /** 這個角色現在在哪一種島：有班級而且沒有切到我的島就在班級島 */

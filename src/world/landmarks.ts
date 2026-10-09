@@ -19,6 +19,8 @@ export interface SceneLook {
 export function sceneLookOf(look: IslandLook | null, codes: readonly string[]): SceneLook {
   if (!look) return { sky: 'day', flag: null, home: null };
   if (look.kind === 'class') return { sky: 'day', flag: { name: look.className, color: flagColorOf(look.classCode, codes) }, home: null };
+  // 在朋友的島上（島嶼互訪 I2）：白天、島主的小屋與門牌
+  if (look.kind === 'friend') return { sky: 'day', flag: null, home: { name: look.hostName } };
   return { sky: look.kind === 'mine' ? 'sunset' : 'day', flag: null, home: { name: look.kidName } };
 }
 

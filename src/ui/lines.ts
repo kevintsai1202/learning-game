@@ -73,6 +73,18 @@ export const ISLAND_LINES = {
   toClass: '回到班級島囉！可以和同學一起玩。',
 };
 
+/** 去朋友的島（島嶼互訪 I2）：只能進益智遊戲館、開放與關閉自己的島 */
+export const VISIT_LINES = {
+  onlyPuzzle: '在朋友的島上只能玩益智遊戲館喔！回自己的島再練習吧。',
+  opened: '島開放了！朋友可以來玩囉。',
+  closed: '島關起來了，已經來的朋友可以繼續玩。',
+};
+/** 有朋友來自己的島玩（有名字，用裝置語音） */
+export const visitorCameLine = (name: string): string => `${name}來玩了！`;
+/** 拜訪結束：島主離開了、島主請你回家（有名字，用裝置語音） */
+export const visitEndedLine = (reason: 'closed' | 'kicked', host: string): string =>
+  reason === 'kicked' ? `${host || '朋友'}請你先回家囉！` : `${host || '朋友'}的島關閉了，回到自己的島囉！`;
+
 /** 熊熊老師進島（老師 GM 的 G2）：請大家集合（在班級島上直接過去、在建築裡的卡片）、在別座島的卡片 */
 export const GM_LINES = {
   summon: '熊熊老師請大家集合！',
