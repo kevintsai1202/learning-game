@@ -21,6 +21,8 @@ import { useRealtime } from '../online/realtimeClient';
 import { useGifts } from '../online/useGifts';
 import { sfx } from '../audio/sfx';
 import { Teacher } from './Teacher';
+import { useFriends } from '../online/useFriends';
+import { nameTagGiftable } from '../online/friends';
 
 /** 內插的走路速度（公尺／秒），比自己的角色稍慢，看起來比較從容 */
 const WALK_SPEED = 4.2;
@@ -53,7 +55,10 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
   );
   const bubble = usePresence((s) => s.bubbles[id]?.text ?? null);
   /** 名牌點了可以送禮（真的連上班級、老師開放送禮時；熊熊老師不行） */
-  const giftable = useRealtime((s) => s.status === 'online' && s.flags.giftsOpen) && !look.teacher;
+  const onClassIsland = useRealtime((s) => s.island === 'class');
+  /** 有共同班級（在朋友的島上只能送禮給同班同學，島嶼互訪 I2） */
+  const classmate = useFriends((s) => s.friends[id]?.classmate === true);
+  const giftable = useRealtime((s) => s.status === 'online' && s.flags.giftsOpen) && !look.teacher && nameTagGiftable(onClassIsland, classmate);
   const group = useRef<THREE.Group>(null);
   /**
    * 第一次畫出來就放在他目前的位置：名牌（drei Html）每格依群組的位置計算，

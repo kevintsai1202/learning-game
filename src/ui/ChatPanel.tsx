@@ -4,6 +4,9 @@
  * 旁邊的「🎁 送禮」打開送禮視窗（老師關閉送禮時不顯示）。兩個按鈕同一列，面板不會變高。
  * 沒有其他人、也沒連上班級時不顯示；在自己的島上不顯示（島嶼互訪 I1）。
  */
+import { useGame } from '../store/useGame';
+import { classesOf } from '../store/island';
+import { giftButtonShown } from '../online/friends';
 import { useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { usePresence } from '../online/usePresence';
@@ -29,11 +32,13 @@ export function ChatPanel() {
   const openGift = useGifts((s) => s.openDialog);
   const notice = useRealtime((s) => s.notice);
   const island = useRealtime((s) => s.island);
+  /** 自己有沒有班級（不在班級島時，沒有班級就沒有同學可以送禮） */
+  const hasClass = useGame((s) => classesOf(s.profile()).length > 0);
   const [picking, setPicking] = useState(false);
   const online = status === 'online';
   if (!members.length && !online && status !== 'kicked') return null;
-  // 在自己的島上只有自己（島嶼互訪 I1；I2 開放朋友來玩時再顯示）；被踢的提示照樣要顯示
-  if (island === 'own' && status !== 'kicked') return null;
+  // 在自己的島上只有自己時不顯示（島嶼互訪 I2：有訪客或在朋友的島上時伺服器開聊天才顯示）；被踢的提示照樣要顯示
+  if (island === 'own' && !chatOpen && status !== 'kicked') return null;
 
   const others = members.filter((m) => m.id !== selfId);
   // 線上人數含自己（真的連線時自己在成員裡；模擬時不在，要加一）
@@ -83,7 +88,7 @@ export function ChatPanel() {
           ) : (
             <div className="chat-notice">老師把聊天關起來了</div>
           )}
-          {giftsOpen && (
+          {giftsOpen && giftButtonShown(island === 'class', hasClass) && (
             <button
               className="btn small white chat-gift"
               onClick={() => {

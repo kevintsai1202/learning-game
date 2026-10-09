@@ -37,6 +37,19 @@ export function friendStatusText(f: FriendState): string {
   return f.open ? '在自己的島（開放中）' : '在自己的島';
 }
 
+/**
+ * 島上某人的名牌能不能點來送禮（島嶼互訪 I2）：班級島照舊（同一班）；在別人的島或自己的島上只有同班同學可以
+ * （送禮給兄弟姊妹等非同班朋友排在 I3）
+ */
+export function nameTagGiftable(onClassIsland: boolean, classmate: boolean): boolean {
+  return onClassIsland || classmate;
+}
+
+/** 公頻面板的「送禮」按鈕要不要出現：班級島照舊；不在班級島時自己要有班級（沒有班級就沒有同學可以送） */
+export function giftButtonShown(onClassIsland: boolean, hasClass: boolean): boolean {
+  return onClassIsland || hasClass;
+}
+
 /** 能不能去他的島玩（島嶼互訪 I2）：線上、在自己的島而且開放中；熊熊老師不是島主 */
 export function canVisit(f: FriendState): boolean {
   return f.online && f.island === 'own' && f.host === undefined && !!f.open && !f.id.startsWith('teacher:');

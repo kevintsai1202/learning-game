@@ -3,6 +3,8 @@
  * 同學名單是全班（含沒上線的，線上的排前面）；選禮物時標出金幣不夠、對方已經有了、今天送完了。
  * 固定提示有預錄語音（lines.ts 的 GIFT_LINES）；確認句有暱稱，用裝置語音。
  */
+import { useRealtime } from '../online/realtimeClient';
+import { usePresence } from '../online/usePresence';
 import { useEffect, useRef, useState } from 'react';
 import { useGifts } from '../online/useGifts';
 import { ApiFailure } from '../online/api';
@@ -64,15 +66,22 @@ function GiftDialogBody({ presetTo }: { presetTo: string | null }) {
   /** 這次確認的禮物 id：同一次確認重試時沿用（伺服器不會扣兩次錢）；換同學或禮物就重新產生 */
   const giftId = useRef(newOpId());
 
+  /** 不在班級島（在朋友的島或自己的島上，島嶼互訪 I2）：只列島上的同學 */
+  const onClassIsland = useRealtime((s) => s.island === 'class');
   useEffect(() => {
     let alive = true;
     loadClassmates()
-      .then((list) => alive && setClassmates(list))
+      .then((list) => {
+        if (!alive) return;
+        if (onClassIsland) return setClassmates(list);
+        const here = new Set(Object.keys(usePresence.getState().members));
+        setClassmates(list.filter((c) => here.has(c.id)));
+      })
       .catch((err) => alive && setError(messageOf(err)));
     return () => {
       alive = false;
     };
-  }, [loadClassmates]);
+  }, [loadClassmates, onClassIsland]);
 
   useEffect(() => {
     giftId.current = newOpId();
@@ -140,7 +149,7 @@ function GiftDialogBody({ presetTo }: { presetTo: string | null }) {
               {!classmates ? (
                 !error && <p>讀取同學名單…</p>
               ) : classmates.length === 0 ? (
-                <p>班上還沒有其他同學。</p>
+                <p>{onClassIsland ? '班上還沒有其他同學。' : '島上沒有同班同學可以送禮。'}</p>
               ) : (
                 <div className="gift-friends">
                   {classmates.map((c) => (

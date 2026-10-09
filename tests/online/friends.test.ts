@@ -3,7 +3,7 @@
  * 線上的排前面，狀態只寫在哪座島（使用者決定，不顯示建築）。
  */
 import { describe, expect, it } from 'vitest';
-import { applyFriendMessage, canVisit, friendStatusText, onlineFriendCount, sortedFriends, type FriendsState } from '../../src/online/friends';
+import { applyFriendMessage, canVisit, friendStatusText, giftButtonShown, nameTagGiftable, onlineFriendCount, sortedFriends, type FriendsState } from '../../src/online/friends';
 import type { FriendState } from '../../src/online/realtime';
 
 const AVATAR = { animal: 'cat' as const, color: '#ffffff', hat: null };
@@ -52,5 +52,19 @@ describe('去朋友的島（島嶼互訪 I2）', () => {
     expect(canVisit({ ...base, open: true, host: '阿寶' })).toBe(false);
     expect(canVisit({ ...base, open: true, island: 'class' })).toBe(false);
     expect(canVisit({ ...base, id: 'teacher:123456', open: true })).toBe(false);
+  });
+});
+
+describe('在朋友的島上送禮（島嶼互訪 I2：只能送給同班同學）', () => {
+  it('名牌：班級島照舊都可以；在別人的島或自己的島上只有同班同學可以', () => {
+    expect(nameTagGiftable(true, false)).toBe(true);
+    expect(nameTagGiftable(false, true)).toBe(true);
+    expect(nameTagGiftable(false, false)).toBe(false);
+  });
+
+  it('送禮按鈕：班級島照舊；不在班級島時要自己有班級（沒有班級的孩子沒有同學可以送）', () => {
+    expect(giftButtonShown(true, false)).toBe(true);
+    expect(giftButtonShown(false, true)).toBe(true);
+    expect(giftButtonShown(false, false)).toBe(false);
   });
 });
