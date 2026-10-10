@@ -5,13 +5,19 @@
  * 另外：拒絕、中途離開（對方直接贏）、記憶翻牌輪流翻、找不同搶找、七巧板先拼好的贏。
  * 截圖在 e2e/screenshots/duel/（不進版控）。
  */
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { answerCurrent } from './helpers';
 import { SERVER, createClassViaApi, flushDeviceLogs, loginAndEnter, openDevice, pageErrors } from './onlineDevice';
 
 const SHOTS = 'e2e/screenshots/duel';
 
-test.afterEach(async ({}, testInfo) => flushDeviceLogs(testInfo));
+/** 這條測試開的裝置：結束時一律關掉（失敗也是），不然還在跑 3D 的頁面會拖慢後面的測試 */
+const contexts: BrowserContext[] = [];
+
+test.afterEach(async ({}, testInfo) => {
+  flushDeviceLogs(testInfo);
+  await Promise.all(contexts.splice(0).map((c) => c.close()));
+});
 
 /** 遊戲公開給 e2e 的狀態（src/puzzle/debug.ts） */
 const puzzleState = (page: Page): Promise<any> => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__game.puzzle.state)));
@@ -33,8 +39,10 @@ async function twoKids(browser: any, baseURL: string, request: any): Promise<{ a
     expect(res.ok()).toBe(true);
   }
   const a = await openDevice(browser, baseURL);
+  contexts.push(a.context);
   await loginAndEnter(a.page, room.code, '阿寶', '1111');
   const b = await openDevice(browser, baseURL);
+  contexts.push(b.context);
   await loginAndEnter(b.page, room.code, '小美', '2222');
   // 兩邊都看得到對方（即時連線上線、伺服器支援對戰）
   for (const p of [a.page, b.page]) {
