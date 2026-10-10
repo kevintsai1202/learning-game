@@ -213,6 +213,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 - 老師 GM 的 G2＋G3（`docs/plans/teacher-gm.md` 第 13 節）：老師 `hello { token, gm }`（大人權杖＋自己班級的代碼）以熊熊老師進班級島，成員多 `role: 'teacher'`；老師 → 伺服器 `announce { text }`（1～60 字）、`summon`；孩子 → 伺服器 `doing { label }`（活動名稱，最多 40 字，只給老師的成員表）；伺服器 → 孩子 `announce { room, text }`、`summon { room, x, z }`、`reward`（讀 `GET /api/rewards`）。`welcome` 多 `caps: ['gm']`，孩子的裝置看到才送 `doing`（舊版伺服器收到不認得的訊息會斷線）。好友名單多每一班的老師（`teacher:<代碼>`）。
 - 島嶼互訪 I2（`docs/plans/islands.md` 第 12 節）：孩子 → 伺服器 `island { open }`（開放自己的島）、`visit { to }`（去朋友的島；熊熊老師也可以去班上孩子的島）、`kickVisitor { id }`；伺服器 → 孩子 `welcome.host { id, name }`（在別人的島上）、`visitEnded { reason: closed | kicked, host }`（接著送回自己的島）。好友名單多 `open`、`host`、`classmate`。
 - 和朋友益智對戰 I4（`docs/plans/islands.md` 第 12 節）：孩子 → 伺服器 `duelInvite { to, game, level, seed, check }`、`duelCancel`、`duelReply { from, accept, reason? }`、`duelMove { k, i?, n? }`、`duelLeave`；伺服器 → 孩子 `duelInvite`、`duelCancelled`、`duelDeclined { to, reason }`、`duelStart { id, game, level, seed, first, opponent }`、`duelMove { by, k, i?, n? }`（兩個人照同一個順序收到）、`duelEnd { reason: left | gone }`。`welcome.caps` 有 `duel` 才送。
+- 自己的家第一期（`docs/plans/home.md` 第 3.6 節）：自己的島的 `welcome` 多 `yard`（島主的院子；班級島沒有）；伺服器 → 孩子與熊熊老師 `yard { items }`（島主改了院子，送給島上其他人）。新操作 `yard { items }`（整份取代，伺服器照擁有的家具清理）。
 - 關閉代碼：權杖無效 4003；角色沒有班級 4004（I1 起伺服器不再送，裝置保留處理）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
 
 ## 11. 資料表（PostgreSQL）

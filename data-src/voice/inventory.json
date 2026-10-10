@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 384,
-  "全部": 3467,
-  "zh": 1846,
+  "介面": 409,
+  "全部": 3492,
+  "zh": 1871,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 35163,
+ "chars": 35347,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -28595,6 +28595,15 @@
    ]
   },
   {
+   "key": "zh-TW|到百寶屋買家具吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "到百寶屋買家具吧！",
+   "sources": [
+    "ui:decor"
+   ]
+  },
+  {
    "key": "zh-TW|到處亂跳",
    "lang": "zh-TW",
    "voice": "zh",
@@ -30007,6 +30016,15 @@
    "sources": [
     "life.safety",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|院子佈置好了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "院子佈置好了！",
+   "sources": [
+    "ui:decor"
    ]
   },
   {
@@ -32297,6 +32315,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到小池塘了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到小池塘了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到小花腳印了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32342,6 +32369,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到小樹了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到小樹了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到小雞了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32355,6 +32391,33 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到天使翅膀了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到木柵欄了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到木柵欄了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到木箱了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到木箱了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到石板路了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到石板路了！",
    "sources": [
     "ui:shop"
    ]
@@ -32378,6 +32441,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到沙坑了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到沙坑了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到兔耳髮箍了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32391,6 +32463,24 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到花圈了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到長椅了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到長椅了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到信箱了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到信箱了！",
    "sources": [
     "ui:shop"
    ]
@@ -32418,6 +32508,24 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到紅披風了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到紅花圃了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到紅花圃了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到風車了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到風車了！",
    "sources": [
     "ui:shop"
    ]
@@ -32459,6 +32567,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到草叢了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到草叢了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到閃亮星星了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32468,10 +32585,28 @@
    ]
   },
   {
+   "key": "zh-TW|買到野餐桌了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到野餐桌了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到棒球帽了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到棒球帽了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到黃花圃了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到黃花圃了！",
    "sources": [
     "ui:shop"
    ]
@@ -32495,10 +32630,37 @@
    ]
   },
   {
+   "key": "zh-TW|買到溜滑梯了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到溜滑梯了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到路燈了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到路燈了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到廚師帽了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到廚師帽了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到稻草人了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到稻草人了！",
    "sources": [
     "ui:shop"
    ]
@@ -32513,6 +32675,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到遮陽傘了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到遮陽傘了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到墨鏡了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32522,10 +32693,46 @@
    ]
   },
   {
+   "key": "zh-TW|買到鞦韆了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到鞦韆了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到蘑菇了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到蘑菇了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到灌木了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到灌木了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到魔法帽了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到魔法帽了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到鬱金香了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到鬱金香了！",
    "sources": [
     "ui:shop"
    ]
@@ -33870,6 +34077,15 @@
    ]
   },
   {
+   "key": "zh-TW|還沒有家具喔！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "還沒有家具喔！",
+   "sources": [
+    "ui:decor"
+   ]
+  },
+  {
    "key": "zh-TW|鍋子",
    "lang": "zh-TW",
    "voice": "zh",
@@ -33886,6 +34102,15 @@
    "text": "點一下板子可以轉方向。",
    "sources": [
     "ui:puzzle"
+   ]
+  },
+  {
+   "key": "zh-TW|點下面的家具，再點院子裡亮起來的格子，就能擺上去！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "點下面的家具，再點院子裡亮起來的格子，就能擺上去！",
+   "sources": [
+    "ui:decor"
    ]
   },
   {
