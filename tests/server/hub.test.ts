@@ -1062,3 +1062,66 @@ describe('島嶼互訪 I4：和朋友益智對戰（docs/plans/islands.md 第 12
     expect(c.of('duelStart')).toEqual([]);
   });
 });
+
+describe('自己的家：朋友看得到院子（docs/plans/home.md 第 3.6 節）', () => {
+  const AV = { animal: 'cat' as const, color: '#ffffff', hat: null };
+  const BENCH = { id: 'decor.bench', gx: 0, gz: 4, rot: 1 as const };
+  const SLIDE = { id: 'decor.slide', gx: 1, gz: 4, rot: 0 as const };
+  /** 孩子上線（在自己的島），院子是 yard；friends 是互相的朋友 */
+  function kid(id: string, name: string, yard: { id: string; gx: number; gz: number; rot: 0 | 1 | 2 | 3 }[] = [], friends: string[] = []) {
+    const conn = new FakeConn();
+    hub.join(conn, {
+      accountId: id,
+      name,
+      classes: [{ code: '123456', name: '二年一班', nickname: name, flags: FLAGS }],
+      profile: profileOf(name, { yard }),
+      via: 'parent',
+      tokenRoom: null,
+      island: 'own',
+      friends: friends.map((fid) => ({ id: fid, nickname: fid, avatar: AV, classmate: true })),
+    });
+    return conn;
+  }
+
+  it('去朋友的島：welcome 帶島主的院子；班級島沒有這個欄位', () => {
+    const b = kid('b', '小美', [BENCH], ['a']);
+    const a = kid('a', '阿寶', [], ['b']);
+    expect(b.of('welcome').at(-1)!.yard).toEqual([BENCH]);
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    expect(a.of('welcome').at(-1)!.yard).toEqual([BENCH]);
+    hub.goTo(a, 'class');
+    expect(a.of('welcome').at(-1)!.yard).toBeUndefined();
+  });
+
+  it('島主的院子變了：島上其他人收到 yard（島主自己不收）；只改金幣不送', () => {
+    const b = kid('b', '小美', [BENCH], ['a']);
+    const a = kid('a', '阿寶', [], ['b']);
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    hub.profileChanged('b', 2, profileOf('小美', { yard: [BENCH], coins: 99 }));
+    expect(a.of('yard')).toEqual([]);
+    hub.profileChanged('b', 3, profileOf('小美', { yard: [BENCH, SLIDE] }));
+    expect(a.of('yard')).toEqual([{ t: 'yard', items: [BENCH, SLIDE] }]);
+    expect(b.of('yard')).toEqual([]);
+    // 之後再進來的人看到新的院子
+    const c = kid('c', '小明', [], ['b']);
+    hub.visit(c, 'b');
+    expect(c.of('welcome').at(-1)!.yard).toEqual([BENCH, SLIDE]);
+  });
+
+  it('熊熊老師去孩子的島：welcome 帶院子，島主更新時也收到', () => {
+    kid('b', '小美', [BENCH]);
+    const t = new FakeConn();
+    hub.joinTeacher(t, { room: '123456', name: '二年一班', flags: FLAGS });
+    hub.visit(t, 'b');
+    expect(t.of('welcome').at(-1)!.yard).toEqual([BENCH]);
+    hub.profileChanged('b', 2, profileOf('小美', { yard: [] }));
+    expect(t.of('yard')).toEqual([{ t: 'yard', items: [] }]);
+  });
+
+  it('院子的格式不對（例如舊存檔沒有院子）當作空院子', () => {
+    const b = kid('b', '小美');
+    expect(b.of('welcome').at(-1)!.yard).toEqual([]);
+  });
+});

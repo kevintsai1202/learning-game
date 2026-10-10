@@ -9,6 +9,7 @@
  * - 連上時與收到 gift（禮物狀態有變）時重新讀取禮物
  */
 import { bindDuelSender, duelConnectionLost, handleDuelMessage } from './useFriendDuel';
+import { applyHostYard, clearHostYard } from './useHostYard';
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
 import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
@@ -313,6 +314,7 @@ export function startRealtime(): () => void {
     useRewards.getState().clear();
     useFriends.getState().clear();
     duelConnectionLost();
+    clearHostYard();
     useRealtime.setState({ island: null, visiting: null, open: false, duel: false });
     if (useRealtime.getState().status !== 'kicked') useRealtime.setState({ status: 'off' });
   };
@@ -332,6 +334,8 @@ export function startRealtime(): () => void {
       const p = useGame.getState().profile();
       const self: SelfInfo = { nickname: p?.name ?? '', avatar: p ? equippedOf(p) : { animal: 'bear', color: '#8b5a2b', hat: null } };
       usePresence.setState((s) => applyServerMessage(s, msg, self, Date.now()));
+      // 別人的島的院子（自己的家）
+      applyHostYard(msg);
       switch (msg.t) {
         case 'welcome':
           retry = 0;
@@ -444,6 +448,7 @@ export function startRealtime(): () => void {
       socket = null;
       usePresence.getState().clear();
       duelConnectionLost();
+      clearHostYard();
       useRealtime.setState({ duel: false });
       if (useRealtime.getState().status === 'kicked') return;
       // 換了班級（家長掃 QR code 讓孩子加入班級）：不算斷線，同步一次拿到新的班級後馬上重新上線

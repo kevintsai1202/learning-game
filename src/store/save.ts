@@ -9,7 +9,7 @@ import type { AnswerRecord, Question, SessionResult, SubjectId } from '../core/t
 import { subjectSchema } from '../content/schema';
 import { awardBadges, badgeById } from './badges';
 import { owns } from './catalog';
-import { DECOR_MAX_OWNED, cleanYard, isDecor, ownedCount, ownedDecor, yardItemSchema, type YardItem } from './yard';
+import { DECOR_MAX_OWNED, YARD_MAX_ITEMS, cleanYard, isDecor, ownedCount, ownedDecor, yardItemSchema, type YardItem } from './yard';
 import { DEFAULT_PUZZLE_LIMIT_MIN, puzzleCoinsFor, trimPuzzleDays, type PuzzleDay, type PuzzleGameId, type PuzzleStats } from './puzzle';
 
 /** 存檔格式版本；欄位有不相容變更時加一，並在 loadSave 補上轉換（v2：加入 recent、curriculum） */
@@ -604,8 +604,8 @@ export const profileSchema = z.object({
       best: z.record(z.string(), int.min(0).max(3)),
     })
     .optional(),
-  // 2026-10 自己的家：院子的擺設（可省略）
-  yard: z.array(yardItemSchema).optional(),
+  // 2026-10 自己的家：院子的擺設（可省略；整份上傳的路徑不經過 yard 操作，數量在這裡限制）
+  yard: z.array(yardItemSchema).max(YARD_MAX_ITEMS).optional(),
 });
 const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),

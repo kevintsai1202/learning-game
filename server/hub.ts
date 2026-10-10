@@ -40,6 +40,7 @@ import type { AvatarConfig, Profile } from '../src/store/save';
 import type { ZoneId } from '../src/store/useUi';
 import type { PuzzleGameId } from '../src/store/puzzle';
 import type { DuelDeclineReason, DuelMoveKind } from '../src/engine/puzzle/duelMoves';
+import type { YardItem } from '../src/store/yard';
 import { SPAWN, TEACHER_POS, WALK_RADIUS } from '../src/world/layout';
 import { isClassLogin, type TokenVia } from './tokens';
 
@@ -157,6 +158,8 @@ interface Member {
   duel: Duel | null;
   /** 送出、對方還沒回覆的對戰邀請（同時只有一個） */
   invite: PendingInvite | null;
+  /** 自己的家：院子的擺設（進他自己的島的人從 welcome 拿到；熊熊老師是空的） */
+  yard: YardItem[];
 }
 
 /** 一局和朋友的益智對戰（島嶼互訪 I4）：a 是邀請的人（先手）；伺服器只轉送動作，不懂遊戲規則 */
@@ -257,6 +260,8 @@ export class Hub {
     const others = [...island.members.values()].filter((x) => x !== m).map((x) => x.state);
     const owner = ownerOf(islandId);
     const host = owner && owner !== m.state.id ? { id: owner, name: this.hostNameFor(m, owner) } : undefined;
+    /** 自己的島：島主的院子（島主自己進島時也帶，join 先記好帳號再 enter） */
+    const yard = owner ? (this.accounts.get(owner)?.yard ?? []) : undefined;
     m.conn.send({
       t: 'welcome',
       self: m.state.id,
@@ -267,6 +272,7 @@ export class Hub {
       chat: [...island.chat],
       caps: CAPS,
       ...(host ? { host } : {}),
+      ...(yard ? { yard } : {}),
     });
     this.broadcast(island, replaced ? { t: 'member', member: m.state } : { t: 'join', member: m.state }, m.state.id);
   }
@@ -419,6 +425,7 @@ export class Hub {
       myNames: new Map(seeds.filter((f) => f.myName !== undefined).map((f) => [f.id, f.myName!])),
       duel: null,
       invite: null,
+      yard: Array.isArray(info.profile.yard) ? info.profile.yard : [],
     };
     const islandId = this.islandIdFor(m, info.island ?? 'class', info.room);
     const sameIsland = old?.islandId === islandId;
@@ -480,6 +487,7 @@ export class Hub {
       myNames: new Map(),
       duel: null,
       invite: null,
+      yard: [],
     };
     this.conns.set(conn, m);
     this.enter(m, classIsland(info.room), false);
@@ -784,6 +792,13 @@ export class Hub {
     m.state.title = shownTitle(profile);
     const island = this.islands.get(m.islandId);
     if (island) this.broadcast(island, { t: 'member', member: m.state }, accountId);
+    // 院子變了才送給他自己的島上的人（每個操作都會叫到這裡，例如每 30 秒的遊玩時間）
+    const yard = Array.isArray(profile.yard) ? profile.yard : [];
+    if (JSON.stringify(yard) !== JSON.stringify(m.yard)) {
+      m.yard = yard;
+      const own = this.islands.get(ownIsland(accountId));
+      if (own) this.broadcast(own, { t: 'yard', items: yard }, accountId);
+    }
     m.conn.send({ t: 'profile', rev });
     this.tellFriends(m);
   }

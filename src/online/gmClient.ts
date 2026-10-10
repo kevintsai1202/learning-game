@@ -8,6 +8,7 @@
  * - 斷線依 2、4、8…秒重連（最多 30 秒）
  * - 4003（不是這一班的老師、權杖失效，或部署途中連到還不認得老師的舊伺服器）不再重連，顯示原因
  */
+import { applyHostYard, clearHostYard } from './useHostYard';
 import { create } from 'zustand';
 import { applyServerMessage, wsUrlOf, type SelfInfo } from './realtimeClient';
 import { TEACHER_AVATAR, TEACHER_NAME, type RoomFlags, type ServerMessage } from './realtime';
@@ -96,6 +97,8 @@ export function startGm(code: string): () => void {
       if (socket !== ws) return;
       const msg = JSON.parse(String(ev.data)) as ServerMessage;
       usePresence.setState((s) => applyServerMessage(s, msg, SELF, Date.now()));
+      // 孩子的島的院子（自己的家）
+      applyHostYard(msg);
       switch (msg.t) {
         case 'welcome':
           retry = 0;
@@ -122,6 +125,7 @@ export function startGm(code: string): () => void {
       if (socket !== ws) return;
       socket = null;
       usePresence.getState().clear();
+      clearHostYard();
       if (stopped) return;
       if (ev.code === 4003) {
         useGm.setState({ status: 'error', error: '沒辦法以熊熊老師進島：請重新登入；如果班級伺服器正在更新，請稍後再試' });
@@ -159,6 +163,7 @@ export function startGm(code: string): () => void {
     socket = null;
     s?.close();
     usePresence.getState().clear();
+    clearHostYard();
     useGm.setState({ status: 'off', error: null, notice: null, visiting: null });
   };
 }

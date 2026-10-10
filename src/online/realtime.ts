@@ -9,6 +9,7 @@ import type { ZoneId } from '../store/useUi';
 import type { ChatLine } from './presence';
 import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
 import { DUEL_DECLINE_REASONS, DUEL_MOVE_KINDS, type DuelDeclineReason, type DuelMoveKind } from '../engine/puzzle/duelMoves';
+import type { YardItem } from '../store/yard';
 
 /**
  * WebSocket 關閉代碼：角色沒有班級；和權杖無效（4003）分開，裝置不再重連。
@@ -170,6 +171,8 @@ export type ServerMessage =
       caps?: ServerCap[];
       /** 在別人的島上時：島主（name 照自己看到的；島嶼互訪 I2） */
       host?: { id: string; name: string };
+      /** 自己的島（不管是誰的）：島主的院子（自己的家，docs/plans/home.md；班級島沒有這個欄位） */
+      yard?: YardItem[];
     }
   /** 上線時的完整好友名單（離線的朋友也在裡面） */
   | { t: 'friends'; list: FriendState[] }
@@ -221,6 +224,8 @@ export type ServerMessage =
   | { t: 'duelMove'; by: string; k: DuelMoveKind; i?: number; n?: number }
   /** 對方離開了對戰：按 ✕（left）、斷線或離開這座島（gone）；你直接贏 */
   | { t: 'duelEnd'; reason: 'left' | 'gone' }
+  /** 島主的院子變了（自己的家）：送給島上島主以外的人。舊版網頁不認得，會忽略 */
+  | { t: 'yard'; items: YardItem[] }
   | { t: 'error'; message: string };
 
 /** 解析裝置送來的訊息；格式不符回傳 null（呼叫端斷線） */

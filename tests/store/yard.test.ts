@@ -5,7 +5,7 @@
 import { describe, expect, it } from 'vitest';
 import { HOUSE, WALK_RADIUS, ZONES } from '../../src/world/layout';
 import { FURNITURE, ITEMS, SLOTS, equippedOf, findItem } from '../../src/store/catalog';
-import { addProfile, buyItem, createEmptySave, setYard, type Profile, type SaveData } from '../../src/store/save';
+import { addProfile, buyItem, createEmptySave, parseProfile, setYard, type Profile, type SaveData } from '../../src/store/save';
 import {
   DECOR_MAX_OWNED,
   YARD_MAX_ITEMS,
@@ -219,5 +219,15 @@ describe('佈置模式（editYard）', () => {
     const picked = editYard(s, { t: 'pick', id: 'decor.fence' }, owned);
     expect(picked.selected).toBeNull();
     expect(picked.picking).toBe('decor.fence');
+  });
+});
+
+describe('存檔格式', () => {
+  it(`整份存檔的院子最多 ${YARD_MAX_ITEMS} 個（上傳整份存檔的路徑不經過 yard 操作）`, () => {
+    const p = prof(kidSave());
+    const one = { id: 'decor.grass', gx: 0, gz: 4, rot: 0 };
+    expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS).fill(one) })).not.toBeNull();
+    expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS + 1).fill(one) })).toBeNull();
+    expect(parseProfile({ ...p, yard: [{ ...one, rot: 5 }] })).toBeNull();
   });
 });
