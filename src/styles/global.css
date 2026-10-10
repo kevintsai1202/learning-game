@@ -2951,3 +2951,92 @@ button {
   flex-wrap: wrap;
   gap: 8px;
 }
+
+/* ---------- 自己的家：佈置院子（docs/plans/home.md 第 3.4 節） ---------- */
+.decor-panel {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.decor-panel > * {
+  pointer-events: auto;
+}
+.decor-top {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+}
+.decor-hint {
+  flex: 1;
+  font-size: 20px;
+  font-weight: 700;
+  text-align: center;
+}
+.decor-actions {
+  position: absolute;
+  top: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+  padding: 8px 10px;
+}
+.decor-bag {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  overflow-x: auto;
+  overscroll-behavior: contain;
+}
+.decor-bag-item {
+  flex: 0 0 auto;
+  min-width: 82px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 8px;
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  background: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+.decor-bag-item .icon {
+  font-size: 30px;
+  line-height: 1.1;
+}
+.decor-bag-item .name {
+  font-size: 15px;
+  font-weight: 700;
+}
+.decor-bag-item .count {
+  font-size: 14px;
+}
+.decor-bag-item.on {
+  background: #c8f2b8;
+  outline: 4px solid #2b2a4c;
+}
+.decor-bag-item:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+@media (max-width: 600px) {
+  .decor-hint {
+    font-size: 16px;
+  }
+  .decor-actions {
+    top: 70px;
+    width: max-content;
+    max-width: calc(100% - 24px);
+  }
+}

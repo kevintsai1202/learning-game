@@ -17,7 +17,9 @@ import { RewardCard } from '../RewardCard';
 import { DuelInviteCard } from '../DuelInviteCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
-import { classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
+import { canDecorate, classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
+import { startDecorating, useYardEdit } from '../../store/useYardEdit';
+import { DecorPanel } from '../DecorPanel';
 import { goHome, kickVisitor, setIslandOpen, useRealtime } from '../../online/realtimeClient';
 import { usePresence } from '../../online/usePresence';
 import { useShallow } from 'zustand/react/shallow';
@@ -139,6 +141,28 @@ function VisitHome() {
 }
 
 /** 在自己的島上（島嶼互訪 I2）：開放或關閉，讓朋友來玩 */
+/** 「🏡 佈置」（自己的家）：只在自己的島、不是拜訪朋友時；按了進佈置模式（角色停下、鏡頭轉到院子上方） */
+function DecorButton() {
+  const profile = useGame((s) => s.profile());
+  const visiting = useRealtime((s) => s.visiting);
+  if (!profile || !canDecorate(islandLook(profile), visiting)) return null;
+  return (
+    <button
+      className="hud-chip"
+      style={{ paddingLeft: 14 }}
+      onClick={() => {
+        sfx.tap();
+        player.target = null;
+        player.autoEnter = null;
+        startDecorating();
+      }}
+      data-testid="hud-decor"
+    >
+      🏡 佈置
+    </button>
+  );
+}
+
 function OpenToggle() {
   const isCloud = useGame((s) => !!s.profile()?.cloud);
   const show = useRealtime((s) => s.status === 'online' && s.island === 'own' && s.visiting === null);
@@ -318,6 +342,7 @@ export function IslandHud() {
   const goto = useUi((s) => s.goto);
   const touch = typeof window !== 'undefined' && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
   const totalStars = profile ? Object.values(profile.bestStars).reduce((s, v) => s + v, 0) : 0;
+  const decorating = useYardEdit((s) => s.edit !== null);
 
   // 走到門口時唸出建築介紹
   useEffect(() => {
@@ -338,6 +363,8 @@ export function IslandHud() {
   }, [enterZone]);
 
   const near = nearZone ? zoneById(nearZone) : null;
+  // 佈置院子時只顯示佈置的面板（自己的家）
+  if (decorating) return <DecorPanel />;
   return (
     <>
       <div className="hud-top">
@@ -368,6 +395,7 @@ export function IslandHud() {
           <LocationChip />
           <IslandSwitch />
           <VisitHome />
+          <DecorButton />
           <OpenToggle />
           <Visitors />
           <FriendsButton />

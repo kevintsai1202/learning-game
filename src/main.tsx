@@ -21,6 +21,7 @@ import { musicDebug } from './audio/music';
 import { useGm } from './online/gmClient';
 import { sceneDebug } from './world/sceneDebug';
 import { useFriendDuel } from './online/useFriendDuel';
+import { yardDebug } from './store/useYardEdit';
 import './styles/global.css';
 
 declare global {
@@ -56,6 +57,8 @@ declare global {
       scene: typeof sceneDebug;
       /** 和朋友益智對戰（島嶼互訪 I4）：送出與收到的邀請、進行中的一局 */
       duel: typeof useFriendDuel;
+      /** 自己的家：院子的格子、佈置模式的狀態與動作 */
+      yard: typeof yardDebug;
     };
   }
 }
@@ -79,6 +82,7 @@ window.__game = {
   gm: useGm,
   scene: sceneDebug,
   duel: useFriendDuel,
+  yard: yardDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

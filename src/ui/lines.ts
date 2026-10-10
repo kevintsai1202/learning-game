@@ -105,6 +105,16 @@ export const DUEL_LINES = {
   friendDone: '朋友先拼好了！',
 };
 
+/** 自己的家：佈置院子（docs/plans/home.md 第 3.4 節） */
+export const DECOR_LINES = {
+  /** 開始佈置 */
+  start: '點下面的家具，再點院子裡亮起來的格子，就能擺上去！',
+  /** 還沒有家具 */
+  empty: '還沒有家具喔！到百寶屋買家具吧！',
+  /** 按完成 */
+  saved: '院子佈置好了！',
+};
+
 /** 有朋友來自己的島玩（有名字，用裝置語音） */
 export const visitorCameLine = (name: string): string => `${name}來玩了！`;
 /** 拜訪結束：島主離開了、島主請你回家（有名字，用裝置語音） */

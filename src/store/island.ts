@@ -53,6 +53,11 @@ export function lookWithVisit(look: IslandLook | null, visiting: { id: string; n
   return { kind: 'friend', kidName: look.kidName, hostName: visiting.name };
 }
 
+/** 能不能佈置院子（自己的家，docs/plans/home.md 第 3.4 節）：只在自己的島（單機的島、班級角色的我的島），拜訪朋友時不行 */
+export function canDecorate(look: IslandLook, visiting: { id: string; name: string } | null): boolean {
+  return (look.kind === 'solo' || look.kind === 'mine') && visiting === null;
+}
+
 /** 這個角色現在在哪一種島：有班級而且沒有切到我的島就在班級島 */
 export function islandOf(p: Profile): Island {
   return currentClass(p) ? 'class' : 'mine';

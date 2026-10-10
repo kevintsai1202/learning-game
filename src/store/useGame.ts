@@ -9,6 +9,7 @@ import type { SessionResult } from '../core/types';
 import { applyOp, newOpId, type Op, type OpBody } from '../online/ops';
 import { recordOp } from '../online/storage';
 import { findItem } from './catalog';
+import type { YardItem } from './yard';
 import { newlyEarned } from './badges';
 import { withIsland, type IslandTarget } from './island';
 import {
@@ -26,6 +27,7 @@ import {
   setCurriculum,
   setPin,
   setTitle,
+  setYard,
   verifyPin,
   type AvatarConfig,
   type CurriculumChoice,
@@ -79,6 +81,8 @@ interface GameStore {
   finishPuzzle: (play: PuzzlePlay) => { coins: number; newBadges: string[] };
   /** 選擇顯示的稱號（獎章 id；null 表示不顯示）；不能選時回傳 false */
   chooseTitle: (badgeId: string | null) => boolean;
+  /** 存院子的擺設（自己的家，docs/plans/home.md）：照擁有的家具清理後存；雲端角色送 yard 操作 */
+  saveYard: (items: YardItem[]) => void;
   /** 累計遊玩時間；puzzle 表示在益智遊戲館（同時算進益智遊戲的每日時間） */
   tickPlayTime: (seconds: number, puzzle?: boolean) => void;
   /** 目前角色多玩了幾秒有操作的時間（玩一段時間要休息，src/store/rest.ts）；滿了就開始休息 */
@@ -161,6 +165,9 @@ export const useGame = create<GameStore>((set, get) => {
       } catch {
         return false;
       }
+    },
+    saveYard: (items) => {
+      if (cloudAct(activeId(), { kind: 'yard', items }) === null) commit(setYard(get().save, activeId(), items));
     },
     tickPlayTime: (seconds, puzzle = false) => {
       if (!get().save.activeProfileId) return;

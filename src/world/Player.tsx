@@ -6,7 +6,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
-import { WALK_RADIUS, ZONES, doorOf } from './layout';
+import { HOUSE, WALK_RADIUS, ZONES, doorOf } from './layout';
 import { lerpAngle, moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle } from './movement';
 import { inputDirection, player } from './input';
 import { useUi, type ZoneId } from '../store/useUi';
@@ -33,9 +33,11 @@ interface PlayerProps {
   active: boolean;
   /** 老師以熊熊老師進島（老師 GM 的 G2）：畫熊熊老師、不偵測建築門口（老師不進建築） */
   teacher?: boolean;
+  /** 佈置院子中（自己的家）：鏡頭轉到院子上方俯視 */
+  decorating?: boolean;
 }
 
-export function Player({ avatar, obstacles, active, teacher = false }: PlayerProps) {
+export function Player({ avatar, obstacles, active, teacher = false, decorating = false }: PlayerProps) {
   const group = useRef<THREE.Group>(null);
   const motion = useRef<MotionState>({ speed: 0 });
   const lastNear = useRef<ZoneId | null>(null);
@@ -97,9 +99,17 @@ export function Player({ avatar, obstacles, active, teacher = false }: PlayerPro
 
     // 鏡頭跟隨：直式螢幕拉遠一點，才看得到左右兩邊的建築
     const portrait = size.height > size.width * 1.1;
+    const k = 1 - Math.exp(-dt * 3.5);
+    if (decorating) {
+      // 佈置院子：從院子正上方稍微偏南往下看（旁邊的百寶屋不會擋住格子；直式螢幕拉高一點）。
+      // 看的點比小屋偏南一點，院子在畫面上偏上，避開下方的家具包
+      camera.position.lerp(new THREE.Vector3(HOUSE.x + 1.5, portrait ? 24 : 17, HOUSE.z + (portrait ? 6 : 4.5)), k);
+      lookAt.current.lerp(new THREE.Vector3(HOUSE.x + 1, 0, HOUSE.z + 0.8), k);
+      camera.lookAt(lookAt.current);
+      return;
+    }
     const back = portrait ? 25 : 18.5;
     const up = portrait ? 22 : 15.5;
-    const k = 1 - Math.exp(-dt * 3.5);
     camera.position.lerp(new THREE.Vector3(next.x * 0.85, up, next.z + back), k);
     lookAt.current.lerp(new THREE.Vector3(next.x * 0.9, 1, next.z - 4), k);
     camera.lookAt(lookAt.current);

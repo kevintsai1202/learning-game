@@ -219,3 +219,20 @@ export function editYard(s: YardEdit, a: YardEditAction, owned: Record<string, n
       return { ...s, picking: null, selected: null, moving: false };
   }
 }
+
+// ---------- 島上畫院子 ----------
+
+/** 擋路的家具碰撞半徑（公尺） */
+const SOLID_RADIUS = 0.45;
+
+/** 要畫的家具：不認得的跳過（別人的院子可能是比較新的版本）、最多 YARD_MAX_ITEMS 個，不丟例外 */
+export function visibleYard(items: readonly YardItem[]): YardItem[] {
+  return items.filter((it) => isDecor(it.id)).slice(0, YARD_MAX_ITEMS);
+}
+
+/** 院子裡擋路的家具（碰撞）：格子中心、半徑 SOLID_RADIUS；花草、石板路、小池塘可以走過去 */
+export function yardObstacles(items: readonly YardItem[]): { x: number; z: number; r: number }[] {
+  return visibleYard(items)
+    .filter((it) => !findItem(it.id)?.walkable)
+    .map((it) => ({ ...cellToWorld(it.gx, it.gz), r: SOLID_RADIUS }));
+}

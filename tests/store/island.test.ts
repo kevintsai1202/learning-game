@@ -5,7 +5,7 @@
  * 多班級：每一班一座班級島；沒選過時在第一個班級（最早加入的）的班級島，選的那一班不在清單裡了就回到第一個班級。
  */
 import { describe, expect, it } from 'vitest';
-import { activeCurriculum, currentClass, devicePacksVisible, islandLook, islandOf, lookWithVisit, nameHere, reloginRoom, withIsland } from '../../src/store/island';
+import { activeCurriculum, canDecorate, currentClass, devicePacksVisible, islandLook, islandOf, lookWithVisit, nameHere, reloginRoom, withIsland } from '../../src/store/island';
 import { DEFAULT_CURRICULUM, addProfile, createEmptySave, type CloudLink, type CurriculumChoice, type Profile } from '../../src/store/save';
 import { curriculumActivities } from '../../src/activities/resolve';
 import { BUILT_IN_EDITIONS } from '../../src/content/editions';
@@ -161,5 +161,15 @@ describe('在朋友的島上（島嶼互訪 I2）', () => {
     expect(lookWithVisit(look, { id: 'b', name: '小美' })).toEqual({ kind: 'friend', kidName: '小安', hostName: '小美' });
     expect(lookWithVisit(look, null)).toBe(look);
     expect(lookWithVisit(null, { id: 'b', name: '小美' })).toBeNull();
+  });
+});
+
+describe('canDecorate：「佈置」按鈕（自己的家，docs/plans/home.md 第 3.4 節）', () => {
+  it('只在自己的島（單機的島、班級角色的我的島），拜訪朋友時不行，班級島不行', () => {
+    expect(canDecorate({ kind: 'solo', kidName: '小安' }, null)).toBe(true);
+    expect(canDecorate({ kind: 'mine', kidName: '小安' }, null)).toBe(true);
+    expect(canDecorate({ kind: 'mine', kidName: '小安' }, { id: 'b', name: '小美' })).toBe(false);
+    expect(canDecorate({ kind: 'class', kidName: '小安', classCode: '123456', className: '二年一班' }, null)).toBe(false);
+    expect(canDecorate({ kind: 'friend', kidName: '小安', hostName: '小美' }, null)).toBe(false);
   });
 });

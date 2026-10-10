@@ -18,7 +18,9 @@ import {
   ownedDecor,
   remainingDecor,
   startEdit,
+  visibleYard,
   yardCells,
+  yardObstacles,
   type YardItem,
 } from '../../src/store/yard';
 
@@ -229,5 +231,28 @@ describe('存檔格式', () => {
     expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS).fill(one) })).not.toBeNull();
     expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS + 1).fill(one) })).toBeNull();
     expect(parseProfile({ ...p, yard: [{ ...one, rot: 5 }] })).toBeNull();
+  });
+});
+
+describe('島上畫院子（別人的院子可能是比較新的版本）', () => {
+  const [c1, c2, c3] = yardCells();
+  it('visibleYard：不認得的家具跳過、最多畫 60 個，不丟例外', () => {
+    const items = [
+      { id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 as const },
+      { id: 'decor.rocket', gx: c2.gx, gz: c2.gz, rot: 0 as const },
+      { id: 'hat.crown', gx: c3.gx, gz: c3.gz, rot: 0 as const },
+    ];
+    expect(visibleYard(items)).toEqual([items[0]]);
+    expect(visibleYard(Array(80).fill(items[0]))).toHaveLength(YARD_MAX_ITEMS);
+  });
+
+  it('yardObstacles：擋路的家具在格子中心、半徑 0.45；花草、石板路、小池塘可以走過去', () => {
+    const items = [
+      { id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 as const },
+      { id: 'decor.grass', gx: c2.gx, gz: c2.gz, rot: 0 as const },
+      { id: 'decor.pond', gx: c3.gx, gz: c3.gz, rot: 0 as const },
+    ];
+    const w = cellToWorld(c1.gx, c1.gz);
+    expect(yardObstacles(items)).toEqual([{ x: w.x, z: w.z, r: 0.45 }]);
   });
 });

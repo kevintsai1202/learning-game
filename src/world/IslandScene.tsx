@@ -6,7 +6,7 @@
  * 島上有熊熊老師（老師自己，或孩子看到老師進島）時，廣場上的 NPC 熊熊老師藏起來。
  */
 import { useEffect, useMemo, useRef } from 'react';
-import { useFrame, type ThreeEvent } from '@react-three/fiber';
+import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BUILDINGS } from './Buildings';
 import { StaticMerge } from './StaticMerge';
@@ -26,6 +26,13 @@ import { treesAway, type SceneLook } from './landmarks';
 import { FLAGPOLE, HOUSE, PLATE } from './layout';
 import { usePresence } from '../online/usePresence';
 import { sceneDebug } from './sceneDebug';
+import { YardDecor, YardGrid } from './Furniture';
+import { useYardEdit } from '../store/useYardEdit';
+import { YARD_RADIUS, yardObstacles } from '../store/yard';
+import { useGame } from '../store/useGame';
+import { useRealtime } from '../online/realtimeClient';
+import { useGm } from '../online/gmClient';
+import { shownYard, useHostYard } from '../online/useHostYard';
 
 /** 天空與燈光（L5）：白天是原本的樣子；黃昏是暖橘的地平線、偏紫的天頂、低而偏橘的太陽 */
 const SKY = {
@@ -57,6 +64,22 @@ function SkyDome({ sky }: { sky: SceneLook['sky'] }) {
 }
 
 /** 標題畫面的環繞鏡頭 */
+/** e2e 用：把 3D 座標換成畫面座標（sceneDebug.project） */
+function SceneProbe() {
+  const { camera, gl } = useThree();
+  useEffect(() => {
+    sceneDebug.project = (x, y, z) => {
+      const v = new THREE.Vector3(x, y, z).project(camera);
+      const r = gl.domElement.getBoundingClientRect();
+      return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+    };
+    return () => {
+      sceneDebug.project = null;
+    };
+  }, [camera, gl]);
+  return null;
+}
+
 function AttractCamera() {
   useFrame((state) => {
     const t = state.clock.elapsedTime * 0.08;
@@ -93,20 +116,33 @@ export function IslandScene({
   const allTrees = useMemo(() => placeTrees(), []);
   const hasHome = look.home !== null;
   const hasFlag = look.flag !== null;
-  /** 自己的島空出小屋地（其他島的樹一棵不動） */
-  const trees = useMemo(() => (hasHome ? treesAway(allTrees, HOUSE, HOUSE.clear) : allTrees), [allTrees, hasHome]);
-  const flowers = useMemo(() => placeFlowers(), []);
+  /** 自己的島空出小屋與院子（自己的家，docs/plans/home.md；其他島的樹一棵不動） */
+  const yardClear = YARD_RADIUS + 0.6;
+  const trees = useMemo(() => (hasHome ? treesAway(allTrees, HOUSE, yardClear) : allTrees), [allTrees, hasHome, yardClear]);
+  const allFlowers = useMemo(() => placeFlowers(), []);
+  const flowers = useMemo(() => (hasHome ? allFlowers.filter((f) => Math.hypot(f.x - HOUSE.x, f.z - HOUSE.z) > yardClear) : allFlowers), [allFlowers, hasHome, yardClear]);
+  /** 院子：自己的島畫本機存檔的，別人的島（拜訪朋友、熊熊老師去孩子的島）畫伺服器給的；班級島沒有 */
+  const localYard = useGame((s) => s.profile()?.yard);
+  const hostYard = useHostYard((s) => s.items);
+  const kidVisiting = useRealtime((s) => s.visiting !== null);
+  const gmVisiting = useGm((s) => s.visiting !== null);
+  const savedYard = hasHome && mode !== 'attract' ? shownYard({ ownIsland: true, visiting: gm ? gmVisiting : kidVisiting, local: localYard, host: hostYard }) : null;
+  /** 佈置模式（自己的家）：畫正在改的院子與格子；角色不走路、點地面與建築沒有作用 */
+  const editing = useYardEdit((s) => s.edit);
+  const yard = editing ? editing.items : savedYard;
   /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
   const obstacles = useMemo(
     () => [
       ...worldObstacles(trees),
       ...(hasHome ? [{ x: HOUSE.x, z: HOUSE.z, r: HOUSE.radius }, { x: PLATE.x, z: PLATE.z, r: 0.5 }] : []),
       ...(hasFlag ? [{ x: FLAGPOLE.x, z: FLAGPOLE.z, r: 0.5 }] : []),
+      // 院子裡擋路的家具（別人的院子也擋，不會走進島主的鞦韆）
+      ...yardObstacles(yard ?? []),
     ],
-    [trees, hasHome, hasFlag],
+    [trees, hasHome, hasFlag, yard],
   );
   const sky = SKY[look.sky];
-  const interactive = mode === 'play';
+  const interactive = mode === 'play' && !editing;
   const sun = useRef<THREE.DirectionalLight>(null);
 
   /** 點地面：走過去 */
@@ -148,6 +184,7 @@ export function IslandScene({
         shadow-bias={-0.0006}
       />
       <Sea />
+      <SceneProbe />
       <Ground onGroundTap={onGroundTap} />
       <Fountain />
       <Trees spots={trees} />
@@ -155,8 +192,10 @@ export function IslandScene({
       <Clouds />
       <Dock />
       {look.flag && <ClassFlag name={look.flag.name} color={look.flag.color} />}
-      {look.home && <KidHouse name={look.home.name} />}
+      {look.home && <KidHouse name={look.home.name} label={!editing} />}
       {look.home && <IslandPlate name={look.home.name} />}
+      {yard && <YardDecor items={yard} />}
+      {editing && <YardGrid edit={editing} />}
       {ZONES.map((z) => {
         const B = BUILDINGS[z.id];
         return (
@@ -191,7 +230,7 @@ export function IslandScene({
         <AttractCamera />
       ) : (
         <>
-          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} />
+          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} decorating={!!editing} />
           <TargetMarker />
           {/* 同房間的其他玩家（沒有人在線上時什麼都不畫） */}
           <RemotePlayers />
