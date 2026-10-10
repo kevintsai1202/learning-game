@@ -1,6 +1,6 @@
 # 自己的家（島嶼動森化）規劃
 
-> 狀態：**規格待確認（2026-10-11）**。總分期見 `docs/plans/roadmap.md`（批次 5）；使用者的決定見第 2 節。
+> 狀態：**規格確認（2026-10-11）**，第一期（院子）開工。總分期見 `docs/plans/roadmap.md`（批次 5）；使用者的決定見第 2 節。
 > 相關文件：`docs/plans/islands.md`（自己的島、朋友來玩）、`docs/plans/login-ux-review.md` 第 4.5 節與 `docs/decisions.md`（L5 的小屋）、`docs/plans/rewards.md`（百寶屋、商品目錄）。
 
 ## 1. 需求
