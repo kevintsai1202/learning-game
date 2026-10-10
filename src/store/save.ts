@@ -9,6 +9,7 @@ import type { AnswerRecord, Question, SessionResult, SubjectId } from '../core/t
 import { subjectSchema } from '../content/schema';
 import { awardBadges, badgeById } from './badges';
 import { owns } from './catalog';
+import { DECOR_MAX_OWNED, cleanYard, isDecor, ownedCount, ownedDecor, yardItemSchema, type YardItem } from './yard';
 import { DEFAULT_PUZZLE_LIMIT_MIN, puzzleCoinsFor, trimPuzzleDays, type PuzzleDay, type PuzzleGameId, type PuzzleStats } from './puzzle';
 
 /** 存檔格式版本；欄位有不相容變更時加一，並在 loadSave 補上轉換（v2：加入 recent、curriculum） */
@@ -198,6 +199,8 @@ export interface Profile {
   giftLog?: GiftLogEntry[];
   /** 益智遊戲館的紀錄（2026-10 新增；舊存檔沒有時當作空的） */
   puzzle?: PuzzleStats;
+  /** 自己的家：院子裡的家具（2026-10 新增；舊存檔沒有就是空院子；docs/plans/home.md） */
+  yard?: YardItem[];
 }
 
 /** 全機設定 */
@@ -476,13 +479,23 @@ export function secondsPlayedOn(p: Profile, day: Date): number {
   return p.playLog[dateKey(day)] ?? 0;
 }
 
-/** 購買商店物品；已擁有（含靠獎章擁有）則不重複扣款，金幣不足丟出錯誤 */
+/**
+ * 購買商店物品；已擁有（含靠獎章擁有）則不重複扣款，金幣不足丟出錯誤。
+ * 家具可以重複買（自己的家），每種最多 DECOR_MAX_OWNED 個，滿了不扣款
+ */
 export function buyItem(save: SaveData, profileId: string, itemId: string, price: number): SaveData {
   return updateProfile(save, profileId, (p) => {
-    if (owns(p, itemId) || p.inventory.includes(itemId)) return p;
+    if (isDecor(itemId)) {
+      if (ownedCount(p, itemId) >= DECOR_MAX_OWNED) return p;
+    } else if (owns(p, itemId) || p.inventory.includes(itemId)) return p;
     if (p.coins < price) throw new Error('金幣不夠');
     return { ...p, coins: p.coins - price, inventory: [...p.inventory, itemId] };
   });
+}
+
+/** 院子的擺設（自己的家）：照擁有的家具清理後存進角色（cleanYard） */
+export function setYard(save: SaveData, profileId: string, items: readonly YardItem[]): SaveData {
+  return updateProfile(save, profileId, (p) => ({ ...p, yard: cleanYard(items, ownedDecor(p)) }));
 }
 
 /** 更新角色外觀 */
@@ -591,6 +604,8 @@ export const profileSchema = z.object({
       best: z.record(z.string(), int.min(0).max(3)),
     })
     .optional(),
+  // 2026-10 自己的家：院子的擺設（可省略）
+  yard: z.array(yardItemSchema).optional(),
 });
 const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),

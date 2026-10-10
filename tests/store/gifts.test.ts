@@ -32,8 +32,8 @@ describe('禮物目錄', () => {
     expect(giftPrice('hat.scholar')).toBeNull();
     expect(giftPrice('pet.dragon')).toBeNull();
     expect(giftPrice('nope')).toBeNull();
-    // 每一項外觀：金幣道具照百寶屋價格、獎章道具不能送
-    for (const i of ITEMS) expect(giftPrice(i.id), i.id).toBe(i.badge ? null : i.price);
+    // 每一項外觀：金幣道具照百寶屋價格、獎章道具不能送；家具（自己的家）不能送
+    for (const i of ITEMS) expect(giftPrice(i.id), i.id).toBe(i.badge || i.slot === 'decor' ? null : i.price);
   });
 
   it('禮物的名稱與卡片上的說法：貼紙加「一張」與「貼紙」，外觀直接用名稱', () => {
@@ -114,5 +114,12 @@ describe('禮物的句子（src/ui/lines.ts）', () => {
     expect(giftAcceptedLine('小美', 'sticker.tulip')).toBe('小美收下了你送的 🌷 鬱金香貼紙！');
     expect(giftRefundLine(20)).toBe('有一份禮物沒送出，20 金幣退回來了。');
     expect(giftConfirmLine('小美', 'hat.party', 20)).toBe('要把 🎉 派對帽（20 金幣）送給小美嗎？');
+  });
+});
+
+describe('家具不能當禮物（自己的家，docs/plans/home.md）', () => {
+  it('家具沒有禮物價格', () => {
+    expect(giftPrice('decor.bench')).toBeNull();
+    expect(giftPrice('decor.grass')).toBeNull();
   });
 });

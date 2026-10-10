@@ -10,6 +10,7 @@ import { scoreSession } from '../engine/check';
 import { SLOTS, findItem, owns } from '../store/catalog';
 import { badgeById } from '../store/badges';
 import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
+import { DECOR_MAX_OWNED, YARD_MAX_ITEMS, isDecor, ownedCount, yardItemSchema, type YardItem } from '../store/yard';
 import {
   ANIMAL_IDS,
   addPlayTime,
@@ -20,6 +21,7 @@ import {
   setAvatar,
   setCurriculum,
   setTitle,
+  setYard,
   storedQuestion,
   type AvatarConfig,
   type CurriculumChoice,
@@ -46,6 +48,8 @@ export type Op =
   /** puzzle：在益智遊戲館玩的時間（同時算進整體與益智遊戲的時間；舊裝置沒有這個欄位） */
   | (OpBase & { kind: 'playTime'; seconds: number; puzzle?: boolean })
   | (OpBase & { kind: 'buy'; itemId: string })
+  /** 院子的擺設（自己的家，docs/plans/home.md）：整份取代，套用時照擁有的家具清理 */
+  | (OpBase & { kind: 'yard'; items: YardItem[] })
   | (OpBase & { kind: 'avatar'; avatar: AvatarConfig })
   | (OpBase & { kind: 'curriculum'; curriculum: CurriculumChoice })
   | (OpBase & { kind: 'title'; badge: string | null })
@@ -99,6 +103,7 @@ export const opSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ ...base, kind: z.literal('playTime'), seconds: z.number().positive().max(24 * 3600), puzzle: z.boolean().optional() }),
   z.object({ ...base, kind: z.literal('buy'), itemId: z.string().min(1).max(40) }),
+  z.object({ ...base, kind: z.literal('yard'), items: z.array(yardItemSchema).max(YARD_MAX_ITEMS) }),
   z.object({ ...base, kind: z.literal('avatar'), avatar: avatarSchema }),
   z.object({
     ...base,
@@ -165,9 +170,15 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
       if (!item) return { ok: false, reason: '沒有這個商品' };
       if (item.price === undefined) return { ok: false, reason: '這個要用獎章換' };
       const price = item.price;
-      if (!owns(profile, item.id) && profile.coins < price) return { ok: false, reason: '金幣不夠' };
+      // 家具可以重複買（每種最多 DECOR_MAX_OWNED 個）；其他商品已經有就不扣款
+      if (isDecor(item.id)) {
+        if (ownedCount(profile, item.id) >= DECOR_MAX_OWNED) return { ok: false, reason: `這個家具已經有 ${DECOR_MAX_OWNED} 個了` };
+        if (profile.coins < price) return { ok: false, reason: '金幣不夠' };
+      } else if (!owns(profile, item.id) && profile.coins < price) return { ok: false, reason: '金幣不夠' };
       return { ok: true, profile: onProfile(profile, (s, id) => buyItem(s, id, item.id, price)) };
     }
+    case 'yard':
+      return { ok: true, profile: onProfile(profile, (s, id) => setYard(s, id, op.items)) };
     case 'avatar': {
       // 每一格戴的東西都要已擁有（含靠獎章擁有），而且格子相符
       for (const slot of SLOTS) {

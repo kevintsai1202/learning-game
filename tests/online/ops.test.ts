@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyOp, normalizeOpTime, opSchema, PLAYTIME_OP_MAX, type Op } from '../../src/online/ops';
 import { addPlayTime, addProfile, buyItem, createEmptySave, puzzleToday, recordPuzzle, recordSession, setAvatar, setCurriculum, setTitle, type Profile, type SaveData } from '../../src/store/save';
 import type { AnswerRecord, Question, SessionResult } from '../../src/core/types';
+import { yardCells } from '../../src/store/yard';
 
 const q = (id: string): Question => ({ id, subject: 'math', skill: 'math.add', indicators: ['N-2-2'], prompt: id, type: 'number', answer: 1 });
 
@@ -286,5 +287,39 @@ describe('操作套用：益智遊戲館', () => {
   it(`益智遊戲的單筆遊玩時間也以 ${PLAYTIME_OP_MAX} 秒為上限`, () => {
     const r = applyOp(kid(), { id: 't', at: AT, kind: 'playTime', seconds: 2400, puzzle: true }, NOW);
     expect(r.ok && puzzleToday(r.profile, new Date(AT)).seconds).toBe(PLAYTIME_OP_MAX);
+  });
+});
+
+describe('操作套用：自己的家的院子（docs/plans/home.md）', () => {
+  it('家具可以重複買；每種最多 20 個，滿了拒絕', () => {
+    const p = applyAll(kid(), [
+      { id: 'b1', at: AT, kind: 'buy', itemId: 'decor.fence' },
+      { id: 'b2', at: AT, kind: 'buy', itemId: 'decor.fence' },
+    ]);
+    expect(p.inventory.filter((i) => i === 'decor.fence')).toHaveLength(2);
+    expect(p.coins).toBe(188);
+    const full = { ...kid(), coins: 999, inventory: Array(20).fill('decor.grass') };
+    expect(applyOp(full, { id: 'b3', at: AT, kind: 'buy', itemId: 'decor.grass' }, NOW).ok).toBe(false);
+  });
+
+  it('已經有的家具再買、金幣不夠：拒絕（不會丟出例外）', () => {
+    const poor = { ...kid(), coins: 3, inventory: ['decor.fence'] };
+    expect(applyOp(poor, { id: 'b1', at: AT, kind: 'buy', itemId: 'decor.fence' }, NOW)).toEqual({ ok: false, reason: '金幣不夠' });
+  });
+
+  it('yard 操作：照擁有的家具清理後存進角色（沒有的家具、不在院子裡的拿掉）', () => {
+    const [c1, c2] = yardCells();
+    const p = { ...kid(), inventory: ['decor.bench'] };
+    const bench = { id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 1 as const };
+    const r = applyOp(p, { id: 'y1', at: AT, kind: 'yard', items: [bench, { id: 'decor.slide', gx: c2.gx, gz: c2.gz, rot: 0 }, { id: 'decor.bench', gx: 0, gz: 0, rot: 0 }] }, NOW);
+    expect(r.ok && r.profile.yard).toEqual([bench]);
+  });
+
+  it('yard 操作的格式：最多 60 個、座標是整數、方向 0～3', () => {
+    const ok = { id: 'y', at: AT, kind: 'yard', items: [{ id: 'decor.bench', gx: 0, gz: 4, rot: 3 }] };
+    expect(opSchema.safeParse(ok).success).toBe(true);
+    expect(opSchema.safeParse({ ...ok, items: [{ id: 'decor.bench', gx: 0.5, gz: 4, rot: 0 }] }).success).toBe(false);
+    expect(opSchema.safeParse({ ...ok, items: [{ id: 'decor.bench', gx: 0, gz: 4, rot: 4 }] }).success).toBe(false);
+    expect(opSchema.safeParse({ ...ok, items: Array(61).fill({ id: 'decor.bench', gx: 0, gz: 4, rot: 0 }) }).success).toBe(false);
   });
 });

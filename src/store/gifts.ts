@@ -45,7 +45,8 @@ export function giftPrice(itemId: string): number | null {
   const sticker = findSticker(itemId);
   if (sticker) return sticker.price;
   const item = findItem(itemId);
-  return item && !item.badge && item.price !== undefined ? item.price : null;
+  // 家具（自己的家）不能當禮物
+  return item && !item.badge && item.slot !== 'decor' && item.price !== undefined ? item.price : null;
 }
 
 /** 禮物的名稱：貼紙是「鬱金香貼紙」，外觀道具直接用名稱 */

@@ -6,7 +6,9 @@
 import type { AvatarConfig, Profile } from './save';
 
 /** 道具戴在哪一格：帽子、眼鏡、背後、手持、寵物、走路特效 */
-export type Slot = 'hat' | 'face' | 'back' | 'hand' | 'pet' | 'trail';
+export type AvatarSlot = 'hat' | 'face' | 'back' | 'hand' | 'pet' | 'trail';
+/** 商品的種類：穿戴的格子，或擺在院子裡的家具（decor，自己的家，docs/plans/home.md） */
+export type Slot = AvatarSlot | 'decor';
 
 /** 一項商品 */
 export interface CatalogItem {
@@ -20,6 +22,8 @@ export interface CatalogItem {
   price?: number;
   /** 獎章專屬道具：需要的獎章 id（得到獎章就擁有，不能買） */
   badge?: string;
+  /** 家具：可以走過去（花草、石板路、小池塘）；沒有這個欄位的家具會擋路 */
+  walkable?: boolean;
 }
 
 /** 帽子：原有 8 頂、R2 新增 3 頂金幣帽與 3 頂獎章帽（外觀在 src/world/Hats.tsx） */
@@ -68,8 +72,36 @@ const PETS_AND_TRAILS: readonly CatalogItem[] = [
   { id: 'trail.stars', name: '閃亮星星', slot: 'trail', emoji: '✨', price: 120 },
 ];
 
+/**
+ * 院子的家具（自己的家第一期，docs/plans/home.md 第 3.2 節；外觀在 src/world/Furniture.tsx）。
+ * 一個一個買，同一種可以買很多個（收藏裡同一個 id 出現幾次就是有幾個）；不能當禮物
+ */
+export const FURNITURE: readonly CatalogItem[] = [
+  { id: 'decor.bed-red', name: '紅花圃', slot: 'decor', emoji: '🌹', price: 8, walkable: true },
+  { id: 'decor.bed-yellow', name: '黃花圃', slot: 'decor', emoji: '🌼', price: 8, walkable: true },
+  { id: 'decor.tulip', name: '鬱金香', slot: 'decor', emoji: '🌷', price: 10, walkable: true },
+  { id: 'decor.grass', name: '草叢', slot: 'decor', emoji: '🌿', price: 5, walkable: true },
+  { id: 'decor.mushroom', name: '蘑菇', slot: 'decor', emoji: '🍄', price: 10, walkable: true },
+  { id: 'decor.stone', name: '石板路', slot: 'decor', emoji: '🪨', price: 5, walkable: true },
+  { id: 'decor.tree', name: '小樹', slot: 'decor', emoji: '🌳', price: 20 },
+  { id: 'decor.bush', name: '灌木', slot: 'decor', emoji: '🌲', price: 15 },
+  { id: 'decor.fence', name: '木柵欄', slot: 'decor', emoji: '🪵', price: 6 },
+  { id: 'decor.bench', name: '長椅', slot: 'decor', emoji: '🪑', price: 40 },
+  { id: 'decor.picnic', name: '野餐桌', slot: 'decor', emoji: '🧺', price: 60 },
+  { id: 'decor.parasol', name: '遮陽傘', slot: 'decor', emoji: '⛱️', price: 50 },
+  { id: 'decor.lamp', name: '路燈', slot: 'decor', emoji: '💡', price: 45 },
+  { id: 'decor.mailbox', name: '信箱', slot: 'decor', emoji: '📮', price: 30 },
+  { id: 'decor.scarecrow', name: '稻草人', slot: 'decor', emoji: '🌾', price: 50 },
+  { id: 'decor.crate', name: '木箱', slot: 'decor', emoji: '📦', price: 20 },
+  { id: 'decor.swing', name: '鞦韆', slot: 'decor', emoji: '🎠', price: 120 },
+  { id: 'decor.slide', name: '溜滑梯', slot: 'decor', emoji: '🛝', price: 150 },
+  { id: 'decor.sandbox', name: '沙坑', slot: 'decor', emoji: '🏖️', price: 80 },
+  { id: 'decor.windmill', name: '風車', slot: 'decor', emoji: '🌀', price: 90 },
+  { id: 'decor.pond', name: '小池塘', slot: 'decor', emoji: '🐟', price: 100, walkable: true },
+];
+
 /** 全部商品 */
-export const ITEMS: readonly CatalogItem[] = [...HATS, ...ACCESSORIES, ...PETS_AND_TRAILS];
+export const ITEMS: readonly CatalogItem[] = [...HATS, ...ACCESSORIES, ...PETS_AND_TRAILS, ...FURNITURE];
 
 /** 用 id 查商品；查不到回傳 undefined */
 export function findItem(id: string): CatalogItem | undefined {
@@ -92,8 +124,8 @@ export function owns(p: Profile, itemId: string): boolean {
   return p.inventory.includes(itemId);
 }
 
-/** 外觀的道具格子 */
-export const SLOTS: readonly Slot[] = ['hat', 'face', 'back', 'hand', 'pet', 'trail'];
+/** 外觀的道具格子（家具不是穿戴的格子） */
+export const SLOTS: readonly AvatarSlot[] = ['hat', 'face', 'back', 'hand', 'pet', 'trail'];
 
 /**
  * 畫角色用的外觀：只留下真的擁有、而且格子相符的道具，其他當作沒戴；沒有的格子補 null。
@@ -101,7 +133,7 @@ export const SLOTS: readonly Slot[] = ['hat', 'face', 'back', 'hand', 'pet', 'tr
  */
 export function equippedOf(p: Profile): AvatarConfig {
   const a = p.avatar;
-  const pick = (slot: Slot): string | null => {
+  const pick = (slot: AvatarSlot): string | null => {
     const id = a[slot];
     return id && findItem(id)?.slot === slot && owns(p, id) ? id : null;
   };
