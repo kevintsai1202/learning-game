@@ -149,6 +149,15 @@ test('佈置模式：選家具點格子放下、轉方向、移動、收起來�
   await page.getByTestId('decor-cancel').click();
   expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c3.gx, gz: c3.gz, rot: 1 }]);
 
+  // 佈置到一半離開島上（進建築）：這次的佈置取消
+  await page.getByTestId('hud-decor').click();
+  await page.getByTestId('decor-pick-decor.fence').click();
+  await act(page, { t: 'tap', ...c2 });
+  await page.evaluate(() => (window as any).__game.ui.getState().enterZone('shop'));
+  await expect.poll(() => editOf(page)).toBeNull();
+  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c3.gx, gz: c3.gz, rot: 1 }]);
+  await page.getByTestId('leave-shop').click();
+
   // 重新整理後還在（存在裝置上）
   await page.reload();
   expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c3.gx, gz: c3.gz, rot: 1 }]);

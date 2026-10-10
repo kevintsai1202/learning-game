@@ -128,7 +128,9 @@ export function IslandScene({
   const gmVisiting = useGm((s) => s.visiting !== null);
   const savedYard = hasHome && mode !== 'attract' ? shownYard({ ownIsland: true, visiting: gm ? gmVisiting : kidVisiting, local: localYard, host: hostYard }) : null;
   /** 佈置模式（自己的家）：畫正在改的院子與格子；角色不走路、點地面與建築沒有作用 */
-  const editing = useYardEdit((s) => s.edit);
+  const editRaw = useYardEdit((s) => s.edit);
+  /** 只在自己的島上佈置（佈置中換島時，HUD 那邊會取消，這裡先不畫） */
+  const editing = editRaw && hasHome && !(gm ? gmVisiting : kidVisiting) ? editRaw : null;
   const yard = editing ? editing.items : savedYard;
   /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
   const obstacles = useMemo(

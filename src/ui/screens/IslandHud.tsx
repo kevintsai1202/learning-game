@@ -18,7 +18,7 @@ import { DuelInviteCard } from '../DuelInviteCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 import { canDecorate, classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
-import { startDecorating, useYardEdit } from '../../store/useYardEdit';
+import { cancelDecorating, startDecorating, useYardEdit } from '../../store/useYardEdit';
 import { DecorPanel } from '../DecorPanel';
 import { goHome, kickVisitor, setIslandOpen, useRealtime } from '../../online/realtimeClient';
 import { usePresence } from '../../online/usePresence';
@@ -343,6 +343,14 @@ export function IslandHud() {
   const touch = typeof window !== 'undefined' && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
   const totalStars = profile ? Object.values(profile.bestStars).reduce((s, v) => s + v, 0) : 0;
   const decorating = useYardEdit((s) => s.edit !== null);
+  /** 現在能不能佈置（老師請大家集合等換到班級島、被送回自己的島時會變） */
+  const visiting = useRealtime((s) => s.visiting);
+  const decorAllowed = !!profile && canDecorate(islandLook(profile), visiting);
+  // 佈置到一半換到不能佈置的島，或離開島上（進建築、換畫面）：取消這次的佈置
+  useEffect(() => {
+    if (decorating && !decorAllowed) cancelDecorating();
+  }, [decorating, decorAllowed]);
+  useEffect(() => () => cancelDecorating(), []);
 
   // 走到門口時唸出建築介紹
   useEffect(() => {
