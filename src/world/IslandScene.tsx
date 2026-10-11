@@ -38,6 +38,7 @@ import { useGm } from '../online/gmClient';
 import { shownYard, useHostYard } from '../online/useHostYard';
 import { HOUSE_DOOR_RANGE, houseDoor } from './room';
 import { useHome } from '../store/useHome';
+import { isTap, resetYaw } from './cameraOrbit';
 
 /** 天空與燈光（L5）：白天是原本的樣子；黃昏是暖橘的地平線、偏紫的天頂、低而偏橘的太陽 */
 const SKY = {
@@ -185,6 +186,8 @@ export function IslandScene({
   useEffect(() => {
     sceneDebug.npcTeacher = !hideNpc;
   }, [hideNpc]);
+  // 回到島上（出屋、答完題）時視角回正（第 10.5 節）
+  useEffect(() => resetYaw(), []);
   const allTrees = useMemo(() => placeTrees(), []);
   const hasHome = look.home !== null;
   const hasFlag = look.flag !== null;
@@ -228,10 +231,11 @@ export function IslandScene({
     player.autoEnter = null;
   };
 
-  /** 點建築：走到門口後自動進去（擋住角色而隱形的建築不算） */
-  const onBuildingTap = (id: ZoneId) => (e: ThreeEvent<PointerEvent>) => {
+  /** 點建築：走到門口後自動進去（擋住角色而隱形的建築不算；放開、沒拖動才算，第 10.5 節） */
+  const onBuildingTap = (id: ZoneId) => (e: ThreeEvent<MouseEvent>) => {
     if (!interactive || sceneDebug.hiddenZones.includes(id)) return;
     e.stopPropagation();
+    if (!isTap(e.delta)) return;
     sfx.tap();
     const zone = ZONES.find((z) => z.id === id)!;
     player.target = doorOf(zone);
@@ -239,10 +243,11 @@ export function IslandScene({
     player.autoEnter = gm ? null : id;
   };
 
-  /** 點小屋：走到門口後自動進屋（熊熊老師也可以；擋住角色而隱形時不算） */
-  const onHouseTap = (e: ThreeEvent<PointerEvent>) => {
+  /** 點小屋：走到門口後自動進屋（熊熊老師也可以；擋住角色而隱形時不算；放開、沒拖動才算） */
+  const onHouseTap = (e: ThreeEvent<MouseEvent>) => {
     if (!interactive || sceneDebug.hiddenZones.includes('house')) return;
     e.stopPropagation();
+    if (!isTap(e.delta)) return;
     sfx.tap();
     player.target = houseDoor();
     player.autoEnter = 'home';
@@ -280,7 +285,7 @@ export function IslandScene({
       {look.home && (
         <group
           ref={(g) => setOccluderGroup('house', g)}
-          onPointerDown={onHouseTap}
+          onClick={onHouseTap}
           onPointerOver={() => interactive && (document.body.style.cursor = 'pointer')}
           onPointerOut={() => (document.body.style.cursor = '')}
         >
@@ -301,7 +306,7 @@ export function IslandScene({
             ref={(g) => setOccluderGroup(z.id, g)}
             position={[z.x, 0, z.z]}
             rotation={[0, z.rotY, 0]}
-            onPointerDown={onBuildingTap(z.id)}
+            onClick={onBuildingTap(z.id)}
             onPointerOver={() => interactive && (document.body.style.cursor = 'pointer')}
             onPointerOut={() => (document.body.style.cursor = '')}
           >
@@ -315,10 +320,10 @@ export function IslandScene({
         <group
           position={[TEACHER_POS.x, 0, TEACHER_POS.z]}
           rotation={[0, -0.3, 0]}
-          onPointerDown={(e) => {
+          onClick={(e) => {
             if (!interactive) return;
             e.stopPropagation();
-            teacherTalk();
+            if (isTap(e.delta)) teacherTalk();
           }}
         >
           <Teacher />

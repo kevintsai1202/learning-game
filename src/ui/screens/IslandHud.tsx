@@ -29,6 +29,7 @@ import { FriendsButton, FriendsPanel } from '../FriendsPanel';
 import { HomeDoorBubble } from '../HomeDoorBubble';
 import { useHome } from '../../store/useHome';
 import { ActionKey } from '../ActionKey';
+import { CamResetButton } from '../CamButtons';
 import { usePhoneLayout } from '../phoneLayout';
 
 /** 同步狀態的圖示（手機的上方一行只放圖示，第 10.2 節） */
@@ -249,6 +250,8 @@ function PhoneHud({ touch }: { touch: boolean }) {
         <Visitors />
         <FriendsButton />
         <ChatPanel phone />
+        {/* 轉過視角才出現（第 10.5 節） */}
+        <CamResetButton variant="rail" />
       </div>
       <SpeechBubble />
       <IslandBanner />
@@ -571,6 +574,8 @@ export function IslandHud() {
           <FriendsButton />
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
+          {/* 轉過視角才出現（第 10.5 節） */}
+          <CamResetButton variant="round" />
           <button className="btn round white" onClick={() => goto('badges')} aria-label="獎章簿" data-testid="hud-badges">
             🏅
           </button>

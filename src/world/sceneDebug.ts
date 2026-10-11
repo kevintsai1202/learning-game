@@ -10,6 +10,8 @@ export const sceneDebug = {
   hiddenZones: [] as string[],
   /** 屋裡擋住角色而半透明的高家具（格子 "gx,gz"；第 9 節優化） */
   fadedCells: [] as string[],
+  /** 屋裡擋在鏡頭和角色之間而半透明的牆（back、left、right；第 10.5 節） */
+  fadedWalls: [] as string[],
   /** 某一棟建築現在的樣子：有沒有畫、最淡的不透明度（e2e 用；島嶼場景掛上） */
   buildingLook: null as null | ((id: string) => { visible: boolean; opacity: number } | null),
   /** 自己的角色現在的姿勢、抬高、縮放、傾斜（第 10.3 節：按「起來」後要站著、原比例；角色掛上） */

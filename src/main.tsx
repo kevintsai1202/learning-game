@@ -24,6 +24,7 @@ import { useFriendDuel } from './online/useFriendDuel';
 import { yardDebug } from './store/useDecor';
 import { homeDebug } from './store/useHome';
 import { useFurnitureUse } from './store/useFurnitureUse';
+import { orbitDebug } from './world/cameraOrbit';
 import './styles/global.css';
 
 declare global {
@@ -65,6 +66,8 @@ declare global {
       home: typeof homeDebug;
       /** 第 9 節優化：用家具的狀態（旁邊可以用的、正在用的、開關、正在盪的鞦韆） */
       furniture: typeof useFurnitureUse;
+      /** 第 10.5 節：轉視角的角度、用家具時的視角模式 */
+      orbit: typeof orbitDebug;
     };
   }
 }
@@ -91,6 +94,7 @@ window.__game = {
   yard: yardDebug,
   home: homeDebug,
   furniture: useFurnitureUse,
+  orbit: orbitDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

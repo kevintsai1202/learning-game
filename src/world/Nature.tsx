@@ -9,6 +9,7 @@ import { toon } from './materials';
 import { FOUNTAIN, ISLAND_RADIUS, WALK_RADIUS } from './layout';
 import { PLAZA, pathSegments, type TreeSpot } from './scenery';
 import { StaticMerge } from './StaticMerge';
+import { isTap } from './cameraOrbit';
 
 /** 海：深色海面、淺水環、會呼吸的白色浪花 */
 export function Sea() {
@@ -94,19 +95,21 @@ function SteppingStones() {
 /** 地面：沙灘、草地、廣場、步道；點地面就走過去 */
 export function Ground({ onGroundTap }: { onGroundTap?: (x: number, z: number) => void }) {
   const beach = useBeachGeometry();
-  const handle = (e: ThreeEvent<PointerEvent>) => {
+  /** 點地面：放開、沒拖動才算（第 10.5 節：拖曳是轉視角） */
+  const handle = (e: ThreeEvent<MouseEvent>) => {
     if (!onGroundTap) return;
     e.stopPropagation();
+    if (!isTap(e.delta)) return;
     onGroundTap(e.point.x, e.point.z);
   };
   return (
     <group>
-      <mesh geometry={beach} material={toon('#ffe3a3')} position={[0, -0.68, 0]} receiveShadow onPointerDown={handle} />
-      <mesh material={toon('#8fd66a')} position={[0, -0.16, 0]} receiveShadow onPointerDown={handle}>
+      <mesh geometry={beach} material={toon('#ffe3a3')} position={[0, -0.68, 0]} receiveShadow onClick={handle} />
+      <mesh material={toon('#8fd66a')} position={[0, -0.16, 0]} receiveShadow onClick={handle}>
         <cylinderGeometry args={[WALK_RADIUS + 0.5, WALK_RADIUS + 1.1, 0.32, 72]} />
       </mesh>
       {/* 廣場 */}
-      <mesh material={toon('#f6ebcf')} rotation={[-Math.PI / 2, 0, 0]} position={[PLAZA.x, 0.012, PLAZA.z]} receiveShadow onPointerDown={handle}>
+      <mesh material={toon('#f6ebcf')} rotation={[-Math.PI / 2, 0, 0]} position={[PLAZA.x, 0.012, PLAZA.z]} receiveShadow onClick={handle}>
         <circleGeometry args={[PLAZA.radius, 48]} />
       </mesh>
       <mesh material={toon('#e9dab3')} rotation={[-Math.PI / 2, 0, 0]} position={[PLAZA.x, 0.008, PLAZA.z]}>

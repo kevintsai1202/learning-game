@@ -12,6 +12,7 @@ import { sfx } from '../../audio/sfx';
 import { GmRoster } from './GmRoster';
 import { HomeDoorBubble } from '../HomeDoorBubble';
 import { DecorNear } from '../DecorBag';
+import { CamResetButton } from '../CamButtons';
 
 /** 連線狀態的文字 */
 const STATUS_TEXT = { off: '', connecting: '連線中…', online: '🟢 在島上', error: '' } as const;
@@ -77,6 +78,8 @@ export function GmHud() {
           >
             📋 全班
           </button>
+          {/* 轉過視角才出現（第 10.5 節） */}
+          <CamResetButton variant="chip" />
         </div>
         <button
           className="hud-chip"

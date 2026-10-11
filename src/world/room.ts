@@ -53,13 +53,15 @@ const ROOM_CAM_DIST = 9.5;
 const ROOM_VIEW_HALF = 3.4;
 
 /**
- * 房間的鏡頭（第 9 節優化：跟著角色、拉近一點）：aspect 是畫面寬 / 高，pos 是角色的位置，zoom 是縮放倍率。
- * 看的點跟著角色、夾在房間裡（鏡頭不會跑到側牆外）；直式螢幕的水平視角窄，要拉遠
+ * 房間的鏡頭（第 9 節優化：跟著角色、拉近一點）：aspect 是畫面寬 / 高，pos 是角色的位置，zoom 是縮放倍率，
+ * yaw 是轉視角的角度（第 10.5 節；0 是原本從前面看的方向，鏡頭繞看的點轉）。
+ * 看的點跟著角色、夾在房間裡（yaw 0 時鏡頭不會跑到側牆外）；直式螢幕的水平視角窄，要拉遠
  */
 export function roomCamera(
   aspect: number,
   pos: Vec2,
   zoom = 1,
+  yaw = 0,
 ): { position: { x: number; y: number; z: number }; target: { x: number; y: number; z: number } } {
   const t = Math.tan(((FOV / 2) * Math.PI) / 180);
   const d = Math.max(ROOM_CAM_DIST, ROOM_VIEW_HALF / (t * Math.max(aspect, 0.1))) * zoom;
@@ -68,5 +70,22 @@ export function roomCamera(
     y: 0.6,
     z: Math.max(-(ROOM_RECT.halfZ - 1), Math.min(ROOM_RECT.halfZ - 0.5, pos.z)),
   };
-  return { position: { x: target.x, y: target.y + CAM_DIR.y * d, z: target.z + CAM_DIR.z * d }, target };
+  // 水平的那一段照 yaw 轉（x′ = x·cos + z·sin、z′ = −x·sin + z·cos，和 three 的 rotation.y 一樣）
+  const back = CAM_DIR.z * d;
+  return { position: { x: target.x + back * Math.sin(yaw), y: target.y + CAM_DIR.y * d, z: target.z + back * Math.cos(yaw) }, target };
+}
+
+/** 房間的三面牆 */
+export type RoomWall = 'back' | 'left' | 'right';
+
+/**
+ * 擋在鏡頭和角色之間的牆（第 10.5 節：轉到側面或後面時變半透明）：角色永遠在房間裡，
+ * 鏡頭在哪一面牆的外面，那一面就擋住。前面只有矮牆，不算
+ */
+export function blockingWalls(cam: { x: number; z: number }): RoomWall[] {
+  const out: RoomWall[] = [];
+  if (cam.z < -ROOM_RECT.halfZ) out.push('back');
+  if (cam.x < -ROOM_RECT.halfX) out.push('left');
+  if (cam.x > ROOM_RECT.halfX) out.push('right');
+  return out;
 }

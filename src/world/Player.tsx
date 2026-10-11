@@ -1,5 +1,6 @@
 /**
  * 玩家角色控制器：每幀讀輸入、移動、碰撞、偵測門口，並讓鏡頭平滑跟隨。
+ * 第 10.5 節：方向鍵與搖桿跟著鏡頭（moveInput）、鏡頭繞角色轉（orbit.yaw）、用家具時近拍與第一人稱（actCamera）。
  */
 import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
@@ -8,7 +9,7 @@ import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { WALK_RADIUS, ZONES, doorOf } from './layout';
 import { lerpAngle, moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle, type RoomRect } from './movement';
-import { inputDirection, player } from './input';
+import { player } from './input';
 import { useUi, type ZoneId } from '../store/useUi';
 import type { AvatarConfig } from '../store/save';
 import { sfx } from '../audio/sfx';
@@ -20,6 +21,7 @@ import { LABEL_DISTANCE_FACTOR } from './RemotePlayers';
 import { Teacher } from './Teacher';
 import { enterHome } from '../store/useHome';
 import { roomCamera } from './room';
+import { actCamera, followCamera, moveInput, normalizeYaw, orbit, useOrbit } from './cameraOrbit';
 import { camZoom } from './cameraZoom';
 import { decorViewShift } from './decorViewShift';
 import { actSoundEvents } from './actSounds';
@@ -57,6 +59,13 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
   const motion = useRef<MotionState>({ speed: 0 });
   /** 用家具時的抬高、縮放、傾斜（PoseWrap 每格讀） */
   const lift = useRef<PoseLift>(STANDING);
+  /** 角色的身體（第一人稱時藏起來，鏡頭才不會在頭裡面） */
+  const body = useRef<THREE.Group>(null);
+  /** 鏡頭現在用的角度：慢慢轉到 orbit.yaw（🧭 回正時沿著弧轉過去，不會穿過角色） */
+  const camYaw = useRef(orbit.yaw);
+  /** 近拍或第一人稱中（<html> 加 cam-near：名牌、島上的牌子、氣泡太近會放很大，先藏起來） */
+  const camNear = useRef(false);
+  useEffect(() => () => document.documentElement.classList.remove('cam-near'), []);
   /** 家具包打開時畫面往上移了幾 px（第 10 節第 ① 批；慢慢移過去） */
   const viewShift = useRef(0);
   /** 上一格用家具的時間（音效從上一格到這一格之間放；換了一件家具重來） */
@@ -91,7 +100,7 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
       for (const s of actSoundEvents(act.kind, lastActT.current.t, t)) ACT_SFX[s]();
       lastActT.current.t = t;
       if (act.kind === 'slide') player.target = null;
-      const dir = inputDirection();
+      const dir = moveInput();
       if (f.done) stopUse(true);
       else if (active && act.kind !== 'slide' && (Math.hypot(dir.x, dir.z) > 0.05 || player.target)) stopUse();
       if (player.act) {
@@ -111,7 +120,8 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
       lift.current = STANDING;
     }
     if (active && !player.act) {
-      const dir = inputDirection();
+      // 方向鍵與搖桿跟著鏡頭：「上」是鏡頭看的方向（第 10.5 節）
+      const dir = moveInput();
       if (Math.hypot(dir.x, dir.z) > 0.05) {
         player.target = null;
         player.autoEnter = null;
@@ -162,6 +172,9 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
 
     // 鏡頭慢慢跟上；換場景（進屋、出屋）的第一格直接跳到定位。距離都乘縮放倍率（滾輪、兩指捏合）
     const k = player.snapCamera ? 1 : 1 - Math.exp(-dt * 3.5);
+    // 轉視角：鏡頭的角度沿著弧慢慢轉過去（換場景時直接跳到）
+    camYaw.current = player.snapCamera ? orbit.yaw : normalizeYaw(camYaw.current + normalizeYaw(orbit.yaw - camYaw.current) * Math.min(1, dt * 8));
+    const yaw = camYaw.current;
     player.snapCamera = false;
     const zoom = camZoom.value;
     // 家具包或壁紙地板面板打開時，直式手機的畫面往上移（角色留在家具包上方）。每一格用當下的畫面大小重設：
@@ -176,20 +189,35 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
         cam.clearViewOffset();
       }
     } else cam.setViewOffset(size.width, size.height, 0, viewShift.current, size.width, size.height);
+    // 用家具時換視角（第 10.5 節）：近拍、第一人稱照用家具的時間軸算；第一人稱藏起自己的角色、鏡頭直接跳到定位
+    const view = useOrbit.getState().view;
+    const act = player.act;
+    const ac = act ? actCamera(act.item, spaceOf(act.place), act.kind, nowSec() - act.t0, view, yaw, zoom) : null;
+    if (body.current) body.current.visible = !(ac && view === 'first');
+    if (camNear.current !== !!ac) {
+      camNear.current = !!ac;
+      document.documentElement.classList.toggle('cam-near', camNear.current);
+    }
+    if (ac) {
+      const kk = ac.snap ? 1 : k;
+      camera.position.lerp(new THREE.Vector3(ac.position.x, ac.position.y, ac.position.z), kk);
+      lookAt.current.lerp(new THREE.Vector3(ac.target.x, ac.target.y, ac.target.z), kk);
+      camera.lookAt(lookAt.current);
+      return;
+    }
     if (roomView) {
-      // 屋裡：跟著角色，比島上近；看的點夾在房間裡
-      const c = roomCamera(size.width / Math.max(size.height, 1), next, zoom);
+      // 屋裡：跟著角色，比島上近；看的點夾在房間裡；繞看的點轉 yaw
+      const c = roomCamera(size.width / Math.max(size.height, 1), next, zoom, yaw);
       camera.position.lerp(new THREE.Vector3(c.position.x, c.position.y, c.position.z), k);
       lookAt.current.lerp(new THREE.Vector3(c.target.x, c.target.y, c.target.z), k);
       camera.lookAt(lookAt.current);
       return;
     }
-    // 鏡頭跟隨：直式螢幕拉遠一點，才看得到左右兩邊的建築
+    // 鏡頭跟隨：直式螢幕拉遠一點，才看得到左右兩邊的建築；繞角色轉 yaw（yaw 0 和以前一樣）
     const portrait = size.height > size.width * 1.1;
-    const back = (portrait ? 25 : 18.5) * zoom;
-    const up = (portrait ? 22 : 15.5) * zoom;
-    camera.position.lerp(new THREE.Vector3(next.x * 0.85, up, next.z + back), k);
-    lookAt.current.lerp(new THREE.Vector3(next.x * 0.9, 1, next.z - 4), k);
+    const c = followCamera(next, yaw, zoom, portrait);
+    camera.position.lerp(new THREE.Vector3(c.position.x, c.position.y, c.position.z), k);
+    lookAt.current.lerp(new THREE.Vector3(c.target.x, c.target.y, c.target.z), k);
     camera.lookAt(lookAt.current);
   });
 
@@ -199,13 +227,15 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
   return (
     <>
       <group ref={group}>
-        <PoseWrap lift={lift}>{teacher ? <Teacher waving={false} /> : <Avatar config={avatar} motion={motion} />}</PoseWrap>
+        <group ref={body}>
+          <PoseWrap lift={lift}>{teacher ? <Teacher waving={false} /> : <Avatar config={avatar} motion={motion} />}</PoseWrap>
+        </group>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
         </mesh>
         {bubble && (
-          <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]}>
+          <Html position={[0, 2.3, 0]} distanceFactor={LABEL_DISTANCE_FACTOR} pointerEvents="none" zIndexRange={[20, 0]} wrapperClass="scene-label">
             <div className="remote-label">
               <div className="chat-bubble" data-testid="self-bubble">
                 {bubble}

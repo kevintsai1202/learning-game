@@ -58,9 +58,9 @@ describe('pickAction', () => {
     expect(pickAction({ ...NONE, near: { name: '木柵欄', emoji: '🪵', use: null, decor: true, notice: '旁邊太擠了，轉不過去' } })).toMatchObject({ main: 'rotate', showCaption: true });
   });
 
-  it('正在用：起來；溜滑梯途中不顯示', () => {
-    expect(pickAction({ ...NONE, acting: { kind: 'sit', name: '長椅', emoji: '🪑' } })).toMatchObject({ main: 'stop', label: '⬆️ 起來', container: 'use-card' });
-    expect(pickAction({ ...NONE, acting: { kind: 'slide', name: '溜滑梯', emoji: '🛝' } })).toBeNull();
+  it('正在用：起來，旁邊小圓鈕換視角（第 10.5 節）；溜滑梯途中不能起來，大鍵是換視角', () => {
+    expect(pickAction({ ...NONE, acting: { kind: 'sit', name: '長椅', emoji: '🪑' } })).toMatchObject({ main: 'stop', label: '⬆️ 起來', container: 'use-card', secondary: ['view'] });
+    expect(pickAction({ ...NONE, acting: { kind: 'slide', name: '溜滑梯', emoji: '🛝' } })).toMatchObject({ main: 'view', label: '🎥 換視角', container: 'use-card', secondary: [] });
   });
 
   it('佈置：放下（不能放時停用、寫原因），旁邊是轉方向', () => {

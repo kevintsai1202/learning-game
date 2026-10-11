@@ -2,7 +2,7 @@
  * 自己的家第二期：房間的幾何（src/world/room.ts）。進屋的出生點、門口的腳踏墊、走出去的條件、小屋門口、房間的鏡頭。
  */
 import { describe, expect, it } from 'vitest';
-import { HOME_SPAWN, HOUSE_DOOR_RANGE, ROOM_RECT, atRoomExit, houseDoor, onDoorMat, roomCamera } from '../../src/world/room';
+import { HOME_SPAWN, HOUSE_DOOR_RANGE, ROOM_RECT, atRoomExit, blockingWalls, houseDoor, onDoorMat, roomCamera } from '../../src/world/room';
 import { HOUSE } from '../../src/world/layout';
 import { resolveCollisions } from '../../src/world/movement';
 import { HOME_CLEAR_CELLS, HOME_DOOR_CELLS, HOME_SPACE, homeCellToWorld, isHomeCell } from '../../src/store/home';
@@ -67,5 +67,26 @@ describe('房間的幾何', () => {
     expect(dist(tall)).toBeGreaterThan(dist(wide));
     expect(dist(roomCamera(16 / 9, { x: 0, z: 0 }, 0.5))).toBeCloseTo(dist(wide) * 0.5, 5);
     expect(dist(roomCamera(16 / 9, { x: 0, z: 0 }, 1.5))).toBeCloseTo(dist(wide) * 1.5, 5);
+  });
+
+  // 第 ③ 批（第 10.5 節）：轉視角
+  it('轉視角：yaw 0 和以前一樣；繞看的點轉，距離與高度不變；轉半圈鏡頭在看的點北邊', () => {
+    const base = roomCamera(16 / 9, { x: 1, z: 1 });
+    expect(roomCamera(16 / 9, { x: 1, z: 1 }, 1, 0)).toEqual(base);
+    const half = roomCamera(16 / 9, { x: 1, z: 1 }, 1, Math.PI);
+    expect(half.target).toEqual(base.target);
+    expect(dist(half)).toBeCloseTo(dist(base), 6);
+    expect(half.position.y).toBeCloseTo(base.position.y, 6);
+    expect(half.position.z).toBeLessThan(half.target.z);
+  });
+
+  it('擋在鏡頭和角色之間的牆：鏡頭在後牆外是後牆、在左右牆外是那一面；在房間前面（原本的方向）都不擋', () => {
+    expect(blockingWalls({ x: 0, z: 8 })).toEqual([]);
+    expect(blockingWalls({ x: 0, z: -7 })).toEqual(['back']);
+    expect(blockingWalls({ x: -7, z: 0 })).toEqual(['left']);
+    expect(blockingWalls({ x: 7, z: -7 })).toEqual(['back', 'right']);
+    // 轉了 90 度的屋裡鏡頭：側牆擋住
+    const side = roomCamera(16 / 9, { x: 0, z: 0 }, 1, Math.PI / 2);
+    expect(blockingWalls(side.position)).toEqual(['right']);
   });
 });

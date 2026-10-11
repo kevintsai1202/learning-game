@@ -3092,6 +3092,11 @@ button {
 .decor-near .btn {
   white-space: nowrap;
 }
+/* 用家具時近拍或第一人稱（第 10.5 節）：3D 場景裡的名牌、島上的牌子、氣泡離鏡頭太近會放很大，先藏起來 */
+:root.cam-near .scene-label {
+  /* drei 的 Html 會在元素上直接寫 display，要蓋過去 */
+  display: none !important;
+}
 /* 旁邊的家具轉不過去的提示（第 10.3 節；只顯示，不唸） */
 .decor-near-notice {
   font-size: 14px;

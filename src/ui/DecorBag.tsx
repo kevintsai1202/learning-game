@@ -31,6 +31,7 @@ import { resetDecor } from '../store/useDecor';
 import { DECOR_LINES } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
+import { CamViewButton } from './CamButtons';
 
 /** 家具包；compact（手機）：「放下」「轉方向」在右下的大動作鍵，條上只放家具與關上 */
 export function DecorBag({ compact = false }: { compact?: boolean }) {
@@ -246,6 +247,8 @@ export function DecorNear() {
             ⬆️ 起來
           </button>
         )}
+        {/* 換視角（第 10.5 節；溜滑梯途中也可以） */}
+        <CamViewButton />
       </div>
     );
   }

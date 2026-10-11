@@ -2,8 +2,9 @@
  * 唯一的 3D 畫布：島上時畫島嶼，進屋時畫屋子裡（自己的家第二期），答題與結算時換成活動舞台。
  * 全程只用一個 WebGL context，平板比較不會因為建立太多 context 而當掉。
  */
-import { Canvas, useThree } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { attachZoom } from './cameraZoom';
+import { attachGestures, attachTurnKeys, isTouchDevice, orbit, resetYaw, setYaw, turnKeys, yawByKeys } from './cameraOrbit';
 import { useEffect } from 'react';
 import { IslandScene } from './IslandScene';
 import { HomeScene } from './HomeScene';
@@ -27,6 +28,20 @@ const FALLBACK_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: n
 function ZoomControl() {
   const gl = useThree((s) => s.gl);
   useEffect(() => attachZoom(gl.domElement), [gl]);
+  return null;
+}
+
+/**
+ * 轉視角（第 10.5 節）：畫布上拖曳（觸控裝置只有右半邊）、兩指捏合、按住 Q／E。
+ * 只在島上與屋裡能玩的時候掛（答題的舞台、標題畫面不轉）
+ */
+function OrbitControl() {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => attachGestures(gl.domElement, isTouchDevice()), [gl]);
+  useEffect(() => attachTurnKeys(), []);
+  useFrame((_, dt) => {
+    if (turnKeys.left || turnKeys.right) setYaw(yawByKeys(orbit.yaw, turnKeys.left, turnKeys.right, Math.min(dt, 0.05)));
+  });
   return null;
 }
 
@@ -73,6 +88,8 @@ export function GameCanvas() {
     setHouseKey(houseKey, { teacher: gm });
     useHome.setState({ houseName });
   }, [houseKey, houseName, gm]);
+  // 換島時視角回正（第 10.5 節；角度不存檔）
+  useEffect(() => resetYaw(), [houseKey]);
   /** 在這座島的屋子裡（選單打開時照樣畫屋子，不互動） */
   const inHome = inside !== null && inside === houseKey;
 
@@ -90,6 +107,7 @@ export function GameCanvas() {
       }}
     >
       <ZoomControl />
+      {mode === 'play' && !onStage && <OrbitControl />}
       {onStage ? (
         <StageScene avatar={profile?.avatar ?? FALLBACK_AVATAR} subject={theme} />
       ) : inHome ? (

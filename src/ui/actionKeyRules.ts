@@ -22,9 +22,9 @@ export interface ActionState {
 }
 
 /** 主要動作 */
-export type MainAction = 'place' | 'stop' | 'enterZone' | 'enterHome' | 'leaveHome' | 'use' | 'rotate';
-/** 旁邊的小圓鈕 */
-export type SecondaryAction = 'ghostRotate' | 'rotate' | 'pickup';
+export type MainAction = 'place' | 'stop' | 'enterZone' | 'enterHome' | 'leaveHome' | 'use' | 'rotate' | 'view';
+/** 旁邊的小圓鈕（view 是用家具時換視角，第 10.5 節） */
+export type SecondaryAction = 'ghostRotate' | 'rotate' | 'pickup' | 'view';
 
 /** 動作鍵要顯示的東西 */
 export interface ActionKeyView {
@@ -54,9 +54,10 @@ export function pickAction(s: ActionState): ActionKeyView | null {
       secondary: ['ghostRotate'],
     };
   if (s.acting) {
-    // 溜滑梯途中不能起來（溜完自己站起來）
-    if (s.acting.kind === 'slide') return null;
-    return { main: 'stop', label: '⬆️ 起來', caption: `${s.acting.emoji} ${s.acting.name}`, showCaption: false, container: 'use-card', disabled: false, secondary: [] };
+    const caption = `${s.acting.emoji} ${s.acting.name}`;
+    // 溜滑梯途中不能起來（溜完自己站起來）：大鍵是換視角（第 10.5 節）
+    if (s.acting.kind === 'slide') return { main: 'view', label: '🎥 換視角', caption, showCaption: false, container: 'use-card', disabled: false, secondary: [] };
+    return { main: 'stop', label: '⬆️ 起來', caption, showCaption: false, container: 'use-card', disabled: false, secondary: ['view'] };
   }
   if (s.zone)
     return { main: 'enterZone', label: `${s.zone.icon} 進去`, caption: `${s.zone.icon} ${s.zone.name}`, showCaption: false, container: 'door-bubble', disabled: false, secondary: [] };

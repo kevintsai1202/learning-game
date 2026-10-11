@@ -15,6 +15,7 @@ import { findItem } from '../store/catalog';
 import { zoneById } from '../world/layout';
 import { pickAction, type MainAction, type SecondaryAction } from './actionKeyRules';
 import { operateFurniture } from './DecorBag';
+import { nextCamView } from './CamButtons';
 import { sfx } from '../audio/sfx';
 
 /** 主要動作的 data-testid */
@@ -26,6 +27,7 @@ const MAIN_TESTID: Record<MainAction, string> = {
   leaveHome: 'leave-home',
   use: 'use-furniture',
   rotate: 'decor-near-rotate',
+  view: 'cam-view',
 };
 
 /** 小圓鈕：圖示、說明、data-testid */
@@ -33,6 +35,7 @@ const SECONDARY: Record<SecondaryAction, { icon: string; label: string; testid: 
   ghostRotate: { icon: '🔄', label: '轉方向', testid: 'decor-ghost-rotate' },
   rotate: { icon: '🔄', label: '轉方向', testid: 'decor-near-rotate' },
   pickup: { icon: '👜', label: '收起來', testid: 'decor-near-pickup' },
+  view: { icon: '🎥', label: '換視角', testid: 'cam-view' },
 };
 
 /** 旁邊的家具轉方向：轉了「喀」一聲；轉不過去（旁邊太擠）是「喔喔」，提示顯示在大鍵上面 */
@@ -114,6 +117,9 @@ export function ActionKey() {
       case 'rotate':
         turnNear();
         return;
+      case 'view':
+        nextCamView();
+        return;
     }
   };
   /** 按小圓鈕 */
@@ -123,6 +129,8 @@ export function ActionKey() {
       rotateGhost();
     } else if (a === 'rotate') {
       turnNear();
+    } else if (a === 'view') {
+      nextCamView();
     } else {
       sfx.pickup();
       pickUpNear();

@@ -3,7 +3,8 @@
  * - 10×10 公尺的房間（房間的座標，中心在原點）：地板＋左、右、後三面牆（鏡頭在前上方，前面只有門口兩邊的矮牆）；
  *   前緣中間是門口的腳踏墊，站上去出現「回到島上」，往前走出去也會回到島上。
  * - 壁紙與地板照島主選的（顏色與花紋用程式畫，原創）；擺好的家具照島主的房間。
- * - 角色在長方形範圍裡走（家具擋路照島上）；鏡頭固定看整間房。
+ * - 角色在長方形範圍裡走（家具擋路照島上）；鏡頭跟著角色。
+ * - 第 10.5 節：轉視角時擋在鏡頭和角色之間的牆（含踢腳板、窗戶）變半透明；點地板放開、沒拖動才算；進屋時視角回正。
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useThree, useFrame, type ThreeEvent } from '@react-three/fiber';
@@ -14,8 +15,9 @@ import { occluders, type Occluder } from './occlusion';
 import { DecorLayer } from './DecorLayer';
 import { UseProbe, useLiveMap } from './UseLayer';
 import { RemotePlayers } from './RemotePlayers';
-import { inputDirection, player } from './input';
-import { DOOR_MAT, ROOM_RECT, atRoomExit, onDoorMat } from './room';
+import { player } from './input';
+import { DOOR_MAT, ROOM_RECT, atRoomExit, blockingWalls, onDoorMat, type RoomWall } from './room';
+import { isTap, moveInput, resetYaw } from './cameraOrbit';
 import { sceneDebug } from './sceneDebug';
 import { HOME_SPACE, type HomeState } from '../store/home';
 import { decorObstacles, itemCenter, type YardItem } from '../store/yard';
@@ -155,6 +157,43 @@ function useSurface(look: SurfaceLook, width: number, height: number): THREE.Can
   return tex;
 }
 
+/** 半透明的牆的不透明度 */
+const WALL_FADED = 0.18;
+
+/**
+ * 擋在鏡頭和角色之間的牆變半透明（第 10.5 節：轉到側面或後面時；整組一起：牆、踢腳板、窗戶）。
+ * 每一格畫面算，變了才改材質（每一面牆的材質是各自的，不會影響別處）
+ */
+function WallFade({ walls }: { walls: { current: Record<RoomWall, THREE.Group | null> } }) {
+  const { camera } = useThree();
+  const last = useRef('');
+  useFrame(() => {
+    const block = blockingWalls(camera.position);
+    const key = block.join(',');
+    if (key === last.current) return;
+    last.current = key;
+    sceneDebug.fadedWalls = block;
+    for (const id of ['back', 'left', 'right'] as const) {
+      const faded = block.includes(id);
+      walls.current[id]?.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+        if (!m) return;
+        m.transparent = faded;
+        m.opacity = faded ? WALL_FADED : 1;
+        m.depthWrite = !faded;
+        m.needsUpdate = true;
+      });
+    }
+  });
+  useEffect(
+    () => () => {
+      sceneDebug.fadedWalls = [];
+    },
+    [],
+  );
+  return null;
+}
+
 /** 房間：地板、三面牆、門口兩邊的矮牆、踢腳板、後牆的窗戶、門口的腳踏墊；點地板走過去 */
 function Room({ wall, floor, onFloorTap }: { wall: string; floor: string; onFloorTap: (x: number, z: number) => void }) {
   const W = ROOM_RECT.halfX * 2;
@@ -164,10 +203,13 @@ function Room({ wall, floor, onFloorTap }: { wall: string; floor: string; onFloo
   const backTex = useSurface(wallLook, W, WALL_H);
   const sideTex = useSurface(wallLook, D, WALL_H);
   const floorTex = useSurface(floorLook, W, D);
-  const tap = (e: ThreeEvent<PointerEvent>) => {
+  /** 點地板：放開、沒拖動才算（第 10.5 節：拖曳是轉視角） */
+  const tap = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
-    onFloorTap(e.point.x, e.point.z);
+    if (isTap(e.delta)) onFloorTap(e.point.x, e.point.z);
   };
+  /** 三面牆（含踢腳板、窗戶）：擋住角色時變半透明 */
+  const walls = useRef<Record<RoomWall, THREE.Group | null>>({ back: null, left: null, right: null });
   /** 門口兩邊矮牆的長度 */
   const sideLen = ROOM_RECT.halfX - DOOR_MAT.halfX;
   return (
@@ -177,32 +219,62 @@ function Room({ wall, floor, onFloorTap }: { wall: string; floor: string; onFloo
         <boxGeometry args={[W + 0.6, 0.3, D + 0.6]} />
         <meshToonMaterial color="#8a6a4f" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow onPointerDown={tap}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow onClick={tap}>
         <planeGeometry args={[W, D]} />
         <meshToonMaterial map={floorTex} />
       </mesh>
-      {/* 後牆與左右牆 */}
-      <mesh position={[0, WALL_H / 2, -ROOM_RECT.halfZ - WALL_T / 2]} receiveShadow>
-        <boxGeometry args={[W + WALL_T * 2, WALL_H, WALL_T]} />
-        <meshToonMaterial map={backTex} />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (ROOM_RECT.halfX + WALL_T / 2), WALL_H / 2, 0]} receiveShadow>
-          <boxGeometry args={[WALL_T, WALL_H, D]} />
-          <meshToonMaterial map={sideTex} />
+      {/* 後牆（含踢腳板、窗戶）與左右牆（含踢腳板）：轉視角時擋住角色的那一面整組變半透明 */}
+      <group
+        ref={(g) => {
+          walls.current.back = g;
+        }}
+      >
+        <mesh position={[0, WALL_H / 2, -ROOM_RECT.halfZ - WALL_T / 2]} receiveShadow>
+          <boxGeometry args={[W + WALL_T * 2, WALL_H, WALL_T]} />
+          <meshToonMaterial map={backTex} />
         </mesh>
-      ))}
-      {/* 踢腳板 */}
-      <mesh position={[0, 0.08, -ROOM_RECT.halfZ + 0.02]}>
-        <boxGeometry args={[W, 0.16, 0.04]} />
-        <meshToonMaterial color="#8a5a32" />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (ROOM_RECT.halfX - 0.02), 0.08, 0]}>
-          <boxGeometry args={[0.04, 0.16, D]} />
+        <mesh position={[0, 0.08, -ROOM_RECT.halfZ + 0.02]}>
+          <boxGeometry args={[W, 0.16, 0.04]} />
           <meshToonMaterial color="#8a5a32" />
         </mesh>
+        {/* 後牆的窗戶：木框、天空、十字窗櫺 */}
+        <group position={[2.6, 1.7, -ROOM_RECT.halfZ + 0.01]}>
+          <mesh>
+            <boxGeometry args={[1.8, 1.3, 0.06]} />
+            <meshToonMaterial color="#8a5a32" />
+          </mesh>
+          <mesh position={[0, 0, 0.04]}>
+            <boxGeometry args={[1.6, 1.1, 0.02]} />
+            <meshBasicMaterial color="#a8dcff" />
+          </mesh>
+          <mesh position={[0, 0, 0.06]}>
+            <boxGeometry args={[0.06, 1.1, 0.02]} />
+            <meshToonMaterial color="#8a5a32" />
+          </mesh>
+          <mesh position={[0, 0, 0.06]}>
+            <boxGeometry args={[1.6, 0.06, 0.02]} />
+            <meshToonMaterial color="#8a5a32" />
+          </mesh>
+        </group>
+      </group>
+      {[-1, 1].map((s) => (
+        <group
+          key={s}
+          ref={(g) => {
+            walls.current[s < 0 ? 'left' : 'right'] = g;
+          }}
+        >
+          <mesh position={[s * (ROOM_RECT.halfX + WALL_T / 2), WALL_H / 2, 0]} receiveShadow>
+            <boxGeometry args={[WALL_T, WALL_H, D]} />
+            <meshToonMaterial map={sideTex} />
+          </mesh>
+          <mesh position={[s * (ROOM_RECT.halfX - 0.02), 0.08, 0]}>
+            <boxGeometry args={[0.04, 0.16, D]} />
+            <meshToonMaterial color="#8a5a32" />
+          </mesh>
+        </group>
       ))}
+      <WallFade walls={walls} />
       {/* 門口兩邊的矮牆（前面不畫高牆，鏡頭才看得到房間） */}
       {[-1, 1].map((s) => (
         <mesh key={s} position={[s * (ROOM_RECT.halfX - sideLen / 2 + WALL_T / 2), FRONT_H / 2, ROOM_RECT.halfZ + WALL_T / 2]} castShadow receiveShadow>
@@ -210,27 +282,8 @@ function Room({ wall, floor, onFloorTap }: { wall: string; floor: string; onFloo
           <meshToonMaterial color="#d9b48a" />
         </mesh>
       ))}
-      {/* 後牆的窗戶：木框、天空、十字窗櫺 */}
-      <group position={[2.6, 1.7, -ROOM_RECT.halfZ + 0.01]}>
-        <mesh>
-          <boxGeometry args={[1.8, 1.3, 0.06]} />
-          <meshToonMaterial color="#8a5a32" />
-        </mesh>
-        <mesh position={[0, 0, 0.04]}>
-          <boxGeometry args={[1.6, 1.1, 0.02]} />
-          <meshBasicMaterial color="#a8dcff" />
-        </mesh>
-        <mesh position={[0, 0, 0.06]}>
-          <boxGeometry args={[0.06, 1.1, 0.02]} />
-          <meshToonMaterial color="#8a5a32" />
-        </mesh>
-        <mesh position={[0, 0, 0.06]}>
-          <boxGeometry args={[1.6, 0.06, 0.02]} />
-          <meshToonMaterial color="#8a5a32" />
-        </mesh>
-      </group>
       {/* 門口的腳踏墊 */}
-      <mesh position={[DOOR_MAT.x, 0.015, DOOR_MAT.z]} receiveShadow onPointerDown={tap}>
+      <mesh position={[DOOR_MAT.x, 0.015, DOOR_MAT.z]} receiveShadow onClick={tap}>
         <boxGeometry args={[DOOR_MAT.halfX * 2 - 0.1, 0.03, DOOR_MAT.halfZ * 2 - 0.1]} />
         <meshToonMaterial color="#9b5a2e" />
       </mesh>
@@ -311,7 +364,8 @@ function DoorProbe({ active }: { active: boolean }) {
   useFrame(() => {
     const mat = active && onDoorMat(player.pos);
     if (mat !== useHome.getState().onMat) useHome.setState({ onMat: mat });
-    if (active && atRoomExit(player.pos, inputDirection())) {
+    // 往前門走出去的判斷用跟著鏡頭的方向（第 10.5 節）
+    if (active && atRoomExit(player.pos, moveInput())) {
       sfx.door();
       leaveHome();
     }
@@ -346,6 +400,8 @@ export function HomeScene({
   const [faded, setFaded] = useState<string[]>([]);
   /** 屋裡正在用的家具（開關、有人在盪的鞦韆；第 9 節優化） */
   const live = useLiveMap('home');
+  // 進屋時視角回正（第 10.5 節；出屋時島嶼場景也回正）
+  useEffect(() => resetYaw(), []);
   /** 點地板：走過去（範圍外的會被夾回房間裡） */
   const onFloorTap = (x: number, z: number) => {
     if (!active) return;
