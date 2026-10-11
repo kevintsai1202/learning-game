@@ -49,7 +49,8 @@ describe('可以用的家具的表', () => {
   });
 
   it('會同步的動作代碼：坐、鋼琴是 sit，躺 lie，溜滑梯 slide，鞦韆 swing；開關與沙堡沒有（只在本機）', () => {
-    expect(ACT_CODES).toEqual(['sit', 'lie', 'slide', 'swing']);
+    // 後面是班級島遊樂場的座位 ride0～ride7（tests/store/playground.test.ts）
+    expect(ACT_CODES.slice(0, 4)).toEqual(['sit', 'lie', 'slide', 'swing']);
     expect(ACT_OF_KIND).toEqual({ sit: 'sit', piano: 'sit', lie: 'lie', slide: 'slide', swing: 'swing' });
   });
 
