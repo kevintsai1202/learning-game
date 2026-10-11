@@ -146,11 +146,16 @@ export function ActionKey() {
         </span>
       )}
       <div className="action-row">
-        {view.secondary.map((a) => (
-          <button key={a} className="btn white action-sub" onClick={() => doSecondary(a)} aria-label={SECONDARY[a].label} title={SECONDARY[a].label} data-testid={SECONDARY[a].testid}>
-            {SECONDARY[a].icon}
-          </button>
-        ))}
+        {/* 小圓鈕：直式手機在大鍵上面、橫式在大鍵左邊（大鍵的字長時往左變寬，直式才不會壓到搖桿） */}
+        {view.secondary.length > 0 && (
+          <div className="action-subs">
+            {view.secondary.map((a) => (
+              <button key={a} className="btn white action-sub" onClick={() => doSecondary(a)} aria-label={SECONDARY[a].label} title={SECONDARY[a].label} data-testid={SECONDARY[a].testid}>
+                {SECONDARY[a].icon}
+              </button>
+            ))}
+          </div>
+        )}
         <button className="btn green action-key" disabled={view.disabled} onClick={doMain} data-testid={MAIN_TESTID[view.main]}>
           {view.label}
         </button>

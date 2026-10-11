@@ -3308,7 +3308,7 @@ button {
   width: min(240px, calc(100vw - 96px));
   max-height: min(60vh, 420px);
 }
-/* 右下大動作鍵：左手搖桿、右手按；小圓鈕排在大鍵左邊（直式手機寬度放得下） */
+/* 右下大動作鍵：左手搖桿、右手按；小圓鈕在大鍵上面（直式）或左邊（橫式） */
 .action-key-wrap {
   position: absolute;
   right: 12px;
@@ -3343,15 +3343,27 @@ button {
   align-items: center;
   gap: 8px;
 }
+.action-subs {
+  display: flex;
+  gap: 8px;
+}
+/* 直式手機：小圓鈕在大鍵上面（大鍵的字長時往左變寬，不會壓到搖桿） */
+@media (orientation: portrait) {
+  .action-row {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+}
+/* 大鍵：膠囊形、高度固定，每一種動作的字一樣大、只有一行（使用者 2026-10-12：「坐下」折成兩行），寬度跟著字 */
 .btn.action-key {
-  width: 78px;
-  height: 78px;
-  min-width: 0;
-  padding: 4px;
-  border-radius: 50%;
-  font-size: 16px;
-  line-height: 1.15;
-  white-space: normal;
+  width: auto;
+  height: 68px;
+  min-width: 68px;
+  padding: 0 18px;
+  border-radius: 34px;
+  font-size: 18px;
+  line-height: 1;
+  white-space: nowrap;
   text-align: center;
   box-shadow: 0 5px 0 var(--ink);
 }

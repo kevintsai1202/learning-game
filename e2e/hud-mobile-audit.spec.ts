@@ -5,11 +5,14 @@
  * - 角色在畫面中間一帶，腳的位置沒有被任何介面蓋住。
  * - 站到建築門口：「進去」在右下、不壓到搖桿；「☰」打開才有獎章簿、家長專區。
  * - 自己的島佈置中：「放下」只有一個（在大動作鍵），家具包條不壓到大動作鍵。
+ * - 大動作鍵的字：每一種動作的字放進去都是一行、字一樣大，整組不超出畫面、不壓到搖桿（使用者 2026-10-12：「坐下」折成兩行）。
  * 截圖在 e2e/screenshots/hud-mobile/（不進版控）。
  */
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
 import { SERVER, createClassViaApi, flushDeviceLogs, loginAndEnter, openDevice, pageErrors } from './onlineDevice';
+import { FURNITURE_USE } from '../src/store/furnitureUse';
+import { ZONES } from '../src/world/layout';
 
 const OUT = 'e2e/screenshots/hud-mobile';
 mkdirSync(OUT, { recursive: true });
@@ -26,6 +29,59 @@ type Box = { x: number; y: number; width: number; height: number };
 const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
 test.afterEach(async ({}, testInfo) => flushDeviceLogs(testInfo));
+
+/** 大動作鍵上會出現的所有字（src/ui/actionKeyRules.ts：佈置、正在用、門口、腳踏墊、旁邊家具的用法） */
+const ACTION_LABELS = [
+  '放下',
+  '⬆️ 起來',
+  '🎥 換視角',
+  '🔄 轉方向',
+  '🏠 進去',
+  '🚪 出去',
+  ...ZONES.map((z) => `${z.icon} 進去`),
+  ...Object.values(FURNITURE_USE).flatMap((s) => (s.offLabel ? [s.label, s.offLabel] : [s.label])),
+];
+
+/**
+ * 把每一種動作的字放進大動作鍵量一量：複製一顆大鍵放在原本的位置（原本的先藏起來，React 管的節點不動），
+ * 量折成幾行、字的大小、鍵的高度、字有沒有超出鍵、整組（含小圓鈕）有沒有超出畫面或壓到搖桿；量完拿掉。回傳問題的描述
+ */
+async function actionLabelProblems(page: Page): Promise<string[]> {
+  return page.evaluate((labels) => {
+    const key = document.querySelector('.btn.action-key') as HTMLElement | null;
+    const group = document.querySelector('.action-key-wrap') as HTMLElement | null;
+    if (!key || !group) return ['沒有大動作鍵'];
+    const joy = document.querySelector('.joystick')?.getBoundingClientRect() ?? null;
+    const hit = (a: DOMRect, b: DOMRect) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+    const probe = key.cloneNode(true) as HTMLElement;
+    probe.removeAttribute('data-testid');
+    key.style.display = 'none';
+    key.after(probe);
+    const out: string[] = [];
+    const sizes = new Set<string>();
+    const heights = new Set<number>();
+    for (const label of labels) {
+      probe.textContent = label;
+      const range = document.createRange();
+      range.selectNodeContents(probe);
+      // 每一行的上緣（表情符號和中文字的上緣差幾 px，算同一行）
+      const tops: number[] = [];
+      for (const r of range.getClientRects()) if (!tops.some((t) => Math.abs(t - r.top) < 8)) tops.push(r.top);
+      if (tops.length > 1) out.push(`「${label}」折成 ${tops.length} 行`);
+      if (probe.scrollWidth > probe.clientWidth + 1) out.push(`「${label}」超出鍵 sw=${probe.scrollWidth} cw=${probe.clientWidth}`);
+      sizes.add(getComputedStyle(probe).fontSize);
+      heights.add(Math.round(probe.getBoundingClientRect().height));
+      const g = group.getBoundingClientRect();
+      if (g.left < 0 || g.right > innerWidth + 1 || g.bottom > innerHeight + 1) out.push(`「${label}」整組超出畫面 [${Math.round(g.left)}, ${Math.round(g.right)}]`);
+      if (joy && hit(g, joy)) out.push(`「${label}」壓到搖桿`);
+    }
+    probe.remove();
+    key.style.display = '';
+    if (sizes.size > 1) out.push(`字的大小不一樣：${[...sizes].join('、')}`);
+    if (heights.size > 1) out.push(`鍵的高度不一樣：${[...heights].join('、')}`);
+    return out;
+  }, ACTION_LABELS);
+}
 
 /** 看得到的介面元素裡，超出畫面左右的（回傳描述） */
 async function offscreen(page: Page, w: number): Promise<string[]> {
@@ -59,6 +115,12 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
   const { context, page } = await openDevice(browser, baseURL!, { touch: true });
   try {
     await loginAndEnter(page, room.code, '皮皮', '3333');
+    // 老師發 50 枚金幣（之後要真的買長椅與柵欄：雲端角色的家具要伺服器上也有，不然同步後擺設會被拿掉）
+    const reward = await request.post(`${SERVER}/api/teacher/rooms/${room.code}/rewards`, { data: { to: 'all', coins: 50 }, headers: { authorization: `Bearer ${room.token}` } });
+    expect(reward.ok()).toBe(true);
+    await expect.poll(() => page.evaluate(() => (window as any).__game.game.getState().profile().coins)).toBeGreaterThanOrEqual(50);
+    const rewardOk = page.getByTestId('reward-ok');
+    if (await rewardOk.isVisible()) await rewardOk.click();
     for (const [w, h] of SIZES) {
       const where = `${w}x${h}`;
       await page.setViewportSize({ width: w, height: h });
@@ -115,6 +177,8 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
       expect.soft(overlaps(key, joy), `${where} 動作鍵壓到搖桿`).toBe(false);
       expect.soft(key.x + key.width, `${where} 動作鍵在右邊`).toBeGreaterThan(w * 0.75);
       expect.soft(key.y + key.height, `${where} 動作鍵在下面`).toBeGreaterThan(h * 0.6);
+      // 每一種動作的字：一行、字一樣大、不超出畫面、不壓到搖桿
+      expect.soft(await actionLabelProblems(page), `${where} 大動作鍵的字`).toEqual([]);
       await page.screenshot({ path: `${OUT}/${where}-3-door.png` });
     }
 
@@ -122,12 +186,9 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
     await page.setViewportSize({ width: 390, height: 844 });
     await page.getByTestId('hud-island').click();
     await expect.poll(() => page.evaluate(() => (window as any).__game.realtime.getState().island)).toBe('own');
-    await page.evaluate(() => {
-      const g = (window as any).__game;
-      g.game.setState((st: any) => ({
-        save: { ...st.save, profiles: st.save.profiles.map((p: any) => (p.id === st.save.activeProfileId ? { ...p, inventory: [...p.inventory, 'decor.bench', 'decor.fence'] } : p)) },
-      }));
-    });
+    // 買長椅與柵欄（走雲端的購買操作，伺服器上也有）
+    expect(await page.evaluate(() => (window as any).__game.game.getState().purchase('decor.bench', 40))).toBe(true);
+    expect(await page.evaluate(() => (window as any).__game.game.getState().purchase('decor.fence', 6))).toBe(true);
     await page.getByTestId('hud-decor').click();
     // 家具包打開時直排圖示收起來
     await expect(page.getByTestId('hud-rail')).toBeHidden();
@@ -171,7 +232,19 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
     await expect(page.getByTestId('use-furniture')).toContainText('坐下');
     await expect(page.getByTestId('decor-near-rotate')).toBeVisible();
     await expect(page.getByTestId('decor-near-pickup')).toBeVisible();
+    // 旁邊兩顆小圓鈕都在時，每一種動作的字放進去整組也不超出畫面、不壓到搖桿（三種尺寸都量）
     await page.screenshot({ path: `${OUT}/390x844-5-near.png` });
+    expect.soft(await actionLabelProblems(page), '390x844 旁邊家具：大動作鍵的字').toEqual([]);
+    for (const [w, h] of [
+      [360, 740],
+      [844, 390],
+    ]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.waitForTimeout(500);
+      await expect(page.getByTestId('use-furniture')).toContainText('坐下');
+      await page.screenshot({ path: `${OUT}/${w}x${h}-5-near.png` });
+      expect.soft(await actionLabelProblems(page), `${w}x${h} 旁邊家具：大動作鍵的字`).toEqual([]);
+    }
     expect(pageErrors(page)).toEqual([]);
   } finally {
     await context.close().catch(() => undefined);
