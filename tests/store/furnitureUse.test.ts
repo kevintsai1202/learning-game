@@ -109,10 +109,13 @@ describe('動作的時間軸（actFrame）', () => {
     expect(f.heading).toBeCloseTo(headingOf(it, s.facing));
   });
 
-  it('躺下：姿勢是躺，角色縮小', () => {
+  it('躺下：姿勢是躺，角色縮小；先抬到床墊的高度再繞腳躺平（樞軸在抬高的位置，不是地上）', () => {
     const f = actFrame(item('decor.bed', 1, 1, 0), HOME_SPACE, 'lie', 1);
     expect(f.pose).toBe('lie');
     expect(f.scale).toBeLessThan(0.7);
+    expect(f.tiltX).toBeCloseTo(-Math.PI / 2);
+    expect(f.pivotY).toBeCloseTo(f.y);
+    expect(f.y).toBeGreaterThan(0.4);
   });
 
   it('溜滑梯：先爬上去（越爬越高）、再溜下來（越溜越低），到時間自己站到滑道尾端外面', () => {

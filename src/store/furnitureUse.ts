@@ -166,7 +166,8 @@ export function actFrame(item: YardItem, space: DecorSpace, kind: UseKind, t: nu
   }
   const w = localToWorld(item, space, seat.x, seat.z);
   const base = { x: w.x, z: w.z, y: seat.y, heading: headingOf(item, seat.facing), scale: seat.scale, done: false };
-  if (kind === 'lie') return { ...base, pose: 'lie', tiltX: -Math.PI / 2, pivotY: 0 };
+  // 躺下：先抬到床墊的高度（樞軸在那裡），再繞腳往後躺平（頭朝床頭 -z）
+  if (kind === 'lie') return { ...base, pose: 'lie', tiltX: -Math.PI / 2, pivotY: seat.y };
   if (kind === 'swing') return { ...base, pose: 'sit', tiltX: swingAngle(t), pivotY: SWING_PIVOT };
   return { ...base, pose: 'sit', tiltX: 0, pivotY: 0 };
 }

@@ -521,8 +521,13 @@ test('第 9 節優化：坐長椅（推方向鍵起來）、盪鞦韆、溜滑�
   await expect.poll(() => actOf(page)).toEqual({ kind: 'piano', id: 'decor.piano' });
   await page.waitForTimeout(1000);
   await page.screenshot({ path: `${SHOTS}/15-piano.png` });
-  // 點地面也會起來
-  const floorPt = await page.evaluate(() => (window as any).__game.scene.project(-3, 0, 3));
+  // 點地面也會起來（鏡頭跟著角色：點鋼琴旁邊、畫面中間附近的地板）
+  await page.waitForTimeout(800);
+  const floorPt = await page.evaluate(() => {
+    const g = (window as any).__game;
+    const w = g.home.world(6, 2);
+    return g.scene.project(w.x - 1.5, 0, w.z + 1.2);
+  });
   await page.mouse.click(floorPt.x, floorPt.y);
   await expect.poll(() => actOf(page)).toBeNull();
   expect(errors).toEqual([]);
@@ -538,9 +543,11 @@ test('第 9 節優化：朋友看得到你坐在長椅上、盪鞦韆（座椅�
     const res = await request.post(`${SERVER}/api/join`, { data: { code: room.code, nickname, pin, avatar: { animal, color: '#8b5a2b', hat: null } } });
     expect(res.ok()).toBe(true);
   }
-  // 老師發金幣給全班（小美要買長椅與鞦韆，雲端角色的家具要伺服器上真的有）
-  const reward = await request.post(`${SERVER}/api/teacher/rooms/${room.code}/rewards`, { data: { to: 'all', coins: 200 }, headers: { authorization: `Bearer ${room.token}` } });
-  expect(reward.ok()).toBe(true);
+  // 老師發金幣給全班（小美要買長椅與鞦韆，雲端角色的家具要伺服器上真的有；一次最多 50 枚，發四次）
+  for (let i = 0; i < 4; i++) {
+    const reward = await request.post(`${SERVER}/api/teacher/rooms/${room.code}/rewards`, { data: { to: 'all', coins: 50 }, headers: { authorization: `Bearer ${room.token}` } });
+    expect(reward.ok()).toBe(true);
+  }
   const a = await openDevice(browser, baseURL!);
   contexts.push(a.context);
   await loginAndEnter(a.page, room.code, '阿寶', '1111');
@@ -549,8 +556,13 @@ test('第 9 節優化：朋友看得到你坐在長椅上、盪鞦韆（座椅�
   await loginAndEnter(b.page, room.code, '小美', '2222');
   for (const p of [a.page, b.page]) {
     await expect.poll(() => p.evaluate(() => (window as any).__game.game.getState().profile().coins)).toBeGreaterThanOrEqual(200);
-    const ok = p.getByTestId('reward-ok');
-    if (await ok.isVisible()) await ok.click();
+    // 獎勵卡片一張一張關掉
+    for (let i = 0; i < 5; i++) {
+      const ok = p.getByTestId('reward-ok');
+      if (!(await ok.isVisible())) break;
+      await ok.click();
+      await p.waitForTimeout(300);
+    }
   }
   // 小美買長椅與鞦韆、回自己的島擺好、開放
   expect(await b.page.evaluate(() => (window as any).__game.game.getState().purchase('decor.bench', 40))).toBe(true);
