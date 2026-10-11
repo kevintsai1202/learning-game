@@ -115,7 +115,15 @@ export function receiveChat(s: PresenceState, line: ChatLine, now: number): Pres
   return { ...s, chat: [...s.chat, line].slice(-CHAT_KEEP), bubbles };
 }
 
-/** 在島上（不在建築裡）的成員；exclude（預設是自己）不列入，自己的角色由 Player 畫 */
+/**
+ * 和自己在同一個地方的成員：place 是 null（在島上、不在建築裡）或 home（島主的屋子裡，自己的家第二期）。
+ * exclude（預設是自己）不列入，自己的角色由 Player 畫
+ */
+export function inPlace(s: PresenceState, place: 'home' | null, exclude: string | null = s.selfId): RemoteMember[] {
+  return Object.values(s.members).filter((m) => m.zone === place && m.id !== exclude);
+}
+
+/** 在島上（不在建築裡、不在屋子裡）的成員 */
 export function onIsland(s: PresenceState, exclude: string | null = s.selfId): RemoteMember[] {
-  return Object.values(s.members).filter((m) => m.zone === null && m.id !== exclude);
+  return inPlace(s, null, exclude);
 }

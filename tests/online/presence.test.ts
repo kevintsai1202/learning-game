@@ -7,6 +7,7 @@ import {
   emptyPresence,
   expireBubbles,
   moveMember,
+  inPlace,
   onIsland,
   receiveChat,
   removeMember,
@@ -54,6 +55,17 @@ describe('同島成員', () => {
     expect(onIsland(s).map((m) => m.id)).toEqual(['a']);
     s = setZone(s, 'b', null);
     expect(onIsland(s).map((m) => m.id)).toEqual(['a', 'b']);
+  });
+
+  it('自己的家第二期：屋裡的人只畫在屋裡（inPlace home），島上的人只畫在島上；建築裡的兩邊都不畫', () => {
+    let s = upsertMember(emptyPresence(), member('a', '阿寶'));
+    s = upsertMember(s, member('b', '小美', { zone: 'home' }));
+    s = upsertMember(s, member('c', '小明', { zone: 'math' }));
+    s = upsertMember(s, member('t', '熊熊老師', { zone: 'home', role: 'teacher' }));
+    expect(onIsland(s).map((m) => m.id)).toEqual(['a']);
+    expect(inPlace(s, null).map((m) => m.id)).toEqual(['a']);
+    expect(inPlace(s, 'home').map((m) => m.id)).toEqual(['b', 't']);
+    expect(inPlace({ ...s, selfId: 'b' }, 'home').map((m) => m.id)).toEqual(['t']);
   });
 });
 

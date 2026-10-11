@@ -7,7 +7,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import { useAccount } from '../../online/useAccount';
 import { usePresence } from '../../online/usePresence';
-import { onIsland } from '../../online/presence';
+import { inPlace } from '../../online/presence';
+import { useHome } from '../../store/useHome';
 import type { MemberSummary, TeacherRoomResponse } from '../../online/protocol';
 import { player, teleport } from '../../world/input';
 import { whereText } from '../memberWhere';
@@ -24,8 +25,9 @@ export function GmRoster({ code, onClose }: { code: string; onClose: () => void 
   const [error, setError] = useState<string | null>(null);
   /** 發獎勵的視窗：給誰 */
   const [rewardFor, setRewardFor] = useState<RewardTarget | null>(null);
-  /** 在這座島上、不在建築裡的孩子（只取 id；位置在按下時才讀） */
-  const here = usePresence(useShallow((s) => onIsland(s).filter((m) => m.role !== 'teacher').map((m) => m.id)));
+  /** 和老師在同一個地方（島上，或孩子的屋子裡）的孩子（只取 id；位置在按下時才讀） */
+  const myPlace = useHome((s) => (s.inside !== null && s.inside === s.houseKey ? 'home' : null));
+  const here = usePresence(useShallow((s) => inPlace(s, myPlace).filter((m) => m.role !== 'teacher').map((m) => m.id)));
 
   const load = useCallback(async () => {
     try {

@@ -14,7 +14,7 @@ import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { lerpAngle, stepToward, type Vec2 } from './movement';
 import { usePresence } from '../online/usePresence';
-import { onIsland } from '../online/presence';
+import { inPlace } from '../online/presence';
 import { Trail } from './Trail';
 import { PetFollower } from './Pets';
 import { useRealtime } from '../online/realtimeClient';
@@ -34,9 +34,12 @@ const SNAP_DIST = 8;
  */
 export const LABEL_DISTANCE_FACTOR = 20;
 
-/** 所有在島上的其他玩家（只訂閱 id 清單，位置變化不會重畫這一層；自己由 Player 畫） */
-export function RemotePlayers() {
-  const ids = usePresence(useShallow((s) => onIsland(s).map((m) => m.id)));
+/**
+ * 和自己在同一個地方的其他玩家（只訂閱 id 清單，位置變化不會重畫這一層；自己由 Player 畫）：
+ * place 是 null（島上，預設）或 home（島主的屋子裡，自己的家第二期）
+ */
+export function RemotePlayers({ place = null }: { place?: 'home' | null }) {
+  const ids = usePresence(useShallow((s) => inPlace(s, place).map((m) => m.id)));
   const shadowTex = useMemo(() => blobShadowTexture(), []);
   return (
     <>

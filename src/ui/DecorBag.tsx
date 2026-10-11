@@ -118,16 +118,19 @@ export function DecorBag() {
   );
 }
 
-/** 壁紙地板面板（只在自己的屋裡）：擁有的壁紙與地板，點了就換；現在用的標 on */
+/**
+ * 壁紙地板面板（只在自己的屋裡）：擁有的壁紙與地板排成一排（和家具包一樣高，不會蓋到右邊的公頻），
+ * 點了就換；現在用的標 on
+ */
 export function SurfacePanel() {
   const open = useDecor((s) => s.surfaceOpen);
   // 換了壁紙地板、買了新的都要重畫
   useGame((s) => s.profile());
   if (!open) return null;
   const c = surfaceChoices();
-  /** 一排選項 */
-  const row = (label: string, list: typeof c.walls, now: string, kind: 'wall' | 'floor') => (
-    <div className="decor-bag-items surface-row">
+  /** 一組選項（前面寫是壁紙還是地板） */
+  const group = (label: string, list: typeof c.walls, now: string, kind: 'wall' | 'floor') => (
+    <>
       <span className="surface-row-label">{label}</span>
       {list.map((it) => (
         <button
@@ -145,7 +148,7 @@ export function SurfacePanel() {
           <span className="name">{it.name}</span>
         </button>
       ))}
-    </div>
+    </>
   );
   return (
     <div className="decor-bag card surface-panel" role="dialog" aria-label="壁紙地板" data-testid="surface-panel">
@@ -163,8 +166,10 @@ export function SurfacePanel() {
           ✕
         </button>
       </div>
-      {row('壁紙', c.walls, c.wall, 'wall')}
-      {row('地板', c.floors, c.floor, 'floor')}
+      <div className="decor-bag-items surface-row">
+        {group('壁紙', c.walls, c.wall, 'wall')}
+        {group('地板', c.floors, c.floor, 'floor')}
+      </div>
     </div>
   );
 }

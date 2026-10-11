@@ -12,7 +12,8 @@ import { bindDuelSender, duelConnectionLost, handleDuelMessage } from './useFrie
 import { applyHostYard, clearHostYard } from './useHostYard';
 import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
-import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
+import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
+import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { doingLabel } from './doing';
 import { findActivity } from '../activities/resolve';
 import { usePuzzleNow } from '../puzzle/now';
@@ -86,6 +87,20 @@ export function wsUrlOf(server: string): string {
  */
 export function zoneOfScreen(screen: Screen, zone: ZoneId | null): ZoneId | null {
   return screen === 'zone' || screen === 'activity' || screen === 'result' || screen === 'shop' ? zone : null;
+}
+
+/**
+ * 要回報的所在地方（自己的家第二期）：在島主的屋子裡是 home，不管打開了什麼畫面；伺服器不支援進屋（caps 沒有 home）
+ * 時回報在島上（舊伺服器收到不認得的地方會斷線）。不在屋裡照畫面（zoneOfScreen）
+ */
+export function placeToReport(inHome: boolean, caps: readonly ServerCap[], screen: Screen, zone: ZoneId | null): MemberZone | null {
+  if (inHome) return caps.includes('home') ? 'home' : null;
+  return zoneOfScreen(screen, zone);
+}
+
+/** 能不能送位置：屋裡的位置是房間的座標，伺服器不支援進屋時不送（不然島上的人會看到他在島中央走來走去） */
+export function canSendMove(inHome: boolean, caps: readonly ServerCap[]): boolean {
+  return !inHome || caps.includes('home');
 }
 
 /**
@@ -234,7 +249,7 @@ export function startRealtime(): () => void {
   /** 記住被踢或「沒有班級」當下的帳號、班級與權杖 */
   const blockNow = (): RealtimeBlock | null => (accountId ? { accountId, room: roomsKey(useGame.getState().profile()?.cloud), token: getToken(accountId) } : null);
   let last = { x: NaN, z: NaN, h: NaN, at: 0 };
-  let lastZone: ZoneId | null | undefined;
+  let lastZone: MemberZone | null | undefined;
   /** 伺服器支援的新訊息（welcome 的 caps；舊版伺服器沒有，就不送它不認得的訊息） */
   let caps: ServerCap[] = [];
   /** 上一次回報的在做什麼（老師 GM 的 G3） */
@@ -281,10 +296,10 @@ export function startRealtime(): () => void {
     if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify(msg));
   };
 
-  /** 送出目前所在建築（有變才送） */
+  /** 送出目前所在建築或屋子（有變才送） */
   const sendWhere = (force = false) => {
     const { screen, zone } = useUi.getState();
-    const z = zoneOfScreen(screen, zone);
+    const z = placeToReport(isInsideHome(), caps, screen, zone);
     if (force || z !== lastZone) {
       lastZone = z;
       send({ t: 'where', zone: z });
@@ -341,6 +356,9 @@ export function startRealtime(): () => void {
           retry = 0;
           visitPending = false;
           caps = msg.caps ?? [];
+          // 進了別座島（或別人的島）：原本在屋裡的話先出來，才不會在新的島上回報在屋裡（自己的家第二期；
+          // 畫面那邊的 GameCanvas 也會做，這裡先做是為了 sendWhere 送對）。舊版伺服器沒有 island，不動
+          if (msg.island) setHouseKey(msg.island === 'own' ? (msg.host?.id ?? 'mine') : null);
           useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null, visiting: msg.host ?? null, open: false, duel: caps.includes('duel') });
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
           // 進了一座島（剛連上、重新連線、換島）：伺服器那邊之前的對戰已經結束、邀請作廢（島嶼互訪 I4）
@@ -513,18 +531,36 @@ export function startRealtime(): () => void {
     connect(target);
   };
 
-  // 位置：有變才送（最多每秒 10 次），靜止時每 2 秒送一次
+  /** 送出目前的位置 */
+  const sendMove = () => {
+    const { x, z } = player.pos;
+    const h = player.heading;
+    last = { x, z, h, at: Date.now() };
+    send({ t: 'move', x, z, h });
+  };
+
+  // 位置：有變才送（最多每秒 10 次），靜止時每 2 秒送一次；在屋裡而伺服器不支援進屋時不送
   const tick = setInterval(() => {
     if (useRealtime.getState().status !== 'online' || useUi.getState().screen !== 'island') return;
+    if (!canSendMove(isInsideHome(), caps)) return;
     const now = Date.now();
     const { x, z } = player.pos;
     const h = player.heading;
     const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05;
-    if (moved || now - last.at > 2000) {
-      last = { x, z, h, at: now };
-      send({ t: 'move', x, z, h });
-    }
+    if (moved || now - last.at > 2000) sendMove();
   }, 100);
+
+  /**
+   * 進屋、出屋（自己的家第二期）：進屋先回報 home，之後才送房間的座標（進屋時已經站好，下一次位置才會送）；
+   * 出屋時已經站回島上，先送一次島上的位置再回報回到島上，島上的人不會看到他在島中央閃一下
+   */
+  const offHome = useHome.subscribe((s, prev) => {
+    const was = prev.inside !== null && prev.inside === prev.houseKey;
+    const now = s.inside !== null && s.inside === s.houseKey;
+    if (was === now || useRealtime.getState().status !== 'online') return;
+    if (!now) sendMove();
+    sendWhere();
+  });
 
   const offGame = useGame.subscribe(evaluate);
   const offUi = useUi.subscribe((s, prev) => {
@@ -551,6 +587,7 @@ export function startRealtime(): () => void {
   return () => {
     clearInterval(tick);
     offGame();
+    offHome();
     offUi();
     offPuzzle();
     controls = null;

@@ -11,7 +11,9 @@
 import { applyHostYard, clearHostYard } from './useHostYard';
 import { create } from 'zustand';
 import { applyServerMessage, wsUrlOf, type SelfInfo } from './realtimeClient';
-import { TEACHER_AVATAR, TEACHER_NAME, type RoomFlags, type ServerMessage } from './realtime';
+import { TEACHER_AVATAR, TEACHER_NAME, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
+import { canSendMove } from './realtimeClient';
+import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { BUBBLE_MS, expireBubbles } from './presence';
 import { usePresence } from './usePresence';
 import { useAccount } from './useAccount';
@@ -82,6 +84,28 @@ export function startGm(code: string): () => void {
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
   /** 上一次送出的位置與時間 */
   let last = { x: NaN, z: NaN, h: NaN, at: 0 };
+  /** 伺服器支援的新訊息（welcome 的 caps） */
+  let caps: ServerCap[] = [];
+  /** 上一次回報的所在地方（熊熊老師只回報屋子裡或島上，自己的家第二期） */
+  let lastZone: MemberZone | null | undefined;
+
+  /** 回報在孩子的屋子裡或島上（有變才送；伺服器不支援進屋時不送） */
+  const sendWhere = (force = false) => {
+    if (!caps.includes('home')) return;
+    const z = isInsideHome() ? 'home' : null;
+    if (force || z !== lastZone) {
+      lastZone = z;
+      sendGm({ t: 'where', zone: z });
+    }
+  };
+
+  /** 送出目前的位置 */
+  const sendMove = () => {
+    const { x, z } = player.pos;
+    const h = player.heading;
+    last = { x, z, h, at: Date.now() };
+    sendGm({ t: 'move', x, z, h });
+  };
 
   const connect = () => {
     const session = useAccount.getState().session;
@@ -100,14 +124,20 @@ export function startGm(code: string): () => void {
       // 孩子的島的院子（自己的家）
       applyHostYard(msg);
       switch (msg.t) {
-        case 'welcome':
+        case 'welcome': {
           retry = 0;
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
+          caps = msg.caps ?? [];
+          // 同一個孩子的屋子裡重新連上：留在屋裡（重新回報在屋裡）；換了島就出來（自己的家第二期）
+          const stay = !!msg.host && isInsideHome() && useHome.getState().houseKey === msg.host.id;
+          setHouseKey(msg.host ? msg.host.id : null, { teacher: true });
           // 到孩子的島從上岸處開始；回班級島站回廣場上 NPC 的位置（和伺服器一致）
-          if (msg.host) teleport(SPAWN);
-          else if (useGm.getState().visiting) teleport(TEACHER_POS);
+          if (msg.host && !stay) teleport(SPAWN);
+          else if (!msg.host && useGm.getState().visiting) teleport(TEACHER_POS);
           useGm.setState({ status: 'online', error: null, flags: msg.room, visiting: msg.host ?? null });
+          sendWhere(true);
           break;
+        }
         case 'chat':
           // 對話氣泡時間到就收起來
           setTimeout(() => usePresence.setState((s) => expireBubbles(s, Date.now())), BUBBLE_MS + 50);
@@ -141,23 +171,31 @@ export function startGm(code: string): () => void {
     };
   };
 
-  // 位置：有變才送（最多每秒 10 次），靜止時每 2 秒送一次
+  // 位置：有變才送（最多每秒 10 次），靜止時每 2 秒送一次；在屋裡而伺服器不支援進屋時不送
   const tick = setInterval(() => {
     if (useGm.getState().status !== 'online' || useUi.getState().screen !== 'gm') return;
+    if (!canSendMove(isInsideHome(), caps)) return;
     const now = Date.now();
     const { x, z } = player.pos;
     const h = player.heading;
     const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05;
-    if (moved || now - last.at > 2000) {
-      last = { x, z, h, at: now };
-      sendGm({ t: 'move', x, z, h });
-    }
+    if (moved || now - last.at > 2000) sendMove();
   }, 100);
+
+  /** 進屋先回報在屋裡再送房間的座標；出屋先送島上的位置再回報回到島上（和孩子的連線一樣） */
+  const offHome = useHome.subscribe((s, prev) => {
+    const was = prev.inside !== null && prev.inside === prev.houseKey;
+    const now = s.inside !== null && s.inside === s.houseKey;
+    if (was === now || useGm.getState().status !== 'online') return;
+    if (!now && caps.includes('home')) sendMove();
+    sendWhere();
+  });
 
   connect();
   return () => {
     stopped = true;
     clearInterval(tick);
+    offHome();
     if (retryTimer) clearTimeout(retryTimer);
     const s = socket;
     socket = null;

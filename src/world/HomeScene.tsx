@@ -11,6 +11,7 @@ import * as THREE from 'three';
 import { Player, TargetMarker } from './Player';
 import { YardDecor } from './Furniture';
 import { DecorLayer } from './DecorLayer';
+import { RemotePlayers } from './RemotePlayers';
 import { inputDirection, player } from './input';
 import { DOOR_MAT, ROOM_RECT, atRoomExit, onDoorMat } from './room';
 import { sceneDebug } from './sceneDebug';
@@ -323,6 +324,8 @@ export function HomeScene({
       {canDeco && <DecorLayer space={HOME_SPACE} />}
       <Player avatar={avatar} obstacles={obstacles} active={active} teacher={gm} bounds={ROOM_RECT} doors={[]} roomView />
       <TargetMarker />
+      {/* 屋裡的其他人（朋友、熊熊老師；自己的家第二期） */}
+      <RemotePlayers place="home" />
       <DoorProbe active={active} />
     </>
   );

@@ -13,6 +13,7 @@ import { usePresence } from '../online/usePresence';
 import { sayPhrase, useRealtime } from '../online/realtimeClient';
 import { useGifts } from '../online/useGifts';
 import { zoneName } from '../world/layout';
+import { useHome } from '../store/useHome';
 import { CHAT_PHRASES, type ChatGroup } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
@@ -35,6 +36,8 @@ export function ChatPanel() {
   /** 自己有沒有班級（不在班級島時，沒有班級就沒有同學可以送禮） */
   const hasClass = useGame((s) => classesOf(s.profile()).length > 0);
   const [picking, setPicking] = useState(false);
+  /** 自己在屋裡（自己的家第二期）：屋裡的人和自己在一起，不列在「在別的地方」 */
+  const myPlace = useHome((s) => (s.inside !== null && s.inside === s.houseKey ? 'home' : null));
   const online = status === 'online';
   if (!members.length && !online && status !== 'kicked') return null;
   // 在自己的島上只有自己時不顯示（島嶼互訪 I2：有訪客或在朋友的島上時伺服器開聊天才顯示）；被踢的提示照樣要顯示
@@ -43,7 +46,8 @@ export function ChatPanel() {
   const others = members.filter((m) => m.id !== selfId);
   // 線上人數含自己（真的連線時自己在成員裡；模擬時不在，要加一）
   const count = selfId ? members.length : members.length + 1;
-  const inside = others.filter((m) => m.zone);
+  // 在別的地方（建築或屋子裡）的人
+  const inside = others.filter((m) => m.zone && m.zone !== myPlace);
   const lines = chat.slice(-CHAT_PANEL_LINES);
 
   /** 選了一句短句：先唸出來（孩子知道自己選了什麼），再送出 */

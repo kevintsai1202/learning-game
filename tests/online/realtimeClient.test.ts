@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyServerMessage, islandAction, updateBlock, wsUrlOf, zoneOfScreen } from '../../src/online/realtimeClient';
+import { applyServerMessage, canSendMove, islandAction, placeToReport, updateBlock, wsUrlOf, zoneOfScreen } from '../../src/online/realtimeClient';
 import { emptyPresence, onIsland } from '../../src/online/presence';
 import type { MemberState } from '../../src/online/realtime';
 
@@ -67,6 +67,23 @@ describe('連線網址與所在建築', () => {
 
   it('益智遊戲館第一批不回報給即時連線（舊版網頁不認得這棟建築會當掉；第二批做線上對局時再加）', () => {
     expect(zoneOfScreen('puzzle', 'puzzle')).toBeNull();
+  });
+});
+
+describe('自己的家第二期：在屋裡回報 home、伺服器不支援時不送位置', () => {
+  it('placeToReport：在屋裡是 home（伺服器的 caps 有 home 才送）；不在屋裡照畫面', () => {
+    expect(placeToReport(true, ['gm', 'duel', 'home'], 'island', null)).toBe('home');
+    expect(placeToReport(true, ['gm', 'duel'], 'island', null)).toBeNull();
+    // 在屋裡打開獎章簿也還在屋裡
+    expect(placeToReport(true, ['home'], 'badges', null)).toBe('home');
+    expect(placeToReport(false, ['home'], 'zone', 'math')).toBe('math');
+    expect(placeToReport(false, ['home'], 'island', null)).toBeNull();
+  });
+
+  it('canSendMove：屋裡的座標是房間的，伺服器不支援進屋時不送（不然島上的人看到他在島中央）', () => {
+    expect(canSendMove(true, ['home'])).toBe(true);
+    expect(canSendMove(true, ['gm', 'duel'])).toBe(false);
+    expect(canSendMove(false, [])).toBe(true);
   });
 });
 
