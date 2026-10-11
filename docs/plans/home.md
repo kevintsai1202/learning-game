@@ -195,3 +195,16 @@
 - **姿勢**：角色的動作狀態多 `pose`（站、坐、躺、溜、盪），`Avatar` 依姿勢擺手腳；坐和躺時角色整個抬到座位高度。
 - **同步**：裝置的 `move` 多一個選填的 `a`（動作代碼：sit、lie、slide、swing；站著不帶）；伺服器記在成員上、`moves` 的每一筆多第 5 個欄位、`join`／`member` 的成員多 `a`。別人的角色照動作代碼擺姿勢，坐的高度與溜滑梯的高度照他附近那件家具算。舊伺服器會忽略 `a`（格式驗證不收多的欄位），舊網頁看到的是站著，不需要能力宣告。
 - **分段**（每段先寫會失敗的測試）：① 縮放與屋裡跟隨鏡頭、高家具半透明 → ② 建築半透明 → ③ 可以用的家具（規則、姿勢、按鈕、溜滑梯與鞦韆動畫、加碼小互動）→ ④ 同步動作（協定、伺服器、別人的姿勢）→ ⑤ 預錄語音（如有新句子）、文件、相關 e2e。
+
+### 9.1 實作紀錄（2026-10-11 完成，待上線）
+
+- **縮放**（`src/world/cameraZoom.ts`）：倍率 0.55～1.7，滾輪（一格約一成）與兩指捏合（照兩指距離的比例；第二指落下時取消第一指設的目標）；只掛在 3D 畫布（`GameCanvas` 的 `ZoomControl`）；存在這台裝置（`learning-island-camera-zoom`）。島上的跟隨鏡頭與屋裡的鏡頭都乘倍率。
+- **屋裡的鏡頭**（`src/world/room.ts` 的 `roomCamera`）：跟著角色、距離 9.5 公尺（島上約 24），直式螢幕拉遠到角色左右各看得到 3.4 公尺；看的點夾在房間裡。進屋、出屋、被迫出屋的第一格鏡頭直接跳到定位（`player.snapCamera`），不會從另一個場景飛過來。
+- **屋裡的高家具半透明**：`FURNITURE_HEIGHT`（1 公尺以上的家具）、`HomeScene` 的 `FadeProbe` 看鏡頭到角色腰（0.6 公尺）的線段；擋住過的至少維持 0.3 秒；那幾件不合併、另外畫成半透明（`YardDecor` 的 `faded`）。`sceneDebug.fadedCells`。
+- **建築半透明**（`src/world/fadeGroup.ts`）：擋住時把那一棟看得到的網格換成半透明副本（依原材質快取，全島共用；原材質記在網格的 userData），走出來換回；島嶼場景的遮擋偵測卸下時也換回（標題畫面的島）。「○○的家」牌子加 `faded` 變淡。`sceneDebug.hiddenZones` 名稱保留（現在是半透明的建築）、`sceneDebug.buildingLook`。
+- **可以用的家具**（`src/store/furnitureUse.ts`，純函式）：座位表（局部座標、抬高、朝向、縮放；鞦韆、滑梯 0.6 倍、床 0.5 倍）、`localToWorld`（四個方向）、起身點（距離格子中心至少 0.9 公尺）、`actFrame`（坐、躺、盪鞦韆繞橫桿、溜滑梯 2.4 秒的時間軸）、`nearestUsable`、`anchorFor`。鞦韆的架子改高（橫桿 1.75 公尺），盪的時候頭不會穿過去。動作代碼 `src/store/actCodes.ts`（伺服器共用、不 import 東西）。
+- **用家具的狀態**（`src/store/useFurnitureUse.ts`）：單一來源是 `player.act`（`src/world/input.ts`；`teleport()` 清掉，集合、老師「過去」、進出屋、換島都會起來）；畫面的鏡像、旁邊可以用的家具（用的時候凍結）、開關與沙堡（只在本機，換島與進出屋時恢復）、正在盪的鞦韆（自己與別人）。起來的入口：「⬆️ 起來」、方向鍵或搖桿、點地面；溜滑梯途中都不行，溜完自己站到滑道尾端外面。
+- **畫面**：`Player` 用家具時照 `actFrame` 擺、跳過移動與碰撞、位置設成座位的世界座標；`PoseWrap`（`Player` 與 `RemotePlayer` 共用：抬高、縮放、繞樞軸傾斜；影子在包裝外面貼地）；`Avatar` 的 `pose`（坐、躺腳往前；爬梯子手腳輪流）；`UseProbe` 與 `useLiveMap`（`src/world/UseLayer.tsx`）；家具卡片（`DecorBag.tsx` 的 `DecorNear`）：自己能佈置的地方是「使用＋🔄＋👜」，其他地方（朋友的島、熊熊老師）是「使用」，用的時候是「⬆️ 起來」。鞦韆座椅（`SwingSeat`）、電視與燈的開關（燈泡發亮加一圈光暈，不用真的燈光）、沙堡：有人在用的那幾件才不合併、另外畫（`YardDecor` 的 `live`），其他照舊合併。鋼琴坐下彈小星星（`sfx.piano`）。
+- **同步**：`move` 多選填的 `a`（`sit`、`lie`、`slide`、`swing`；開關、沙堡不同步）；伺服器存在成員上、`moves` 多第 5 欄、進建築與換島清掉；裝置的動作一變就送。別人的角色看到動作代碼時，用他當下的位置找附近同類的家具，照同一支時間軸播（不照收到的座標）；找不到就只擺姿勢。舊版伺服器的驗證會丟掉 `a`，舊網頁看到站著。
+- **測試**：`tests/world/cameraZoom.test.ts`、`room.test.ts`（跟隨鏡頭）、`fadeGroup.test.ts`、`tests/store/furnitureUse.test.ts`、`useFurnitureUse.test.ts`、`tests/online/realtime.test.ts`、`realtimeClient.test.ts`、`tests/server/hub.test.ts`；e2e `e2e/home-inside.spec.ts`（滾輪、屋裡跟隨、高家具半透明；坐長椅、盪鞦韆、溜滑梯、開燈、沙堡、躺床、彈鋼琴；兩台裝置看到坐與盪）、`e2e/home.spec.ts`（建築半透明）。
+- **已知限制**：開關與沙堡只有自己看得到；別人的溜滑梯照他開始的時刻在本機重播，和他自己的畫面差一點時間；同一張長椅兩個人可以坐在同一個位置；熊熊老師坐下只抬高不擺腿（模型沒有手腳）。

@@ -4,6 +4,7 @@
  */
 import type { AvatarConfig } from '../store/save';
 import type { MemberZone } from './realtime';
+import type { ActCode } from '../store/actCodes';
 
 /** 公頻保留幾則 */
 export const CHAT_KEEP = 30;
@@ -25,6 +26,8 @@ export interface RemoteMember {
   title?: string | null;
   /** 熊熊老師（老師 GM 的 G2）；孩子沒有 */
   role?: 'teacher';
+  /** 正在用家具的動作（坐、躺、溜滑梯、盪鞦韆；第 9 節優化）；站著沒有 */
+  act?: ActCode;
 }
 
 /** 公頻的一則訊息 */
@@ -67,11 +70,12 @@ export function removeMember(s: PresenceState, id: string): PresenceState {
   return { ...s, members, bubbles };
 }
 
-/** 更新位置與朝向；外觀物件沿用同一個，畫面才不必重畫角色。不認識的成員不做事 */
-export function moveMember(s: PresenceState, id: string, x: number, z: number, heading: number): PresenceState {
+/** 更新位置、朝向與動作（沒帶動作就是站著）；外觀物件沿用同一個，畫面才不必重畫角色。不認識的成員不做事 */
+export function moveMember(s: PresenceState, id: string, x: number, z: number, heading: number, act?: ActCode): PresenceState {
   const m = s.members[id];
   if (!m) return s;
-  return { ...s, members: { ...s.members, [id]: { ...m, x, z, heading } } };
+  const { act: _old, ...rest } = m;
+  return { ...s, members: { ...s.members, [id]: { ...rest, x, z, heading, ...(act ? { act } : {}) } } };
 }
 
 /** 進出建築或屋子（null 表示回到島上） */

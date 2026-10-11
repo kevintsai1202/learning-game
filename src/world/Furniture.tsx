@@ -10,6 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import type * as THREE from 'three';
 import { StaticMerge } from './StaticMerge';
 import { YARD_SPACE, visibleYard, type DecorSpace, type YardItem } from '../store/yard';
+import { SWING_PIVOT, swingAngle } from '../store/furnitureUse';
 
 /** 常用的顏色 */
 const WOOD = '#b0773f';
@@ -93,7 +94,7 @@ export const FURNITURE_HEIGHT: Record<string, number> = {
   'decor.lamp': 2.0,
   'decor.parasol': 1.9,
   'decor.scarecrow': 1.6,
-  'decor.swing': 1.25,
+  'decor.swing': 1.8,
   'decor.windmill': 1.4,
   'decor.mailbox': 1.1,
 };
@@ -167,13 +168,70 @@ function Rug() {
 }
 
 /** 立燈：底座、長桿、燈罩、燈泡 */
-function FloorLamp() {
+function FloorLamp({ on = false }: { on?: boolean }) {
   return (
     <>
       <Cyl p={[0, 0.04, 0]} rt={0.2} rb={0.22} h={0.08} c={BLACK} n={10} />
       <Cyl p={[0, 0.8, 0]} rt={0.03} rb={0.03} h={1.5} c={BLACK} n={6} />
-      <Cyl p={[0, 1.55, 0]} rt={0.16} rb={0.28} h={0.3} c="#fff1b8" n={10} />
-      <Ball p={[0, 1.45, 0]} r={0.08} c="#ffe066" />
+      <Cyl p={[0, 1.55, 0]} rt={0.16} rb={0.28} h={0.3} c={on ? '#fffbe0' : '#fff1b8'} n={10} />
+      <Bulb p={[0, 1.45, 0]} r={0.08} on={on} />
+    </>
+  );
+}
+
+/** 鞦韆的座椅與繩子：掛在橫桿（樞軸）下，有人在盪（t0 有值）就照時間前後擺，和盪的角色同一個角度 */
+function SwingSeat({ t0 }: { t0: number | null }) {
+  const g = useRef<THREE.Group>(null);
+  useFrame(() => {
+    if (g.current) g.current.rotation.x = t0 === null ? 0 : swingAngle(performance.now() / 1000 - t0);
+  });
+  /** 座椅頂的高度與繩長 */
+  const seatY = 0.42;
+  const rope = SWING_PIVOT - seatY;
+  return (
+    <group ref={g} position={[0, SWING_PIVOT, 0]}>
+      {[-0.15, 0.15].map((x) => (
+        <Box key={x} p={[x, -rope / 2, 0]} s={[0.02, rope, 0.02]} c="#555" />
+      ))}
+      <Box p={[0, seatY - SWING_PIVOT, 0]} s={[0.4, 0.05, 0.18]} c={WOOD} />
+    </group>
+  );
+}
+
+/** 沙堡（沙坑堆好時）：城牆、三座塔、小旗子 */
+function SandCastle() {
+  const sand = '#e9c86b';
+  return (
+    <>
+      <Box p={[0, 0.25, 0]} s={[0.5, 0.16, 0.4]} c={sand} />
+      {[-0.22, 0.22].map((x) => (
+        <group key={x}>
+          <Cyl p={[x, 0.32, -0.15]} rt={0.08} rb={0.09} h={0.3} c={sand} n={8} />
+          <Cone p={[x, 0.53, -0.15]} r={0.1} h={0.12} c="#d9b24f" n={8} />
+        </group>
+      ))}
+      <Cyl p={[0, 0.42, 0.02]} rt={0.1} rb={0.12} h={0.36} c={sand} n={8} />
+      <Cone p={[0, 0.66, 0.02]} r={0.12} h={0.14} c="#d9b24f" n={8} />
+      <Box p={[0.04, 0.8, 0.02]} s={[0.1, 0.06, 0.01]} c="#e8455a" />
+      <Box p={[0, 0.76, 0.02]} s={[0.01, 0.14, 0.01]} c="#555" />
+    </>
+  );
+}
+
+/** 燈泡：開著時發亮，外面一圈半透明的光暈（不用真的燈光，平板才跑得動） */
+function Bulb({ p, r, on }: { p: [number, number, number]; r: number; on: boolean }) {
+  return (
+    <>
+      <mesh position={p}>
+        <sphereGeometry args={[r, 10, 8]} />
+        <meshToonMaterial color={on ? '#fff6a0' : '#e6d58a'} emissive={on ? '#ffd84d' : '#000000'} emissiveIntensity={on ? 1.2 : 0} />
+      </mesh>
+      {on && (
+        <mesh position={p}>
+          <sphereGeometry args={[r * 3.2, 12, 10]} />
+          <meshBasicMaterial color="#fff2a8" transparent opacity={0.28} depthWrite={false} />
+        </mesh>
+      )}
     </>
   );
 }
@@ -198,12 +256,18 @@ function Bookshelf() {
 }
 
 /** 電視：矮櫃上一台電視（畫面藍色） */
-function Tv() {
+function Tv({ on = false }: { on?: boolean }) {
   return (
     <>
       <Box p={[0, 0.2, 0]} s={[0.9, 0.4, 0.42]} c={WOOD} />
       <Box p={[0, 0.72, -0.05]} s={[0.84, 0.54, 0.07]} c={BLACK} />
-      <Box p={[0, 0.72, -0.01]} s={[0.74, 0.44, 0.01]} c="#5ec4e8" />
+      <Box p={[0, 0.72, -0.01]} s={[0.74, 0.44, 0.01]} c={on ? '#5ec4e8' : '#26303d'} />
+      {on && (
+        <>
+          <Box p={[0, 0.58, 0.0]} s={[0.74, 0.14, 0.01]} c="#4aa84d" />
+          <Ball p={[0.2, 0.84, 0.0]} r={0.07} c="#ffd84d" />
+        </>
+      )}
       <Box p={[0, 0.43, -0.05]} s={[0.2, 0.06, 0.16]} c={BLACK} />
     </>
   );
@@ -315,8 +379,8 @@ function Aquarium() {
   );
 }
 
-/** 室內家具（第二期進屋）的模型；不是室內家具回傳 null */
-function IndoorModel({ id }: { id: string }) {
+/** 室內家具（第二期進屋）的模型；不是室內家具回傳 null。on：電視、立燈開著 */
+function IndoorModel({ id, on = false }: { id: string; on?: boolean }) {
   switch (id) {
     case 'decor.bed':
       return <Bed />;
@@ -329,11 +393,11 @@ function IndoorModel({ id }: { id: string }) {
     case 'decor.rug':
       return <Rug />;
     case 'decor.floorlamp':
-      return <FloorLamp />;
+      return <FloorLamp on={on} />;
     case 'decor.bookshelf':
       return <Bookshelf />;
     case 'decor.tv':
-      return <Tv />;
+      return <Tv on={on} />;
     case 'decor.plant':
       return <Plant />;
     case 'decor.piano':
@@ -354,7 +418,11 @@ function IndoorModel({ id }: { id: string }) {
 }
 
 /** 一樣家具的模型（不認得的 id 不畫） */
-export function FurnitureModel({ id }: { id: string }) {
+/**
+ * 一樣家具的模型（不認得的 id 不畫）。on：開關類開著、沙堡堆好了（第 9 節優化）；
+ * swingT0：有人在盪這座鞦韆（開始的時間，performance.now 秒），座椅與繩子照時間繞橫桿擺
+ */
+export function FurnitureModel({ id, on = false, swingT0 = null }: { id: string; on?: boolean; swingT0?: number | null }) {
   switch (id) {
     case 'decor.bed-red':
       return <FlowerBed color="#e8455a" />;
@@ -474,7 +542,8 @@ export function FurnitureModel({ id }: { id: string }) {
       return (
         <>
           <Cyl p={[0, 0.75, 0]} rt={0.04} rb={0.06} h={1.5} c="#3b3a5e" n={8} />
-          <Box p={[0, 1.58, 0]} s={[0.22, 0.22, 0.22]} c="#fff3b0" />
+          <Box p={[0, 1.58, 0]} s={[0.22, 0.22, 0.22]} c={on ? '#fffbe0' : '#fff3b0'} />
+          <Bulb p={[0, 1.58, 0]} r={0.09} on={on} />
           <Cone p={[0, 1.76, 0]} r={0.2} h={0.16} c="#3b3a5e" n={4} />
           <Cyl p={[0, 0.04, 0]} rt={0.14} rb={0.16} h={0.08} c="#3b3a5e" n={8} />
         </>
@@ -506,19 +575,17 @@ export function FurnitureModel({ id }: { id: string }) {
         </>
       );
     case 'decor.swing':
+      // 架子比角色高（盪的時候頭不會穿過橫桿）；座椅與繩子掛在橫桿上，有人在盪才擺
       return (
         <>
           {[-0.42, 0.42].map((x) => (
             <group key={x}>
-              <Box p={[x, 0.6, -0.18]} s={[0.06, 1.25, 0.06]} c="#e8455a" />
-              <Box p={[x, 0.6, 0.18]} s={[0.06, 1.25, 0.06]} c="#e8455a" />
+              <Box p={[x, 0.88, -0.18]} s={[0.06, 1.8, 0.06]} c="#e8455a" />
+              <Box p={[x, 0.88, 0.18]} s={[0.06, 1.8, 0.06]} c="#e8455a" />
             </group>
           ))}
-          <Box p={[0, 1.22, 0]} s={[0.95, 0.06, 0.06]} c="#e8455a" />
-          {[-0.15, 0.15].map((x) => (
-            <Box key={x} p={[x, 0.82, 0]} s={[0.02, 0.8, 0.02]} c="#555" />
-          ))}
-          <Box p={[0, 0.42, 0]} s={[0.4, 0.05, 0.18]} c={WOOD} />
+          <Box p={[0, SWING_PIVOT + 0.02, 0]} s={[0.95, 0.06, 0.06]} c="#e8455a" />
+          <SwingSeat t0={swingT0} />
         </>
       );
     case 'decor.slide':
@@ -539,8 +606,14 @@ export function FurnitureModel({ id }: { id: string }) {
         <>
           <Box p={[0, 0.08, 0]} s={[0.92, 0.16, 0.92]} c={WOOD} />
           <Box p={[0, 0.13, 0]} s={[0.8, 0.08, 0.8]} c="#f3d98b" />
-          <Cone p={[0.15, 0.24, 0.1]} r={0.14} h={0.16} c="#e9c86b" n={6} />
-          <Box p={[-0.2, 0.2, -0.15]} s={[0.14, 0.1, 0.1]} c="#e8455a" />
+          {on ? (
+            <SandCastle />
+          ) : (
+            <>
+              <Cone p={[0.15, 0.24, 0.1]} r={0.14} h={0.16} c="#e9c86b" n={6} />
+              <Box p={[-0.2, 0.2, -0.15]} s={[0.14, 0.1, 0.1]} c="#e8455a" />
+            </>
+          )}
         </>
       );
     case 'decor.windmill':
@@ -565,7 +638,7 @@ export function FurnitureModel({ id }: { id: string }) {
       );
     default:
       // 室內家具（第二期進屋）
-      return <IndoorModel id={id} />;
+      return <IndoorModel id={id} on={on} />;
   }
 }
 
@@ -591,15 +664,33 @@ function Windmill() {
   );
 }
 
+/** 正在用的家具的樣子（第 9 節優化）：開關開著、沙堡堆好了（on）；有人在盪的鞦韆（swingT0） */
+export interface LiveState {
+  on?: boolean;
+  swingT0?: number;
+}
+
 /**
  * 擺好的家具：放到格子上（轉方向），全部合併網格；不認得的家具跳過、最多擺放地方的上限個。
  * space 是島上（預設）或屋裡（HOME_SPACE，房間的座標）。faded 是要半透明的格子（"gx,gz"；擋住角色的高家具），
- * 那幾件不合併、另外畫成半透明
+ * live 是正在用的格子（"gx,gz" → 開著、在盪）；這兩種不合併、另外畫（大部分的家具照舊合併，平板才跑得動）
  */
-export function YardDecor({ items, space = YARD_SPACE, faded = [] }: { items: readonly YardItem[]; space?: DecorSpace; faded?: readonly string[] }) {
+export function YardDecor({
+  items,
+  space = YARD_SPACE,
+  faded = [],
+  live = {},
+}: {
+  items: readonly YardItem[];
+  space?: DecorSpace;
+  faded?: readonly string[];
+  live?: Record<string, LiveState>;
+}) {
   const all = useMemo(() => visibleYard(items, space.max), [items, space]);
-  const shown = useMemo(() => all.filter((it) => !faded.includes(`${it.gx},${it.gz}`)), [all, faded]);
+  const apart = (it: YardItem) => faded.includes(`${it.gx},${it.gz}`) || `${it.gx},${it.gz}` in live;
+  const shown = useMemo(() => all.filter((it) => !apart(it)), [all, faded, live]); // eslint-disable-line react-hooks/exhaustive-deps
   const fadedItems = useMemo(() => all.filter((it) => faded.includes(`${it.gx},${it.gz}`)), [all, faded]);
+  const liveItems = useMemo(() => all.filter((it) => !faded.includes(`${it.gx},${it.gz}`) && `${it.gx},${it.gz}` in live), [all, faded, live]);
   /** 院子的內容換了就重新合併 */
   const key = useMemo(() => shown.map((it) => `${it.id}@${it.gx},${it.gz},${it.rot}`).join('|'), [shown]);
   return (
@@ -617,6 +708,15 @@ export function YardDecor({ items, space = YARD_SPACE, faded = [] }: { items: re
       {fadedItems.map((it) => (
         <FadedItem key={`${it.id}@${it.gx},${it.gz},${it.rot}`} item={it} space={space} />
       ))}
+      {liveItems.map((it) => {
+        const w = space.toWorld(it.gx, it.gz);
+        const st = live[`${it.gx},${it.gz}`];
+        return (
+          <group key={`${it.id}@${it.gx},${it.gz},${it.rot}`} position={[w.x, 0, w.z]} rotation={[0, (it.rot * Math.PI) / 2, 0]}>
+            <FurnitureModel id={it.id} on={st.on} swingT0={st.swingT0 ?? null} />
+          </group>
+        );
+      })}
     </>
   );
 }

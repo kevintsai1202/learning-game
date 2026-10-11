@@ -23,6 +23,7 @@ import { sceneDebug } from './world/sceneDebug';
 import { useFriendDuel } from './online/useFriendDuel';
 import { yardDebug } from './store/useDecor';
 import { homeDebug } from './store/useHome';
+import { useFurnitureUse } from './store/useFurnitureUse';
 import './styles/global.css';
 
 declare global {
@@ -62,6 +63,8 @@ declare global {
       yard: typeof yardDebug;
       /** 自己的家第二期：進屋的狀態、進屋、出屋 */
       home: typeof homeDebug;
+      /** 第 9 節優化：用家具的狀態（旁邊可以用的、正在用的、開關、正在盪的鞦韆） */
+      furniture: typeof useFurnitureUse;
     };
   }
 }
@@ -87,6 +90,7 @@ window.__game = {
   duel: useFriendDuel,
   yard: yardDebug,
   home: homeDebug,
+  furniture: useFurnitureUse,
 };
 
 createRoot(document.getElementById('root')!).render(

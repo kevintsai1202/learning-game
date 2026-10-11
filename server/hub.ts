@@ -41,6 +41,7 @@ import type { AvatarConfig, Profile } from '../src/store/save';
 import type { PuzzleGameId } from '../src/store/puzzle';
 import type { DuelDeclineReason, DuelMoveKind } from '../src/engine/puzzle/duelMoves';
 import type { YardItem } from '../src/store/yard';
+import type { ActCode } from '../src/store/actCodes';
 import { homeOf, homeSchema, type HomeState } from '../src/store/home';
 import { SPAWN, TEACHER_POS, WALK_RADIUS } from '../src/world/layout';
 import { isClassLogin, type TokenVia } from './tokens';
@@ -330,6 +331,8 @@ export class Hub {
     this.exit(m);
     const back = m.role === 'teacher' && codeOf(islandId) !== null;
     Object.assign(m.state, back ? { x: TEACHER_POS.x, z: TEACHER_POS.z, h: 0 } : { x: SPAWN.x, z: SPAWN.z, h: Math.PI }, { zone: null });
+    // 換島就不在用家具了（第 9 節優化）
+    delete m.state.a;
     m.dirty = false;
     this.enter(m, islandId, false);
     if (m.role === 'kid') this.tellFriends(m);
@@ -599,8 +602,11 @@ export class Hub {
     this.moveTo(v, ownIsland(v.state.id));
   }
 
-  /** 位置更新：限制在島的圓形範圍內（不做障礙物碰撞，見規格的信任模型）；下次 flush 才廣播 */
-  move(conn: HubConn, x: number, z: number, h: number): void {
+  /**
+   * 位置更新：限制在島的圓形範圍內（不做障礙物碰撞，見規格的信任模型）；下次 flush 才廣播。
+   * a 是正在用家具的動作代碼（第 9 節優化；沒帶就是站著）
+   */
+  move(conn: HubConn, x: number, z: number, h: number, a?: ActCode): void {
     const m = this.conns.get(conn);
     if (!m) return;
     const r = Math.hypot(x, z);
@@ -608,17 +614,20 @@ export class Hub {
     m.state.x = x * k;
     m.state.z = z * k;
     m.state.h = h;
+    if (a && m.state.zone !== null && m.state.zone !== 'home') delete m.state.a;
+    else if (a) m.state.a = a;
+    else delete m.state.a;
     m.dirty = true;
   }
 
   /** 每 100 毫秒呼叫一次：把有移動的人打包送給同一座島上的人（沒人移動就不送） */
   flush(): void {
     for (const island of this.islands.values()) {
-      const list: [string, number, number, number][] = [];
+      const list: ([string, number, number, number] | [string, number, number, number, ActCode])[] = [];
       for (const m of island.members.values()) {
         if (!m.dirty) continue;
         m.dirty = false;
-        list.push([m.state.id, m.state.x, m.state.z, m.state.h]);
+        list.push(m.state.a ? [m.state.id, m.state.x, m.state.z, m.state.h, m.state.a] : [m.state.id, m.state.x, m.state.z, m.state.h]);
       }
       if (list.length) this.broadcast(island, { t: 'moves', list });
     }
@@ -634,6 +643,8 @@ export class Hub {
     if (zone === 'home' && kindOf(m.islandId) !== 'own') return;
     if (m.role === 'teacher' && zone !== 'home' && zone !== null) return;
     m.state.zone = zone;
+    // 進建築、進出屋就不在用家具了（第 9 節優化）
+    delete m.state.a;
     const island = this.islands.get(m.islandId);
     if (island) this.broadcast(island, { t: 'member', member: m.state }, m.state.id);
   }

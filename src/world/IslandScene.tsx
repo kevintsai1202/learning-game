@@ -31,6 +31,7 @@ import { DecorLayer } from './DecorLayer';
 import { HOUSE_TREE_CLEAR, YARD_SPACE, yardObstacles } from '../store/yard';
 import { occluders, type Occluder } from './occlusion';
 import { fadeGroup } from './fadeGroup';
+import { UseProbe, useLiveMap } from './UseLayer';
 import { useGame } from '../store/useGame';
 import { useRealtime } from '../online/realtimeClient';
 import { useGm } from '../online/gmClient';
@@ -201,6 +202,8 @@ export function IslandScene({
   const yard = hasHome && mode !== 'attract' ? shownYard({ ownIsland: true, visiting, local: localYard, host: hostYard }) : null;
   /** 可以佈置：自己的島、不是拜訪別人、不是熊熊老師、在島上玩（動森做法：角色面前出現預覽） */
   const canDeco = hasHome && !visiting && !gm && mode === 'play';
+  /** 島上正在用的家具（開關、沙堡、有人在盪的鞦韆；第 9 節優化） */
+  const liveYard = useLiveMap('yard');
   /** 小屋擋住角色而半透明（「○○的家」牌子是 DOM，不會跟著 3D 的材質，要另外變淡） */
   const [houseHidden, setHouseHidden] = useState(false);
   /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
@@ -286,7 +289,8 @@ export function IslandScene({
       )}
       {look.home && mode !== 'attract' && <HouseDoorProbe active={interactive} />}
       {look.home && <IslandPlate name={look.home.name} />}
-      {yard && <YardDecor items={yard} />}
+      {yard && <YardDecor items={yard} live={liveYard} />}
+      {yard && mode !== 'attract' && <UseProbe items={yard} place="yard" active={interactive} />}
       {canDeco && <DecorLayer space={YARD_SPACE} />}
       {mode !== 'attract' && <OcclusionHider hasHome={hasHome} onChange={(h) => setHouseHidden(h.includes('house'))} />}
       {ZONES.map((z) => {
@@ -327,7 +331,7 @@ export function IslandScene({
           <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} />
           <TargetMarker />
           {/* 同房間的其他玩家（沒有人在線上時什麼都不畫） */}
-          <RemotePlayers />
+          <RemotePlayers items={yard ?? []} />
         </>
       )}
     </>

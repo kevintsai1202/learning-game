@@ -191,7 +191,7 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
       }
       switch (msg.t) {
         case 'move':
-          hub.move(conn, msg.x, msg.z, msg.h);
+          hub.move(conn, msg.x, msg.z, msg.h, msg.a);
           break;
         case 'where':
           hub.where(conn, msg.zone);

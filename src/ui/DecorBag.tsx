@@ -24,7 +24,10 @@ import {
   toggleSurface,
   useDecor,
 } from '../store/useDecor';
-import { useHome } from '../store/useHome';
+import { isInsideHome, useHome } from '../store/useHome';
+import { cellKey, startUse, stopUse, useFurnitureUse, type Place } from '../store/useFurnitureUse';
+import { useSpecOf } from '../store/furnitureUse';
+import { resetDecor } from '../store/useDecor';
 import { DECOR_LINES } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
@@ -174,18 +177,85 @@ export function SurfacePanel() {
   );
 }
 
-/** 角色旁邊有擺好的家具（沒選家具時）：轉方向、收起來 */
+/** 用一件家具（坐、躺、盪、溜滑梯、開關、沙堡）：坐上去時關上家具包；鋼琴彈一段 */
+function operateFurniture(item: { id: string; gx: number; gz: number; rot: 0 | 1 | 2 | 3 }, place: Place): void {
+  const kind = startUse(item, place);
+  if (kind === 'toggle' || kind === 'sandcastle') {
+    sfx.toggle();
+    return;
+  }
+  sfx.tap();
+  resetDecor();
+  if (kind === 'piano') sfx.piano();
+}
+
+/**
+ * 角色旁邊的家具卡片：
+ * - 正在用（坐、躺、盪、溜滑梯）：「⬆️ 起來」（溜滑梯途中沒有，溜完自己起來）。
+ * - 自己能佈置的地方、旁邊有擺好的家具（沒選家具時）：可以用的話「使用」，加「🔄 轉方向」「👜 收起來」。
+ * - 其他地方（朋友的島、屋裡、熊熊老師）旁邊有可以用的家具：「使用」。
+ */
 export function DecorNear() {
   const near = useDecor((s) => s.near);
   const picking = useDecor((s) => s.picking);
   const bagOpen = useDecor((s) => s.bagOpen);
-  if (!near || picking) return null;
-  const item = findItem(near.id);
+  const useNear = useFurnitureUse((s) => s.near);
+  const acting = useFurnitureUse((s) => s.acting);
+  const toggles = useFurnitureUse((s) => s.toggles);
+  useHome((s) => s.inside);
+  if (acting) {
+    const it = findItem(acting.item.id);
+    return (
+      <div className="decor-near card" role="group" aria-label="正在用的家具" data-testid="use-card">
+        <span className="decor-near-name">
+          {it?.emoji} {it?.name}
+        </span>
+        {acting.kind !== 'slide' && (
+          <button
+            className="btn small"
+            onClick={() => {
+              sfx.tap();
+              stopUse();
+            }}
+            data-testid="use-stop"
+          >
+            ⬆️ 起來
+          </button>
+        )}
+      </div>
+    );
+  }
+  if (picking) return null;
+  // 自己能佈置的地方的家具（在屋裡就是房間）；不然是旁邊可以用的家具
+  const target = near ? { item: near, place: (isInsideHome() ? 'home' : 'yard') as Place } : useNear;
+  if (!target) return null;
+  const item = findItem(target.item.id);
+  const spec = useSpecOf(target.item.id);
+  const on = toggles[cellKey(target.place, target.item)];
+  const useButton = spec && (
+    <button
+      className="btn small green"
+      onClick={() => operateFurniture(target.item, target.place)}
+      data-testid="use-furniture"
+    >
+      {on && spec.offLabel ? spec.offLabel : spec.label}
+    </button>
+  );
+  if (!near)
+    return (
+      <div className="decor-near card" role="group" aria-label="旁邊的家具" data-testid="use-card">
+        <span className="decor-near-name">
+          {item?.emoji} {item?.name}
+        </span>
+        {useButton}
+      </div>
+    );
   return (
     <div className={`decor-near card ${bagOpen ? 'over-bag' : ''}`} role="group" aria-label="旁邊的家具" data-testid="decor-near">
       <span className="decor-near-name">
         {item?.emoji} {item?.name}
       </span>
+      {useButton}
       <button
         className="btn small"
         onClick={() => {

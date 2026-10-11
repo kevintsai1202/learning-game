@@ -36,6 +36,17 @@ describe('伺服器訊息寫進同島狀態', () => {
     expect(s.members.a).toBeUndefined();
   });
 
+  it('第 9 節優化：別人的動作代碼（moves 的第 5 欄、成員的 a）；沒有第 5 欄就是站著（舊版伺服器也是）', () => {
+    let s = applyServerMessage(emptyPresence(), { t: 'welcome', island: 'own', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [member('a', '阿寶', { a: 'lie' })], chat: [] }, self, 1);
+    expect(s.members.a.act).toBe('lie');
+    s = applyServerMessage(s, { t: 'moves', list: [['a', 1, 2, 0.5, 'sit']] }, self, 2);
+    expect(s.members.a).toMatchObject({ x: 1, z: 2, act: 'sit' });
+    s = applyServerMessage(s, { t: 'moves', list: [['a', 3, 2, 0.5]] }, self, 3);
+    expect(s.members.a.act).toBeUndefined();
+    s = applyServerMessage(s, { t: 'join', member: member('b', '小美', { a: 'swing' }) }, self, 4);
+    expect(s.members.b.act).toBe('swing');
+  });
+
   it('熊熊老師（老師 GM 的 G2）：join 的成員保留 role，畫面才知道要畫熊熊老師；孩子沒有 role', () => {
     let s = applyServerMessage(emptyPresence(), { t: 'welcome', island: 'class', self: 'me', room: { chatOpen: true, giftsOpen: true }, members: [member('a', '阿寶')], chat: [] }, self, 1);
     s = applyServerMessage(s, { t: 'join', member: member('gm:1', '熊熊老師', { role: 'teacher' }) }, self, 2);

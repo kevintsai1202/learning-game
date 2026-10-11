@@ -21,6 +21,9 @@ import { Teacher } from './Teacher';
 import { enterHome } from '../store/useHome';
 import { roomCamera } from './room';
 import { camZoom } from './cameraZoom';
+import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
+import { actFrame } from '../store/furnitureUse';
+import { nowSec, spaceOf, stopUse } from '../store/useFurnitureUse';
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -47,6 +50,8 @@ interface PlayerProps {
 export function Player({ avatar, obstacles, active, teacher = false, bounds = WALK_RADIUS, doors = DOORS, roomView = false }: PlayerProps) {
   const group = useRef<THREE.Group>(null);
   const motion = useRef<MotionState>({ speed: 0 });
+  /** 用家具時的抬高、縮放、傾斜（PoseWrap 每格讀） */
+  const lift = useRef<PoseLift>(STANDING);
   const lastNear = useRef<ZoneId | null>(null);
   const lookAt = useRef(new THREE.Vector3(player.pos.x, 1, player.pos.z - 3));
   const { camera, size } = useThree();
@@ -58,7 +63,28 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     const dt = Math.min(rawDt, 0.05);
     let next = player.pos;
     let moving = false;
-    if (active) {
+    // 用家具（第 9 節優化）：照時間軸擺在家具上；按鈕、方向鍵、點地面都會起來（溜滑梯途中不行，溜完自己起來）
+    if (player.act) {
+      const act = player.act;
+      const f = actFrame(act.item, spaceOf(act.place), act.kind, nowSec() - act.t0);
+      if (act.kind === 'slide') player.target = null;
+      const dir = inputDirection();
+      if (f.done) stopUse(true);
+      else if (active && act.kind !== 'slide' && (Math.hypot(dir.x, dir.z) > 0.05 || player.target)) stopUse();
+      if (player.act) {
+        // 位置設成座位的世界座標（位置訊息送出去才是座位）；移動與碰撞整段跳過
+        player.pos = { x: f.x, z: f.z };
+        player.heading = f.heading;
+        motion.current.speed = 0;
+        motion.current.pose = f.pose;
+        lift.current = f;
+      } else {
+        motion.current.pose = 'stand';
+        lift.current = STANDING;
+      }
+      next = player.pos;
+    }
+    if (active && !player.act) {
       const dir = inputDirection();
       if (Math.hypot(dir.x, dir.z) > 0.05) {
         player.target = null;
@@ -90,8 +116,10 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     }
     const dx = next.x - player.pos.x;
     const dz = next.z - player.pos.z;
-    motion.current.speed = moving ? Math.hypot(dx, dz) / Math.max(dt, 1e-3) : 0;
-    if (Math.hypot(dx, dz) > 1e-4) player.heading = lerpAngle(player.heading, Math.atan2(dx, dz), Math.min(1, dt * 12));
+    if (!player.act) {
+      motion.current.speed = moving ? Math.hypot(dx, dz) / Math.max(dt, 1e-3) : 0;
+      if (Math.hypot(dx, dz) > 1e-4) player.heading = lerpAngle(player.heading, Math.atan2(dx, dz), Math.min(1, dt * 12));
+    }
     player.pos = next;
 
     if (group.current) {
@@ -100,7 +128,7 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     }
 
     // 門口偵測：變更時才寫入 store
-    const near = active && !teacher ? nearestDoor(next, doors, DOOR_RANGE) : null;
+    const near = active && !teacher && !player.act ? nearestDoor(next, doors, DOOR_RANGE) : null;
     if (near !== lastNear.current) {
       lastNear.current = near;
       useUi.getState().setNearZone(near);
@@ -133,7 +161,7 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
   return (
     <>
       <group ref={group}>
-        {teacher ? <Teacher waving={false} /> : <Avatar config={avatar} motion={motion} />}
+        <PoseWrap lift={lift}>{teacher ? <Teacher waving={false} /> : <Avatar config={avatar} motion={motion} />}</PoseWrap>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />

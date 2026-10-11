@@ -11,6 +11,7 @@ import { Joystick } from './IslandHud';
 import { sfx } from '../../audio/sfx';
 import { GmRoster } from './GmRoster';
 import { HomeDoorBubble } from '../HomeDoorBubble';
+import { DecorNear } from '../DecorBag';
 
 /** 連線狀態的文字 */
 const STATUS_TEXT = { off: '', connecting: '連線中…', online: '🟢 在島上', error: '' } as const;
@@ -139,6 +140,8 @@ export function GmHud() {
       </form>
       {/* 孩子的島上：小屋門口與屋裡腳踏墊的泡泡（熊熊老師也能進孩子的家，自己的家第二期） */}
       <HomeDoorBubble touch={touch} />
+      {/* 旁邊可以用的家具（熊熊老師也能坐、溜滑梯；第 9 節優化） */}
+      <DecorNear />
       {touch && <Joystick />}
     </>
   );

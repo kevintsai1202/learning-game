@@ -12,7 +12,8 @@ import { applyHostYard, clearHostYard } from './useHostYard';
 import { create } from 'zustand';
 import { applyServerMessage, wsUrlOf, type SelfInfo } from './realtimeClient';
 import { TEACHER_AVATAR, TEACHER_NAME, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
-import { canSendMove } from './realtimeClient';
+import { actCodeNow, canSendMove } from './realtimeClient';
+import type { ActCode } from '../store/actCodes';
 import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { BUBBLE_MS, expireBubbles } from './presence';
 import { usePresence } from './usePresence';
@@ -82,8 +83,8 @@ export function startGm(code: string): () => void {
   let stopped = false;
   let retry = 0;
   let retryTimer: ReturnType<typeof setTimeout> | null = null;
-  /** 上一次送出的位置與時間 */
-  let last = { x: NaN, z: NaN, h: NaN, at: 0 };
+  /** 上一次送出的位置、時間與動作 */
+  let last: { x: number; z: number; h: number; at: number; a?: ActCode } = { x: NaN, z: NaN, h: NaN, at: 0 };
   /** 伺服器支援的新訊息（welcome 的 caps） */
   let caps: ServerCap[] = [];
   /** 上一次回報的所在地方（熊熊老師只回報屋子裡或島上，自己的家第二期） */
@@ -99,12 +100,13 @@ export function startGm(code: string): () => void {
     }
   };
 
-  /** 送出目前的位置 */
+  /** 送出目前的位置（熊熊老師也能坐、溜滑梯：帶動作代碼，第 9 節優化） */
   const sendMove = () => {
     const { x, z } = player.pos;
     const h = player.heading;
-    last = { x, z, h, at: Date.now() };
-    sendGm({ t: 'move', x, z, h });
+    const a = actCodeNow();
+    last = { x, z, h, at: Date.now(), a };
+    sendGm({ t: 'move', x, z, h, ...(a ? { a } : {}) });
   };
 
   const connect = () => {
@@ -178,7 +180,7 @@ export function startGm(code: string): () => void {
     const now = Date.now();
     const { x, z } = player.pos;
     const h = player.heading;
-    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05;
+    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow() !== last.a;
     if (moved || now - last.at > 2000) sendMove();
   }, 100);
 

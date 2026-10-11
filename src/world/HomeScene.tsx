@@ -12,6 +12,7 @@ import { Player, TargetMarker } from './Player';
 import { FURNITURE_HEIGHT, YardDecor } from './Furniture';
 import { occluders, type Occluder } from './occlusion';
 import { DecorLayer } from './DecorLayer';
+import { UseProbe, useLiveMap } from './UseLayer';
 import { RemotePlayers } from './RemotePlayers';
 import { inputDirection, player } from './input';
 import { DOOR_MAT, ROOM_RECT, atRoomExit, onDoorMat } from './room';
@@ -342,6 +343,8 @@ export function HomeScene({
   const obstacles = useMemo(() => decorObstacles(home.items, HOME_SPACE), [home.items]);
   /** 擋住角色的高家具（半透明） */
   const [faded, setFaded] = useState<string[]>([]);
+  /** 屋裡正在用的家具（開關、有人在盪的鞦韆；第 9 節優化） */
+  const live = useLiveMap('home');
   /** 點地板：走過去（範圍外的會被夾回房間裡） */
   const onFloorTap = (x: number, z: number) => {
     if (!active) return;
@@ -367,13 +370,14 @@ export function HomeScene({
       />
       <RoomProbe />
       <Room wall={home.wall} floor={home.floor} onFloorTap={onFloorTap} />
-      <YardDecor items={home.items} space={HOME_SPACE} faded={faded} />
+      <YardDecor items={home.items} space={HOME_SPACE} faded={faded} live={live} />
+      <UseProbe items={home.items} place="home" active={active} />
       <FadeProbe items={home.items} onChange={setFaded} />
       {canDeco && <DecorLayer space={HOME_SPACE} />}
       <Player avatar={avatar} obstacles={obstacles} active={active} teacher={gm} bounds={ROOM_RECT} doors={[]} roomView />
       <TargetMarker />
       {/* 屋裡的其他人（朋友、熊熊老師；自己的家第二期） */}
-      <RemotePlayers place="home" />
+      <RemotePlayers place="home" items={home.items} />
       <DoorProbe active={active} />
     </>
   );

@@ -14,6 +14,13 @@ import { create } from 'zustand';
 import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, removeMember, upsertMember, type PresenceState, type RemoteMember } from './presence';
 import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
 import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
+import { ACT_OF_KIND } from '../store/furnitureUse';
+import type { ActCode } from '../store/actCodes';
+
+/** 自己現在用家具的動作代碼（坐、躺、溜滑梯、盪鞦韆；開關類不算）；站著是 undefined */
+export function actCodeNow(): ActCode | undefined {
+  return player.act ? ACT_OF_KIND[player.act.kind] : undefined;
+}
 import { doingLabel } from './doing';
 import { findActivity } from '../activities/resolve';
 import { usePuzzleNow } from '../puzzle/now';
@@ -50,6 +57,7 @@ const toRemote = (m: MemberState): RemoteMember => ({
   zone: m.zone,
   title: m.title,
   ...(m.role ? { role: m.role } : {}),
+  ...(m.a ? { act: m.a } : {}),
 });
 
 /** 把一則伺服器訊息套進同島狀態（純函式；連線狀態類的訊息不在這裡處理） */
@@ -67,7 +75,7 @@ export function applyServerMessage(s: PresenceState, msg: ServerMessage, self: S
     case 'leave':
       return removeMember(s, msg.id);
     case 'moves':
-      return msg.list.reduce((acc, [id, x, z, h]) => (id === s.selfId ? acc : moveMember(acc, id, x, z, h)), s);
+      return msg.list.reduce((acc, [id, x, z, h, a]) => (id === s.selfId ? acc : moveMember(acc, id, x, z, h, a)), s);
     case 'chat':
       return receiveChat(s, msg.line, now);
     default:
@@ -248,7 +256,7 @@ export function startRealtime(): () => void {
   let blocked: RealtimeBlock | null = null;
   /** 記住被踢或「沒有班級」當下的帳號、班級與權杖 */
   const blockNow = (): RealtimeBlock | null => (accountId ? { accountId, room: roomsKey(useGame.getState().profile()?.cloud), token: getToken(accountId) } : null);
-  let last = { x: NaN, z: NaN, h: NaN, at: 0 };
+  let last: { x: number; z: number; h: number; at: number; a?: ActCode } = { x: NaN, z: NaN, h: NaN, at: 0 };
   let lastZone: MemberZone | null | undefined;
   /** 伺服器支援的新訊息（welcome 的 caps；舊版伺服器沒有，就不送它不認得的訊息） */
   let caps: ServerCap[] = [];
@@ -531,12 +539,13 @@ export function startRealtime(): () => void {
     connect(target);
   };
 
-  /** 送出目前的位置 */
+  /** 送出目前的位置（用家具時帶動作代碼，第 9 節優化） */
   const sendMove = () => {
     const { x, z } = player.pos;
     const h = player.heading;
-    last = { x, z, h, at: Date.now() };
-    send({ t: 'move', x, z, h });
+    const a = actCodeNow();
+    last = { x, z, h, at: Date.now(), a };
+    send({ t: 'move', x, z, h, ...(a ? { a } : {}) });
   };
 
   // 位置：有變才送（最多每秒 10 次），靜止時每 2 秒送一次；在屋裡而伺服器不支援進屋時不送
@@ -546,7 +555,8 @@ export function startRealtime(): () => void {
     const now = Date.now();
     const { x, z } = player.pos;
     const h = player.heading;
-    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05;
+    // 坐下、起來（動作變了）也算有變，立刻送
+    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow() !== last.a;
     if (moved || now - last.at > 2000) sendMove();
   }, 100);
 

@@ -12,11 +12,14 @@ import type { Animal, AvatarConfig } from '../store/save';
 import type { StageMood } from '../store/useUi';
 import { Hat } from './Hats';
 import { BackItem, Glasses, HandItem } from './Accessories';
+import type { Pose } from '../store/furnitureUse';
 
 /** 角色的即時移動狀態（由控制器每幀寫入，避免 React 重新渲染） */
 export interface MotionState {
   /** 目前速度（公尺／秒） */
   speed: number;
+  /** 姿勢（用家具時；沒有是站著，第 9 節優化）：坐和躺腳往前伸、爬梯子手輪流舉 */
+  pose?: Pose;
 }
 
 interface AvatarProps {
@@ -136,10 +139,25 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
       armL.current.rotation.x = -swing * 0.8;
       armR.current.rotation.x = swing * 0.8;
     }
+    // 用家具的姿勢（第 9 節優化）：坐、躺腳往前伸；爬梯子手輪流往上、腳輪流踩
+    const pose = motion?.current.pose ?? 'stand';
+    if (pose === 'sit' || pose === 'lie') {
+      if (legL.current && legR.current) legL.current.rotation.x = legR.current.rotation.x = -1.35;
+    } else if (pose === 'climb') {
+      const c = Math.sin(t * 10) * 0.5;
+      if (armL.current && armR.current) {
+        armL.current.rotation.x = -2.4 + c;
+        armR.current.rotation.x = -2.4 - c;
+      }
+      if (legL.current && legR.current) {
+        legL.current.rotation.x = c;
+        legR.current.rotation.x = -c;
+      }
+    }
     if (tail.current) tail.current.rotation.z = Math.sin(t * (animal === 'dog' ? 14 : 3)) * 0.35;
     if (!body.current || !root.current) return;
     // 走路時上下晃，站著時輕輕呼吸
-    body.current.position.y = walking ? Math.abs(Math.sin(a.phase)) * 0.12 : Math.sin(t * 2) * 0.02;
+    body.current.position.y = walking && pose === 'stand' ? Math.abs(Math.sin(a.phase)) * 0.12 : Math.sin(t * 2) * 0.02;
     // mood 動畫：答對跳一下、答錯歪頭、慶祝連跳
     const since = t - a.moodStart;
     let jump = 0;

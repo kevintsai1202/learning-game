@@ -205,7 +205,7 @@ const memberOn = (page: Page, nickname: string) =>
   page.evaluate((n) => {
     const s = (window as any).__game.presence.getState();
     const m = Object.values(s.members).find((v: any) => v.nickname === n && v.id !== s.selfId) as any;
-    return m ? { zone: m.zone, x: m.x, z: m.z } : null;
+    return m ? { zone: m.zone, x: m.x, z: m.z, act: m.act ?? null } : null;
   }, nickname);
 /** 在不在屋裡 */
 const insideOf = (page: Page) => page.evaluate(() => (window as any).__game.home.store.getState().inside);
@@ -395,4 +395,215 @@ test('第 9 節優化：滾輪拉近拉遠（存在裝置上）、屋裡鏡頭�
   await page.evaluate(() => (window as any).__game.teleport({ x: -3.5, z: 2 }));
   await expect.poll(() => page.evaluate(() => (window as any).__game.scene.fadedCells)).toEqual([]);
   expect(errors).toEqual([]);
+});
+
+/** 正在用的家具（player.act） */
+const actOf = (page: Page) => page.evaluate(() => {
+  const a = (window as any).__game.player.act;
+  return a ? { kind: a.kind, id: a.item.id } : null;
+});
+
+/** 站到某件家具（島上的格子）前面 1 公尺，等「使用」按鈕出現 */
+async function standByYard(page: Page, cell: { gx: number; gz: number }): Promise<void> {
+  await page.evaluate(({ gx, gz }) => {
+    const g = (window as any).__game;
+    const w = g.yard.world(gx, gz);
+    g.teleport({ x: w.x, z: w.z + 1.1 });
+    g.player.heading = Math.PI;
+  }, cell);
+  await expect(page.getByTestId('use-furniture')).toBeVisible();
+}
+
+test('第 9 節優化：坐長椅（推方向鍵起來）、盪鞦韆、溜滑梯（自己站起來）、開路燈與堆沙堡；屋裡躺床、彈鋼琴', async ({ page }) => {
+  test.setTimeout(180_000);
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await freshStart(page);
+  await createKid(page);
+  // 島上擺長椅、鞦韆、溜滑梯、路燈、沙坑（離得夠遠，站位不會撞到別件）
+  const cells = await page.evaluate(() => {
+    const g = (window as any).__game;
+    const all: { gx: number; gz: number }[] = g.yard.cells();
+    const near = (x: number, z: number) =>
+      all.map((c) => ({ c, d: Math.hypot(g.yard.world(c.gx, c.gz).x - x, g.yard.world(c.gx, c.gz).z - z) })).sort((a, b) => a.d - b.d)[0].c;
+    return { bench: near(6, 4), swing: near(10, 4), slide: near(14, 4), lamp: near(6, 0), sandbox: near(10, 0) };
+  });
+  await page.evaluate((cells) => {
+    const g = (window as any).__game;
+    const ids = ['decor.bench', 'decor.swing', 'decor.slide', 'decor.lamp', 'decor.sandbox', 'decor.bed', 'decor.piano'];
+    g.game.setState((st: any) => ({
+      save: { ...st.save, profiles: st.save.profiles.map((p: any) => (p.id === st.save.activeProfileId ? { ...p, inventory: [...p.inventory, ...ids] } : p)) },
+    }));
+    g.game.getState().saveYard([
+      { id: 'decor.bench', ...cells.bench, rot: 0 },
+      { id: 'decor.swing', ...cells.swing, rot: 0 },
+      { id: 'decor.slide', ...cells.slide, rot: 0 },
+      { id: 'decor.lamp', ...cells.lamp, rot: 0 },
+      { id: 'decor.sandbox', ...cells.sandbox, rot: 0 },
+    ]);
+  }, cells);
+
+  // 長椅：坐下（角色在座位上、姿勢是坐）；推方向鍵起來
+  await standByYard(page, cells.bench);
+  await expect(page.getByTestId('use-furniture')).toContainText('坐下');
+  await page.getByTestId('use-furniture').click();
+  await expect.poll(() => actOf(page)).toEqual({ kind: 'sit', id: 'decor.bench' });
+  await expect(page.getByTestId('use-stop')).toBeVisible();
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${SHOTS}/10-sit-bench.png` });
+  await page.keyboard.down('ArrowDown');
+  await expect.poll(() => actOf(page)).toBeNull();
+  await page.keyboard.up('ArrowDown');
+
+  // 鞦韆：盪（按「起來」下來）
+  await standByYard(page, cells.swing);
+  await page.getByTestId('use-furniture').click();
+  await expect.poll(() => actOf(page)).toEqual({ kind: 'swing', id: 'decor.swing' });
+  await page.waitForTimeout(900);
+  await page.screenshot({ path: `${SHOTS}/11-swing.png` });
+  await page.getByTestId('use-stop').click();
+  await expect.poll(() => actOf(page)).toBeNull();
+
+  // 溜滑梯：途中沒有「起來」，點地面也不會停；溜完自己站起來
+  await standByYard(page, cells.slide);
+  await page.getByTestId('use-furniture').click();
+  await expect.poll(() => actOf(page)).toEqual({ kind: 'slide', id: 'decor.slide' });
+  await expect(page.getByTestId('use-stop')).toHaveCount(0);
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: `${SHOTS}/12-slide.png` });
+  await expect.poll(() => actOf(page), { timeout: 5000 }).toBeNull();
+
+  // 路燈：開燈、關燈；沙坑：堆沙堡
+  await standByYard(page, cells.lamp);
+  await page.getByTestId('use-furniture').click();
+  await expect(page.getByTestId('use-furniture')).toContainText('關燈');
+  await standByYard(page, cells.sandbox);
+  await page.getByTestId('use-furniture').click();
+  await expect(page.getByTestId('use-furniture')).toContainText('推倒沙堡');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/13-castle-lamp.png` });
+
+  // 屋裡：躺床、彈鋼琴（自己的家可以一邊佈置一邊用：卡片上有「使用」也有「轉方向」）
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    g.game.getState().saveHome({
+      items: [
+        { id: 'decor.bed', gx: 2, gz: 2, rot: 0 },
+        { id: 'decor.piano', gx: 6, gz: 2, rot: 0 },
+      ],
+      wall: 'wall.cream',
+      floor: 'floor.wood',
+    });
+    g.teleport(g.home.door());
+  });
+  await page.getByTestId('enter-home').click();
+  await expect.poll(() => page.evaluate(() => (window as any).__game.home.store.getState().inside)).toBe('mine');
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    const w = g.home.world(2, 2);
+    g.teleport({ x: w.x, z: w.z + 1.1 });
+  });
+  await expect(page.getByTestId('decor-near')).toContainText('床');
+  await expect(page.getByTestId('use-furniture')).toContainText('躺下');
+  await page.getByTestId('use-furniture').click();
+  await expect.poll(() => actOf(page)).toEqual({ kind: 'lie', id: 'decor.bed' });
+  await page.waitForTimeout(1200);
+  await page.screenshot({ path: `${SHOTS}/14-lie-bed.png` });
+  await page.getByTestId('use-stop').click();
+  await expect.poll(() => actOf(page)).toBeNull();
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    const w = g.home.world(6, 2);
+    g.teleport({ x: w.x, z: w.z + 1.1 });
+  });
+  await expect(page.getByTestId('use-furniture')).toContainText('彈琴');
+  await page.getByTestId('use-furniture').click();
+  await expect.poll(() => actOf(page)).toEqual({ kind: 'piano', id: 'decor.piano' });
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: `${SHOTS}/15-piano.png` });
+  // 點地面也會起來
+  const floorPt = await page.evaluate(() => (window as any).__game.scene.project(-3, 0, 3));
+  await page.mouse.click(floorPt.x, floorPt.y);
+  await expect.poll(() => actOf(page)).toBeNull();
+  expect(errors).toEqual([]);
+});
+
+test('第 9 節優化：朋友看得到你坐在長椅上、盪鞦韆（座椅跟著動）；起來後是站著', async ({ browser, baseURL, request }) => {
+  test.setTimeout(300_000);
+  const room = await createClassViaApi(request, '二年八班');
+  for (const [nickname, pin, animal] of [
+    ['阿寶', '1111', 'capybara'],
+    ['小美', '2222', 'panda'],
+  ]) {
+    const res = await request.post(`${SERVER}/api/join`, { data: { code: room.code, nickname, pin, avatar: { animal, color: '#8b5a2b', hat: null } } });
+    expect(res.ok()).toBe(true);
+  }
+  // 老師發金幣給全班（小美要買長椅與鞦韆，雲端角色的家具要伺服器上真的有）
+  const reward = await request.post(`${SERVER}/api/teacher/rooms/${room.code}/rewards`, { data: { to: 'all', coins: 200 }, headers: { authorization: `Bearer ${room.token}` } });
+  expect(reward.ok()).toBe(true);
+  const a = await openDevice(browser, baseURL!);
+  contexts.push(a.context);
+  await loginAndEnter(a.page, room.code, '阿寶', '1111');
+  const b = await openDevice(browser, baseURL!);
+  contexts.push(b.context);
+  await loginAndEnter(b.page, room.code, '小美', '2222');
+  for (const p of [a.page, b.page]) {
+    await expect.poll(() => p.evaluate(() => (window as any).__game.game.getState().profile().coins)).toBeGreaterThanOrEqual(200);
+    const ok = p.getByTestId('reward-ok');
+    if (await ok.isVisible()) await ok.click();
+  }
+  // 小美買長椅與鞦韆、回自己的島擺好、開放
+  expect(await b.page.evaluate(() => (window as any).__game.game.getState().purchase('decor.bench', 40))).toBe(true);
+  expect(await b.page.evaluate(() => (window as any).__game.game.getState().purchase('decor.swing', 120))).toBe(true);
+  await b.page.getByTestId('hud-island').click();
+  await expect.poll(() => b.page.evaluate(() => (window as any).__game.realtime.getState().island)).toBe('own');
+  const cells = await b.page.evaluate(() => {
+    const g = (window as any).__game;
+    const all: { gx: number; gz: number }[] = g.yard.cells();
+    const near = (x: number, z: number) =>
+      all.map((c) => ({ c, d: Math.hypot(g.yard.world(c.gx, c.gz).x - x, g.yard.world(c.gx, c.gz).z - z) })).sort((p, q) => p.d - q.d)[0].c;
+    const bench = near(6, 4);
+    const swing = near(10, 4);
+    g.game.getState().saveYard([
+      { id: 'decor.bench', ...bench, rot: 0 },
+      { id: 'decor.swing', ...swing, rot: 0 },
+    ]);
+    return { bench, swing };
+  });
+  await expect.poll(async () => (await cloudState(b.page)).pending).toBe(0);
+  await b.page.getByTestId('island-open').click();
+  await a.page.getByTestId('hud-friends').click();
+  await a.page.getByTestId('friend-visit-小美').click();
+  await expect.poll(() => a.page.evaluate(() => (window as any).__game.realtime.getState().visiting?.name ?? null)).toBe('小美');
+
+  // 小美坐長椅：阿寶看到她在坐（位置在長椅上）
+  await b.page.evaluate((c) => {
+    const g = (window as any).__game;
+    const w = g.yard.world(c.gx, c.gz);
+    g.teleport({ x: w.x, z: w.z + 1.1 });
+  }, cells.bench);
+  await b.page.getByTestId('use-furniture').click();
+  await expect.poll(async () => (await memberOn(a.page, '小美'))?.act).toBe('sit');
+  const benchW = await a.page.evaluate((c) => (window as any).__game.yard.world(c.gx, c.gz), cells.bench);
+  const sitting = await memberOn(a.page, '小美');
+  expect(Math.hypot(sitting!.x - benchW.x, sitting!.z - benchW.z)).toBeLessThan(0.3);
+  await a.page.evaluate((w) => (window as any).__game.teleport({ x: w.x + 1.5, z: w.z + 3 }), benchW);
+  await a.page.waitForTimeout(1500);
+  await a.page.screenshot({ path: `${SHOTS}/16-friend-sits.png` });
+
+  // 小美起來去盪鞦韆：阿寶那邊她的動作是盪，那座鞦韆在盪
+  await b.page.getByTestId('use-stop').click();
+  await expect.poll(async () => (await memberOn(a.page, '小美'))?.act).toBeNull();
+  await b.page.evaluate((c) => {
+    const g = (window as any).__game;
+    const w = g.yard.world(c.gx, c.gz);
+    g.teleport({ x: w.x, z: w.z + 1.1 });
+  }, cells.swing);
+  await b.page.getByTestId('use-furniture').click();
+  await expect.poll(async () => (await memberOn(a.page, '小美'))?.act).toBe('swing');
+  await expect
+    .poll(() => a.page.evaluate(() => Object.values((window as any).__game.furniture.getState().swingers).map((s: any) => s.cell)))
+    .toEqual([`yard:${cells.swing.gx},${cells.swing.gz}`]);
+  expect(pageErrors(a.page)).toEqual([]);
+  expect(pageErrors(b.page)).toEqual([]);
 });

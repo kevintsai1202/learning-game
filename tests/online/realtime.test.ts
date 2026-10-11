@@ -43,6 +43,12 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'where', zone: 'puzzle' }))).toBeNull();
   });
 
+  it('第 9 節優化：move 可以帶動作代碼 a（坐、躺、溜滑梯、盪鞦韆）；不認得的代碼格式不對', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'move', x: 1, z: 2, h: 0, a: 'sit' }))).toEqual({ t: 'move', x: 1, z: 2, h: 0, a: 'sit' });
+    expect(parseClientMessage(JSON.stringify({ t: 'move', x: 1, z: 2, h: 0 }))).toEqual({ t: 'move', x: 1, z: 2, h: 0 });
+    expect(parseClientMessage(JSON.stringify({ t: 'move', x: 1, z: 2, h: 0, a: 'fly' }))).toBeNull();
+  });
+
   it('格式不對或不認得的訊息：null', () => {
     expect(parseClientMessage('not json')).toBeNull();
     expect(parseClientMessage(JSON.stringify({ t: 'nope' }))).toBeNull();

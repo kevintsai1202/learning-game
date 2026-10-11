@@ -1239,3 +1239,35 @@ describe('自己的家第二期：進屋、屋裡看得到彼此（docs/plans/ho
     expect(lastZone(b, tid)).toBeNull();
   });
 });
+
+describe('第 9 節優化：同步動作（坐、躺、溜滑梯、盪鞦韆）', () => {
+  it('位置帶動作代碼：記在成員上、moves 多第 5 欄；不帶就是站著（第 5 欄拿掉）', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.move(a, 1, 2, 0.5, 'sit');
+    hub.flush();
+    expect(b.of('moves').at(-1)!.list).toEqual([['a', 1, 2, 0.5, 'sit']]);
+    hub.move(a, 1, 3, 0.5);
+    hub.flush();
+    expect(b.of('moves').at(-1)!.list).toEqual([['a', 1, 3, 0.5]]);
+  });
+
+  it('後來進島的人在 welcome 的成員看到他的動作；進建築就不算坐著', () => {
+    const a = join('a', '阿寶');
+    hub.move(a, 1, 2, 0, 'lie');
+    const c = join('c', '皮皮');
+    expect(c.of('welcome').at(-1)!.members.find((m) => m.id === 'a')?.a).toBe('lie');
+    hub.where(a, 'math');
+    expect(c.of('member').at(-1)!.member.a).toBeUndefined();
+  });
+
+  it('換島時動作清掉：回到班級島時別人看到的是站著', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.move(a, 1, 2, 0, 'swing');
+    hub.goTo(a, 'own');
+    hub.goTo(a, 'class');
+    expect(b.of('join').at(-1)!.member).toMatchObject({ id: 'a' });
+    expect(b.of('join').at(-1)!.member.a).toBeUndefined();
+  });
+});

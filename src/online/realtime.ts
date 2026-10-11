@@ -11,6 +11,7 @@ import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
 import { DUEL_DECLINE_REASONS, DUEL_MOVE_KINDS, type DuelDeclineReason, type DuelMoveKind } from '../engine/puzzle/duelMoves';
 import type { YardItem } from '../store/yard';
 import type { HomeState } from '../store/home';
+import { ACT_CODES, type ActCode } from '../store/actCodes';
 
 /**
  * WebSocket 關閉代碼：角色沒有班級；和權杖無效（4003）分開，裝置不再重連。
@@ -82,8 +83,11 @@ export const clientMessage = z.discriminatedUnion('t', [
   }),
   /** 換島（不斷線）：班級島（room 是哪一班，沒給是第一個班級）、自己的島 */
   z.object({ t: z.literal('go'), island: z.enum(ISLAND_KINDS), room: roomCode.optional() }),
-  /** 位置與朝向（zod 4 的 number 本身就拒絕 Infinity、NaN） */
-  z.object({ t: z.literal('move'), x: z.number(), z: z.number(), h: z.number() }),
+  /**
+   * 位置與朝向（zod 4 的 number 本身就拒絕 Infinity、NaN）；a 是正在用家具的動作代碼（第 9 節優化；站著不帶）。
+   * 舊版伺服器的驗證會丟掉多的欄位，不用能力宣告
+   */
+  z.object({ t: z.literal('move'), x: z.number(), z: z.number(), h: z.number(), a: z.enum(ACT_CODES).optional() }),
   /** 進出建築或屋子（null 表示回到島上） */
   z.object({ t: z.literal('where'), zone: z.enum(WHERE_ZONES).nullable() }),
   /** 說一句公頻短句（只送 id） */
@@ -146,6 +150,8 @@ export interface MemberState {
   zone: MemberZone | null;
   /** 熊熊老師（老師 GM 的 G2）；孩子沒有這個欄位 */
   role?: 'teacher';
+  /** 正在用家具的動作（坐、躺、溜滑梯、盪鞦韆；第 9 節優化）；站著沒有這個欄位 */
+  a?: ActCode;
 }
 
 /** 好友名單上的一位朋友：只有在線上與在哪座島，不含建築（使用者決定，docs/plans/islands.md） */
@@ -192,8 +198,8 @@ export type ServerMessage =
   | { t: 'friend'; friend: FriendState }
   | { t: 'join'; member: MemberState }
   | { t: 'leave'; id: string }
-  /** 這 100 毫秒內有移動的人：[id, x, z, 朝向] */
-  | { t: 'moves'; list: [string, number, number, number][] }
+  /** 這 100 毫秒內有移動的人：[id, x, z, 朝向, 動作代碼（用家具時才有；第 9 節優化）] */
+  | { t: 'moves'; list: ([string, number, number, number] | [string, number, number, number, ActCode])[] }
   /** 某位成員的外觀、稱號或所在建築變了 */
   | { t: 'member'; member: MemberState }
   | { t: 'chat'; line: ChatLine }

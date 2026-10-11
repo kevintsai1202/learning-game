@@ -5,6 +5,19 @@
 import type { ZoneId } from '../store/useUi';
 import { SPAWN } from './layout';
 import type { Vec2 } from './movement';
+import type { YardItem } from '../store/yard';
+import type { UseKind } from '../store/furnitureUse';
+
+/**
+ * 正在用的家具（第 9 節優化）：哪一種用法、哪一件、在島上還是屋裡、開始的時間（performance.now 秒）。
+ * 坐、躺、盪、溜滑梯時有值；角色的位置與姿勢照 actFrame 算
+ */
+export interface PlayerAct {
+  kind: UseKind;
+  item: YardItem;
+  place: 'yard' | 'home';
+  t0: number;
+}
 
 /** 角色即時狀態 */
 export const player = {
@@ -17,6 +30,8 @@ export const player = {
   autoEnter: null as ZoneId | 'home' | null,
   /** 下一格畫面鏡頭直接跳到定位（進屋、出屋換場景時；不然鏡頭會從另一個場景飛過來） */
   snapCamera: false,
+  /** 正在用的家具（單一來源；傳送時清掉：集合、老師「過去」、進出屋、換島都會起來） */
+  act: null as PlayerAct | null,
 };
 
 /** 鍵盤與搖桿輸入 */
@@ -79,4 +94,5 @@ export function teleport(pos: Vec2): void {
   player.pos = { x: pos.x, z: pos.z };
   player.target = null;
   player.autoEnter = null;
+  player.act = null;
 }

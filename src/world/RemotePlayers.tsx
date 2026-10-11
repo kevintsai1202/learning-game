@@ -5,7 +5,7 @@
  * 連上班級而且老師開放送禮時，點名牌可以送禮物給那位同學（多人上線模擬的假同學不行）。
  * 熊熊老師（老師 GM 的 G2，role teacher）畫熊熊老師模型與金色名牌，不能送禮。
  */
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -23,6 +23,11 @@ import { sfx } from '../audio/sfx';
 import { Teacher } from './Teacher';
 import { useFriends } from '../online/useFriends';
 import { nameTagGiftable } from '../online/friends';
+import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
+import { actFrame, anchorFor, useSpecOf } from '../store/furnitureUse';
+import { cellKey, nowSec, setRemoteSwing, spaceOf, type Place } from '../store/useFurnitureUse';
+import type { YardItem } from '../store/yard';
+import type { ActCode } from '../store/actCodes';
 
 /** 內插的走路速度（公尺／秒），比自己的角色稍慢，看起來比較從容 */
 const WALK_SPEED = 4.2;
@@ -36,22 +41,34 @@ export const LABEL_DISTANCE_FACTOR = 20;
 
 /**
  * 和自己在同一個地方的其他玩家（只訂閱 id 清單，位置變化不會重畫這一層；自己由 Player 畫）：
- * place 是 null（島上，預設）或 home（島主的屋子裡，自己的家第二期）
+ * place 是 null（島上，預設）或 home（島主的屋子裡，自己的家第二期）。
+ * items 是這個地方擺的家具：別人在用家具時（第 9 節優化）用它找是哪一件，照同一支時間軸擺姿勢
  */
-export function RemotePlayers({ place = null }: { place?: 'home' | null }) {
+export function RemotePlayers({ place = null, items = [] }: { place?: 'home' | null; items?: readonly YardItem[] }) {
   const ids = usePresence(useShallow((s) => inPlace(s, place).map((m) => m.id)));
   const shadowTex = useMemo(() => blobShadowTexture(), []);
+  /** 家具在島上還是屋裡 */
+  const where: Place = place === 'home' ? 'home' : 'yard';
+  /** 每一格畫面讀最新的家具（不用重畫角色） */
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
   return (
     <>
       {ids.map((id) => (
-        <RemotePlayer key={id} id={id} shadowTex={shadowTex} />
+        <RemotePlayer key={id} id={id} shadowTex={shadowTex} place={where} items={itemsRef} />
       ))}
     </>
   );
 }
 
 /** 一位其他玩家 */
-function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture }) {
+function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: THREE.Texture; place: Place; items: { current: readonly YardItem[] } }) {
+  /** 用家具時的抬高、縮放、傾斜（PoseWrap 每格讀） */
+  const lift = useRef<PoseLift>(STANDING);
+  /** 他正在用的家具：動作代碼、找到的那一件（找不到是 null，只擺姿勢）、看到動作開始的時間 */
+  const acting = useRef<{ act: ActCode; anchor: YardItem | null; t0: number } | null>(null);
+  // 離開畫面時，他盪的鞦韆停下來
+  useEffect(() => () => setRemoteSwing(id, null), [id]);
   // 只在外觀、暱稱改變時重畫（移動時外觀物件沿用同一個，見 presence.ts 的 moveMember）
   const look = usePresence(
     useShallow((s) => ({ nickname: s.members[id]?.nickname ?? '', avatar: s.members[id]?.avatar, title: s.members[id]?.title ?? null, teacher: s.members[id]?.role === 'teacher' })),
@@ -80,6 +97,36 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
     const m = usePresence.getState().members[id];
     if (!m || !group.current) return;
     const dt = Math.min(rawDt, 0.05);
+    // 用家具（第 9 節優化）：動作一變就用他當下的位置找附近同類的家具，之後照時間軸播（不照收到的座標）
+    if (m.act) {
+      if (acting.current?.act !== m.act) {
+        const space = spaceOf(place);
+        const anchor = anchorFor(items.current, space, m.act, { x: m.x, z: m.z });
+        const t0 = nowSec();
+        acting.current = { act: m.act, anchor, t0 };
+        setRemoteSwing(id, m.act === 'swing' && anchor ? { cell: cellKey(place, anchor), t0 } : null);
+      }
+      const a = acting.current;
+      if (a.anchor) {
+        const f = actFrame(a.anchor, spaceOf(place), useSpecOf(a.anchor.id)?.kind ?? 'sit', nowSec() - a.t0);
+        pos.current = { x: f.x, z: f.z };
+        heading.current = f.heading;
+        motion.current.speed = 0;
+        motion.current.pose = f.pose;
+        lift.current = f;
+        group.current.position.set(f.x, 0, f.z);
+        group.current.rotation.y = f.heading;
+        return;
+      }
+      // 找不到家具（例如他的版本比較新）：只擺姿勢
+      motion.current.pose = m.act === 'lie' ? 'lie' : m.act === 'slide' ? 'stand' : 'sit';
+      lift.current = STANDING;
+    } else if (acting.current) {
+      acting.current = null;
+      setRemoteSwing(id, null);
+      motion.current.pose = 'stand';
+      lift.current = STANDING;
+    }
     const target = { x: m.x, z: m.z };
     if (!pos.current || Math.hypot(target.x - pos.current.x, target.z - pos.current.z) > SNAP_DIST) {
       pos.current = target;
@@ -106,7 +153,7 @@ function RemotePlayer({ id, shadowTex }: { id: string; shadowTex: THREE.Texture 
       {!look.teacher && look.avatar.trail && <Trail kind={look.avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
       {!look.teacher && look.avatar.pet && <PetFollower pet={look.avatar.pet} getPos={getPos} getHeading={() => heading.current} getSpeed={getSpeed} />}
       <group ref={group} position={start}>
-        {look.teacher ? <Teacher waving={false} /> : <Avatar config={look.avatar} motion={motion} />}
+        <PoseWrap lift={lift}>{look.teacher ? <Teacher waving={false} /> : <Avatar config={look.avatar} motion={motion} />}</PoseWrap>
         <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />

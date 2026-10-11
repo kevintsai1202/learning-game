@@ -37,8 +37,8 @@ export interface UseSpec {
 /** 角色的姿勢 */
 export type Pose = 'stand' | 'sit' | 'lie' | 'climb';
 
-/** 鞦韆橫桿的高度（公尺；盪的樞軸） */
-export const SWING_PIVOT = 1.22;
+/** 鞦韆橫桿的高度（公尺；盪的樞軸；架子比角色高，盪的時候頭才不會穿過橫桿） */
+export const SWING_PIVOT = 1.75;
 /** 溜滑梯一趟多久（秒）：爬 1 秒、轉身 0.3 秒、溜 0.9 秒、站起來 0.2 秒 */
 export const SLIDE_TIME = 2.4;
 
@@ -54,8 +54,8 @@ export const FURNITURE_USE: Record<string, UseSpec> = {
   'decor.sofa': { kind: 'sit', label: '🛋️ 坐下', seat: { x: 0, z: 0.08, y: 0.24, facing: 0, scale: 1 }, exit: { x: 0, z: 1.0 } },
   // 鋼琴：坐琴椅（頂 0.34），面向琴鍵
   'decor.piano': { kind: 'piano', label: '🎹 彈琴', seat: { x: 0, z: 0.4, y: 0.17, facing: Math.PI, scale: 1 }, exit: { x: 0, z: 1.0 } },
-  // 床：躺平（腳在床尾 +z、頭在床頭 -z），床墊頂約 0.44
-  'decor.bed': { kind: 'lie', label: '🛏️ 躺下', seat: { x: 0, z: 0.45, y: 0.68, facing: 0, scale: 0.6 }, exit: { x: 0, z: 1.0 } },
+  // 床：躺平（腳在床尾 +z、頭在床頭 -z），床墊頂約 0.44；角色縮小到半個（床只有 1 公尺長）
+  'decor.bed': { kind: 'lie', label: '🛏️ 躺下', seat: { x: 0, z: 0.55, y: 0.64, facing: 0, scale: 0.5 }, exit: { x: 0, z: 1.0 } },
   // 溜滑梯：從梯子前面爬上去（面向梯子），從滑道尾端（+x）下來
   'decor.slide': { kind: 'slide', label: '🛝 溜滑梯', seat: { x: -0.32, z: 0.25, y: 0, facing: Math.PI, scale: 0.6 }, exit: { x: 1.0, z: 0.1 } },
   // 鞦韆：座椅頂 0.445（角色縮小，身體底部 0.1）

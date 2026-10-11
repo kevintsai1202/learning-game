@@ -52,8 +52,25 @@ function tone(freq: number, at: number, dur: number, type: OscillatorType = 'sin
   osc.stop(t0 + dur + 0.05);
 }
 
+/** 小星星（公有領域的童謠）前兩句：[頻率, 拍數] */
+const TWINKLE: [number, number][] = [
+  [262, 1], [262, 1], [392, 1], [392, 1], [440, 1], [440, 1], [392, 2],
+  [349, 1], [349, 1], [330, 1], [330, 1], [294, 1], [294, 1], [262, 2],
+];
+
 /** 音效清單 */
 export const sfx = {
+  /** 坐在鋼琴前彈一段小星星（自己的家第 9 節優化） */
+  piano: () => {
+    let at = 0;
+    for (const [f, beats] of TWINKLE) {
+      tone(f, at, 0.28 * beats + 0.1, 'triangle', 0.4);
+      tone(f * 2, at, 0.12, 'sine', 0.12);
+      at += 0.3 * beats;
+    }
+  },
+  /** 開關（電視、燈）、堆沙堡 */
+  toggle: () => tone(880, 0, 0.06, 'square', 0.15),
   /** 按鈕點擊 */
   tap: () => tone(660, 0, 0.08, 'triangle', 0.3),
   /** 答對：上行琶音 */
