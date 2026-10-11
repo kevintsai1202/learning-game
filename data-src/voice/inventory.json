@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 408,
-  "全部": 3491,
-  "zh": 1870,
+  "介面": 438,
+  "全部": 3521,
+  "zh": 1900,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 35337,
+ "chars": 35546,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -28470,6 +28470,15 @@
    ]
   },
   {
+   "key": "zh-TW|走到門口的腳踏墊，就能回到島上。",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "走到門口的腳踏墊，就能回到島上。",
+   "sources": [
+    "ui:home"
+   ]
+  },
+  {
    "key": "zh-TW|走開",
    "lang": "zh-TW",
    "voice": "zh",
@@ -29641,6 +29650,15 @@
    "text": "英語總複習",
    "sources": [
     "ui:menu"
+   ]
+  },
+  {
+   "key": "zh-TW|要回到島上嗎？",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "要回到島上嗎？",
+   "sources": [
+    "ui:home"
    ]
   },
   {
@@ -31697,6 +31715,15 @@
    ]
   },
   {
+   "key": "zh-TW|這是小屋，要進去看看嗎？",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "這是小屋，要進去看看嗎？",
+   "sources": [
+    "ui:home"
+   ]
+  },
+  {
    "key": "zh-TW|這是哪一個季節？",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32387,6 +32414,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到天空藍了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到天空藍了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到木柵欄了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32405,10 +32441,28 @@
    ]
   },
   {
+   "key": "zh-TW|買到白磁磚了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到白磁磚了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到石板路了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到石板路了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到立燈了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到立燈了！",
    "sources": [
     "ui:shop"
    ]
@@ -32423,10 +32477,37 @@
    ]
   },
   {
+   "key": "zh-TW|買到地毯了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到地毯了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到安全帽了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到安全帽了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到衣櫃了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到衣櫃了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到床了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到床了！",
    "sources": [
     "ui:shop"
    ]
@@ -32441,10 +32522,28 @@
    ]
   },
   {
+   "key": "zh-TW|買到沙發了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到沙發了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到兔耳髮箍了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到兔耳髮箍了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到玩具箱了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到玩具箱了！",
    "sources": [
     "ui:shop"
    ]
@@ -32477,6 +32576,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到星空了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到星空了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到派對帽了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32490,6 +32598,15 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到皇冠了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到盆栽了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到盆栽了！",
    "sources": [
     "ui:shop"
    ]
@@ -32531,6 +32648,24 @@
    ]
   },
   {
+   "key": "zh-TW|買到書架了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到書架了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到書桌了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到書桌了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到氣球了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32544,6 +32679,33 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到海盜帽了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到粉紅木板了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到粉紅木板了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到粉紅點點了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到粉紅點點了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到草皮了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到草皮了！",
    "sources": [
     "ui:shop"
    ]
@@ -32585,6 +32747,15 @@
    ]
   },
   {
+   "key": "zh-TW|買到魚缸了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到魚缸了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到棒球帽了！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -32594,10 +32765,37 @@
    ]
   },
   {
+   "key": "zh-TW|買到椅子了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到椅子了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到黃色條紋了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到黃色條紋了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
    "key": "zh-TW|買到黃花圃了！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到黃花圃了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到黑白格子了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到黑白格子了！",
    "sources": [
     "ui:shop"
    ]
@@ -32634,6 +32832,24 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到路燈了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到電視了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到電視了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到熊熊玩偶了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到熊熊玩偶了！",
    "sources": [
     "ui:shop"
    ]
@@ -32679,6 +32895,42 @@
    "lang": "zh-TW",
    "voice": "zh",
    "text": "買到墨鏡了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到鋼琴了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到鋼琴了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到餐桌了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到餐桌了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到薄荷綠了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到薄荷綠了！",
+   "sources": [
+    "ui:shop"
+   ]
+  },
+  {
+   "key": "zh-TW|買到藍地毯了！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "買到藍地毯了！",
    "sources": [
     "ui:shop"
    ]
@@ -32745,6 +32997,15 @@
    "sources": [
     "life.safety",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|進來玩囉！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "進來玩囉！",
+   "sources": [
+    "ui:home"
    ]
   },
   {
@@ -34383,6 +34644,15 @@
    "sources": [
     "life.health",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|歡迎回家！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "歡迎回家！",
+   "sources": [
+    "ui:home"
    ]
   },
   {

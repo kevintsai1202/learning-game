@@ -214,6 +214,7 @@ Zeabur：Node 24 伺服器（Hono HTTP + ws）── Zeabur PostgreSQL
 - 島嶼互訪 I2（`docs/plans/islands.md` 第 12 節）：孩子 → 伺服器 `island { open }`（開放自己的島）、`visit { to }`（去朋友的島；熊熊老師也可以去班上孩子的島）、`kickVisitor { id }`；伺服器 → 孩子 `welcome.host { id, name }`（在別人的島上）、`visitEnded { reason: closed | kicked, host }`（接著送回自己的島）。好友名單多 `open`、`host`、`classmate`。
 - 和朋友益智對戰 I4（`docs/plans/islands.md` 第 12 節）：孩子 → 伺服器 `duelInvite { to, game, level, seed, check }`、`duelCancel`、`duelReply { from, accept, reason? }`、`duelMove { k, i?, n? }`、`duelLeave`；伺服器 → 孩子 `duelInvite`、`duelCancelled`、`duelDeclined { to, reason }`、`duelStart { id, game, level, seed, first, opponent }`、`duelMove { by, k, i?, n? }`（兩個人照同一個順序收到）、`duelEnd { reason: left | gone }`。`welcome.caps` 有 `duel` 才送。
 - 自己的家第一期（`docs/plans/home.md` 第 3.6 節）：自己的島的 `welcome` 多 `yard`（島主的院子；班級島沒有）；伺服器 → 孩子與熊熊老師 `yard { items }`（島主改了院子，送給島上其他人）。新操作 `yard { items }`（整份取代，伺服器照擁有的家具清理）。
+- 自己的家第二期：進屋（`docs/plans/home.md` 第 8 節）：`welcome.caps` 多 `home`；自己的島的 `welcome` 多 `home { items, wall, floor }`（島主的房間）；伺服器 → 島上其他人 `home { home }`（島主改了房間）。`where { zone: 'home' }`（在島主的屋子裡，只在自己的島；熊熊老師也能送，建築照舊不回報），屋裡的 `move` 是房間的座標（原點在房間中心、±5 公尺）；`caps` 沒有 `home` 時裝置不送 `where home`，屋裡也不送 `move`。新操作 `home { home }`（整份取代，伺服器照擁有的家具（扣掉島上擺的）與壁紙地板清理）。
 - 關閉代碼：權杖無效 4003；角色沒有班級 4004（I1 起伺服器不再送，裝置保留處理）。家長名下的角色被老師移出時，`kicked` 的理由是「老師把你移出班級了，進度都還在」，裝置同步後提示留著，孩子繼續當雲端角色玩
 
 ## 11. 資料表（PostgreSQL）
