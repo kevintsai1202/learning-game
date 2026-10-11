@@ -52,6 +52,12 @@ describe('pickAction', () => {
     expect(pickAction({ ...NONE, near: { name: '木柵欄', emoji: '🪵', use: null, decor: false } })).toBeNull();
   });
 
+  it('旁邊的家具轉不過去：大鍵上面顯示提示（第 10.3 節），按鍵照常', () => {
+    const v = pickAction({ ...NONE, near: { name: '長椅', emoji: '🪑', use: '🪑 坐下', decor: true, notice: '旁邊太擠了，轉不過去' } });
+    expect(v).toMatchObject({ main: 'use', caption: '旁邊太擠了，轉不過去', showCaption: true, disabled: false, secondary: ['rotate', 'pickup'] });
+    expect(pickAction({ ...NONE, near: { name: '木柵欄', emoji: '🪵', use: null, decor: true, notice: '旁邊太擠了，轉不過去' } })).toMatchObject({ main: 'rotate', showCaption: true });
+  });
+
   it('正在用：起來；溜滑梯途中不顯示', () => {
     expect(pickAction({ ...NONE, acting: { kind: 'sit', name: '長椅', emoji: '🪑' } })).toMatchObject({ main: 'stop', label: '⬆️ 起來', container: 'use-card' });
     expect(pickAction({ ...NONE, acting: { kind: 'slide', name: '溜滑梯', emoji: '🛝' } })).toBeNull();

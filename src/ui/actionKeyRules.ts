@@ -17,8 +17,8 @@ export interface ActionState {
   houseDoor: { name: string } | null;
   /** 站在屋裡的腳踏墊上 */
   onMat: boolean;
-  /** 旁邊的家具：use 是用法的按鈕字（不能用是 null），decor 是自己能佈置（可以轉方向、收起來） */
-  near: { name: string; emoji: string; use: string | null; decor: boolean } | null;
+  /** 旁邊的家具：use 是用法的按鈕字（不能用是 null），decor 是自己能佈置（可以轉方向、收起來），notice 是轉不過去的提示 */
+  near: { name: string; emoji: string; use: string | null; decor: boolean; notice?: string | null } | null;
 }
 
 /** 主要動作 */
@@ -64,11 +64,14 @@ export function pickAction(s: ActionState): ActionKeyView | null {
     return { main: 'enterHome', label: '🏠 進去', caption: `🏠 ${s.houseDoor.name}的家`, showCaption: false, container: 'home-door-bubble', disabled: false, secondary: [] };
   if (s.onMat) return { main: 'leaveHome', label: '🚪 出去', caption: '🚪 回到島上', showCaption: false, container: 'home-mat-bubble', disabled: false, secondary: [] };
   if (s.near) {
-    const caption = `${s.near.emoji} ${s.near.name}`;
+    // 轉不過去的提示（第 10.3 節）是警告：顯示在大鍵上面
+    const notice = s.near.notice ?? null;
+    const caption = notice ?? `${s.near.emoji} ${s.near.name}`;
+    const showCaption = notice !== null;
     const container = s.near.decor ? 'decor-near' : 'use-card';
     if (s.near.use)
-      return { main: 'use', label: s.near.use, caption, showCaption: false, container, disabled: false, secondary: s.near.decor ? ['rotate', 'pickup'] : [] };
-    if (s.near.decor) return { main: 'rotate', label: '🔄 轉方向', caption, showCaption: false, container, disabled: false, secondary: ['pickup'] };
+      return { main: 'use', label: s.near.use, caption, showCaption, container, disabled: false, secondary: s.near.decor ? ['rotate', 'pickup'] : [] };
+    if (s.near.decor) return { main: 'rotate', label: '🔄 轉方向', caption, showCaption, container, disabled: false, secondary: ['pickup'] };
   }
   return null;
 }

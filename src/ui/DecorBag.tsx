@@ -219,6 +219,8 @@ export function operateFurniture(item: { id: string; gx: number; gz: number; rot
  */
 export function DecorNear() {
   const near = useDecor((s) => s.near);
+  /** 轉不過去的提示（第 10.3 節） */
+  const notice = useDecor((s) => s.notice);
   const picking = useDecor((s) => s.picking);
   const bagOpen = useDecor((s) => s.bagOpen);
   const useNear = useFurnitureUse((s) => s.near);
@@ -277,12 +279,17 @@ export function DecorNear() {
       <span className="decor-near-name">
         {item?.emoji} {item?.name}
       </span>
+      {notice && (
+        <span className="decor-near-notice" role="status" data-testid="decor-notice">
+          {notice}
+        </span>
+      )}
       {useButton}
       <button
         className="btn small"
         onClick={() => {
-          sfx.rotate();
-          rotateNear();
+          if (rotateNear()) sfx.rotate();
+          else sfx.oops();
         }}
         aria-label="轉方向"
         title="轉方向"

@@ -129,7 +129,8 @@ test('動森做法：家具包選一樣、面前出現預覽、轉方向、放�
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/02-ghost.png` });
   await page.getByTestId('decor-place').click();
-  await expect.poll(() => yardOf(page)).toEqual([{ id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 1 }]);
+  // 長椅 2×1 轉一次變成南北向，面向北方放：從面前那一格往北長，基準格在北邊那格（第 10.3 節）
+  await expect.poll(() => yardOf(page)).toEqual([{ id: 'decor.bench', gx: c1.gx, gz: c1.gz - 1, rot: 1 }]);
   await expect(page.getByTestId('decor-pick-decor.bench')).toContainText('× 1');
 
   // 同一格不能再放：說原因、放下按鈕停用
@@ -153,17 +154,17 @@ test('動森做法：家具包選一樣、面前出現預覽、轉方向、放�
   await faceCell(page, c1);
   await expect(page.getByTestId('decor-near')).toContainText('長椅');
   await page.getByTestId('decor-near-rotate').click();
-  await expect.poll(async () => (await yardOf(page)).find((it: any) => it.gx === c1.gx && it.gz === c1.gz)?.rot).toBe(2);
+  await expect.poll(async () => (await yardOf(page)).find((it: any) => it.gx === c1.gx && it.gz === c1.gz - 1)?.rot).toBe(2);
   await page.screenshot({ path: `${SHOTS}/03-near.png` });
   await page.getByTestId('decor-near-pickup').click();
   // 連續放的時候預覽的方向照舊（第二張長椅也是轉過一次的方向，排柵欄比較方便）
-  await expect.poll(() => yardOf(page)).toEqual([{ id: 'decor.bench', gx: c2.gx, gz: c2.gz, rot: 1 }]);
+  await expect.poll(() => yardOf(page)).toEqual([{ id: 'decor.bench', gx: c2.gx, gz: c2.gz - 1, rot: 1 }]);
 
   // 關上家具包；重新整理後擺設還在（存在裝置上）
   await page.getByTestId('decor-close').click();
   await expect(page.getByTestId('decor-bag')).toHaveCount(0);
   await page.reload();
-  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c2.gx, gz: c2.gz, rot: 1 }]);
+  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c2.gx, gz: c2.gz - 1, rot: 1 }]);
   expect(errors).toEqual([]);
 });
 

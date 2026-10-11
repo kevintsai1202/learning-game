@@ -29,6 +29,8 @@ export interface CatalogItem {
   walkable?: boolean;
   /** 家具：室內家具（百寶屋分在「室內」那一頁；島上與屋裡都能擺） */
   indoor?: boolean;
+  /** 家具：佔幾格 [寬, 深]（局部 x、z，正面朝 +z；沒寫是 1×1；docs/plans/home.md 第 10.3 節） */
+  size?: readonly [number, number];
   /** 壁紙與地板：預設款，不用買就擁有（沒有價格） */
   free?: boolean;
 }
@@ -93,33 +95,33 @@ export const FURNITURE: readonly CatalogItem[] = [
   { id: 'decor.tree', name: '小樹', slot: 'decor', emoji: '🌳', price: 20 },
   { id: 'decor.bush', name: '灌木', slot: 'decor', emoji: '🌲', price: 15 },
   { id: 'decor.fence', name: '木柵欄', slot: 'decor', emoji: '🪵', price: 6 },
-  { id: 'decor.bench', name: '長椅', slot: 'decor', emoji: '🪑', price: 40 },
-  { id: 'decor.picnic', name: '野餐桌', slot: 'decor', emoji: '🧺', price: 60 },
+  { id: 'decor.bench', name: '長椅', slot: 'decor', emoji: '🪑', price: 40, size: [2, 1] },
+  { id: 'decor.picnic', name: '野餐桌', slot: 'decor', emoji: '🧺', price: 60, size: [2, 2] },
   { id: 'decor.parasol', name: '遮陽傘', slot: 'decor', emoji: '⛱️', price: 50 },
   { id: 'decor.lamp', name: '路燈', slot: 'decor', emoji: '💡', price: 45 },
   { id: 'decor.mailbox', name: '信箱', slot: 'decor', emoji: '📮', price: 30 },
   { id: 'decor.scarecrow', name: '稻草人', slot: 'decor', emoji: '🌾', price: 50 },
   { id: 'decor.crate', name: '木箱', slot: 'decor', emoji: '📦', price: 20 },
-  { id: 'decor.swing', name: '鞦韆', slot: 'decor', emoji: '🎠', price: 120 },
-  { id: 'decor.slide', name: '溜滑梯', slot: 'decor', emoji: '🛝', price: 150 },
-  { id: 'decor.sandbox', name: '沙坑', slot: 'decor', emoji: '🏖️', price: 80 },
+  { id: 'decor.swing', name: '鞦韆', slot: 'decor', emoji: '🎠', price: 120, size: [2, 2] },
+  { id: 'decor.slide', name: '溜滑梯', slot: 'decor', emoji: '🛝', price: 150, size: [3, 1] },
+  { id: 'decor.sandbox', name: '沙坑', slot: 'decor', emoji: '🏖️', price: 80, size: [2, 2] },
   { id: 'decor.windmill', name: '風車', slot: 'decor', emoji: '🌀', price: 90 },
-  { id: 'decor.pond', name: '小池塘', slot: 'decor', emoji: '🐟', price: 100, walkable: true },
+  { id: 'decor.pond', name: '小池塘', slot: 'decor', emoji: '🐟', price: 100, walkable: true, size: [2, 2] },
   // 室內家具（第二期進屋，docs/plans/home.md 第 8 節；外觀在 src/world/Furniture.tsx）
-  { id: 'decor.bed', name: '床', slot: 'decor', emoji: '🛏️', price: 120, indoor: true },
-  { id: 'decor.desk', name: '書桌', slot: 'decor', emoji: '✏️', price: 60, indoor: true },
+  { id: 'decor.bed', name: '床', slot: 'decor', emoji: '🛏️', price: 120, indoor: true, size: [1, 2] },
+  { id: 'decor.desk', name: '書桌', slot: 'decor', emoji: '✏️', price: 60, indoor: true, size: [2, 1] },
   { id: 'decor.chair', name: '椅子', slot: 'decor', emoji: '💺', price: 20, indoor: true },
-  { id: 'decor.sofa', name: '沙發', slot: 'decor', emoji: '🛋️', price: 100, indoor: true },
-  { id: 'decor.rug', name: '地毯', slot: 'decor', emoji: '🧶', price: 30, indoor: true, walkable: true },
+  { id: 'decor.sofa', name: '沙發', slot: 'decor', emoji: '🛋️', price: 100, indoor: true, size: [2, 1] },
+  { id: 'decor.rug', name: '地毯', slot: 'decor', emoji: '🧶', price: 30, indoor: true, walkable: true, size: [2, 2] },
   { id: 'decor.floorlamp', name: '立燈', slot: 'decor', emoji: '🪔', price: 40, indoor: true },
   { id: 'decor.bookshelf', name: '書架', slot: 'decor', emoji: '📚', price: 70, indoor: true },
   { id: 'decor.tv', name: '電視', slot: 'decor', emoji: '📺', price: 90, indoor: true },
   { id: 'decor.plant', name: '盆栽', slot: 'decor', emoji: '🪴', price: 25, indoor: true },
-  { id: 'decor.piano', name: '鋼琴', slot: 'decor', emoji: '🎹', price: 150, indoor: true },
+  { id: 'decor.piano', name: '鋼琴', slot: 'decor', emoji: '🎹', price: 150, indoor: true, size: [2, 1] },
   { id: 'decor.wardrobe', name: '衣櫃', slot: 'decor', emoji: '👚', price: 80, indoor: true },
   { id: 'decor.teddy', name: '熊熊玩偶', slot: 'decor', emoji: '🧸', price: 35, indoor: true },
   { id: 'decor.toybox', name: '玩具箱', slot: 'decor', emoji: '🧩', price: 45, indoor: true },
-  { id: 'decor.table', name: '餐桌', slot: 'decor', emoji: '🍽️', price: 70, indoor: true },
+  { id: 'decor.table', name: '餐桌', slot: 'decor', emoji: '🍽️', price: 70, indoor: true, size: [2, 1] },
   { id: 'decor.aquarium', name: '魚缸', slot: 'decor', emoji: '🐠', price: 110, indoor: true },
 ];
 

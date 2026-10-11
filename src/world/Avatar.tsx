@@ -139,10 +139,12 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
       armL.current.rotation.x = -swing * 0.8;
       armR.current.rotation.x = swing * 0.8;
     }
-    // 用家具的姿勢（第 9 節優化）：坐、躺腳往前伸；爬梯子手輪流往上、腳輪流踩
+    // 用家具的姿勢（第 9 節優化）：坐腳往前伸；躺下腳伸直（第 10.3 節原比例，腳往前會朝天）；爬梯子手輪流往上、腳輪流踩
     const pose = motion?.current.pose ?? 'stand';
-    if (pose === 'sit' || pose === 'lie') {
+    if (pose === 'sit') {
       if (legL.current && legR.current) legL.current.rotation.x = legR.current.rotation.x = -1.35;
+    } else if (pose === 'lie') {
+      if (legL.current && legR.current) legL.current.rotation.x = legR.current.rotation.x = 0;
     } else if (pose === 'climb') {
       const c = Math.sin(t * 10) * 0.5;
       if (armL.current && armR.current) {

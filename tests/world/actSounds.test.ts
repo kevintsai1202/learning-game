@@ -5,6 +5,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { actSoundEvents } from '../../src/world/actSounds';
+import { SWING_RATE } from '../../src/store/furnitureUse';
 
 describe('actSoundEvents', () => {
   it('坐下、躺下、鋼琴：一開始響一次', () => {
@@ -25,7 +26,7 @@ describe('actSoundEvents', () => {
 
   it('盪鞦韆：一開始坐上去，之後每盪到一邊（半個週期）嘎一聲', () => {
     expect(actSoundEvents('swing', -1, 0)).toEqual(['sit']);
-    const half = Math.PI / 2.4;
+    const half = Math.PI / SWING_RATE;
     expect(actSoundEvents('swing', 0.1, half * 0.5 + 0.01)).toEqual(['creak']);
     expect(actSoundEvents('swing', half * 0.5 + 0.02, half * 1.4)).toEqual([]);
     expect(actSoundEvents('swing', half * 1.4, half * 1.6)).toEqual(['creak']);

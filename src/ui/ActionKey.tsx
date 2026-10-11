@@ -35,9 +35,16 @@ const SECONDARY: Record<SecondaryAction, { icon: string; label: string; testid: 
   pickup: { icon: '👜', label: '收起來', testid: 'decor-near-pickup' },
 };
 
+/** 旁邊的家具轉方向：轉了「喀」一聲；轉不過去（旁邊太擠）是「喔喔」，提示顯示在大鍵上面 */
+function turnNear(): void {
+  if (rotateNear()) sfx.rotate();
+  else sfx.oops();
+}
+
 export function ActionKey() {
   const picking = useDecor((s) => s.picking);
   const decorNear = useDecor((s) => s.near);
+  const notice = useDecor((s) => s.notice);
   // 面前的格子、擺設變了要重算能不能放
   useDecor((s) => s.front);
   useGame((s) => s.profile());
@@ -67,7 +74,13 @@ export function ActionKey() {
     onMat: inside && onMat,
     near:
       nearTarget && nearItem
-        ? { name: nearItem.name, emoji: nearItem.emoji, use: nearSpec ? (nearOn && nearSpec.offLabel ? nearSpec.offLabel : nearSpec.label) : null, decor: !!decorNear }
+        ? {
+            name: nearItem.name,
+            emoji: nearItem.emoji,
+            use: nearSpec ? (nearOn && nearSpec.offLabel ? nearSpec.offLabel : nearSpec.label) : null,
+            decor: !!decorNear,
+            notice: decorNear ? notice : null,
+          }
         : null,
   });
   if (!view) return null;
@@ -99,8 +112,7 @@ export function ActionKey() {
         if (nearTarget) operateFurniture(nearTarget.item, nearTarget.place);
         return;
       case 'rotate':
-        sfx.rotate();
-        rotateNear();
+        turnNear();
         return;
     }
   };
@@ -110,8 +122,7 @@ export function ActionKey() {
       sfx.rotate();
       rotateGhost();
     } else if (a === 'rotate') {
-      sfx.rotate();
-      rotateNear();
+      turnNear();
     } else {
       sfx.pickup();
       pickUpNear();
@@ -122,7 +133,7 @@ export function ActionKey() {
     <div className="action-key-wrap" role="group" aria-label={view.caption} data-testid={view.container}>
       {/* 上面一行小字只有警告時才顯示（不能放的原因）；鍵上已經寫了是什麼 */}
       {view.showCaption && (
-        <span className={`action-caption ${view.disabled ? 'bad' : ''}`} role="status">
+        <span className="action-caption bad" role="status">
           {view.caption}
         </span>
       )}

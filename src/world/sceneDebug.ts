@@ -12,4 +12,6 @@ export const sceneDebug = {
   fadedCells: [] as string[],
   /** 某一棟建築現在的樣子：有沒有畫、最淡的不透明度（e2e 用；島嶼場景掛上） */
   buildingLook: null as null | ((id: string) => { visible: boolean; opacity: number } | null),
+  /** 自己的角色現在的姿勢、抬高、縮放、傾斜（第 10.3 節：按「起來」後要站著、原比例；角色掛上） */
+  playerLift: null as null | (() => { pose: string; y: number; scale: number; tiltX: number; pivotY: number }),
 };

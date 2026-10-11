@@ -3,8 +3,8 @@
  * 放在角色面前、轉方向、收起來、最靠近的家具。這些規則前端與伺服器共用。
  */
 import { describe, expect, it } from 'vitest';
-import { HOUSE, PLATE, SPAWN, WALK_RADIUS, ZONES, doorOf } from '../../src/world/layout';
-import { PLAZA } from '../../src/world/scenery';
+import { FOUNTAIN, HOUSE, PLATE, SPAWN, TEACHER_POS, WALK_RADIUS, ZONES, doorOf } from '../../src/world/layout';
+import { PLAZA, pathSegments } from '../../src/world/scenery';
 import { FURNITURE, ITEMS, SLOTS, equippedOf, findItem } from '../../src/store/catalog';
 import { addProfile, buyItem, createEmptySave, parseProfile, setYard, type Profile, type SaveData } from '../../src/store/save';
 import {
@@ -48,7 +48,7 @@ describe('全島的格子', () => {
     expect(new Set(cells.map((c) => `${c.gx},${c.gz}`)).size).toBe(cells.length);
   });
 
-  it('都在草地上、不碰到建築與門口、步道外、廣場外、出生點與門牌外、小屋外、不在樹上', () => {
+  it('都在草地上、不碰到建築與門口、噴水池、熊熊老師站的位置、出生點與門牌、小屋與門口、不在樹上', () => {
     const trees = islandTrees();
     for (const c of cells) {
       const w = cellToWorld(c.gx, c.gz);
@@ -58,7 +58,8 @@ describe('全島的格子', () => {
         const d = doorOf(z);
         expect(Math.hypot(w.x - d.x, w.z - d.z)).toBeGreaterThanOrEqual(1.5);
       }
-      expect(Math.hypot(w.x - PLAZA.x, w.z - PLAZA.z)).toBeGreaterThanOrEqual(PLAZA.radius);
+      expect(Math.hypot(w.x - FOUNTAIN.x, w.z - FOUNTAIN.z)).toBeGreaterThan(FOUNTAIN.radius + 0.5);
+      expect(Math.hypot(w.x - TEACHER_POS.x, w.z - TEACHER_POS.z)).toBeGreaterThanOrEqual(1.5);
       expect(Math.hypot(w.x - SPAWN.x, w.z - SPAWN.z)).toBeGreaterThanOrEqual(3.5);
       expect(Math.hypot(w.x - PLATE.x, w.z - PLATE.z)).toBeGreaterThanOrEqual(1.2);
       expect(Math.hypot(w.x - HOUSE.x, w.z - HOUSE.z)).toBeGreaterThan(HOUSE.radius + 0.5);
@@ -71,13 +72,20 @@ describe('全島的格子', () => {
     expect(near.length).toBeGreaterThanOrEqual(45);
   });
 
-  it('小屋門口往前的走道空著', () => {
+  /** 離某一點 0.5 公尺內有沒有可以擺的格子 */
+  const cellNear = (x: number, z: number) => cells.some((c) => Math.hypot(cellToWorld(c.gx, c.gz).x - x, cellToWorld(c.gx, c.gz).z - z) < 0.5);
+
+  it('小屋門口空著（門口前 1.5 公尺內；再往前是百寶屋）', () => {
     const dir = { x: Math.sin(HOUSE.rotY), z: Math.cos(HOUSE.rotY) };
-    for (const d of [2.6, 3.2, 4]) {
-      const x = HOUSE.x + dir.x * d;
-      const z = HOUSE.z + dir.z * d;
-      expect(cells.some((c) => Math.hypot(cellToWorld(c.gx, c.gz).x - x, cellToWorld(c.gx, c.gz).z - z) < 0.5)).toBe(false);
-    }
+    for (const d of [2.6, 3.2, 4]) expect(cellNear(HOUSE.x + dir.x * d, HOUSE.z + dir.z * d), `門口 ${d}`).toBe(false);
+  });
+
+  it('廣場與步道上可以擺（第 10.3 節，使用者 2026-10-11：中間區域也要能佈置）', () => {
+    // 廣場：噴水池與熊熊老師站的位置以外
+    const plaza = cells.filter((c) => Math.hypot(cellToWorld(c.gx, c.gz).x - PLAZA.x, cellToWorld(c.gx, c.gz).z - PLAZA.z) < PLAZA.radius);
+    expect(plaza.length).toBeGreaterThanOrEqual(40);
+    // 每條步道的中段
+    for (const s of pathSegments()) expect(cellNear((s.ax + s.bx) / 2, (s.az + s.bz) / 2), `步道 ${s.bx},${s.bz}`).toBe(true);
   });
 
   it('isYardCell 和清單一致', () => {
@@ -237,9 +245,9 @@ describe('島上畫擺設（別人的島可能是比較新的版本）', () => {
     expect(visibleYard(Array(400).fill(items[0]))).toHaveLength(YARD_MAX_ITEMS);
   });
 
-  it('yardObstacles：擋路的家具在格子中心、半徑 0.45；花草、石板路、小池塘可以走過去', () => {
+  it('yardObstacles：擋路的家具在格子中心、半徑 0.45；花草、石板路、小池塘可以走過去（多格的家具見 footprint.test.ts）', () => {
     const items = [
-      { id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 as const },
+      { id: 'decor.crate', gx: c1.gx, gz: c1.gz, rot: 0 as const },
       { id: 'decor.grass', gx: c2.gx, gz: c2.gz, rot: 0 as const },
       { id: 'decor.pond', gx: c3.gx, gz: c3.gz, rot: 0 as const },
     ];

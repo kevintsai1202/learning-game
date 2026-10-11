@@ -219,12 +219,15 @@ describe('房間裡放在角色面前（動森做法，同一套函式換成房�
     expect(placeItem([], 0, 0, 'decor.bed', 1, { 'decor.bed': 1 }, HOME_SPACE)).toEqual([item('decor.bed', 0, 0, 1)]);
   });
 
-  it('nearestItem、decorObstacles 用房間的座標', () => {
+  it('nearestItem、decorObstacles 用房間的座標（床 1×2 佔兩格，第 10.3 節）', () => {
     const items = [item('decor.bed', 2, 2), item('decor.rug', 6, 6)];
     const w = homeCellToWorld(2, 2);
     expect(nearestItem(items, { x: w.x + 0.8, z: w.z }, HOME_SPACE)).toEqual(items[0]);
     expect(nearestItem(items, { x: w.x + 0.8, z: w.z })).toBeNull();
-    expect(decorObstacles(items, HOME_SPACE)).toEqual([{ x: w.x, z: w.z, r: 0.45 }]);
+    expect(decorObstacles(items, HOME_SPACE)).toEqual([
+      { x: w.x, z: w.z, r: 0.45 },
+      { x: w.x, z: w.z + 1, r: 0.45 },
+    ]);
   });
 });
 

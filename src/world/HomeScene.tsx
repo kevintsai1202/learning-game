@@ -18,7 +18,7 @@ import { inputDirection, player } from './input';
 import { DOOR_MAT, ROOM_RECT, atRoomExit, onDoorMat } from './room';
 import { sceneDebug } from './sceneDebug';
 import { HOME_SPACE, type HomeState } from '../store/home';
-import { decorObstacles, type YardItem } from '../store/yard';
+import { decorObstacles, itemCenter, type YardItem } from '../store/yard';
 import { leaveHome, useHome } from '../store/useHome';
 import type { AvatarConfig } from '../store/save';
 import { sfx } from '../audio/sfx';
@@ -274,7 +274,8 @@ function FadeProbe({ items, onChange }: { items: readonly YardItem[]; onChange: 
         .filter((it) => FURNITURE_HEIGHT[it.id])
         .map((it) => {
           const h = FURNITURE_HEIGHT[it.id];
-          const w = HOME_SPACE.toWorld(it.gx, it.gz);
+          // 家具佔的格子的正中間（第 10.3 節多格）
+          const w = itemCenter(it, HOME_SPACE);
           return { id: `${it.gx},${it.gz}`, x: w.x, y: h / 2, z: w.z, r: Math.max(0.6, h * 0.6) };
         }),
     [items],

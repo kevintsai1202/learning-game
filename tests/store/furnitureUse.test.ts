@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { FURNITURE } from '../../src/store/catalog';
 import { ACT_CODES } from '../../src/store/actCodes';
 import { HOME_SPACE } from '../../src/store/home';
-import type { YardItem } from '../../src/store/yard';
+import { itemCells, itemCenter, type YardItem } from '../../src/store/yard';
 import {
   ACT_OF_KIND,
   FURNITURE_USE,
@@ -23,7 +23,8 @@ import {
 } from '../../src/store/furnitureUse';
 
 const item = (id: string, gx: number, gz: number, rot: 0 | 1 | 2 | 3 = 0): YardItem => ({ id, gx, gz, rot });
-const center = (it: YardItem) => HOME_SPACE.toWorld(it.gx, it.gz);
+/** 家具佔的格子的正中間（模型畫的位置；第 10.3 節） */
+const center = (it: YardItem) => itemCenter(it, HOME_SPACE);
 
 describe('可以用的家具的表', () => {
   it('規格列的家具都有：坐（長椅、野餐桌、椅子、沙發）、鋼琴、躺（床）、溜滑梯、鞦韆、開關（電視、路燈、立燈）、沙堡', () => {
@@ -52,23 +53,41 @@ describe('可以用的家具的表', () => {
     expect(ACT_OF_KIND).toEqual({ sit: 'sit', piano: 'sit', lie: 'lie', slide: 'slide', swing: 'swing' });
   });
 
-  it('坐、躺、盪、溜滑梯都有座位；鞦韆、滑梯、床的角色縮小（不然頭會穿過橫桿）', () => {
+  it('坐、躺、盪、溜滑梯都有座位；角色一律原比例（第 10.3 節：家具放大配合角色，不縮小角色）', () => {
     for (const [id, s] of Object.entries(FURNITURE_USE)) {
       if (s.kind === 'toggle' || s.kind === 'sandcastle') continue;
       expect(s.seat, id).toBeDefined();
+      expect(s.seat!.scale, id).toBe(1);
     }
-    expect(FURNITURE_USE['decor.swing'].seat!.scale).toBeLessThan(0.7);
-    expect(FURNITURE_USE['decor.slide'].seat!.scale).toBeLessThan(0.7);
-    expect(FURNITURE_USE['decor.bed'].seat!.scale).toBeLessThan(0.7);
-    expect(FURNITURE_USE['decor.bench'].seat!.scale).toBe(1);
+  });
+
+  it('座位在家具佔的格子裡（四個方向）', () => {
+    for (const [id, s] of Object.entries(FURNITURE_USE)) {
+      if (!s.seat) continue;
+      for (const rot of [0, 1, 2, 3] as const) {
+        const it = item(id, 4, 4, rot);
+        const p = localToWorld(it, HOME_SPACE, s.seat.x, s.seat.z);
+        const inside = itemCells(it).some((c) => {
+          const w = HOME_SPACE.toWorld(c.gx, c.gz);
+          return Math.abs(p.x - w.x) <= 0.5 + 1e-9 && Math.abs(p.z - w.z) <= 0.5 + 1e-9;
+        });
+        expect(inside, `${id} rot ${rot}`).toBe(true);
+      }
+    }
+  });
+
+  it('鞦韆的橫桿比角色坐著的頭頂（2.05 公尺高的角色）加帽子還高', () => {
+    const s = FURNITURE_USE['decor.swing'].seat!;
+    expect(SWING_PIVOT).toBeGreaterThanOrEqual(s.y + 2.05 + 0.5);
   });
 });
 
 describe('局部座標換成世界座標（跟著家具轉方向）', () => {
   it('四個方向：rotation.y = rot × 90°；x′ = x·cos + z·sin、z′ = −x·sin + z·cos', () => {
     const it0 = item('decor.bench', 3, 4, 0);
-    const c = center(it0);
     const at = (rot: 0 | 1 | 2 | 3) => {
+      // 原點是轉了以後家具佔的格子的正中間（2×1 轉奇數次寬深互換，中心移半格）
+      const c = center({ ...it0, rot });
       const w = localToWorld({ ...it0, rot }, HOME_SPACE, 0.3, 0.2);
       return { x: +(w.x - c.x).toFixed(6), z: +(w.z - c.z).toFixed(6) };
     };
@@ -85,13 +104,15 @@ describe('局部座標換成世界座標（跟著家具轉方向）', () => {
     expect(headingOf(item('decor.bench', 0, 0, 3), 0)).toBeCloseTo((3 * Math.PI) / 2);
   });
 
-  it('起身點：四個方向都在家具的碰撞圓外（距離格子中心至少 0.9 公尺）', () => {
+  it('起身點：四個方向都在家具每一格的碰撞圓外（離家具佔的每一格中心至少 0.9 公尺：碰撞圓 0.45 加角色 0.45）', () => {
     for (const id of Object.keys(FURNITURE_USE)) {
       for (const rot of [0, 1, 2, 3] as const) {
         const it = item(id, 4, 4, rot);
         const e = exitPoint(it, HOME_SPACE);
-        const c = center(it);
-        expect(Math.hypot(e.x - c.x, e.z - c.z), `${id} rot ${rot}`).toBeGreaterThanOrEqual(0.9);
+        for (const c of itemCells(it)) {
+          const w = HOME_SPACE.toWorld(c.gx, c.gz);
+          expect(Math.hypot(e.x - w.x, e.z - w.z), `${id} rot ${rot} 格 ${c.gx},${c.gz}`).toBeGreaterThanOrEqual(0.9);
+        }
       }
     }
   });
@@ -109,10 +130,10 @@ describe('動作的時間軸（actFrame）', () => {
     expect(f.heading).toBeCloseTo(headingOf(it, s.facing));
   });
 
-  it('躺下：姿勢是躺，角色縮小；先抬到床墊的高度再繞腳躺平（樞軸在抬高的位置，不是地上）', () => {
+  it('躺下：姿勢是躺，原比例；先抬到床墊的高度再繞腳躺平（樞軸在抬高的位置，不是地上）', () => {
     const f = actFrame(item('decor.bed', 1, 1, 0), HOME_SPACE, 'lie', 1);
     expect(f.pose).toBe('lie');
-    expect(f.scale).toBeLessThan(0.7);
+    expect(f.scale).toBe(1);
     expect(f.tiltX).toBeCloseTo(-Math.PI / 2);
     expect(f.pivotY).toBeCloseTo(f.y);
     expect(f.y).toBeGreaterThan(0.4);
@@ -148,7 +169,7 @@ describe('動作的時間軸（actFrame）', () => {
 });
 
 describe('找家具', () => {
-  const items = [item('decor.fence', 2, 2), item('decor.bench', 2, 4), item('decor.slide', 7, 7), item('decor.piano', 4, 2)];
+  const items = [item('decor.fence', 2, 2), item('decor.bench', 2, 4), item('decor.slide', 7, 7), item('decor.piano', 5, 2)];
 
   it('nearestUsable：1.5 公尺內最近的「可以用的」家具（柵欄再近也不算）；太遠沒有', () => {
     const fence = center(items[0]);

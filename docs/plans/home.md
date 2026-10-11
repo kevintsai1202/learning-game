@@ -270,3 +270,14 @@
 - **起來後站好**（併入的兩個問題）：`Player` 每一格只要沒在用家具就是站著、原比例。e2e 用 `scene.playerLift` 讀自己的角色的姿勢與縮放。
 - **測試**：`tests/store/yard.test.ts`（尺寸、展開、放、轉方向、碰撞、能擺的地方）、`tests/store/furnitureUse.test.ts`（縮放 1、座位在家具上、起身點在碰撞外）；e2e 只跑相關的：`home.spec.ts`、`home-inside.spec.ts`（按「起來」後站著、原比例）、`decor-mobile-audit.spec.ts`、`hud-mobile-audit.spec.ts`。
 - **已知**：部署途中還沒重新整理的舊網頁照舊畫成一格；Zeabur 換版的那一兩分鐘，新網頁擺在廣場、步道的家具會被舊伺服器當成不能擺的格子拿掉（和第 7.1 節同一類）；價格不變。
+
+### 10.4 第 ② 批實作紀錄（2026-10-11 完成）
+
+- **尺寸表**（`src/store/catalog.ts` 的 `size`）照第 10.3 節：2×1 長椅、沙發、鋼琴、書桌、餐桌；1×2 床；3×1 溜滑梯；2×2 野餐桌、沙坑、小池塘、地毯、鞦韆；其他 1×1。
+- **規則**（`src/store/yard.ts`，伺服器共用）：`decorSize`、`itemCells`（基準格不動、轉奇數次寬深互換；奇數尺寸基準格在正中間、偶數往 +x、+z 多一格）、`itemCenter`、`itemDistance`（到家具佔的格子中心連成的長方形）、`facingOf`、`placeAnchor`（從面前那一格往面向展開）、`canPlace` 多了 `rot`、整塊都要能擺且不壓到別的家具佔的格子、`canRotate`／`rotateItem`（轉不過去回傳 `ROTATE_BLOCKED`「旁邊太擠了，轉不過去」）、`nearestItem` 用 `itemDistance`、`decorObstacles` 每格一個圓。`cleanItems` 照舊只看基準格。能擺的地方：拿掉步道、廣場、小屋前 7 公尺走道的限制，改成避開噴水池（邊緣外 0.6）、熊熊老師站的位置（1.5）、小屋的門口（門口點 1.5 公尺內與牆到門口那一小段）。
+- **佈置的狀態**（`src/store/useDecor.ts`）：記下面向（`facing`）、`frontAnchor`；`rotateNear` 回傳有沒有轉，轉不過去時 `notice` 顯示 2.5 秒（走開就消失）。長的家具（床、長椅）在一端轉了以後會離角色變遠：剛轉過的那件在角色沒走開（0.3 公尺內）時一直算旁邊的家具，可以連按轉方向（e2e 抓到的：床轉橫以後按鈕不見）。
+- **畫面**：預覽的薄板蓋住整塊（`DecorGhost`）、模型畫在 `itemCenter`、屋裡高家具半透明用正中間；大動作鍵（`pickAction` 的 `near.notice`）與電腦版的家具卡片（`decor-notice`）顯示轉不過去的提示，轉了「喀」、轉不過去「喔喔」。`yardDebug.center`（e2e 用）。
+- **角色不縮小**（`src/store/furnitureUse.ts`、`src/world/Furniture.tsx`）：座位表縮放全部 1；座位與起身點以家具正中間為原點，起身點離每一格中心至少 0.9 公尺。床 1.9 公尺長、矮床頭板（躺的樞軸 0.9、腳在床尾）；溜滑梯 3×1（塔在左邊、平台 1.3 公尺、梯子在塔前面、滑道沿 +x，塔與滑道的尺寸 `SLIDE` 模型與時間軸共用）；鞦韆 2×2（橫桿 2.9 公尺、繩子在角色身體外面、盪的幅度 0.42 弧度、角頻率 2.0）。長椅、沙發、鋼琴、書桌、餐桌、野餐桌、沙坑（沙堡放大 1.5 倍）、小池塘、地毯照新尺寸重畫。躺下時腳伸直（`Avatar`）。
+- **起來後站好**（`src/world/Player.tsx`）：每一格只要 `player.act` 是空的就設回站著、原比例（以前只在用家具那段裡自己起來才重設；按「⬆️ 起來」、傳送後停在最後一格）。`scene.playerLift`（e2e 讀姿勢與縮放）。e2e 先重現（盪完按起來是坐姿、樞軸 2.9），修好後通過。
+- **測試**：`tests/store/footprint.test.ts`（新）、`yard.test.ts`（能擺的地方）、`furnitureUse.test.ts`（原比例、座位在家具裡、起身點在每一格外、橫桿高度）、`useDecor.test.ts`（往面向展開、轉不過去的提示、轉了還算旁邊）、`home.test.ts`、`tests/ui/actionKey.test.ts`、`tests/world/actSounds.test.ts`；e2e `home-inside.spec.ts`（按起來後站著原比例：長椅、鞦韆、溜滑梯、床；多格的站位）、`home.spec.ts`（長椅轉向後的基準格）、`decor-mobile-audit.spec.ts`、`hud-mobile-audit.spec.ts` 都過。
+- **已知**：部署途中還沒重新整理的舊網頁照舊畫成一格；Zeabur 換版的那一兩分鐘，擺在廣場、步道的家具會被舊伺服器拿掉；2×1 的家具轉一次中心移半格（再轉一次回來）；角色戴高帽子躺床時帽子會穿過床頭板一點；價格不變。

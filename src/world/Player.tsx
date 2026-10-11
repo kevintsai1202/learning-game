@@ -26,6 +26,7 @@ import { actSoundEvents } from './actSounds';
 import { ACT_SFX } from './actSfx';
 import { useDecor } from '../store/useDecor';
 import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
+import { sceneDebug } from './sceneDebug';
 import { actFrame } from '../store/furnitureUse';
 import { nowSec, spaceOf, stopUse } from '../store/useFurnitureUse';
 
@@ -65,6 +66,13 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
   const { camera, size } = useThree();
   // 卸下時（進建築、進出屋、回標題）把畫面移回來：整個畫布只有一個鏡頭
   useEffect(() => () => (camera as THREE.PerspectiveCamera).clearViewOffset(), [camera]);
+  // e2e 讀自己的角色的姿勢與縮放（第 10.3 節：按「起來」後要站著、原比例）
+  useEffect(() => {
+    sceneDebug.playerLift = () => ({ pose: motion.current.pose ?? 'stand', ...lift.current });
+    return () => {
+      sceneDebug.playerLift = null;
+    };
+  }, []);
   const shadowTex = useMemo(() => blobShadowTexture(), []);
   /** 自己在公頻說的話：頭上的對話氣泡（和其他玩家同樣的樣式） */
   const bubble = usePresence((s) => (s.selfId ? (s.bubbles[s.selfId]?.text ?? null) : null));
@@ -93,11 +101,14 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
         motion.current.speed = 0;
         motion.current.pose = f.pose;
         lift.current = f;
-      } else {
-        motion.current.pose = 'stand';
-        lift.current = STANDING;
       }
       next = player.pos;
+    }
+    // 沒在用家具就是站著、原比例：不管是這裡自己起來，還是在別處清掉 player.act（按「⬆️ 起來」、傳送、進出屋）。
+    // 以前只在上面那段裡重設，按「起來」後會停在最後一格的坐姿、躺姿與縮放（使用者 2026-10-11 回報，第 10.3 節）
+    if (!player.act && lift.current !== STANDING) {
+      motion.current.pose = 'stand';
+      lift.current = STANDING;
     }
     if (active && !player.act) {
       const dir = inputDirection();

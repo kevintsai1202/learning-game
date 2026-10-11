@@ -154,7 +154,8 @@ test('屋裡佈置：家具包和島上共用數量、放下床、旁邊轉方�
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/03-room-ghost.png` });
   await page.getByTestId('decor-place').click();
-  await expect.poll(async () => (await roomOf(page))?.items).toEqual([{ id: 'decor.bed', gx: 2, gz: 3, rot: 0 }]);
+  // 床 1×2（第 10.3 節）：面向北方放，從面前那一格 (2,3) 往北長，基準格是 (2,2)
+  await expect.poll(async () => (await roomOf(page))?.items).toEqual([{ id: 'decor.bed', gx: 2, gz: 2, rot: 0 }]);
 
   // 門口前面不能擺
   await page.getByTestId('decor-pick-decor.bench').click();
@@ -403,15 +404,25 @@ const actOf = (page: Page) => page.evaluate(() => {
   return a ? { kind: a.kind, id: a.item.id } : null;
 });
 
-/** 站到某件家具（島上的格子）前面 1 公尺，等「使用」按鈕出現 */
-async function standByYard(page: Page, cell: { gx: number; gz: number }): Promise<void> {
-  await page.evaluate(({ gx, gz }) => {
-    const g = (window as any).__game;
-    const w = g.yard.world(gx, gz);
-    g.teleport({ x: w.x, z: w.z + 1.1 });
-    g.player.heading = Math.PI;
-  }, cell);
+/** 站到某件家具（島上的格子，rot 0）前面 1 公尺，等「使用」按鈕出現；depth 是家具往南佔幾格（第 10.3 節多格） */
+async function standByYard(page: Page, cell: { gx: number; gz: number }, depth = 1): Promise<void> {
+  await page.evaluate(
+    ({ gx, gz, depth }) => {
+      const g = (window as any).__game;
+      const w = g.yard.world(gx, gz);
+      g.teleport({ x: w.x, z: w.z + depth - 1 + 1.1 });
+      g.player.heading = Math.PI;
+    },
+    { ...cell, depth },
+  );
   await expect(page.getByTestId('use-furniture')).toBeVisible();
+}
+
+/** 自己的角色站著、原比例（第 10.3 節：按「起來」後不能停在坐姿或躺姿、縮小） */
+async function expectStanding(page: Page): Promise<void> {
+  await expect
+    .poll(() => page.evaluate(() => (window as any).__game.scene.playerLift()))
+    .toEqual({ pose: 'stand', y: 0, scale: 1, tiltX: 0, pivotY: 0 });
 }
 
 test('第 9 節優化：坐長椅（推方向鍵起來）、盪鞦韆、溜滑梯（自己站起來）、開路燈與堆沙堡；屋裡躺床、彈鋼琴', async ({ page }) => {
@@ -455,14 +466,18 @@ test('第 9 節優化：坐長椅（推方向鍵起來）、盪鞦韆、溜滑�
   await expect.poll(() => actOf(page)).toBeNull();
   await page.keyboard.up('ArrowDown');
 
-  // 鞦韆：盪（按「起來」下來）
-  await standByYard(page, cells.swing);
+  await expectStanding(page);
+
+  // 鞦韆（2×2）：盪（按「起來」下來：站著、原比例，使用者 2026-10-11 回報過變小又坐著）
+  await standByYard(page, cells.swing, 2);
   await page.getByTestId('use-furniture').click();
   await expect.poll(() => actOf(page)).toEqual({ kind: 'swing', id: 'decor.swing' });
+  await expect.poll(() => page.evaluate(() => (window as any).__game.scene.playerLift().scale)).toBe(1);
   await page.waitForTimeout(900);
   await page.screenshot({ path: `${SHOTS}/11-swing.png` });
   await page.getByTestId('use-stop').click();
   await expect.poll(() => actOf(page)).toBeNull();
+  await expectStanding(page);
 
   // 溜滑梯：途中沒有「起來」，點地面也不會停；溜完自己站起來
   await standByYard(page, cells.slide);
@@ -472,12 +487,13 @@ test('第 9 節優化：坐長椅（推方向鍵起來）、盪鞦韆、溜滑�
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${SHOTS}/12-slide.png` });
   await expect.poll(() => actOf(page), { timeout: 5000 }).toBeNull();
+  await expectStanding(page);
 
   // 路燈：開燈、關燈；沙坑：堆沙堡
   await standByYard(page, cells.lamp);
   await page.getByTestId('use-furniture').click();
   await expect(page.getByTestId('use-furniture')).toContainText('關燈');
-  await standByYard(page, cells.sandbox);
+  await standByYard(page, cells.sandbox, 2);
   await page.getByTestId('use-furniture').click();
   await expect(page.getByTestId('use-furniture')).toContainText('推倒沙堡');
   await page.waitForTimeout(800);
@@ -498,9 +514,10 @@ test('第 9 節優化：坐長椅（推方向鍵起來）、盪鞦韆、溜滑�
   });
   await page.getByTestId('enter-home').click();
   await expect.poll(() => page.evaluate(() => (window as any).__game.home.store.getState().inside)).toBe('mine');
+  // 床 1×2 佔 (2,2)(2,3)：站在床尾外面
   await page.evaluate(() => {
     const g = (window as any).__game;
-    const w = g.home.world(2, 2);
+    const w = g.home.world(2, 3);
     g.teleport({ x: w.x, z: w.z + 1.1 });
   });
   await expect(page.getByTestId('decor-near')).toContainText('床');
@@ -509,8 +526,10 @@ test('第 9 節優化：坐長椅（推方向鍵起來）、盪鞦韆、溜滑�
   await expect.poll(() => actOf(page)).toEqual({ kind: 'lie', id: 'decor.bed' });
   await page.waitForTimeout(1200);
   await page.screenshot({ path: `${SHOTS}/14-lie-bed.png` });
+  // 按「起來」：站著、原比例（使用者 2026-10-11 回報過還是躺著、縮小）
   await page.getByTestId('use-stop').click();
   await expect.poll(() => actOf(page)).toBeNull();
+  await expectStanding(page);
   await page.evaluate(() => {
     const g = (window as any).__game;
     const w = g.home.world(6, 2);
@@ -596,7 +615,8 @@ test('第 9 節優化：朋友看得到你坐在長椅上、盪鞦韆（座椅�
   }, cells.bench);
   await b.page.getByTestId('use-furniture').click();
   await expect.poll(async () => (await memberOn(a.page, '小美'))?.act).toBe('sit');
-  const benchW = await a.page.evaluate((c) => (window as any).__game.yard.world(c.gx, c.gz), cells.bench);
+  // 長椅 2×1：座位在家具佔的格子的正中間（第 10.3 節）
+  const benchW = await a.page.evaluate((c) => (window as any).__game.yard.center({ id: 'decor.bench', ...c, rot: 0 }), cells.bench);
   await expect.poll(async () => {
     const m = await memberOn(a.page, '小美');
     return Math.hypot(m!.x - benchW.x, m!.z - benchW.z);
@@ -608,10 +628,11 @@ test('第 9 節優化：朋友看得到你坐在長椅上、盪鞦韆（座椅�
   // 小美起來去盪鞦韆：阿寶那邊她的動作是盪，那座鞦韆在盪
   await b.page.getByTestId('use-stop').click();
   await expect.poll(async () => (await memberOn(a.page, '小美'))?.act).toBeNull();
+  // 鞦韆 2×2：站在往南兩格的外面
   await b.page.evaluate((c) => {
     const g = (window as any).__game;
     const w = g.yard.world(c.gx, c.gz);
-    g.teleport({ x: w.x, z: w.z + 1.1 });
+    g.teleport({ x: w.x, z: w.z + 2.1 });
   }, cells.swing);
   await b.page.getByTestId('use-furniture').click();
   await expect.poll(async () => (await memberOn(a.page, '小美'))?.act).toBe('swing');
