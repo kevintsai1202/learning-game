@@ -129,10 +129,20 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
     await expect(page.getByTestId('decor-ghost-rotate')).toHaveCount(1);
     await page.waitForTimeout(1200);
     const bag = (await page.getByTestId('decor-bag').boundingBox())!;
-    const place = (await page.getByTestId('decor-place').boundingBox())!;
-    expect.soft(overlaps(bag, place), '家具包條壓到「放下」').toBe(false);
+    const place = (await page.locator('.action-row').boundingBox())!;
+    expect.soft(overlaps(bag, place), '家具包條壓到大動作鍵').toBe(false);
     expect.soft((await avatarFeet(page)).onCanvas, '佈置中角色的腳被介面蓋住').toBe(true);
     await page.screenshot({ path: `${OUT}/390x844-4-picking.png` });
+    // 橫式手機佈置中：家具包條在最下面，右邊讓出大動作鍵
+    await page.setViewportSize({ width: 844, height: 390 });
+    await page.waitForTimeout(800);
+    const bagL = (await page.getByTestId('decor-bag').boundingBox())!;
+    // 大動作鍵整組（大鍵與旁邊的小圓鈕）
+    const keyL = (await page.locator('.action-row').boundingBox())!;
+    expect.soft(overlaps(bagL, keyL), `橫式：家具包條壓到大動作鍵：${JSON.stringify({ bagL, keyL })}`).toBe(false);
+    await page.screenshot({ path: `${OUT}/844x390-4-picking.png` });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(500);
     await page.getByTestId('decor-place').click();
     await expect.poll(() => page.evaluate(() => (window as any).__game.game.getState().profile().yard?.length ?? 0)).toBe(1);
     // 走到長椅旁邊：大動作鍵「坐下」，旁邊轉方向、收起來

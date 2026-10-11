@@ -72,7 +72,8 @@ for (const dev of DEVICES) {
       }, cell);
       await page.waitForTimeout(1500);
       report.bag = await boxOf(page, 'decor-bag');
-      report.hint = await boxOf(page, 'decor-hint');
+      // 提示：電腦在家具包條上方；手機（第 10.2 節）在右下大動作鍵上面的小字
+      report.hint = (await boxOf(page, 'decor-hint')) ?? (await page.locator('.action-caption').first().boundingBox());
       // 電腦沒有搖桿：先數有沒有（boundingBox 會一直等元素出現）
       report.joystick = (await page.locator('.joystick').count()) ? await page.locator('.joystick').first().boundingBox() : null;
       report.avatarPicking = await avatarOnScreen(page);

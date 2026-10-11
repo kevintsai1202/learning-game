@@ -3322,10 +3322,10 @@ button {
   border-radius: 50%;
   font-size: 20px;
 }
-/* 家具包條：手機上「放下」「轉方向」在大動作鍵；橫式手機的條在最下面，右邊讓出大動作鍵 */
+/* 家具包條：手機上「放下」「轉方向」在大動作鍵；橫式手機的條在最下面，右邊讓出大動作鍵與旁邊兩顆小圓鈕 */
 @media (orientation: landscape) {
   :root.phone .decor-bag {
-    right: 112px;
+    right: 210px;
   }
   /* 橫式手機：直排圖示從最上面排、小一點、不寫字；☰ 在上方一行 */
   :root.phone .hud-rail {

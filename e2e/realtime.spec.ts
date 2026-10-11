@@ -94,7 +94,10 @@ const PICKER_VIEWPORTS: [number, number][] = [
   [768, 1024],
 ];
 
-test('各種螢幕（觸控）：公頻與短句盤完整在畫面內、不擋按鈕；「進去玩」置中、不壓到搖桿與公頻；最後一句點得到', async ({ browser, baseURL, request }) => {
+/** 手機版面（和 src/ui/phoneLayout.ts 的 isPhoneViewport 一樣） */
+const isPhone = (w: number, h: number) => w <= 600 || (w > h && h <= 500);
+
+test('各種螢幕（觸控）：公頻與短句盤完整在畫面內、不擋按鈕；「進去」不壓到搖桿與公頻（平板、電腦置中；手機在右下的大動作鍵）；最後一句點得到', async ({ browser, baseURL, request }) => {
   test.setTimeout(300_000);
   const post = async (path: string, data: unknown) => {
     const res = await request.post(`${SERVER}${path}`, { data });
@@ -124,20 +127,30 @@ test('各種螢幕（觸控）：公頻與短句盤完整在畫面內、不擋�
     if (atDoor) await page.waitForTimeout(500);
   };
   const say = page.getByTestId('chat-say');
+  /** 手機版面的公頻收成右側的一顆圖示：要用時先打開 */
+  const openChat = async () => {
+    if (!(await page.getByTestId('chat-panel').count())) await page.getByTestId('chat-toggle').click();
+    await expect(page.getByTestId('chat-panel')).toBeVisible();
+  };
   /** 打開或收起短句盤 */
   const setPicker = async (open: boolean) => {
+    await openChat();
     if ((await say.getAttribute('aria-expanded')) !== String(open)) await say.click();
     await expect(page.getByTestId('phrase-picker')).toHaveCount(open ? 1 : 0);
     await page.waitForTimeout(300);
   };
-  /** 公頻面板沒有超出畫面，也沒有擋住右上角的按鈕、左上角的金幣與存檔狀態 */
+  /**
+   * 公頻面板沒有超出畫面，也沒有擋住右上角的按鈕、左上角的金幣與存檔狀態；
+   * 手機：右上角是「☰」，公頻在右側圖示的左邊、不擋其他圖示
+   */
   const checkPanel = async (where: string, w: number, h: number) => {
+    const phone = isPhone(w, h);
     const panel = (await page.getByTestId('chat-panel').boundingBox())!;
     expect.soft(panel.x, `${where} 左邊超出`).toBeGreaterThanOrEqual(0);
     expect.soft(panel.y, `${where} 上面超出`).toBeGreaterThanOrEqual(0);
     expect.soft(panel.x + panel.width, `${where} 右邊超出`).toBeLessThanOrEqual(w);
     expect.soft(panel.y + panel.height, `${where} 下面超出`).toBeLessThanOrEqual(h);
-    for (const id of ['hud-badges', 'hud-parent', 'hud-coins', 'hud-cloud']) {
+    for (const id of phone ? ['hud-menu', 'hud-coins', 'hud-cloud', 'hud-island', 'hud-friends'] : ['hud-badges', 'hud-parent', 'hud-coins', 'hud-cloud']) {
       const box = (await page.getByTestId(id).boundingBox())!;
       expect.soft(overlaps(panel, box), `${where} 公頻擋到 ${id}：${JSON.stringify({ panel, box })}`).toBe(false);
     }
@@ -158,19 +171,29 @@ test('各種螢幕（觸控）：公頻與短句盤完整在畫面內、不擋�
     });
     expect.soft(covered, `${where} 公頻蓋住「進去玩」`).toBe(false);
   };
-  /** 「進去玩」泡泡：完整在畫面內；寬螢幕置中；不壓到公頻、搖桿、右上角按鈕 */
+  /** 「進去」：完整在畫面內；平板與電腦置中，手機是右下的大動作鍵；不壓到公頻、搖桿、右上角按鈕 */
   const checkBubble = async (where: string, w: number, h: number) => {
+    const phone = isPhone(w, h);
     const bubble = (await page.getByTestId('door-bubble').boundingBox())!;
     expect.soft(bubble.x, `${where} 泡泡左邊超出`).toBeGreaterThanOrEqual(0);
     expect.soft(bubble.y, `${where} 泡泡上面超出`).toBeGreaterThanOrEqual(0);
     expect.soft(bubble.x + bubble.width, `${where} 泡泡右邊超出`).toBeLessThanOrEqual(w);
     expect.soft(bubble.y + bubble.height, `${where} 泡泡下面超出`).toBeLessThanOrEqual(h);
-    if (w > 600) expect.soft(Math.abs(bubble.x + bubble.width / 2 - w / 2), `${where} 泡泡沒有置中：${JSON.stringify(bubble)}`).toBeLessThanOrEqual(2);
+    if (!phone && w > 600) expect.soft(Math.abs(bubble.x + bubble.width / 2 - w / 2), `${where} 泡泡沒有置中：${JSON.stringify(bubble)}`).toBeLessThanOrEqual(2);
+    if (phone) {
+      // 手機：大動作鍵在右下
+      expect.soft(bubble.x + bubble.width, `${where} 動作鍵在右邊`).toBeGreaterThan(w * 0.75);
+      expect.soft(bubble.y + bubble.height, `${where} 動作鍵在下面`).toBeGreaterThan(h * 0.6);
+    }
     const others: [string, Box | null][] = [
       ['公頻', await page.getByTestId('chat-panel').boundingBox()],
       ['搖桿', await page.locator('.joystick').boundingBox()],
-      ['hud-badges', await page.getByTestId('hud-badges').boundingBox()],
-      ['hud-parent', await page.getByTestId('hud-parent').boundingBox()],
+      ...(phone
+        ? ([['hud-menu', await page.getByTestId('hud-menu').boundingBox()]] as [string, Box | null][])
+        : ([
+            ['hud-badges', await page.getByTestId('hud-badges').boundingBox()],
+            ['hud-parent', await page.getByTestId('hud-parent').boundingBox()],
+          ] as [string, Box | null][])),
     ];
     for (const [name, box] of others) {
       if (box) expect.soft(overlaps(bubble, box), `${where} 泡泡壓到${name}：${JSON.stringify({ bubble, box })}`).toBe(false);

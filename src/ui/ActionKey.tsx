@@ -2,7 +2,8 @@
  * 手機的大動作鍵（自己的家第 10.2 節，docs/plans/home.md）：右下一顆大鍵（像手機遊戲的 A 鍵），左手搖桿、右手按。
  * 看情況顯示一個主要動作與旁邊的小圓鈕，上面一行小字寫是什麼；順序與規則在 src/ui/actionKeyRules.ts。
  * 按鈕的 data-testid 和電腦版的泡泡、卡片一樣（enter-zone、enter-home、leave-home、use-furniture、use-stop、
- * decor-place、decor-ghost-rotate、decor-near-rotate、decor-near-pickup），外框是 door-bubble、decor-near 等。
+ * decor-place、decor-ghost-rotate、decor-near-rotate、decor-near-pickup），外框是 door-bubble、home-door-bubble、
+ * home-mat-bubble、decor-near、use-card，佈置中是 decor-place-key（只有手機有）。
  */
 import { useGame } from '../store/useGame';
 import { useUi } from '../store/useUi';
