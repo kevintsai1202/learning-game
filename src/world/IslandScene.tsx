@@ -30,6 +30,7 @@ import { YardDecor } from './Furniture';
 import { DecorLayer } from './DecorLayer';
 import { HOUSE_TREE_CLEAR, YARD_SPACE, yardObstacles } from '../store/yard';
 import { occluders, type Occluder } from './occlusion';
+import { fadeGroup } from './fadeGroup';
 import { useGame } from '../store/useGame';
 import { useRealtime } from '../online/realtimeClient';
 import { useGm } from '../online/gmClient';
@@ -82,10 +83,11 @@ function occluderSpheres(hasHome: boolean): Occluder[] {
 }
 
 /**
- * 擋住角色的建築隱形（自己的家改版）：每一格畫面算鏡頭到角色頭頂的線段穿過哪些建築，那幾棟 visible = false，
- * 走出來就恢復。建築的材質有共用快取，不能改不透明度。sceneDebug.hiddenZones 給 e2e 與點建築的判斷用
+ * 擋住角色的建築變半透明（第 9 節優化；原本是整棟隱形）：每一格畫面算鏡頭到角色頭頂的線段穿過哪些建築，
+ * 那幾棟的材質換成半透明副本（fadeGroup），走出來換回原材質。sceneDebug.hiddenZones 給 e2e 與點建築的判斷用
+ * （半透明的建築點了不會進去，點擊穿過去點到地面）
  */
-function OcclusionHider({ hasHome, onChange }: { hasHome: boolean; /** 隱形的建築換了（小屋的「○○的家」牌子是 DOM，要另外藏） */ onChange: (hidden: string[]) => void }) {
+function OcclusionHider({ hasHome, onChange }: { hasHome: boolean; /** 半透明的建築換了（小屋的「○○的家」牌子是 DOM，要另外變淡） */ onChange: (hidden: string[]) => void }) {
   const { camera } = useThree();
   const spheres = useMemo(() => occluderSpheres(hasHome), [hasHome]);
   const last = useRef('');
@@ -95,16 +97,27 @@ function OcclusionHider({ hasHome, onChange }: { hasHome: boolean; /** 隱形的
     if (key === last.current) return;
     last.current = key;
     sceneDebug.hiddenZones = hidden;
-    for (const [id, g] of occluderGroups) g.visible = !hidden.includes(id);
+    for (const [id, g] of occluderGroups) fadeGroup(g, hidden.includes(id));
     onChange(hidden);
   });
-  useEffect(
-    () => () => {
+  // 卸下（標題畫面、換場景）時換回原材質：島嶼場景可能還在（標題畫面的島）
+  useEffect(() => {
+    sceneDebug.buildingLook = (id) => {
+      const g = occluderGroups.get(id);
+      if (!g) return null;
+      let opacity = 1;
+      g.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+        if (m && o.visible && !Array.isArray(m)) opacity = Math.min(opacity, m.opacity);
+      });
+      return { visible: g.visible, opacity };
+    };
+    return () => {
       sceneDebug.hiddenZones = [];
-      for (const g of occluderGroups.values()) g.visible = true;
-    },
-    [],
-  );
+      sceneDebug.buildingLook = null;
+      for (const g of occluderGroups.values()) fadeGroup(g, false);
+    };
+  }, []);
   return null;
 }
 
@@ -188,7 +201,7 @@ export function IslandScene({
   const yard = hasHome && mode !== 'attract' ? shownYard({ ownIsland: true, visiting, local: localYard, host: hostYard }) : null;
   /** 可以佈置：自己的島、不是拜訪別人、不是熊熊老師、在島上玩（動森做法：角色面前出現預覽） */
   const canDeco = hasHome && !visiting && !gm && mode === 'play';
-  /** 小屋擋住角色而隱形（「○○的家」牌子是 DOM，不會跟著 3D 的 visible，要另外藏） */
+  /** 小屋擋住角色而半透明（「○○的家」牌子是 DOM，不會跟著 3D 的材質，要另外變淡） */
   const [houseHidden, setHouseHidden] = useState(false);
   /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
   const obstacles = useMemo(
@@ -268,7 +281,7 @@ export function IslandScene({
           onPointerOver={() => interactive && (document.body.style.cursor = 'pointer')}
           onPointerOut={() => (document.body.style.cursor = '')}
         >
-          <KidHouse name={look.home.name} label={!houseHidden} />
+          <KidHouse name={look.home.name} labelFaded={houseHidden} />
         </group>
       )}
       {look.home && mode !== 'attract' && <HouseDoorProbe active={interactive} />}

@@ -5,18 +5,19 @@
  * - 壁紙與地板照島主選的（顏色與花紋用程式畫，原創）；擺好的家具照島主的房間。
  * - 角色在長方形範圍裡走（家具擋路照島上）；鏡頭固定看整間房。
  */
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useThree, useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Player, TargetMarker } from './Player';
-import { YardDecor } from './Furniture';
+import { FURNITURE_HEIGHT, YardDecor } from './Furniture';
+import { occluders, type Occluder } from './occlusion';
 import { DecorLayer } from './DecorLayer';
 import { RemotePlayers } from './RemotePlayers';
 import { inputDirection, player } from './input';
 import { DOOR_MAT, ROOM_RECT, atRoomExit, onDoorMat } from './room';
 import { sceneDebug } from './sceneDebug';
 import { HOME_SPACE, type HomeState } from '../store/home';
-import { decorObstacles } from '../store/yard';
+import { decorObstacles, type YardItem } from '../store/yard';
 import { leaveHome, useHome } from '../store/useHome';
 import type { AvatarConfig } from '../store/save';
 import { sfx } from '../audio/sfx';
@@ -256,6 +257,50 @@ function RoomProbe() {
   return null;
 }
 
+/** 擋住後至少維持半透明多久（秒；走過一排書架時不會一閃一閃） */
+const FADE_HOLD = 0.3;
+
+/**
+ * 屋裡擋在鏡頭與角色之間的高家具（第 9 節優化）：每一格畫面算，集合真的變了才通知（YardDecor 會重新合併）。
+ * 擋住過的家具至少維持 FADE_HOLD 秒
+ */
+function FadeProbe({ items, onChange }: { items: readonly YardItem[]; onChange: (cells: string[]) => void }) {
+  const { camera } = useThree();
+  /** 高家具的包圍球（id 是格子 "gx,gz"） */
+  const spheres = useMemo<Occluder[]>(
+    () =>
+      items
+        .filter((it) => FURNITURE_HEIGHT[it.id])
+        .map((it) => {
+          const h = FURNITURE_HEIGHT[it.id];
+          const w = HOME_SPACE.toWorld(it.gx, it.gz);
+          return { id: `${it.gx},${it.gz}`, x: w.x, y: h / 2, z: w.z, r: Math.max(0.6, h * 0.6) };
+        }),
+    [items],
+  );
+  /** 每一件維持到什麼時候 */
+  const until = useRef(new Map<string, number>());
+  const last = useRef('');
+  useFrame((state) => {
+    const now = state.clock.elapsedTime;
+    // 屋裡的鏡頭往下看得比較陡，高家具擋的多半是角色的下半身：看腰的高度
+    for (const id of occluders(camera.position, { x: player.pos.x, y: 0.6, z: player.pos.z }, spheres)) until.current.set(id, now + FADE_HOLD);
+    const shown = [...until.current].filter(([, t]) => t > now).map(([id]) => id).sort();
+    const key = shown.join('|');
+    if (key === last.current) return;
+    last.current = key;
+    sceneDebug.fadedCells = shown;
+    onChange(shown);
+  });
+  useEffect(
+    () => () => {
+      sceneDebug.fadedCells = [];
+    },
+    [],
+  );
+  return null;
+}
+
 /**
  * 每一格畫面：站在腳踏墊上就出現「回到島上」（onMat）；站在前緣的門口往前推就直接走出去。
  * 離開這個場景時清掉腳踏墊的狀態
@@ -295,6 +340,8 @@ export function HomeScene({
   const canDeco = own && !gm && active;
   /** 擋路的家具（地毯可以走過去） */
   const obstacles = useMemo(() => decorObstacles(home.items, HOME_SPACE), [home.items]);
+  /** 擋住角色的高家具（半透明） */
+  const [faded, setFaded] = useState<string[]>([]);
   /** 點地板：走過去（範圍外的會被夾回房間裡） */
   const onFloorTap = (x: number, z: number) => {
     if (!active) return;
@@ -320,7 +367,8 @@ export function HomeScene({
       />
       <RoomProbe />
       <Room wall={home.wall} floor={home.floor} onFloorTap={onFloorTap} />
-      <YardDecor items={home.items} space={HOME_SPACE} />
+      <YardDecor items={home.items} space={HOME_SPACE} faded={faded} />
+      <FadeProbe items={home.items} onChange={setFaded} />
       {canDeco && <DecorLayer space={HOME_SPACE} />}
       <Player avatar={avatar} obstacles={obstacles} active={active} teacher={gm} bounds={ROOM_RECT} doors={[]} roomView />
       <TargetMarker />

@@ -77,6 +77,27 @@ function FlowerBed({ color }: { color: string }) {
   );
 }
 
+/**
+ * 高的家具（公尺；1 公尺以上才列）：屋裡擋在鏡頭與角色之間時變半透明（第 9 節優化）。
+ * 球心在高度的一半，半徑照高度
+ */
+export const FURNITURE_HEIGHT: Record<string, number> = {
+  'decor.bookshelf': 1.45,
+  'decor.wardrobe': 1.7,
+  'decor.floorlamp': 1.75,
+  'decor.piano': 1.1,
+  'decor.aquarium': 1.1,
+  'decor.tv': 1.0,
+  'decor.tree': 1.9,
+  'decor.bush': 1.2,
+  'decor.lamp': 2.0,
+  'decor.parasol': 1.9,
+  'decor.scarecrow': 1.6,
+  'decor.swing': 1.25,
+  'decor.windmill': 1.4,
+  'decor.mailbox': 1.1,
+};
+
 /** 室內家具的顏色 */
 const BLACK = '#2b2b33';
 const CLOTH_RED = '#e8455a';
@@ -572,23 +593,53 @@ function Windmill() {
 
 /**
  * 擺好的家具：放到格子上（轉方向），全部合併網格；不認得的家具跳過、最多擺放地方的上限個。
- * space 是島上（預設）或屋裡（HOME_SPACE，房間的座標）
+ * space 是島上（預設）或屋裡（HOME_SPACE，房間的座標）。faded 是要半透明的格子（"gx,gz"；擋住角色的高家具），
+ * 那幾件不合併、另外畫成半透明
  */
-export function YardDecor({ items, space = YARD_SPACE }: { items: readonly YardItem[]; space?: DecorSpace }) {
-  const shown = useMemo(() => visibleYard(items, space.max), [items, space]);
+export function YardDecor({ items, space = YARD_SPACE, faded = [] }: { items: readonly YardItem[]; space?: DecorSpace; faded?: readonly string[] }) {
+  const all = useMemo(() => visibleYard(items, space.max), [items, space]);
+  const shown = useMemo(() => all.filter((it) => !faded.includes(`${it.gx},${it.gz}`)), [all, faded]);
+  const fadedItems = useMemo(() => all.filter((it) => faded.includes(`${it.gx},${it.gz}`)), [all, faded]);
   /** 院子的內容換了就重新合併 */
   const key = useMemo(() => shown.map((it) => `${it.id}@${it.gx},${it.gz},${it.rot}`).join('|'), [shown]);
   return (
-    <StaticMerge key={key}>
-      {shown.map((it) => {
-        const w = space.toWorld(it.gx, it.gz);
-        return (
-          <group key={`${it.gx},${it.gz}`} position={[w.x, 0, w.z]} rotation={[0, (it.rot * Math.PI) / 2, 0]}>
-            <FurnitureModel id={it.id} />
-          </group>
-        );
-      })}
-    </StaticMerge>
+    <>
+      <StaticMerge key={key}>
+        {shown.map((it) => {
+          const w = space.toWorld(it.gx, it.gz);
+          return (
+            <group key={`${it.gx},${it.gz}`} position={[w.x, 0, w.z]} rotation={[0, (it.rot * Math.PI) / 2, 0]}>
+              <FurnitureModel id={it.id} />
+            </group>
+          );
+        })}
+      </StaticMerge>
+      {fadedItems.map((it) => (
+        <FadedItem key={`${it.id}@${it.gx},${it.gz},${it.rot}`} item={it} space={space} />
+      ))}
+    </>
+  );
+}
+
+/** 半透明的一件家具（擋住角色時；模型的材質是各自的，改不透明度不影響別件） */
+function FadedItem({ item, space }: { item: YardItem; space: DecorSpace }) {
+  const group = useRef<THREE.Group>(null);
+  useEffect(() => {
+    group.current?.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (m) {
+        m.transparent = true;
+        m.opacity = 0.3;
+        m.depthWrite = false;
+      }
+      o.castShadow = false;
+    });
+  }, [item.id]);
+  const w = space.toWorld(item.gx, item.gz);
+  return (
+    <group ref={group} position={[w.x, 0, w.z]} rotation={[0, (item.rot * Math.PI) / 2, 0]}>
+      <FurnitureModel id={item.id} />
+    </group>
   );
 }
 

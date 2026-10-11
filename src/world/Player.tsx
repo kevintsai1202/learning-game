@@ -20,6 +20,7 @@ import { LABEL_DISTANCE_FACTOR } from './RemotePlayers';
 import { Teacher } from './Teacher';
 import { enterHome } from '../store/useHome';
 import { roomCamera } from './room';
+import { camZoom } from './cameraZoom';
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -39,7 +40,7 @@ interface PlayerProps {
   bounds?: number | RoomRect;
   /** 偵測哪些建築的門口（預設島上的建築；屋裡沒有） */
   doors?: { id: ZoneId; x: number; z: number }[];
-  /** 屋裡：鏡頭固定在房間前上方看整間房，不跟著角色 */
+  /** 屋裡：鏡頭在房間裡跟著角色（比島上近，不會跑出房間） */
   roomView?: boolean;
 }
 
@@ -105,18 +106,22 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
       useUi.getState().setNearZone(near);
     }
 
-    // 屋裡：鏡頭固定在前上方，整間房放得進畫面（每一格直接設，不慢慢移）
+    // 鏡頭慢慢跟上；換場景（進屋、出屋）的第一格直接跳到定位。距離都乘縮放倍率（滾輪、兩指捏合）
+    const k = player.snapCamera ? 1 : 1 - Math.exp(-dt * 3.5);
+    player.snapCamera = false;
+    const zoom = camZoom.value;
     if (roomView) {
-      const c = roomCamera(size.width / Math.max(size.height, 1));
-      camera.position.set(c.position.x, c.position.y, c.position.z);
-      camera.lookAt(c.target.x, c.target.y, c.target.z);
+      // 屋裡：跟著角色，比島上近；看的點夾在房間裡
+      const c = roomCamera(size.width / Math.max(size.height, 1), next, zoom);
+      camera.position.lerp(new THREE.Vector3(c.position.x, c.position.y, c.position.z), k);
+      lookAt.current.lerp(new THREE.Vector3(c.target.x, c.target.y, c.target.z), k);
+      camera.lookAt(lookAt.current);
       return;
     }
     // 鏡頭跟隨：直式螢幕拉遠一點，才看得到左右兩邊的建築
     const portrait = size.height > size.width * 1.1;
-    const k = 1 - Math.exp(-dt * 3.5);
-    const back = portrait ? 25 : 18.5;
-    const up = portrait ? 22 : 15.5;
+    const back = (portrait ? 25 : 18.5) * zoom;
+    const up = (portrait ? 22 : 15.5) * zoom;
     camera.position.lerp(new THREE.Vector3(next.x * 0.85, up, next.z + back), k);
     lookAt.current.lerp(new THREE.Vector3(next.x * 0.9, 1, next.z - 4), k);
     camera.lookAt(lookAt.current);

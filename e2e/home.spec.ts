@@ -167,22 +167,29 @@ test('動森做法：家具包選一樣、面前出現預覽、轉方向、放�
   expect(errors).toEqual([]);
 });
 
-test('擋住角色的建築隱形：走到百寶屋、小屋後面就看不見那一棟，走出來恢復', async ({ page }) => {
+test('擋住角色的建築變半透明：走到百寶屋、小屋後面那一棟變淡（還在），走出來恢復', async ({ page }) => {
   await freshStart(page);
   await createKid(page);
   const hidden = () => page.evaluate(() => (window as any).__game.scene.hiddenZones as string[]);
+  const look = (id: string) => page.evaluate((id) => (window as any).__game.scene.buildingLook(id), id);
   // 百寶屋北邊（鏡頭在南邊）
   await page.evaluate(() => (window as any).__game.teleport({ x: -7.5, z: 6.6 }));
   await expect.poll(hidden).toContain('shop');
+  const shop = await look('shop');
+  expect(shop.visible).toBe(true);
+  expect(shop.opacity).toBeLessThan(0.5);
   await page.waitForTimeout(800);
   await page.screenshot({ path: `${SHOTS}/04-behind-shop.png` });
   // 小屋北邊
   await page.evaluate(() => (window as any).__game.teleport({ x: -14, z: 6.5 }));
   await expect.poll(hidden).toContain('house');
   await page.screenshot({ path: `${SHOTS}/05-behind-house.png` });
+  await expect(page.getByTestId('island-home')).toHaveClass(/faded/);
   // 走出來（出生點）恢復
   await page.evaluate(() => (window as any).__game.teleport({ x: 0, z: 13 }));
   await expect.poll(hidden).toEqual([]);
+  expect((await look('shop')).opacity).toBe(1);
+  await expect(page.getByTestId('island-home')).not.toHaveClass(/faded/);
 });
 
 test('百寶屋的家具分頁：一個一個買，同一種可以買很多個；家具包看得到', async ({ page }) => {

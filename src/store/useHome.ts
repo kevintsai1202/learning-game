@@ -59,6 +59,7 @@ export function enterHome(): boolean {
   if (houseKey === null) return false;
   teleport(HOME_SPAWN);
   player.heading = HOME_SPAWN.heading;
+  player.snapCamera = true;
   useHome.setState({ inside: houseKey, nearDoor: false, onMat: false });
   return true;
 }
@@ -67,6 +68,7 @@ export function enterHome(): boolean {
 export function leaveHome(): void {
   teleport(houseDoor());
   player.heading = HOUSE.rotY;
+  player.snapCamera = true;
   useHome.setState({ inside: null, onMat: false });
 }
 

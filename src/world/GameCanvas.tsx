@@ -2,7 +2,8 @@
  * 唯一的 3D 畫布：島上時畫島嶼，進屋時畫屋子裡（自己的家第二期），答題與結算時換成活動舞台。
  * 全程只用一個 WebGL context，平板比較不會因為建立太多 context 而當掉。
  */
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useThree } from '@react-three/fiber';
+import { attachZoom } from './cameraZoom';
 import { useEffect } from 'react';
 import { IslandScene } from './IslandScene';
 import { HomeScene } from './HomeScene';
@@ -21,6 +22,13 @@ import { sceneLookOf } from './landmarks';
 import { TEACHER_NAME } from '../online/realtime';
 
 const FALLBACK_AVATAR: AvatarConfig = { animal: 'bear', color: '#8b5a2b', hat: null };
+
+/** 滑鼠滾輪、兩指捏合縮放鏡頭（只掛在 3D 畫布上） */
+function ZoomControl() {
+  const gl = useThree((s) => s.gl);
+  useEffect(() => attachZoom(gl.domElement), [gl]);
+  return null;
+}
 
 /** 粗略判斷是否為低效能裝置（觸控裝置且核心數少） */
 function isLowEnd(): boolean {
@@ -81,6 +89,7 @@ export function GameCanvas() {
         if (window.__game) Object.assign(window.__game, { gl, camera });
       }}
     >
+      <ZoomControl />
       {onStage ? (
         <StageScene avatar={profile?.avatar ?? FALLBACK_AVATAR} subject={theme} />
       ) : inHome ? (

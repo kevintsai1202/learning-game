@@ -334,3 +334,65 @@ test('熊熊老師去孩子的島也能進屋：孩子在屋裡看得到熊熊�
   expect(pageErrors(a.page)).toEqual([]);
   expect(pageErrors(t.page)).toEqual([]);
 });
+
+/** 鏡頭的位置 */
+const camOf = (page: Page) => page.evaluate(() => {
+  const c = (window as any).__game.camera.position;
+  return { x: c.x, y: c.y, z: c.z };
+});
+/** 鏡頭離角色多遠 */
+const camDist = (page: Page) =>
+  page.evaluate(() => {
+    const g = (window as any).__game;
+    const c = g.camera.position;
+    return Math.hypot(c.x - g.player.pos.x, c.y, c.z - g.player.pos.z);
+  });
+
+test('第 9 節優化：滾輪拉近拉遠（存在裝置上）、屋裡鏡頭跟著角色、高家具擋住角色時半透明', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await freshStart(page);
+  await createKid(page);
+  // 島上：滾輪往下拉遠、往上拉近
+  await page.waitForTimeout(1500);
+  const base = await camDist(page);
+  const box = (await page.locator('canvas').first().boundingBox())!;
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 120);
+  await expect.poll(() => camDist(page)).toBeGreaterThan(base * 1.3);
+  for (let i = 0; i < 8; i++) await page.mouse.wheel(0, -120);
+  await expect.poll(() => camDist(page)).toBeLessThan(base * 0.9);
+  await page.screenshot({ path: `${SHOTS}/07-zoom-in.png` });
+  expect(Number(await page.evaluate(() => localStorage.getItem('learning-island-camera-zoom')))).toBeLessThan(1);
+  // 回到原本的距離
+  await page.evaluate(() => localStorage.setItem('learning-island-camera-zoom', '1'));
+  for (let i = 0; i < 4; i++) await page.mouse.wheel(0, 120);
+
+  // 屋裡：擺一個衣櫃，走動時鏡頭跟著角色
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    g.game.setState((st: any) => ({
+      save: { ...st.save, profiles: st.save.profiles.map((p: any) => (p.id === st.save.activeProfileId ? { ...p, inventory: [...p.inventory, 'decor.wardrobe'] } : p)) },
+    }));
+    g.game.getState().saveHome({ items: [{ id: 'decor.wardrobe', gx: 5, gz: 5, rot: 0 }], wall: 'wall.cream', floor: 'floor.wood' });
+    g.teleport(g.home.door());
+  });
+  await page.getByTestId('enter-home').click();
+  await expect.poll(() => page.evaluate(() => (window as any).__game.home.store.getState().inside)).toBe('mine');
+  await page.evaluate(() => (window as any).__game.teleport({ x: -3.5, z: 3 }));
+  await expect.poll(async () => (await camOf(page)).x).toBeLessThan(-2);
+  const front = await camOf(page);
+  await page.evaluate(() => (window as any).__game.teleport({ x: -3.5, z: -3.5 }));
+  await expect.poll(async () => (await camOf(page)).z).toBeLessThan(front.z - 4);
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/08-room-follow.png` });
+
+  // 站在衣櫃後面（鏡頭在前面）：衣櫃半透明；走開恢復
+  await page.evaluate(() => (window as any).__game.teleport({ x: 0.5, z: -0.4 }));
+  await expect.poll(() => page.evaluate(() => (window as any).__game.scene.fadedCells)).toEqual(['5,5']);
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/09-room-faded.png` });
+  await page.evaluate(() => (window as any).__game.teleport({ x: -3.5, z: 2 }));
+  await expect.poll(() => page.evaluate(() => (window as any).__game.scene.fadedCells)).toEqual([]);
+  expect(errors).toEqual([]);
+});

@@ -1319,6 +1319,10 @@ button {
 .island-sign.plate {
   background: #f3d9b1;
 }
+/* 小屋擋住角色而半透明時，牌子也變淡（第 9 節優化） */
+.island-sign.faded {
+  opacity: 0.35;
+}
 .island-sign.home {
   background: #fff1d6;
 }

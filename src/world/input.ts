@@ -15,6 +15,8 @@ export const player = {
   target: null as Vec2 | null,
   /** 走到目標後要自動進入的建築（點建築時設定）；home 是島主的小屋（自己的家第二期） */
   autoEnter: null as ZoneId | 'home' | null,
+  /** 下一格畫面鏡頭直接跳到定位（進屋、出屋換場景時；不然鏡頭會從另一個場景飛過來） */
+  snapCamera: false,
 };
 
 /** 鍵盤與搖桿輸入 */

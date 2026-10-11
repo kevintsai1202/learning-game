@@ -74,7 +74,7 @@ export function ClassFlag({ name, color }: { name: string; color: string }) {
 }
 
 /** 孩子的小屋：木牆、紅屋頂、門、窗、煙囪；門上寫「○○的家」 */
-export function KidHouse({ name, label = true }: { name: string; /** 顯示「○○的家」牌子（佈置院子時藏起來，不擋格子） */ label?: boolean }) {
+export function KidHouse({ name, labelFaded = false }: { name: string; /** 小屋擋住角色而半透明時，「○○的家」牌子也變淡 */ labelFaded?: boolean }) {
   return (
     <group position={[HOUSE.x, 0, HOUSE.z]} rotation={[0, HOUSE.rotY, 0]}>
       <StaticMerge>
@@ -121,13 +121,11 @@ export function KidHouse({ name, label = true }: { name: string; /** 顯示「�
           </mesh>
         ))}
       </StaticMerge>
-      {label && (
-        <SceneLabel position={[0, 1.9, 1.5]}>
-          <div className="island-sign home" data-testid="island-home">
-            🏠 {name}的家
-          </div>
-        </SceneLabel>
-      )}
+      <SceneLabel position={[0, 1.9, 1.5]}>
+        <div className={`island-sign home ${labelFaded ? 'faded' : ''}`} data-testid="island-home">
+          🏠 {name}的家
+        </div>
+      </SceneLabel>
     </group>
   );
 }

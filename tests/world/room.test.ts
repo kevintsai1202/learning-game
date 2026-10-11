@@ -43,15 +43,30 @@ describe('房間的幾何', () => {
     expect(HOUSE_DOOR_RANGE).toBeGreaterThan(1);
   });
 
-  it('房間的鏡頭：在前上方看房間；直式螢幕拉遠，房間整個看得到', () => {
-    const wide = roomCamera(16 / 9);
-    const tall = roomCamera(9 / 16);
-    expect(wide.position.z).toBeGreaterThan(ROOM_RECT.halfZ);
-    expect(wide.position.y).toBeGreaterThan(5);
-    const dist = (c: typeof wide) => Math.hypot(c.position.x - c.target.x, c.position.y - c.target.y, c.position.z - c.target.z);
+  // 第 9 節優化：屋裡的鏡頭跟著角色（拉近一點），乘縮放倍率
+  const dist = (c: ReturnType<typeof roomCamera>) => Math.hypot(c.position.x - c.target.x, c.position.y - c.target.y, c.position.z - c.target.z);
+
+  it('房間的鏡頭跟著角色：看的點跟著角色走，但夾在房間裡；鏡頭在前上方', () => {
+    const mid = roomCamera(16 / 9, { x: 0, z: 0 });
+    const left = roomCamera(16 / 9, { x: -4, z: -4 });
+    expect(left.target.x).toBeLessThan(mid.target.x);
+    expect(left.target.z).toBeLessThan(mid.target.z);
+    for (const c of [mid, left, roomCamera(16 / 9, { x: 9, z: 9 })]) {
+      expect(Math.abs(c.target.x)).toBeLessThanOrEqual(ROOM_RECT.halfX);
+      expect(Math.abs(c.target.z)).toBeLessThanOrEqual(ROOM_RECT.halfZ);
+      expect(c.position.z).toBeGreaterThan(c.target.z);
+      expect(c.position.y).toBeGreaterThan(3);
+      // 鏡頭不會跑到側牆外面
+      expect(Math.abs(c.position.x)).toBeLessThan(ROOM_RECT.halfX);
+    }
+  });
+
+  it('房間的鏡頭比島上近；直式螢幕拉遠；縮放倍率乘在距離上', () => {
+    const wide = roomCamera(16 / 9, { x: 0, z: 0 });
+    const tall = roomCamera(9 / 16, { x: 0, z: 0 });
+    expect(dist(wide)).toBeLessThan(13);
     expect(dist(tall)).toBeGreaterThan(dist(wide));
-    // 水平方向：房間的寬度（加一點邊）在畫面裡
-    const halfFov = (45 / 2) * (Math.PI / 180);
-    expect(dist(tall) * Math.tan(halfFov) * (9 / 16)).toBeGreaterThanOrEqual(ROOM_RECT.halfX);
+    expect(dist(roomCamera(16 / 9, { x: 0, z: 0 }, 0.5))).toBeCloseTo(dist(wide) * 0.5, 5);
+    expect(dist(roomCamera(16 / 9, { x: 0, z: 0 }, 1.5))).toBeCloseTo(dist(wide) * 1.5, 5);
   });
 });

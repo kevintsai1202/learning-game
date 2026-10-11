@@ -6,6 +6,10 @@ export const sceneDebug = {
   npcTeacher: true,
   /** 3D 座標換成畫面座標（e2e 點 3D 物件用，例如佈置院子的格子；島嶼場景掛上） */
   project: null as null | ((x: number, y: number, z: number) => { x: number; y: number }),
-  /** 擋住角色而隱形的建築（ZoneId 或 house；自己的家改版） */
+  /** 擋住角色而變半透明的建築（ZoneId 或 house；自己的家改版，第 9 節優化起是半透明，不是隱形） */
   hiddenZones: [] as string[],
+  /** 屋裡擋住角色而半透明的高家具（格子 "gx,gz"；第 9 節優化） */
+  fadedCells: [] as string[],
+  /** 某一棟建築現在的樣子：有沒有畫、最淡的不透明度（e2e 用；島嶼場景掛上） */
+  buildingLook: null as null | ((id: string) => { visible: boolean; opacity: number } | null),
 };
