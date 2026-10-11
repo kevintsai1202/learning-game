@@ -32,7 +32,8 @@ import { DECOR_LINES } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
 
-export function DecorBag() {
+/** 家具包；compact（手機）：「放下」「轉方向」在右下的大動作鍵，條上只放家具與關上 */
+export function DecorBag({ compact = false }: { compact?: boolean }) {
   const bagOpen = useDecor((s) => s.bagOpen);
   const picking = useDecor((s) => s.picking);
   // 面前的格子變了、擺設變了、進出屋，都要重算能不能放與剩幾個
@@ -57,9 +58,12 @@ export function DecorBag() {
 
   return (
     <div className="decor-bag card" role="dialog" aria-label="家具包" data-testid="decor-bag">
-      <span className={`decor-hint ${picking && problem ? 'bad' : ''}`} role="status" data-testid="decor-hint">
-        🎒 {hint}
-      </span>
+      {/* 手機（compact）選著家具時，提示在右下大動作鍵上面，這裡不重複 */}
+      {!(compact && picking) && (
+        <span className={`decor-hint ${picking && problem ? 'bad' : ''}`} role="status" data-testid="decor-hint">
+          🎒 {hint}
+        </span>
+      )}
       <div className="decor-bag-row">
         <div className="decor-bag-items">
           {FURNITURE.filter((f) => owned[f.id]).map((f) => {
@@ -87,7 +91,7 @@ export function DecorBag() {
           })}
         </div>
         <div className="decor-bag-actions">
-          {picking && (
+          {picking && !compact && (
             <>
               <button
                 className="btn white decor-round"
@@ -194,7 +198,7 @@ export function SurfacePanel() {
  * 用一件家具（坐、躺、盪、溜滑梯、開關、沙堡）：坐上去時關上家具包；鋼琴彈一段。
  * 開關與沙堡的音效照打開或關上換（坐、躺、溜滑梯、盪鞦韆的音效由角色的時間軸放，見 src/world/actSounds.ts）
  */
-function operateFurniture(item: { id: string; gx: number; gz: number; rot: 0 | 1 | 2 | 3 }, place: Place): void {
+export function operateFurniture(item: { id: string; gx: number; gz: number; rot: 0 | 1 | 2 | 3 }, place: Place): void {
   const kind = startUse(item, place);
   if (kind === 'toggle' || kind === 'sandcastle') {
     const on = !!useFurnitureUse.getState().toggles[cellKey(place, item)];

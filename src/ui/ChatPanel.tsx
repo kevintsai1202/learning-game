@@ -23,7 +23,11 @@ export const CHAT_PANEL_LINES = 5;
 /** 短句盤的分組順序 */
 const GROUPS: ChatGroup[] = ['打招呼', '稱讚', '邀約', '學習', '心情'];
 
-export function ChatPanel() {
+/**
+ * phone（手機版面，第 10.2 節）：放在右側直排圖示裡，平常收成一顆「💬」（有新的話亮一個點），點了才在圖示左邊打開；
+ * 有提示（例如被踢下線）時自動打開
+ */
+export function ChatPanel({ phone = false }: { phone?: boolean }) {
   const members = usePresence(useShallow((s) => Object.values(s.members)));
   const selfId = usePresence((s) => s.selfId);
   const chat = usePresence((s) => s.chat);
@@ -36,6 +40,9 @@ export function ChatPanel() {
   /** 自己有沒有班級（不在班級島時，沒有班級就沒有同學可以送禮） */
   const hasClass = useGame((s) => classesOf(s.profile()).length > 0);
   const [picking, setPicking] = useState(false);
+  /** 手機：公頻打開了沒、上次打開時看到第幾則（之後有新的就亮點） */
+  const [expanded, setExpanded] = useState(false);
+  const [seen, setSeen] = useState(0);
   /** 自己在屋裡（自己的家第二期）：屋裡的人和自己在一起，不列在「在別的地方」 */
   const myPlace = useHome((s) => (s.inside !== null && s.inside === s.houseKey ? 'home' : null));
   const online = status === 'online';
@@ -50,6 +57,29 @@ export function ChatPanel() {
   const inside = others.filter((m) => m.zone && m.zone !== myPlace);
   const lines = chat.slice(-CHAT_PANEL_LINES);
 
+  /** 手機：收著的時候只有一顆圖示 */
+  const unread = chat.length > seen && !expanded;
+  const toggle = phone && (
+    <button
+      className={`hud-chip chat-toggle ${expanded ? 'on' : ''}`}
+      onClick={() => {
+        sfx.tap();
+        setExpanded((v) => !v);
+        setSeen(chat.length);
+      }}
+      aria-expanded={expanded}
+      aria-label="公頻"
+      data-testid="chat-toggle"
+    >
+      <span className="chip-icon">💬</span>{' '}
+      <span className="chip-text" data-short="公頻">
+        公頻
+      </span>
+      {unread && <span className="chip-dot" aria-hidden="true" />}
+    </button>
+  );
+  if (phone && !expanded && !notice) return <div className="chat-rail-wrap">{toggle}</div>;
+
   /** 選了一句短句：先唸出來（孩子知道自己選了什麼），再送出 */
   const say = (id: string, text: string) => {
     sfx.tap();
@@ -58,8 +88,8 @@ export function ChatPanel() {
     setPicking(false);
   };
 
-  return (
-    <div className="chat-panel card" data-testid="chat-panel" aria-label="公頻">
+  const panel = (
+    <div className={`chat-panel card ${phone ? 'phone-pop' : ''}`} data-testid="chat-panel" aria-label="公頻">
       <div className="chat-head">
         <span>💬 公頻</span>
         <span className="online-count" data-testid="online-count">
@@ -120,6 +150,14 @@ export function ChatPanel() {
           ))}
         </div>
       )}
+    </div>
+  );
+  if (!phone) return panel;
+  // 手機：圖示加上打開的公頻（在圖示左邊）
+  return (
+    <div className="chat-rail-wrap">
+      {toggle}
+      {panel}
     </div>
   );
 }

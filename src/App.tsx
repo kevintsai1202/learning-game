@@ -34,6 +34,7 @@ import { readEmailLink, stripEmailLink } from './online/emailLinks';
 import { readJoinCode, stripJoinCode } from './online/joinLink';
 import { readClaimCode, stripClaimCode } from './online/claimLink';
 import { islandLook } from './store/island';
+import { usePhoneLayout } from './ui/phoneLayout';
 
 /** 不顯示熊熊老師公告與集合卡片的畫面（不在遊戲裡，或是老師自己） */
 const NO_TEACHER_CALLS: Screen[] = ['title', 'profiles', 'class', 'classroom', 'teacher', 'gm'];
@@ -79,6 +80,8 @@ export function App() {
   // 雲端角色的同步排程與即時連線（沒有雲端角色時什麼都不做）
   useEffect(() => startCloudSync(), []);
   useEffect(() => startRealtime(), []);
+  // 手機版面（第 10.2 節）：在 <html> 加 phone class 給 CSS 用（判斷在 src/ui/phoneLayout.ts）
+  usePhoneLayout();
   // 老師以熊熊老師進島（老師 GM 的 G2）：在 GM 畫面時連線，離開就斷線
   const gmCode = useUi((s) => (s.screen === 'gm' ? (s.gmRoom?.code ?? null) : null));
   useEffect(() => (gmCode ? startGm(gmCode) : undefined), [gmCode]);

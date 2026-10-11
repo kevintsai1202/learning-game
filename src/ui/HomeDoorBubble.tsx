@@ -10,7 +10,8 @@ import { HOME_LINES } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
 
-export function HomeDoorBubble({ touch }: { touch: boolean }) {
+/** visual：畫泡泡（手機上由右下的大動作鍵代替，這裡只唸句子、接 Enter 鍵） */
+export function HomeDoorBubble({ touch, visual = true }: { touch: boolean; visual?: boolean }) {
   const nearDoor = useHome((s) => s.nearDoor);
   const onMat = useHome((s) => s.onMat);
   const inside = useHome((s) => s.inside !== null && s.inside === s.houseKey);
@@ -51,6 +52,7 @@ export function HomeDoorBubble({ touch }: { touch: boolean }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [showDoor, showMat]);
 
+  if (!visual) return null;
   if (showDoor)
     return (
       <div className={`door-bubble card ${touch ? 'touch' : ''}`} data-testid="home-door-bubble">

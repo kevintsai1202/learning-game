@@ -28,6 +28,18 @@ import { ISLAND_LINES } from '../lines';
 import { FriendsButton, FriendsPanel } from '../FriendsPanel';
 import { HomeDoorBubble } from '../HomeDoorBubble';
 import { useHome } from '../../store/useHome';
+import { ActionKey } from '../ActionKey';
+import { usePhoneLayout } from '../phoneLayout';
+
+/** 同步狀態的圖示（手機的上方一行只放圖示，第 10.2 節） */
+const CLOUD_ICON: Record<CloudStatus, string> = {
+  idle: '☁️',
+  syncing: '🔄',
+  synced: '☁️',
+  offline: '📴',
+  needLogin: '🔑',
+  error: '⚠️',
+};
 
 /** 同步狀態的圖示與文字 */
 const CLOUD_LABEL: Record<CloudStatus, string> = {
@@ -43,7 +55,7 @@ const CLOUD_LABEL: Record<CloudStatus, string> = {
  * 雲端角色才顯示：進度有沒有存到班級（家長名下、沒有班級的角色寫「雲端」）；
  * 需要重新登入時點一下去登入：班級角色到班級畫面，沒有班級的到帳號頁（家長登入找回）
  */
-function CloudChip() {
+function CloudChip({ compact = false }: { compact?: boolean }) {
   const status = useCloud((s) => s.status);
   const pending = useCloud((s) => s.pending);
   const goto = useUi((s) => s.goto);
@@ -51,6 +63,21 @@ function CloudChip() {
   const inClass = useGame((s) => classesOf(s.profile()).length > 0);
   const base = status === 'synced' && !inClass ? '☁️ 已存到雲端' : CLOUD_LABEL[status];
   const label = base + (pending > 0 && status !== 'synced' ? `・${pending} 筆待上傳` : '');
+  if (compact)
+    // 手機：只放圖示（存好了打勾）；點了熊熊老師說明，要登入時去登入
+    return (
+      <button
+        className={`hud-chip phone-cloud ${status}`}
+        onClick={() => (status === 'needLogin' ? goto(inClass ? 'class' : 'teacher') : useUi.getState().say(label))}
+        aria-label={`同步狀態：${label}`}
+        title={label}
+        data-testid="hud-cloud"
+        data-status={status}
+      >
+        {CLOUD_ICON[status]}
+        {status === 'synced' && <span className="cloud-ok">✓</span>}
+      </button>
+    );
   return (
     <button
       className="hud-chip"
@@ -97,14 +124,14 @@ function IslandSwitch() {
   if (rooms.length === 1) {
     return (
       <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={() => go(here ? 'mine' : rooms[0].code)} data-testid="hud-island" data-island={here ? 'class' : 'mine'}>
-        {here ? '🏝️ 去我的島' : '🏫 回班級島'}
+        {here ? <ChipText icon="🏝️" text="去我的島" short="我的島" /> : <ChipText icon="🏫" text="回班級島" short="回班級" />}
       </button>
     );
   }
   return (
     <div className="island-menu-wrap">
       <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="hud-island" data-island={here ? 'class' : 'mine'}>
-        🏝️ 換島
+        <ChipText icon="🏝️" text="換島" />
       </button>
       {open && (
         <div className="island-menu card" role="menu" data-testid="island-menu">
@@ -123,6 +150,121 @@ function IslandSwitch() {
   );
 }
 
+/**
+ * 晶片上的圖示與字（分開放：手機的右側直排圖示時圖示大、字小一行；電腦看起來和以前一樣）。
+ * short 是手機直排圖示用的短字（CSS 用 attr() 換上去，文字內容不變，e2e 照用）
+ */
+export function ChipText({ icon, text, short }: { icon: string; text: string; short?: string }) {
+  return (
+    <>
+      <span className="chip-icon">{icon}</span>{' '}
+      <span className="chip-text" data-short={short ?? text}>
+        {text}
+      </span>
+    </>
+  );
+}
+
+/** 手機的「☰」選單（第 10.2 節）：獎章簿、問熊熊老師、家長專區 */
+function HudMenu() {
+  const goto = useUi((s) => s.goto);
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="island-menu-wrap hud-menu-wrap">
+      <button
+        className="btn round white"
+        onClick={() => {
+          sfx.tap();
+          setOpen((v) => !v);
+        }}
+        aria-expanded={open}
+        aria-label="選單"
+        data-testid="hud-menu"
+      >
+        ☰
+      </button>
+      {open && (
+        <div className="island-menu card hud-menu-panel" role="menu" data-testid="hud-menu-panel">
+          <button role="menuitem" className="btn small white" onClick={() => goto('badges')} data-testid="hud-badges">
+            🏅 獎章簿
+          </button>
+          <button
+            role="menuitem"
+            className="btn small white"
+            onClick={() => {
+              setOpen(false);
+              teacherTalk();
+            }}
+          >
+            🐻 問熊熊老師
+          </button>
+          <button role="menuitem" className="btn small white" onClick={() => goto('parent')} data-testid="hud-parent">
+            ⚙️ 家長專區
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * 手機的島上介面（第 10.2 節，docs/plans/home.md）：上方一行（頭像與名字、金幣與星星、存檔圖示、☰）、
+ * 所在地小標籤、右側直排圖示（島上的功能與公頻）、右下大動作鍵（門口、家具、佈置）。中間留給角色
+ */
+function PhoneHud({ touch }: { touch: boolean }) {
+  const profile = useGame((s) => s.profile());
+  const goto = useUi((s) => s.goto);
+  const totalStars = profile ? Object.values(profile.bestStars).reduce((s, v) => s + v, 0) : 0;
+  return (
+    <>
+      <div className="hud-top phone-top">
+        <div className="phone-top-left">
+          {profile && (
+            <button className="hud-chip phone-profile" onClick={() => goto('profiles')} aria-label="換角色" data-testid="hud-profile">
+              <span className="avatar-dot" style={{ background: profile.avatar.color }}>
+                <AnimalIcon animal={profile.avatar.animal} />
+              </span>
+              <span className="hud-name">{nameHere(profile)}</span>
+            </button>
+          )}
+          <span className="hud-chip phone-money">
+            <span data-testid="hud-coins">🪙 {profile?.coins ?? 0}</span>
+            <span>⭐ {totalStars}</span>
+          </span>
+          {profile?.cloud && <CloudChip compact />}
+        </div>
+        <HudMenu />
+      </div>
+      <div className="phone-sub">
+        <LocationChip />
+      </div>
+      <div className="hud-rail" data-testid="hud-rail">
+        <IslandSwitch />
+        <VisitHome />
+        <DecorButton />
+        <SurfaceButton />
+        <OpenToggle />
+        <Visitors />
+        <FriendsButton />
+        <ChatPanel phone />
+      </div>
+      <SpeechBubble />
+      <IslandBanner />
+      {/* 小屋門口與腳踏墊：手機上由大動作鍵代替泡泡，這裡只唸句子 */}
+      <HomeDoorBubble touch={touch} visual={false} />
+      <ActionKey />
+      {touch && <Joystick />}
+      <DecorBag compact />
+      <SurfacePanel />
+      <GiftInbox />
+      <RewardCard />
+      <DuelInviteCard />
+      <GiftDialog />
+      <FriendsPanel />
+    </>
+  );
+}
+
 /** 在朋友的島上（島嶼互訪 I2）：回自己的島 */
 function VisitHome() {
   const visiting = useRealtime((s) => s.visiting);
@@ -137,7 +279,7 @@ function VisitHome() {
       }}
       data-testid="hud-visit-home"
     >
-      🏠 回自己的島
+      <ChipText icon="🏠" text="回自己的島" short="回家" />
     </button>
   );
 }
@@ -158,7 +300,7 @@ function DecorButton() {
       }}
       data-testid="hud-decor"
     >
-      🎒 家具
+      <ChipText icon="🎒" text="家具" />
     </button>
   );
 }
@@ -177,7 +319,7 @@ function SurfaceButton() {
       }}
       data-testid="hud-surface"
     >
-      🎨 壁紙地板
+      <ChipText icon="🎨" text="壁紙地板" short="壁紙" />
     </button>
   );
 }
@@ -201,7 +343,7 @@ function OpenToggle() {
       aria-pressed={open}
       data-testid="island-open"
     >
-      {open ? '🔒 關閉島嶼' : '🔓 開放島嶼'}
+      {open ? <ChipText icon="🔒" text="關閉島嶼" short="關閉" /> : <ChipText icon="🔓" text="開放島嶼" short="開放" />}
     </button>
   );
 }
@@ -216,7 +358,7 @@ function Visitors() {
   return (
     <div className="island-menu-wrap">
       <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="hud-visitors">
-        👥 訪客 {visitors.length}
+        <ChipText icon="👥" text={`訪客 ${visitors.length}`} />
       </button>
       {open && (
         <div className="island-menu card" role="menu" data-testid="visitors-panel">
@@ -355,6 +497,8 @@ export function SpeechBubble() {
 }
 
 export function IslandHud() {
+  /** 手機版面（第 10.2 節）：上方一行、右側直排圖示、右下大動作鍵；平板與電腦照舊 */
+  const phone = usePhoneLayout();
   const profile = useGame((s) => s.profile());
   const nearZone = useUi((s) => s.nearZone);
   const enterZone = useUi((s) => s.enterZone);
@@ -386,6 +530,7 @@ export function IslandHud() {
   }, [enterZone]);
 
   const near = nearZone ? zoneById(nearZone) : null;
+  if (phone) return <PhoneHud touch={touch} />;
   return (
     <>
       <div className="hud-top">

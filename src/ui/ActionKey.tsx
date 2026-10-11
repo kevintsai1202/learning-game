@@ -1,0 +1,137 @@
+/**
+ * 手機的大動作鍵（自己的家第 10.2 節，docs/plans/home.md）：右下一顆大鍵（像手機遊戲的 A 鍵），左手搖桿、右手按。
+ * 看情況顯示一個主要動作與旁邊的小圓鈕，上面一行小字寫是什麼；順序與規則在 src/ui/actionKeyRules.ts。
+ * 按鈕的 data-testid 和電腦版的泡泡、卡片一樣（enter-zone、enter-home、leave-home、use-furniture、use-stop、
+ * decor-place、decor-ghost-rotate、decor-near-rotate、decor-near-pickup），外框是 door-bubble、decor-near 等。
+ */
+import { useGame } from '../store/useGame';
+import { useUi } from '../store/useUi';
+import { useDecor, frontProblem, pickUpNear, placeFront, rotateGhost, rotateNear } from '../store/useDecor';
+import { cellKey, stopUse, useFurnitureUse, type Place } from '../store/useFurnitureUse';
+import { enterHome, isInsideHome, leaveHome, useHome } from '../store/useHome';
+import { useSpecOf } from '../store/furnitureUse';
+import { findItem } from '../store/catalog';
+import { zoneById } from '../world/layout';
+import { pickAction, type MainAction, type SecondaryAction } from './actionKeyRules';
+import { operateFurniture } from './DecorBag';
+import { sfx } from '../audio/sfx';
+
+/** 主要動作的 data-testid */
+const MAIN_TESTID: Record<MainAction, string> = {
+  place: 'decor-place',
+  stop: 'use-stop',
+  enterZone: 'enter-zone',
+  enterHome: 'enter-home',
+  leaveHome: 'leave-home',
+  use: 'use-furniture',
+  rotate: 'decor-near-rotate',
+};
+
+/** 小圓鈕：圖示、說明、data-testid */
+const SECONDARY: Record<SecondaryAction, { icon: string; label: string; testid: string }> = {
+  ghostRotate: { icon: '🔄', label: '轉方向', testid: 'decor-ghost-rotate' },
+  rotate: { icon: '🔄', label: '轉方向', testid: 'decor-near-rotate' },
+  pickup: { icon: '👜', label: '收起來', testid: 'decor-near-pickup' },
+};
+
+export function ActionKey() {
+  const picking = useDecor((s) => s.picking);
+  const decorNear = useDecor((s) => s.near);
+  // 面前的格子、擺設變了要重算能不能放
+  useDecor((s) => s.front);
+  useGame((s) => s.profile());
+  const acting = useFurnitureUse((s) => s.acting);
+  const useNear = useFurnitureUse((s) => s.near);
+  const toggles = useFurnitureUse((s) => s.toggles);
+  const nearZone = useUi((s) => s.nearZone);
+  const nearDoor = useHome((s) => s.nearDoor);
+  const onMat = useHome((s) => s.onMat);
+  const inside = useHome((s) => s.inside !== null && s.inside === s.houseKey);
+  const houseName = useHome((s) => s.houseName);
+
+  // 旁邊的家具：自己能佈置的地方的家具優先（可以轉方向、收起來），不然是旁邊可以用的家具
+  const place: Place = isInsideHome() ? 'home' : 'yard';
+  const nearTarget = decorNear ? { item: decorNear, place } : useNear;
+  const nearItem = nearTarget ? findItem(nearTarget.item.id) : undefined;
+  const nearSpec = nearTarget ? useSpecOf(nearTarget.item.id) : undefined;
+  const nearOn = nearTarget ? !!toggles[cellKey(nearTarget.place, nearTarget.item)] : false;
+  const actingItem = acting ? findItem(acting.item.id) : undefined;
+  const zone = nearZone ? zoneById(nearZone) : null;
+
+  const view = pickAction({
+    picking: picking ? { name: findItem(picking)?.name ?? '', problem: frontProblem() } : null,
+    acting: acting ? { kind: acting.kind, name: actingItem?.name ?? '', emoji: actingItem?.emoji ?? '' } : null,
+    zone: zone ? { name: zone.name, icon: zone.icon } : null,
+    houseDoor: nearDoor && !inside ? { name: houseName ?? '' } : null,
+    onMat: inside && onMat,
+    near:
+      nearTarget && nearItem
+        ? { name: nearItem.name, emoji: nearItem.emoji, use: nearSpec ? (nearOn && nearSpec.offLabel ? nearSpec.offLabel : nearSpec.label) : null, decor: !!decorNear }
+        : null,
+  });
+  if (!view) return null;
+
+  /** 按主要動作 */
+  const doMain = () => {
+    switch (view.main) {
+      case 'place':
+        if (placeFront()) sfx.place();
+        return;
+      case 'stop':
+        sfx.tap();
+        stopUse();
+        return;
+      case 'enterZone':
+        if (!nearZone) return;
+        sfx.door();
+        useUi.getState().enterZone(nearZone);
+        return;
+      case 'enterHome':
+        sfx.door();
+        enterHome();
+        return;
+      case 'leaveHome':
+        sfx.door();
+        leaveHome();
+        return;
+      case 'use':
+        if (nearTarget) operateFurniture(nearTarget.item, nearTarget.place);
+        return;
+      case 'rotate':
+        sfx.rotate();
+        rotateNear();
+        return;
+    }
+  };
+  /** 按小圓鈕 */
+  const doSecondary = (a: SecondaryAction) => {
+    if (a === 'ghostRotate') {
+      sfx.rotate();
+      rotateGhost();
+    } else if (a === 'rotate') {
+      sfx.rotate();
+      rotateNear();
+    } else {
+      sfx.pickup();
+      pickUpNear();
+    }
+  };
+
+  return (
+    <div className="action-key-wrap" role="group" aria-label={view.caption} data-testid={view.container}>
+      <span className={`action-caption ${view.disabled ? 'bad' : ''}`} role="status">
+        {view.caption}
+      </span>
+      <div className="action-row">
+        {view.secondary.map((a) => (
+          <button key={a} className="btn white action-sub" onClick={() => doSecondary(a)} aria-label={SECONDARY[a].label} title={SECONDARY[a].label} data-testid={SECONDARY[a].testid}>
+            {SECONDARY[a].icon}
+          </button>
+        ))}
+        <button className="btn green action-key" disabled={view.disabled} onClick={doMain} data-testid={MAIN_TESTID[view.main]}>
+          {view.label}
+        </button>
+      </div>
+    </div>
+  );
+}

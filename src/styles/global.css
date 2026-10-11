@@ -3121,3 +3121,226 @@ button {
   font-weight: 700;
   min-width: 2.5em;
 }
+
+
+/* ---------- 手機介面（自己的家第 10.2 節，docs/plans/home.md）：:root.phone 由 src/ui/phoneLayout.ts 加上 ---------- */
+/* 晶片的圖示與字（電腦看起來和以前一樣） */
+.chip-dot {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e8455a;
+  border: 2px solid #fff;
+}
+/* 上方一行：頭像與名字、金幣與星星、存檔圖示；右邊 ☰ */
+:root.phone .phone-top {
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  align-items: center;
+}
+.phone-top-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+:root.phone .hud-chip {
+  font-size: 15px;
+  border-width: 2px;
+  box-shadow: 0 3px 0 var(--ink);
+  padding: 2px 10px 3px 4px;
+  gap: 4px;
+}
+:root.phone .hud-chip .avatar-dot {
+  width: 30px;
+  height: 30px;
+  font-size: 18px;
+  border-width: 2px;
+}
+:root.phone .phone-profile .hud-name {
+  max-width: 4.2em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:root.phone .phone-money {
+  padding: 4px 10px;
+  gap: 8px;
+  white-space: nowrap;
+}
+:root.phone .phone-cloud {
+  position: relative;
+  padding: 3px 8px;
+}
+.phone-cloud .cloud-ok {
+  position: absolute;
+  right: -2px;
+  bottom: -4px;
+  font-size: 11px;
+  font-weight: 900;
+  color: #1f8a3b;
+}
+:root.phone .phone-top .btn.round {
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+}
+/* ☰ 選單：往左下展開 */
+.hud-menu-wrap .hud-menu-panel {
+  left: auto;
+  right: 0;
+}
+/* 所在地：上方一行下面的小標籤 */
+.phone-sub {
+  position: absolute;
+  top: 54px;
+  left: 8px;
+  pointer-events: none;
+}
+:root.phone .phone-sub .hud-chip.hud-location {
+  font-size: 13px;
+  padding: 1px 10px 2px;
+  box-shadow: none;
+  opacity: 0.92;
+}
+/* 右側直排圖示：靠右邊中段，圖示下一行小字；放不下時往左排第二欄 */
+.hud-rail {
+  position: absolute;
+  right: 8px;
+  top: 92px;
+  max-height: calc(100% - 92px - 250px);
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap-reverse;
+  align-content: flex-start;
+  align-items: center;
+  gap: 8px;
+}
+:root.phone .hud-rail .hud-chip {
+  position: relative;
+  width: 54px;
+  height: 54px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 16px;
+  gap: 0;
+}
+:root.phone .hud-rail .chip-icon {
+  font-size: 23px;
+  line-height: 1.05;
+}
+:root.phone .hud-rail .chip-text {
+  font-size: 0;
+  line-height: 1.15;
+  max-width: 52px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+/* 直排圖示用短字（data-short；原本的字留在文字內容裡給朗讀器與 e2e） */
+:root.phone .hud-rail .chip-text::after {
+  content: attr(data-short);
+  font-size: 11px;
+}
+:root.phone .hud-rail .hud-chip.island-open-on {
+  background: #c8f2b8;
+}
+/* 直排圖示的選單（換島、訪客）往圖示左邊展開 */
+:root.phone .hud-rail .island-menu {
+  left: auto;
+  right: calc(100% + 8px);
+  top: 0;
+}
+/* 公頻：收成一顆圖示，打開時在圖示左邊 */
+.chat-rail-wrap {
+  position: relative;
+}
+:root.phone .chat-panel.phone-pop {
+  position: absolute;
+  right: calc(100% + 8px);
+  top: 0;
+  bottom: auto;
+  width: min(240px, calc(100vw - 96px));
+  max-height: min(60vh, 420px);
+}
+/* 右下大動作鍵：左手搖桿、右手按；小圓鈕排在大鍵左邊（直式手機寬度放得下） */
+.action-key-wrap {
+  position: absolute;
+  right: 12px;
+  bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+}
+.action-key-wrap > * {
+  pointer-events: auto;
+}
+.action-caption {
+  max-width: 62vw;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 2px 10px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  background: var(--paper);
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 2px 0 var(--ink);
+}
+.action-caption.bad {
+  color: #c2410c;
+}
+.action-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.btn.action-key {
+  width: 78px;
+  height: 78px;
+  min-width: 0;
+  padding: 4px;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1.15;
+  white-space: normal;
+  text-align: center;
+  box-shadow: 0 5px 0 var(--ink);
+}
+.btn.action-sub {
+  width: 46px;
+  height: 46px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 20px;
+}
+/* 家具包條：手機上「放下」「轉方向」在大動作鍵；橫式手機的條在最下面，右邊讓出大動作鍵 */
+@media (orientation: landscape) {
+  :root.phone .decor-bag {
+    right: 112px;
+  }
+  /* 橫式手機：直排圖示從最上面排、小一點、不寫字；☰ 在上方一行 */
+  :root.phone .hud-rail {
+    top: 56px;
+    max-height: calc(100% - 56px - 110px);
+    gap: 6px;
+  }
+  :root.phone .hud-rail .hud-chip {
+    width: 44px;
+    height: 44px;
+  }
+  :root.phone .hud-rail .chip-text {
+    display: none;
+  }
+  :root.phone .phone-sub {
+    top: 52px;
+  }
+}

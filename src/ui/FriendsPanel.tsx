@@ -28,7 +28,10 @@ export function FriendsButton() {
       aria-label={`朋友（${count} 位在線上）`}
       data-testid="hud-friends"
     >
-      👫 {count}
+      <span className="chip-icon">👫</span>{' '}
+      <span className="chip-text" data-short={`朋友 ${count}`}>
+        {count}
+      </span>
     </button>
   );
 }
