@@ -72,6 +72,8 @@ test('隱私權政策：中英文都有 Google 使用者資料與有限使用聲
   // 自己的家第二期（進屋）上線：佈置小屋裡面從規劃中搬進第 2、5 節
   await expect(body).toContainText('自己的家（島上與小屋裡的擺設）：');
   await expect(body).toContainText('在同一間小屋裡的人看得到彼此');
+  // 第 9 節優化：坐、躺、溜滑梯、盪鞦韆的動作會同步給同一座島的人
+  await expect(body).toContainText('正在做的動作（坐在家具上、躺著、溜滑梯、盪鞦韆）');
   await expect(body).not.toContainText('佈置小屋裡面：');
   await expect(body).not.toContainText('佈置自己的島與小屋：');
   // 英文版（Google 審核人員看得懂的版本）

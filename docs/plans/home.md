@@ -206,5 +206,6 @@
 - **用家具的狀態**（`src/store/useFurnitureUse.ts`）：單一來源是 `player.act`（`src/world/input.ts`；`teleport()` 清掉，集合、老師「過去」、進出屋、換島都會起來）；畫面的鏡像、旁邊可以用的家具（用的時候凍結）、開關與沙堡（只在本機，換島與進出屋時恢復）、正在盪的鞦韆（自己與別人）。起來的入口：「⬆️ 起來」、方向鍵或搖桿、點地面；溜滑梯途中都不行，溜完自己站到滑道尾端外面。
 - **畫面**：`Player` 用家具時照 `actFrame` 擺、跳過移動與碰撞、位置設成座位的世界座標；`PoseWrap`（`Player` 與 `RemotePlayer` 共用：抬高、縮放、繞樞軸傾斜；影子在包裝外面貼地）；`Avatar` 的 `pose`（坐、躺腳往前；爬梯子手腳輪流）；`UseProbe` 與 `useLiveMap`（`src/world/UseLayer.tsx`）；家具卡片（`DecorBag.tsx` 的 `DecorNear`）：自己能佈置的地方是「使用＋🔄＋👜」，其他地方（朋友的島、熊熊老師）是「使用」，用的時候是「⬆️ 起來」。鞦韆座椅（`SwingSeat`）、電視與燈的開關（燈泡發亮加一圈光暈，不用真的燈光）、沙堡：有人在用的那幾件才不合併、另外畫（`YardDecor` 的 `live`），其他照舊合併。鋼琴坐下彈小星星（`sfx.piano`）。
 - **同步**：`move` 多選填的 `a`（`sit`、`lie`、`slide`、`swing`；開關、沙堡不同步）；伺服器存在成員上、`moves` 多第 5 欄、進建築與換島清掉；裝置的動作一變就送。別人的角色看到動作代碼時，用他當下的位置找附近同類的家具，照同一支時間軸播（不照收到的座標）；找不到就只擺姿勢。舊版伺服器的驗證會丟掉 `a`，舊網頁看到站著。
+- **隱私權政策**：第 5 節「到朋友的島上玩」與「自己的家」加上同一座島、同一間小屋的人看得到彼此正在做的動作（坐、躺、溜滑梯、盪鞦韆）（中英文）。
 - **測試**：`tests/world/cameraZoom.test.ts`、`room.test.ts`（跟隨鏡頭）、`fadeGroup.test.ts`、`tests/store/furnitureUse.test.ts`、`useFurnitureUse.test.ts`、`tests/online/realtime.test.ts`、`realtimeClient.test.ts`、`tests/server/hub.test.ts`；e2e `e2e/home-inside.spec.ts`（滾輪、屋裡跟隨、高家具半透明；坐長椅、盪鞦韆、溜滑梯、開燈、沙堡、躺床、彈鋼琴；兩台裝置看到坐與盪）、`e2e/home.spec.ts`（建築半透明）。
 - **已知限制**：開關與沙堡只有自己看得到；別人的溜滑梯照他開始的時刻在本機重播，和他自己的畫面差一點時間；同一張長椅兩個人可以坐在同一個位置；熊熊老師坐下只抬高不擺腿（模型沒有手腳）。
