@@ -130,8 +130,8 @@ export function attachRealtime(server: UpgradeServer, opts: RealtimeOptions): { 
     const who = await lookupToken(db, token, now());
     if (!who || who.kind !== 'user') return 'bad';
     const room = (
-      await db.query<{ code: string; name: string; chat_open: boolean; gifts_open: boolean }>(
-        `SELECT r.code, r.name, r.chat_open, r.gifts_open FROM rooms r JOIN users u ON u.id = r.owner_id
+      await db.query<{ code: string; name: string; chat_open: boolean; gifts_open: boolean; playground: unknown }>(
+        `SELECT r.code, r.name, r.chat_open, r.gifts_open, r.playground FROM rooms r JOIN users u ON u.id = r.owner_id
          WHERE r.code = $1 AND r.owner_id = $2 AND u.is_teacher`,
         [gm, who.userId],
       )

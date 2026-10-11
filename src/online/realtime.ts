@@ -12,6 +12,7 @@ import { DUEL_DECLINE_REASONS, DUEL_MOVE_KINDS, type DuelDeclineReason, type Due
 import type { YardItem } from '../store/yard';
 import type { HomeState } from '../store/home';
 import { ACT_CODES, type ActCode } from '../store/actCodes';
+import type { Playground } from '../store/rideKinds';
 
 /**
  * WebSocket 關閉代碼：角色沒有班級；和權杖無效（4003）分開，裝置不再重連。
@@ -58,7 +59,7 @@ export const teacherFriendId = (code: string): string => `teacher:${code}`;
  * gm 是老師 GM 的 G2＋G3（孩子回報在做什麼等）；duel 是和朋友益智對戰（島嶼互訪 I4）；
  * home 是進屋（where home，自己的家第二期）
  */
-export type ServerCap = 'gm' | 'duel' | 'home';
+export type ServerCap = 'gm' | 'duel' | 'home' | 'ride';
 
 /** 對戰的難度（益智搶答不分難度，照樣帶一個） */
 const duelLevel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
@@ -134,6 +135,8 @@ export type ClientMessage = z.infer<typeof clientMessage>;
 export interface RoomFlags {
   chatOpen: boolean;
   giftsOpen: boolean;
+  /** 班級島的遊樂場（docs/plans/playground.md）：4 個位置的器材；自己的島、舊版伺服器沒有（當成全空） */
+  playground?: Playground;
 }
 
 /** 其他人看到的一位成員（外觀已經過伺服器的擁有檢查） */

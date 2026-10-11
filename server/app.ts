@@ -18,7 +18,7 @@ import { registerRewardRoutes } from './rewards';
 import { registerEmailRoutes } from './email';
 import { registerUserGoogleRoutes } from './userGoogle';
 import { createMailer, type Mailer } from './mail';
-import { MAX_CLASSES, classInfos, membershipsOf, revokeClassTokens, revokeClassroomTokens } from './classes';
+import { MAX_CLASSES, classInfos, membershipsOf, playgroundOf, revokeClassTokens, revokeClassroomTokens } from './classes';
 import type { RoomFlags } from '../src/online/realtime';
 import { applyOp, parseOp } from '../src/online/ops';
 import {
@@ -136,6 +136,8 @@ interface RoomRow {
   curriculum: CurriculumChoice | null;
   /** 教室密碼的雜湊（L3，第 11 版新增）；null 是老師還沒設定，學校平板不能解鎖 */
   class_password_hash: string | null;
+  /** 班級島的遊樂場（第 14 版；null 是全空） */
+  playground: unknown;
 }
 
 /**
@@ -156,7 +158,14 @@ function roomInfo(r: RoomRow): RoomInfo {
 
 /** 房間設定的回應格式 */
 function roomSettings(r: RoomRow): RoomSettings {
-  return { ...roomInfo(r), joinOpen: r.join_open, chatOpen: r.chat_open, giftsOpen: r.gifts_open, hasClassPassword: r.class_password_hash !== null };
+  return {
+    ...roomInfo(r),
+    joinOpen: r.join_open,
+    chatOpen: r.chat_open,
+    giftsOpen: r.gifts_open,
+    hasClassPassword: r.class_password_hash !== null,
+    playground: playgroundOf(r.playground),
+  };
 }
 
 /** 建立 Hono app */
@@ -427,11 +436,14 @@ export function createApp(opts: AppOptions) {
     const setCurriculum = body.curriculum !== undefined;
     // 教室密碼（L3）：只存雜湊；沒給是不變
     const passwordHash = body.classPassword === undefined ? null : await hashSecret(body.classPassword);
+    // 遊樂場（docs/plans/playground.md）：沒給是不變
+    const playground = body.playground === undefined ? null : JSON.stringify(body.playground);
     const rows = await db.query<RoomRow>(
       `UPDATE rooms SET join_open = COALESCE($2, join_open), chat_open = COALESCE($3, chat_open), gifts_open = COALESCE($4, gifts_open),
-              curriculum = CASE WHEN $5 THEN $6::jsonb ELSE curriculum END, name = COALESCE($7, name), class_password_hash = COALESCE($8, class_password_hash)
+              curriculum = CASE WHEN $5 THEN $6::jsonb ELSE curriculum END, name = COALESCE($7, name), class_password_hash = COALESCE($8, class_password_hash),
+              playground = COALESCE($9::jsonb, playground)
        WHERE code = $1 RETURNING *`,
-      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null, setCurriculum, body.curriculum ? JSON.stringify(body.curriculum) : null, name, passwordHash],
+      [room.code, body.joinOpen ?? null, body.chatOpen ?? null, body.giftsOpen ?? null, setCurriculum, body.curriculum ? JSON.stringify(body.curriculum) : null, name, passwordHash, playground],
     );
     if (passwordHash !== null) {
       // 舊的教室密碼可能被別人知道了：教室權杖與平板上孩子的權杖全部失效，平板要重新輸入；鎖定紀錄一併清掉
@@ -439,7 +451,7 @@ export function createApp(opts: AppOptions) {
       limiter.reset(`classroom:${room.code}`);
       for (const id of kicked) opts.onKick?.(id, '老師換了教室密碼，請老師重新輸入', 'tablet', room.code);
     }
-    opts.onRoomChanged?.(room.code, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open });
+    opts.onRoomChanged?.(room.code, { chatOpen: rows[0].chat_open, giftsOpen: rows[0].gifts_open, playground: playgroundOf(rows[0].playground) });
     // 班級版本或名稱變了：線上的孩子重新同步，拿到新的班級版本與名稱
     if (setCurriculum || (name !== null && name !== room.name)) opts.onRoomContent?.(room.code);
     return c.json({ room: roomSettings(rows[0]) });

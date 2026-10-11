@@ -349,6 +349,12 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS rewards_unseen ON rewards (to_id, created_at) WHERE seen_at IS NULL`,
     ],
   },
+  {
+    // 班級島遊樂場（docs/plans/playground.md）：4 個位置各放哪一種大型遊樂器材（jsonb 陣列，元素是器材種類或 null）。
+    // 既有班級是 null，當成全空
+    version: 14,
+    statements: [`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS playground jsonb`],
+  },
 ];
 
 /**

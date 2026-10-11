@@ -330,7 +330,7 @@ describe('熊熊老師進島（老師 GM 的 G2）', () => {
     const { room, a } = await setup();
     const ca = await connect(a.token);
     const t = await hello(room.token, room.code);
-    expect(await t.waitFor('welcome')).toMatchObject({ island: 'class', classCode: room.code, caps: ['gm', 'duel', 'home'] });
+    expect(await t.waitFor('welcome')).toMatchObject({ island: 'class', classCode: room.code, caps: ['gm', 'duel', 'home', 'ride'] });
     expect((await ca.waitFor('join', (m) => m.member.role === 'teacher')).member.nickname).toBe('熊熊老師');
     await ca.waitFor('friend', (m) => m.friend.id === `teacher:${room.code}` && m.friend.online);
     t.ws.close();

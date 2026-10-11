@@ -537,9 +537,9 @@ describe('熊熊老師進島（老師 GM 的 G2，docs/plans/teacher-gm.md 第 1
     expect(j).toMatchObject({ nickname: '熊熊老師', role: 'teacher', avatar: { animal: 'bear' } });
     expect(j.id.startsWith('gm:')).toBe(true);
     const w = t.of('welcome')[0];
-    expect(w).toMatchObject({ island: 'class', classCode: '123456', caps: ['gm', 'duel', 'home'], room: FLAGS });
+    expect(w).toMatchObject({ island: 'class', classCode: '123456', caps: ['gm', 'duel', 'home', 'ride'], room: FLAGS });
     expect(w.members.map((m) => m.nickname)).toEqual(['阿寶']);
-    expect(a.of('welcome')[0].caps).toEqual(['gm', 'duel', 'home']);
+    expect(a.of('welcome')[0].caps).toEqual(['gm', 'duel', 'home', 'ride']);
   });
 
   it('老師不是孩子帳號：不算在線上、沒有位置；同一班兩台老師裝置各自是一位熊熊老師', () => {

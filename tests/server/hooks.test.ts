@@ -46,7 +46,7 @@ describe('通知即時中樞', () => {
     const { call, hooks } = hooked();
     const { code, token } = await createRoom(call);
     await call('PATCH', `/api/teacher/rooms/${code}`, { chatOpen: false }, token);
-    expect(hooks.onRoomChanged).toHaveBeenCalledWith(code, { chatOpen: false, giftsOpen: true });
+    expect(hooks.onRoomChanged).toHaveBeenCalledWith(code, { chatOpen: false, giftsOpen: true, playground: [null, null, null, null] });
     // 只改開關：班級內容（教材版本）沒變，不通知孩子重新下載
     expect(hooks.onRoomContent).not.toHaveBeenCalled();
   });

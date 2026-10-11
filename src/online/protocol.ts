@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { AvatarConfig, CurriculumChoice, Profile } from '../store/save';
 import { avatarSchema, curriculumSchema } from './ops';
 import { REWARD_COINS_MAX, isRewardSticker } from '../store/rewards';
+import { playgroundSchema, type Playground } from '../store/rideKinds';
 
 /** 房間代碼：6 位數字 */
 export const roomCodeSchema = z.string().regex(/^\d{6}$/);
@@ -25,6 +26,8 @@ export const roomPatchRequest = z.object({
   name: z.string().max(40).optional(),
   /** 設定或更換教室密碼（L3）：換了之後這一班的教室權杖與平板上孩子的權杖都失效 */
   classPassword: classPasswordSchema.optional(),
+  /** 班級島的遊樂場（docs/plans/playground.md）：4 個位置各放哪一種器材（null 是空地） */
+  playground: playgroundSchema.optional(),
 });
 /** 學校平板用教室密碼解鎖（L3） */
 export const classroomUnlockRequest = z.object({ password: z.string().min(1).max(64) });
@@ -247,6 +250,8 @@ export interface RoomSettings extends RoomInfo {
   giftsOpen: boolean;
   /** 有沒有設定教室密碼（L3；只存雜湊，看不到密碼本身）；舊版伺服器沒有 */
   hasClassPassword?: boolean;
+  /** 班級島的遊樂場（docs/plans/playground.md）；舊版伺服器沒有 */
+  playground?: Playground;
 }
 
 /** 平板解鎖成功（L3）：教室權杖、班級、權杖到期時間 */

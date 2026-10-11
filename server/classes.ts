@@ -12,6 +12,7 @@ import type { Queryable } from './db';
 import type { ClassInfo } from '../src/online/protocol';
 import type { CurriculumChoice } from '../src/store/save';
 import type { RoomFlags } from '../src/online/realtime';
+import { emptyPlayground, playgroundSchema, type Playground } from '../src/store/rideKinds';
 
 /** 一個孩子最多幾個班級（使用者決定，第 8 節第 2 點；和畫面共用 protocol.ts 的） */
 export { MAX_CLASSES } from '../src/online/protocol';
@@ -67,13 +68,15 @@ export interface MembershipRow {
   curriculum: CurriculumChoice | null;
   chat_open: boolean;
   gifts_open: boolean;
+  /** 班級島的遊樂場（第 14 版；null 或格式不對當成全空） */
+  playground: unknown;
   room_created_at: Date;
 }
 
 /** 一個孩子的所有班級，第一個班級在前面（最早加入的） */
 export async function membershipsOf(q: Queryable, accountId: string): Promise<MembershipRow[]> {
   return q.query<MembershipRow>(
-    `SELECT m.room_code, m.nickname, m.nickname_key, m.pin_hash, m.joined_at, r.name, r.curriculum, r.chat_open, r.gifts_open, r.created_at AS room_created_at
+    `SELECT m.room_code, m.nickname, m.nickname_key, m.pin_hash, m.joined_at, r.name, r.curriculum, r.chat_open, r.gifts_open, r.playground, r.created_at AS room_created_at
      FROM class_members m JOIN rooms r ON r.code = m.room_code
      WHERE m.account_id = $1 ORDER BY m.joined_at, m.room_code`,
     [accountId],
@@ -86,8 +89,14 @@ export function classInfos(rows: MembershipRow[]): ClassInfo[] {
 }
 
 /** 班級的開關（即時連線用） */
-export function flagsOf(m: Pick<MembershipRow, 'chat_open' | 'gifts_open'>): RoomFlags {
-  return { chatOpen: m.chat_open, giftsOpen: m.gifts_open };
+export function flagsOf(m: Pick<MembershipRow, 'chat_open' | 'gifts_open' | 'playground'>): RoomFlags {
+  return { chatOpen: m.chat_open, giftsOpen: m.gifts_open, playground: playgroundOf(m.playground) };
+}
+
+/** 資料表裡的遊樂場（null 或格式不對當成全空） */
+export function playgroundOf(v: unknown): Playground {
+  const r = playgroundSchema.safeParse(v);
+  return r.success ? r.data : emptyPlayground();
 }
 
 /**
