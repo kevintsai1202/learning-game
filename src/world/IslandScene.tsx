@@ -5,7 +5,7 @@
  * gm（老師 GM 的 G2）：老師以熊熊老師進島，自己畫成熊熊老師、點建築只走到門口不進去；
  * 島上有熊熊老師（老師自己，或孩子看到老師進島）時，廣場上的 NPC 熊熊老師藏起來。
  */
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { BUILDINGS } from './Buildings';
@@ -101,7 +101,7 @@ function occluderSpheres(hasHome: boolean): Occluder[] {
  * 擋住角色的建築隱形（自己的家改版）：每一格畫面算鏡頭到角色頭頂的線段穿過哪些建築，那幾棟 visible = false，
  * 走出來就恢復。建築的材質有共用快取，不能改不透明度。sceneDebug.hiddenZones 給 e2e 與點建築的判斷用
  */
-function OcclusionHider({ hasHome }: { hasHome: boolean }) {
+function OcclusionHider({ hasHome, onChange }: { hasHome: boolean; /** 隱形的建築換了（小屋的「○○的家」牌子是 DOM，要另外藏） */ onChange: (hidden: string[]) => void }) {
   const { camera } = useThree();
   const spheres = useMemo(() => occluderSpheres(hasHome), [hasHome]);
   const last = useRef('');
@@ -112,6 +112,7 @@ function OcclusionHider({ hasHome }: { hasHome: boolean }) {
     last.current = key;
     sceneDebug.hiddenZones = hidden;
     for (const [id, g] of occluderGroups) g.visible = !hidden.includes(id);
+    onChange(hidden);
   });
   useEffect(
     () => () => {
@@ -192,6 +193,8 @@ export function IslandScene({
   const picking = useDecor((s) => s.picking);
   const ghostRot = useDecor((s) => s.ghostRot);
   const front = useDecor((s) => s.front);
+  /** 小屋擋住角色而隱形（「○○的家」牌子是 DOM，不會跟著 3D 的 visible，要另外藏） */
+  const [houseHidden, setHouseHidden] = useState(false);
   /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
   const obstacles = useMemo(
     () => [
@@ -256,14 +259,14 @@ export function IslandScene({
       {look.flag && <ClassFlag name={look.flag.name} color={look.flag.color} />}
       {look.home && (
         <group ref={(g) => setOccluderGroup('house', g)}>
-          <KidHouse name={look.home.name} />
+          <KidHouse name={look.home.name} label={!houseHidden} />
         </group>
       )}
       {look.home && <IslandPlate name={look.home.name} />}
       {yard && <YardDecor items={yard} />}
       {canDeco && picking && front && <DecorGhost id={picking} gx={front.gx} gz={front.gz} rot={ghostRot} ok={canPlaceHere(picking, front)} />}
       {canDeco && <DecorProbe />}
-      {mode !== 'attract' && <OcclusionHider hasHome={hasHome} />}
+      {mode !== 'attract' && <OcclusionHider hasHome={hasHome} onChange={(h) => setHouseHidden(h.includes('house'))} />}
       {ZONES.map((z) => {
         const B = BUILDINGS[z.id];
         return (
