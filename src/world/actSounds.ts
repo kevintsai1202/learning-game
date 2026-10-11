@@ -6,8 +6,10 @@
  */
 import { SWING_RATE, type UseKind } from '../store/furnitureUse';
 
+/** 全部的音效名字 */
+export const ACT_SOUNDS = ['sit', 'lie', 'step', 'whee', 'land', 'creak'] as const;
 /** 一種音效 */
-export type ActSound = 'sit' | 'lie' | 'step' | 'whee' | 'land' | 'creak';
+export type ActSound = (typeof ACT_SOUNDS)[number];
 
 /** 溜滑梯爬梯子踩的時刻、開始溜、溜到底（秒；和 actFrame 的時間軸一致） */
 const SLIDE_STEPS = [0, 0.25, 0.5, 0.75];

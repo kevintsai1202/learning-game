@@ -31,3 +31,14 @@ describe('actSoundEvents', () => {
     expect(actSoundEvents('swing', half * 1.4, half * 1.6)).toEqual(['creak']);
   });
 });
+
+describe('音效名字對到真正的音效', () => {
+  it('每一種音效名字都有對應的 sfx 函式（沒有 Web Audio 的環境呼叫也不會丟例外）', async () => {
+    const { ACT_SOUNDS } = await import('../../src/world/actSounds');
+    const { ACT_SFX } = await import('../../src/world/actSfx');
+    for (const s of ACT_SOUNDS) {
+      expect(typeof ACT_SFX[s], s).toBe('function');
+      expect(() => ACT_SFX[s]()).not.toThrow();
+    }
+  });
+});

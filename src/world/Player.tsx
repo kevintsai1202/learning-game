@@ -22,21 +22,12 @@ import { enterHome } from '../store/useHome';
 import { roomCamera } from './room';
 import { camZoom } from './cameraZoom';
 import { decorViewShift } from './decorViewShift';
-import { actSoundEvents, type ActSound } from './actSounds';
+import { actSoundEvents } from './actSounds';
+import { ACT_SFX } from './actSfx';
 import { useDecor } from '../store/useDecor';
 import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
 import { actFrame } from '../store/furnitureUse';
 import { nowSec, spaceOf, stopUse } from '../store/useFurnitureUse';
-
-/** 用家具時的音效名字 → 音效 */
-const ACT_SFX: Record<ActSound, () => void> = {
-  sit: sfx.sit,
-  lie: sfx.lie,
-  step: sfx.step,
-  whee: sfx.whee,
-  land: sfx.land,
-  creak: sfx.creak,
-};
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
