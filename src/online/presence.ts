@@ -3,7 +3,7 @@
  * P2 接上 WebSocket 後由伺服器的訊息驅動；現在先給「多人上線模擬」使用（presenceDemo.ts）。
  */
 import type { AvatarConfig } from '../store/save';
-import type { ZoneId } from '../store/useUi';
+import type { MemberZone } from './realtime';
 
 /** 公頻保留幾則 */
 export const CHAT_KEEP = 30;
@@ -19,8 +19,8 @@ export interface RemoteMember {
   x: number;
   z: number;
   heading: number;
-  /** 在哪棟建築裡；null 表示在島上 */
-  zone: ZoneId | null;
+  /** 在哪棟建築裡、或在島主的屋子裡（home，位置是房間的座標）；null 表示在島上 */
+  zone: MemberZone | null;
   /** 顯示的稱號（名牌上方；沒有時為 null 或省略） */
   title?: string | null;
   /** 熊熊老師（老師 GM 的 G2）；孩子沒有 */
@@ -74,8 +74,8 @@ export function moveMember(s: PresenceState, id: string, x: number, z: number, h
   return { ...s, members: { ...s.members, [id]: { ...m, x, z, heading } } };
 }
 
-/** 進出建築（null 表示回到島上） */
-export function setZone(s: PresenceState, id: string, zone: ZoneId | null): PresenceState {
+/** 進出建築或屋子（null 表示回到島上） */
+export function setZone(s: PresenceState, id: string, zone: MemberZone | null): PresenceState {
   const m = s.members[id];
   if (!m) return s;
   return { ...s, members: { ...s.members, [id]: { ...m, zone } } };

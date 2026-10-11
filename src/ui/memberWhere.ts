@@ -12,7 +12,8 @@ const ISLAND_TEXT = { class: '班級島', otherClass: '別的班級島', own: '�
 /** 成員表「在哪裡」那一欄的文字 */
 export function whereText(m: Pick<MemberSummary, 'where' | 'online'>): string {
   if (m.where) {
-    const zone = m.where.zone ? `・${zoneName(m.where.zone as ZoneId)}` : '';
+    // 在島主的屋子裡（自己的家第二期）寫「小屋裡」
+    const zone = m.where.zone === 'home' ? '・小屋裡' : m.where.zone ? `・${zoneName(m.where.zone as ZoneId)}` : '';
     const doing = m.where.doing ? `・${m.where.doing}` : '';
     return `🟢 ${ISLAND_TEXT[m.where.island] ?? '班級島'}${zone}${doing}`;
   }

@@ -10,6 +10,7 @@ import type { ChatLine } from './presence';
 import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
 import { DUEL_DECLINE_REASONS, DUEL_MOVE_KINDS, type DuelDeclineReason, type DuelMoveKind } from '../engine/puzzle/duelMoves';
 import type { YardItem } from '../store/yard';
+import type { HomeState } from '../store/home';
 
 /**
  * WebSocket 關閉代碼：角色沒有班級；和權杖無效（4003）分開，裝置不再重連。
@@ -24,6 +25,13 @@ export const CLOSE_RECONNECT = 4005;
 
 /** 島上的建築 id（和 useUi 的 ZoneId 相同；伺服器驗證 where 訊息用） */
 export const ZONE_IDS = ['tower', 'math', 'zh', 'life', 'en', 'shop'] as const satisfies readonly ZoneId[];
+/**
+ * where 訊息可以回報的地方：建築，加上自己的島上島主的屋子裡（home，自己的家第二期，docs/plans/home.md 第 8 節）。
+ * 裝置只在 welcome 的 caps 有 home 時才送 home（舊伺服器收到不認得的地方會斷線）
+ */
+export const WHERE_ZONES = [...ZONE_IDS, 'home'] as const;
+/** 成員在哪裡：建築或屋子裡（null 是在島上） */
+export type MemberZone = ZoneId | 'home';
 
 /**
  * 島的種類（島嶼互訪，docs/plans/islands.md）：班級島，或某個人自己的島。
@@ -46,9 +54,10 @@ export const DOING_MAX = 40;
 export const teacherFriendId = (code: string): string => `teacher:${code}`;
 /**
  * 新伺服器在 welcome 告訴裝置支援哪些新訊息（部署途中新網頁可能連到舊伺服器，舊伺服器收到不認得的訊息會斷線）：
- * gm 是老師 GM 的 G2＋G3（孩子回報在做什麼等）；duel 是和朋友益智對戰（島嶼互訪 I4）
+ * gm 是老師 GM 的 G2＋G3（孩子回報在做什麼等）；duel 是和朋友益智對戰（島嶼互訪 I4）；
+ * home 是進屋（where home，自己的家第二期）
  */
-export type ServerCap = 'gm' | 'duel';
+export type ServerCap = 'gm' | 'duel' | 'home';
 
 /** 對戰的難度（益智搶答不分難度，照樣帶一個） */
 const duelLevel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
@@ -75,8 +84,8 @@ export const clientMessage = z.discriminatedUnion('t', [
   z.object({ t: z.literal('go'), island: z.enum(ISLAND_KINDS), room: roomCode.optional() }),
   /** 位置與朝向（zod 4 的 number 本身就拒絕 Infinity、NaN） */
   z.object({ t: z.literal('move'), x: z.number(), z: z.number(), h: z.number() }),
-  /** 進出建築（null 表示回到島上） */
-  z.object({ t: z.literal('where'), zone: z.enum(ZONE_IDS).nullable() }),
+  /** 進出建築或屋子（null 表示回到島上） */
+  z.object({ t: z.literal('where'), zone: z.enum(WHERE_ZONES).nullable() }),
   /** 說一句公頻短句（只送 id） */
   z.object({ t: z.literal('say'), phrase: z.string().max(40) }),
   /** 熊熊老師的全班公告（老師自己輸入，去掉前後空白後 1～60 字；只有老師的連線有效） */
@@ -133,7 +142,8 @@ export interface MemberState {
   x: number;
   z: number;
   h: number;
-  zone: ZoneId | null;
+  /** 在哪裡：建築、屋子裡（home；位置是房間的座標），null 是在島上 */
+  zone: MemberZone | null;
   /** 熊熊老師（老師 GM 的 G2）；孩子沒有這個欄位 */
   role?: 'teacher';
 }
@@ -173,6 +183,8 @@ export type ServerMessage =
       host?: { id: string; name: string };
       /** 自己的島（不管是誰的）：島主的院子（自己的家，docs/plans/home.md；班級島沒有這個欄位） */
       yard?: YardItem[];
+      /** 自己的島（不管是誰的）：島主的房間（自己的家第二期；班級島與舊版伺服器沒有這個欄位） */
+      home?: HomeState;
     }
   /** 上線時的完整好友名單（離線的朋友也在裡面） */
   | { t: 'friends'; list: FriendState[] }
@@ -226,6 +238,8 @@ export type ServerMessage =
   | { t: 'duelEnd'; reason: 'left' | 'gone' }
   /** 島主的院子變了（自己的家）：送給島上島主以外的人。舊版網頁不認得，會忽略 */
   | { t: 'yard'; items: YardItem[] }
+  /** 島主的房間變了（自己的家第二期）：送給島上島主以外的人。舊版網頁不認得，會忽略 */
+  | { t: 'home'; home: HomeState }
   | { t: 'error'; message: string };
 
 /** 解析裝置送來的訊息；格式不符回傳 null（呼叫端斷線） */

@@ -71,7 +71,7 @@ export function ChatPanel() {
       </ul>
       {inside.length > 0 && (
         <div className="chat-inside" data-testid="chat-inside">
-          {inside.map((m) => `${m.nickname}在${zoneName(m.zone!)}`).join('・')}
+          {inside.map((m) => `${m.nickname}在${m.zone === 'home' ? '小屋裡' : zoneName(m.zone!)}`).join('・')}
         </div>
       )}
       {notice && (

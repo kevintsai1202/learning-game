@@ -28,6 +28,7 @@ import {
   type FriendState,
   type IslandKind,
   type MemberState,
+  type MemberZone,
   type RoomFlags,
   type ServerCap,
   type ServerMessage,
@@ -37,10 +38,10 @@ import { summonSpots } from '../src/online/summon';
 import { equippedOf } from '../src/store/catalog';
 import { shownTitle } from '../src/store/badges';
 import type { AvatarConfig, Profile } from '../src/store/save';
-import type { ZoneId } from '../src/store/useUi';
 import type { PuzzleGameId } from '../src/store/puzzle';
 import type { DuelDeclineReason, DuelMoveKind } from '../src/engine/puzzle/duelMoves';
 import type { YardItem } from '../src/store/yard';
+import { homeOf, homeSchema, type HomeState } from '../src/store/home';
 import { SPAWN, TEACHER_POS, WALK_RADIUS } from '../src/world/layout';
 import { isClassLogin, type TokenVia } from './tokens';
 
@@ -106,7 +107,7 @@ const MAX_ISLAND_KIDS = 8;
 /** 熊熊老師的公告：每條連線至少隔多久（毫秒） */
 const ANNOUNCE_GAP_MS = 10_000;
 /** 這個伺服器支援的新訊息（welcome 帶給裝置，見 ServerCap） */
-const CAPS: ServerCap[] = ['gm', 'duel'];
+const CAPS: ServerCap[] = ['gm', 'duel', 'home'];
 /** 一局對戰最多轉送幾則動作（島嶼互訪 I4；正常一局不到 200 則） */
 const DUEL_MAX_MOVES = 2000;
 
@@ -160,6 +161,14 @@ interface Member {
   invite: PendingInvite | null;
   /** 自己的家：院子的擺設（進他自己的島的人從 welcome 拿到；熊熊老師是空的） */
   yard: YardItem[];
+  /** 自己的家第二期：房間（進他自己的島的人從 welcome 拿到；熊熊老師是預設的空房間） */
+  home: HomeState;
+}
+
+/** 存檔裡的房間（格式不對或舊存檔沒有時是空房間加預設的壁紙地板；存檔來自資料庫，不一定經過驗證） */
+function homeFrom(profile: Profile): HomeState {
+  const r = homeSchema.safeParse(profile.home);
+  return r.success ? r.data : homeOf({});
 }
 
 /** 一局和朋友的益智對戰（島嶼互訪 I4）：a 是邀請的人（先手）；伺服器只轉送動作，不懂遊戲規則 */
@@ -260,8 +269,9 @@ export class Hub {
     const others = [...island.members.values()].filter((x) => x !== m).map((x) => x.state);
     const owner = ownerOf(islandId);
     const host = owner && owner !== m.state.id ? { id: owner, name: this.hostNameFor(m, owner) } : undefined;
-    /** 自己的島：島主的院子（島主自己進島時也帶，join 先記好帳號再 enter） */
+    /** 自己的島：島主的院子與房間（島主自己進島時也帶，join 先記好帳號再 enter） */
     const yard = owner ? (this.accounts.get(owner)?.yard ?? []) : undefined;
+    const home = owner ? (this.accounts.get(owner)?.home ?? homeOf({})) : undefined;
     m.conn.send({
       t: 'welcome',
       self: m.state.id,
@@ -273,6 +283,7 @@ export class Hub {
       caps: CAPS,
       ...(host ? { host } : {}),
       ...(yard ? { yard } : {}),
+      ...(home ? { home } : {}),
     });
     this.broadcast(island, replaced ? { t: 'member', member: m.state } : { t: 'join', member: m.state }, m.state.id);
   }
@@ -426,6 +437,7 @@ export class Hub {
       duel: null,
       invite: null,
       yard: Array.isArray(info.profile.yard) ? info.profile.yard : [],
+      home: homeFrom(info.profile),
     };
     const islandId = this.islandIdFor(m, info.island ?? 'class', info.room);
     const sameIsland = old?.islandId === islandId;
@@ -488,6 +500,7 @@ export class Hub {
       duel: null,
       invite: null,
       yard: [],
+      home: homeOf({}),
     };
     this.conns.set(conn, m);
     this.enter(m, classIsland(info.room), false);
@@ -611,10 +624,15 @@ export class Hub {
     }
   }
 
-  /** 進出建築：只告訴同一座島上的人（朋友名單不顯示建築） */
-  where(conn: HubConn, zone: ZoneId | null): void {
+  /**
+   * 進出建築或屋子：只告訴同一座島上的人（朋友名單不顯示建築）。
+   * 屋子（home，自己的家第二期）只在自己的島（不管是誰的）；熊熊老師只能進屋與回到島上，建築不回報
+   */
+  where(conn: HubConn, zone: MemberZone | null): void {
     const m = this.conns.get(conn);
-    if (!m || m.role === 'teacher') return;
+    if (!m) return;
+    if (zone === 'home' && kindOf(m.islandId) !== 'own') return;
+    if (m.role === 'teacher' && zone !== 'home' && zone !== null) return;
     m.state.zone = zone;
     const island = this.islands.get(m.islandId);
     if (island) this.broadcast(island, { t: 'member', member: m.state }, m.state.id);
@@ -792,12 +810,17 @@ export class Hub {
     m.state.title = shownTitle(profile);
     const island = this.islands.get(m.islandId);
     if (island) this.broadcast(island, { t: 'member', member: m.state }, accountId);
-    // 院子變了才送給他自己的島上的人（每個操作都會叫到這裡，例如每 30 秒的遊玩時間）
+    // 院子、房間變了才送給他自己的島上的人（每個操作都會叫到這裡，例如每 30 秒的遊玩時間）
+    const own = this.islands.get(ownIsland(accountId));
     const yard = Array.isArray(profile.yard) ? profile.yard : [];
     if (JSON.stringify(yard) !== JSON.stringify(m.yard)) {
       m.yard = yard;
-      const own = this.islands.get(ownIsland(accountId));
       if (own) this.broadcast(own, { t: 'yard', items: yard }, accountId);
+    }
+    const home = homeFrom(profile);
+    if (JSON.stringify(home) !== JSON.stringify(m.home)) {
+      m.home = home;
+      if (own) this.broadcast(own, { t: 'home', home }, accountId);
     }
     m.conn.send({ t: 'profile', rev });
     this.tellFriends(m);
@@ -869,7 +892,7 @@ export class Hub {
    * 某個帳號在哪裡（老師的成員表用）：哪一種島＋建築＋在做什麼；離線是 null。
    * room 是老師看的那一班：在別班的班級島時是 otherClass（不寫是哪一班）；沒給時任何班級島都算 class
    */
-  whereOf(accountId: string, room?: string): { island: IslandKind | 'otherClass'; zone: ZoneId | null; doing?: string } | null {
+  whereOf(accountId: string, room?: string): { island: IslandKind | 'otherClass'; zone: MemberZone | null; doing?: string } | null {
     const m = this.accounts.get(accountId);
     if (!m) return null;
     const code = codeOf(m.islandId);

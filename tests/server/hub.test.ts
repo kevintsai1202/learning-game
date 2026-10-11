@@ -537,9 +537,9 @@ describe('熊熊老師進島（老師 GM 的 G2，docs/plans/teacher-gm.md 第 1
     expect(j).toMatchObject({ nickname: '熊熊老師', role: 'teacher', avatar: { animal: 'bear' } });
     expect(j.id.startsWith('gm:')).toBe(true);
     const w = t.of('welcome')[0];
-    expect(w).toMatchObject({ island: 'class', classCode: '123456', caps: ['gm', 'duel'], room: FLAGS });
+    expect(w).toMatchObject({ island: 'class', classCode: '123456', caps: ['gm', 'duel', 'home'], room: FLAGS });
     expect(w.members.map((m) => m.nickname)).toEqual(['阿寶']);
-    expect(a.of('welcome')[0].caps).toEqual(['gm', 'duel']);
+    expect(a.of('welcome')[0].caps).toEqual(['gm', 'duel', 'home']);
   });
 
   it('老師不是孩子帳號：不算在線上、沒有位置；同一班兩台老師裝置各自是一位熊熊老師', () => {
@@ -1123,5 +1123,119 @@ describe('自己的家：朋友看得到院子（docs/plans/home.md 第 3.6 節�
   it('院子的格式不對（例如舊存檔沒有院子）當作空院子', () => {
     const b = kid('b', '小美');
     expect(b.of('welcome').at(-1)!.yard).toEqual([]);
+  });
+});
+
+describe('自己的家第二期：進屋、屋裡看得到彼此（docs/plans/home.md 第 8 節）', () => {
+  const AV = { animal: 'cat' as const, color: '#ffffff', hat: null };
+  const BED = { id: 'decor.bed', gx: 2, gz: 3, rot: 1 as const };
+  const HOME = { items: [BED], wall: 'wall.sky', floor: 'floor.wood' };
+  const DEFAULT_HOME = { items: [], wall: 'wall.cream', floor: 'floor.wood' };
+  /** 孩子上線（在自己的島），房間是 home；friends 是互相的朋友 */
+  function kid(id: string, name: string, home: Profile['home'] = undefined, friends: string[] = []) {
+    const conn = new FakeConn();
+    hub.join(conn, {
+      accountId: id,
+      name,
+      classes: [{ code: '123456', name: '二年一班', nickname: name, flags: FLAGS }],
+      profile: profileOf(name, home ? { home } : {}),
+      via: 'parent',
+      tokenRoom: null,
+      island: 'own',
+      friends: friends.map((fid) => ({ id: fid, nickname: fid, avatar: AV, classmate: true })),
+    });
+    return conn;
+  }
+  /** 熊熊老師進班級島 */
+  function teacher() {
+    const conn = new FakeConn();
+    hub.joinTeacher(conn, { room: '123456', name: '二年一班', flags: FLAGS });
+    return conn;
+  }
+  /** 某人最後一次被廣播的所在地方 */
+  const lastZone = (c: FakeConn, id: string) =>
+    c.sent
+      .flatMap((m) => (m.t === 'welcome' ? m.members : m.t === 'join' || m.t === 'member' ? [m.member] : []))
+      .filter((m) => m.id === id)
+      .at(-1)?.zone;
+
+  it('伺服器宣告支援進屋（welcome 的 caps 有 home）', () => {
+    expect(kid('a', '阿寶').of('welcome')[0].caps).toContain('home');
+  });
+
+  it('自己的島的 welcome 帶島主的房間（舊存檔是空房間加預設款）；班級島沒有', () => {
+    const b = kid('b', '小美', HOME, ['a']);
+    expect(b.of('welcome').at(-1)!.home).toEqual(HOME);
+    const a = kid('a', '阿寶', undefined, ['b']);
+    expect(a.of('welcome').at(-1)!.home).toEqual(DEFAULT_HOME);
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    expect(a.of('welcome').at(-1)!.home).toEqual(HOME);
+    hub.goTo(a, 'class');
+    expect(a.of('welcome').at(-1)!.home).toBeUndefined();
+  });
+
+  it('房間的格式不對當作空房間', () => {
+    const b = kid('b', '小美', { items: 'x', wall: 3 } as unknown as Profile['home']);
+    expect(b.of('welcome').at(-1)!.home).toEqual(DEFAULT_HOME);
+  });
+
+  it('島主的房間變了：島上其他人收到 home（島主自己不收）；只改島上的擺設或金幣不送', () => {
+    const b = kid('b', '小美', HOME, ['a']);
+    const a = kid('a', '阿寶', undefined, ['b']);
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    hub.profileChanged('b', 2, profileOf('小美', { home: HOME, coins: 99, yard: [{ id: 'decor.bench', gx: 0, gz: 4, rot: 0 }] }));
+    expect(a.of('home')).toEqual([]);
+    const next = { ...HOME, wall: 'wall.mint' };
+    hub.profileChanged('b', 3, profileOf('小美', { home: next }));
+    expect(a.of('home')).toEqual([{ t: 'home', home: next }]);
+    expect(b.of('home')).toEqual([]);
+  });
+
+  it('進屋（where home）：同一座島的人看到他在屋裡；whereOf 也是 home；回到島上是 null', () => {
+    const b = kid('b', '小美', HOME, ['a']);
+    const a = kid('a', '阿寶', undefined, ['b']);
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    hub.where(a, 'home');
+    expect(lastZone(b, 'a')).toBe('home');
+    expect(hub.whereOf('a')).toEqual({ island: 'own', zone: 'home' });
+    hub.where(a, null);
+    expect(lastZone(b, 'a')).toBeNull();
+  });
+
+  it('班級島沒有屋子：where home 不做事', () => {
+    const a = join('a', '阿寶');
+    const b = join('b', '小美');
+    hub.where(a, 'home');
+    expect(hub.whereOf('a')).toEqual({ island: 'class', zone: null });
+    expect(lastZone(b, 'a')).toBeNull();
+  });
+
+  it('換島時回到島上（zone 清掉）：在朋友的屋裡被島主請回家', () => {
+    const b = kid('b', '小美', HOME, ['a']);
+    const a = kid('a', '阿寶', undefined, ['b']);
+    hub.setOpen(b, true);
+    hub.visit(a, 'b');
+    hub.where(a, 'home');
+    hub.kickVisitor(b, 'a');
+    expect(hub.whereOf('a')).toEqual({ island: 'own', zone: null });
+  });
+
+  it('熊熊老師去孩子的島可以進屋（where home）；建築照舊不回報；班級島上 where home 不做事', () => {
+    const b = kid('b', '小美', HOME);
+    const t = teacher();
+    const tid = t.of('welcome')[0].self;
+    hub.where(t, 'home');
+    hub.visit(t, 'b');
+    expect(t.of('welcome').at(-1)!.home).toEqual(HOME);
+    expect(lastZone(b, tid)).toBeNull();
+    hub.where(t, 'math');
+    expect(lastZone(b, tid)).toBeNull();
+    hub.where(t, 'home');
+    expect(lastZone(b, tid)).toBe('home');
+    hub.where(t, null);
+    expect(lastZone(b, tid)).toBeNull();
   });
 });

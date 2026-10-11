@@ -36,6 +36,13 @@ describe('parseClientMessage', () => {
     expect(parseClientMessage(JSON.stringify({ t: 'kickVisitor', id: 'a_123' }))).toEqual({ t: 'kickVisitor', id: 'a_123' });
   });
 
+  it('自己的家第二期：進屋回報 where home；益智遊戲館照舊不回報', () => {
+    expect(parseClientMessage(JSON.stringify({ t: 'where', zone: 'home' }))).toEqual({ t: 'where', zone: 'home' });
+    expect(parseClientMessage(JSON.stringify({ t: 'where', zone: 'math' }))).toEqual({ t: 'where', zone: 'math' });
+    expect(parseClientMessage(JSON.stringify({ t: 'where', zone: null }))).toEqual({ t: 'where', zone: null });
+    expect(parseClientMessage(JSON.stringify({ t: 'where', zone: 'puzzle' }))).toBeNull();
+  });
+
   it('格式不對或不認得的訊息：null', () => {
     expect(parseClientMessage('not json')).toBeNull();
     expect(parseClientMessage(JSON.stringify({ t: 'nope' }))).toBeNull();
