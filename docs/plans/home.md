@@ -271,7 +271,7 @@
 - **測試**：`tests/store/yard.test.ts`（尺寸、展開、放、轉方向、碰撞、能擺的地方）、`tests/store/furnitureUse.test.ts`（縮放 1、座位在家具上、起身點在碰撞外）；e2e 只跑相關的：`home.spec.ts`、`home-inside.spec.ts`（按「起來」後站著、原比例）、`decor-mobile-audit.spec.ts`、`hud-mobile-audit.spec.ts`。
 - **已知**：部署途中還沒重新整理的舊網頁照舊畫成一格；Zeabur 換版的那一兩分鐘，新網頁擺在廣場、步道的家具會被舊伺服器當成不能擺的格子拿掉（和第 7.1 節同一類）；價格不變。
 
-### 10.4 第 ② 批實作紀錄（2026-10-11 完成）
+### 10.4 第 ② 批實作紀錄（2026-10-11 完成，23:42 上線）
 
 - **尺寸表**（`src/store/catalog.ts` 的 `size`）照第 10.3 節：2×1 長椅、沙發、鋼琴、書桌、餐桌；1×2 床；3×1 溜滑梯；2×2 野餐桌、沙坑、小池塘、地毯、鞦韆；其他 1×1。
 - **規則**（`src/store/yard.ts`，伺服器共用）：`decorSize`、`itemCells`（基準格不動、轉奇數次寬深互換；奇數尺寸基準格在正中間、偶數往 +x、+z 多一格）、`itemCenter`、`itemDistance`（到家具佔的格子中心連成的長方形）、`facingOf`、`placeAnchor`（從面前那一格往面向展開）、`canPlace` 多了 `rot`、整塊都要能擺且不壓到別的家具佔的格子、`canRotate`／`rotateItem`（轉不過去回傳 `ROTATE_BLOCKED`「旁邊太擠了，轉不過去」）、`nearestItem` 用 `itemDistance`、`decorObstacles` 每格一個圓。`cleanItems` 照舊只看基準格。能擺的地方：拿掉步道、廣場、小屋前 7 公尺走道的限制，改成避開噴水池（邊緣外 0.6）、熊熊老師站的位置（1.5）、小屋的門口（門口點 1.5 公尺內與牆到門口那一小段）。
