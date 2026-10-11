@@ -52,71 +52,81 @@ export function DecorBag() {
   if (!bagOpen) return null;
   const left = remainingAll();
   const problem = frontProblem();
-  const hint = picking
-    ? (problem ?? `按「放下」，把${findItem(picking)?.name ?? ''}擺在面前`)
-    : hasAny
-      ? '選一樣家具，再走到想放的地方'
-      : '還沒有家具，到百寶屋的「🏡 家具」或「🛋️ 室內」買吧！';
+  // 提示只有一行（加注音也不會折成好幾行）：選著家具時是「放下○○」或不能放的原因
+  const hint = picking ? (problem ?? `放下${findItem(picking)?.name ?? ''}`) : hasAny ? '選一樣家具' : '到百寶屋買家具';
 
   return (
     <div className="decor-bag card" role="dialog" aria-label="家具包" data-testid="decor-bag">
-      <div className="decor-bag-head">
-        <span className={`decor-hint ${picking && problem ? 'bad' : ''}`} role="status" data-testid="decor-hint">
-          🎒 {hint}
-        </span>
-        {picking && (
-          <>
-            <button className="btn small white" onClick={() => rotateGhost()} aria-label="轉方向" data-testid="decor-ghost-rotate">
-              🔄
-            </button>
-            <button
-              className="btn small green"
-              disabled={!!problem}
-              onClick={() => {
-                if (placeFront()) sfx.coin();
-              }}
-              data-testid="decor-place"
-            >
-              ⬇️ 放下
-            </button>
-          </>
-        )}
-        <button
-          className="btn small white"
-          onClick={() => {
-            sfx.tap();
-            toggleBag(false);
-          }}
-          aria-label="關上家具包"
-          data-testid="decor-close"
-        >
-          ✕
-        </button>
-      </div>
-      {hasAny && (
+      <span className={`decor-hint ${picking && problem ? 'bad' : ''}`} role="status" data-testid="decor-hint">
+        🎒 {hint}
+      </span>
+      <div className="decor-bag-row">
         <div className="decor-bag-items">
           {FURNITURE.filter((f) => owned[f.id]).map((f) => {
             const n = left[f.id] ?? 0;
+            const on = picking === f.id;
             return (
               <button
                 key={f.id}
-                className={`decor-bag-item ${picking === f.id ? 'on' : ''}`}
+                className={`decor-bag-item ${on ? 'on' : ''}`}
                 disabled={n <= 0}
                 onClick={() => {
                   sfx.tap();
                   pickDecor(f.id);
                 }}
                 aria-label={`${f.name}，還有 ${n} 個`}
+                title={f.name}
                 data-testid={`decor-pick-${f.id}`}
               >
                 <span className="icon">{f.emoji}</span>
-                <span className="name">{f.name}</span>
+                {/* 名字只有選著的那一個顯示（條才夠細） */}
+                {on && <span className="name">{f.name}</span>}
                 <span className="count">× {n}</span>
               </button>
             );
           })}
         </div>
-      )}
+        <div className="decor-bag-actions">
+          {picking && (
+            <>
+              <button
+                className="btn white decor-round"
+                onClick={() => {
+                  sfx.rotate();
+                  rotateGhost();
+                }}
+                aria-label="轉方向"
+                title="轉方向"
+                data-testid="decor-ghost-rotate"
+              >
+                🔄
+              </button>
+              <button
+                className="btn green decor-place-btn"
+                disabled={!!problem}
+                onClick={() => {
+                  if (placeFront()) sfx.place();
+                }}
+                data-testid="decor-place"
+              >
+                ⬇️ 放下
+              </button>
+            </>
+          )}
+          <button
+            className="btn white decor-round"
+            onClick={() => {
+              sfx.tap();
+              toggleBag(false);
+            }}
+            aria-label="關上家具包"
+            title="關上"
+            data-testid="decor-close"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -148,43 +158,51 @@ export function SurfacePanel() {
           data-testid={`surface-${kind}-${it.id}`}
         >
           <span className="icon">{it.emoji}</span>
-          <span className="name">{it.name}</span>
+          {now === it.id && <span className="name">{it.name}</span>}
         </button>
       ))}
     </>
   );
   return (
     <div className="decor-bag card surface-panel" role="dialog" aria-label="壁紙地板" data-testid="surface-panel">
-      <div className="decor-bag-head">
-        <span className="decor-hint">🎨 選壁紙和地板（百寶屋的「🛋️ 室內」可以買更多）</span>
-        <button
-          className="btn small white"
-          onClick={() => {
-            sfx.tap();
-            toggleSurface(false);
-          }}
-          aria-label="關上壁紙地板"
-          data-testid="surface-close"
-        >
-          ✕
-        </button>
-      </div>
-      <div className="decor-bag-items surface-row">
-        {group('壁紙', c.walls, c.wall, 'wall')}
-        {group('地板', c.floors, c.floor, 'floor')}
+      <span className="decor-hint">🎨 選壁紙和地板</span>
+      <div className="decor-bag-row">
+        <div className="decor-bag-items surface-row">
+          {group('壁紙', c.walls, c.wall, 'wall')}
+          {group('地板', c.floors, c.floor, 'floor')}
+        </div>
+        <div className="decor-bag-actions">
+          <button
+            className="btn white decor-round"
+            onClick={() => {
+              sfx.tap();
+              toggleSurface(false);
+            }}
+            aria-label="關上壁紙地板"
+            title="關上"
+            data-testid="surface-close"
+          >
+            ✕
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-/** 用一件家具（坐、躺、盪、溜滑梯、開關、沙堡）：坐上去時關上家具包；鋼琴彈一段 */
+/**
+ * 用一件家具（坐、躺、盪、溜滑梯、開關、沙堡）：坐上去時關上家具包；鋼琴彈一段。
+ * 開關與沙堡的音效照打開或關上換（坐、躺、溜滑梯、盪鞦韆的音效由角色的時間軸放，見 src/world/actSounds.ts）
+ */
 function operateFurniture(item: { id: string; gx: number; gz: number; rot: 0 | 1 | 2 | 3 }, place: Place): void {
   const kind = startUse(item, place);
   if (kind === 'toggle' || kind === 'sandcastle') {
-    sfx.toggle();
+    const on = !!useFurnitureUse.getState().toggles[cellKey(place, item)];
+    if (kind === 'sandcastle') sfx.sand(on);
+    else if (item.id === 'decor.tv') sfx.tv(on);
+    else sfx.toggle(on);
     return;
   }
-  sfx.tap();
   resetDecor();
   if (kind === 'piano') sfx.piano();
 }
@@ -259,22 +277,26 @@ export function DecorNear() {
       <button
         className="btn small"
         onClick={() => {
-          sfx.tap();
+          sfx.rotate();
           rotateNear();
         }}
+        aria-label="轉方向"
+        title="轉方向"
         data-testid="decor-near-rotate"
       >
-        🔄 轉方向
+        🔄<span className="btn-label"> 轉方向</span>
       </button>
       <button
         className="btn small white"
         onClick={() => {
-          sfx.tap();
+          sfx.pickup();
           pickUpNear();
         }}
+        aria-label="收起來"
+        title="收起來"
         data-testid="decor-near-pickup"
       >
-        👜 收起來
+        👜<span className="btn-label"> 收起來</span>
       </button>
     </div>
   );

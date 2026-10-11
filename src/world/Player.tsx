@@ -1,7 +1,7 @@
 /**
  * 玩家角色控制器：每幀讀輸入、移動、碰撞、偵測門口，並讓鏡頭平滑跟隨。
  */
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Avatar, type MotionState } from './Avatar';
@@ -21,9 +21,22 @@ import { Teacher } from './Teacher';
 import { enterHome } from '../store/useHome';
 import { roomCamera } from './room';
 import { camZoom } from './cameraZoom';
+import { decorViewShift } from './decorViewShift';
+import { actSoundEvents, type ActSound } from './actSounds';
+import { useDecor } from '../store/useDecor';
 import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
 import { actFrame } from '../store/furnitureUse';
 import { nowSec, spaceOf, stopUse } from '../store/useFurnitureUse';
+
+/** 用家具時的音效名字 → 音效 */
+const ACT_SFX: Record<ActSound, () => void> = {
+  sit: sfx.sit,
+  lie: sfx.lie,
+  step: sfx.step,
+  whee: sfx.whee,
+  land: sfx.land,
+  creak: sfx.creak,
+};
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -52,9 +65,15 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
   const motion = useRef<MotionState>({ speed: 0 });
   /** 用家具時的抬高、縮放、傾斜（PoseWrap 每格讀） */
   const lift = useRef<PoseLift>(STANDING);
+  /** 家具包打開時畫面往上移了幾 px（第 10 節第 ① 批；慢慢移過去） */
+  const viewShift = useRef(0);
+  /** 上一格用家具的時間（音效從上一格到這一格之間放；換了一件家具重來） */
+  const lastActT = useRef<{ act: object | null; t: number }>({ act: null, t: -1 });
   const lastNear = useRef<ZoneId | null>(null);
   const lookAt = useRef(new THREE.Vector3(player.pos.x, 1, player.pos.z - 3));
   const { camera, size } = useThree();
+  // 卸下時（進建築、進出屋、回標題）把畫面移回來：整個畫布只有一個鏡頭
+  useEffect(() => () => (camera as THREE.PerspectiveCamera).clearViewOffset(), [camera]);
   const shadowTex = useMemo(() => blobShadowTexture(), []);
   /** 自己在公頻說的話：頭上的對話氣泡（和其他玩家同樣的樣式） */
   const bubble = usePresence((s) => (s.selfId ? (s.bubbles[s.selfId]?.text ?? null) : null));
@@ -66,7 +85,12 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     // 用家具（第 9 節優化）：照時間軸擺在家具上；按鈕、方向鍵、點地面都會起來（溜滑梯途中不行，溜完自己起來）
     if (player.act) {
       const act = player.act;
-      const f = actFrame(act.item, spaceOf(act.place), act.kind, nowSec() - act.t0);
+      const t = nowSec() - act.t0;
+      const f = actFrame(act.item, spaceOf(act.place), act.kind, t);
+      // 音效（第 10 節第 ① 批）：坐下噗、爬梯子、咻、咚、鞦韆嘎
+      if (lastActT.current.act !== act) lastActT.current = { act, t: -1 };
+      for (const s of actSoundEvents(act.kind, lastActT.current.t, t)) ACT_SFX[s]();
+      lastActT.current.t = t;
       if (act.kind === 'slide') player.target = null;
       const dir = inputDirection();
       if (f.done) stopUse(true);
@@ -138,6 +162,18 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     const k = player.snapCamera ? 1 : 1 - Math.exp(-dt * 3.5);
     player.snapCamera = false;
     const zoom = camZoom.value;
+    // 家具包或壁紙地板面板打開時，直式手機的畫面往上移（角色留在家具包上方）。每一格用當下的畫面大小重設：
+    // 轉向或鍵盤彈出時畫面大小會變
+    const d = useDecor.getState();
+    const want = decorViewShift(size.width, size.height, d.bagOpen || d.surfaceOpen);
+    viewShift.current += (want - viewShift.current) * Math.min(1, dt * 6);
+    const cam = camera as THREE.PerspectiveCamera;
+    if (want === 0 && viewShift.current < 0.5) {
+      if (viewShift.current !== 0) {
+        viewShift.current = 0;
+        cam.clearViewOffset();
+      }
+    } else cam.setViewOffset(size.width, size.height, 0, viewShift.current, size.width, size.height);
     if (roomView) {
       // 屋裡：跟著角色，比島上近；看的點夾在房間裡
       const c = roomCamera(size.width / Math.max(size.height, 1), next, zoom);

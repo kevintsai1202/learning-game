@@ -52,6 +52,51 @@ function tone(freq: number, at: number, dur: number, type: OscillatorType = 'sin
   osc.stop(t0 + dur + 0.05);
 }
 
+/** 滑音：頻率從 f0 滑到 f1（咻、嘎） */
+function glide(f0: number, f1: number, at: number, dur: number, type: OscillatorType = 'sine', vol = 0.5): void {
+  const a = audio();
+  if (!a || !master || !enabled) return;
+  const t0 = a.currentTime + at;
+  const osc = a.createOscillator();
+  const g = a.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(f0, t0);
+  osc.frequency.exponentialRampToValueAtTime(f1, t0 + dur);
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  osc.connect(g).connect(master);
+  osc.start(t0);
+  osc.stop(t0 + dur + 0.05);
+}
+
+/** 白噪音的音源（第一次用到才做一份，大家共用） */
+let noiseBuffer: AudioBuffer | null = null;
+
+/** 一段濾過的雜音（沙沙聲、電視開機的雜訊）：中心頻率 freq、長度 dur */
+function noise(at: number, dur: number, freq: number, vol = 0.4): void {
+  const a = audio();
+  if (!a || !master || !enabled) return;
+  if (!noiseBuffer) {
+    noiseBuffer = a.createBuffer(1, a.sampleRate, a.sampleRate);
+    const d = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  }
+  const t0 = a.currentTime + at;
+  const src = a.createBufferSource();
+  src.buffer = noiseBuffer;
+  const filter = a.createBiquadFilter();
+  filter.type = 'bandpass';
+  filter.frequency.value = freq;
+  const g = a.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(filter).connect(g).connect(master);
+  src.start(t0);
+  src.stop(t0 + dur + 0.05);
+}
+
 /** 小星星（公有領域的童謠）前兩句：[頻率, 拍數] */
 const TWINKLE: [number, number][] = [
   [262, 1], [262, 1], [392, 1], [392, 1], [440, 1], [440, 1], [392, 2],
@@ -69,8 +114,48 @@ export const sfx = {
       at += 0.3 * beats;
     }
   },
-  /** 開關（電視、燈）、堆沙堡 */
-  toggle: () => tone(880, 0, 0.06, 'square', 0.15),
+  /** 開關（燈）：開是高一點的喀，關是低一點的喀 */
+  toggle: (on = true) => tone(on ? 1100 : 700, 0, 0.05, 'square', 0.15),
+  // ---------- 家具（自己的家第 10 節第 ① 批：家具要有音效） ----------
+  /** 放下家具：咚一聲 */
+  place: () => {
+    tone(220, 0, 0.12, 'triangle', 0.5);
+    tone(330, 0.05, 0.12, 'sine', 0.3);
+  },
+  /** 轉方向：喀 */
+  rotate: () => tone(1320, 0, 0.04, 'square', 0.12),
+  /** 收起來：往上咻 */
+  pickup: () => glide(400, 900, 0, 0.18, 'triangle', 0.35),
+  /** 坐下：坐墊噗 */
+  sit: () => glide(260, 140, 0, 0.18, 'sine', 0.5),
+  /** 躺下：打哈欠（往下的兩個音） */
+  lie: () => {
+    glide(500, 300, 0, 0.4, 'sine', 0.35);
+    glide(420, 260, 0.35, 0.45, 'sine', 0.3);
+  },
+  /** 爬梯子：踩一步 */
+  step: () => tone(520, 0, 0.05, 'triangle', 0.25),
+  /** 溜滑梯：咻～（往上再往下） */
+  whee: () => {
+    glide(500, 1100, 0, 0.35, 'triangle', 0.35);
+    glide(1100, 400, 0.35, 0.5, 'triangle', 0.3);
+  },
+  /** 溜到底：咚 */
+  land: () => tone(160, 0, 0.15, 'sine', 0.5),
+  /** 鞦韆：嘎 */
+  creak: () => glide(950, 760, 0, 0.12, 'sawtooth', 0.06),
+  /** 電視：開機的雜訊加一聲嗶；關機是往下的嗡 */
+  tv: (on = true) => {
+    if (on) {
+      noise(0, 0.25, 1800, 0.3);
+      tone(1000, 0.22, 0.12, 'sine', 0.25);
+    } else glide(600, 120, 0, 0.2, 'sine', 0.3);
+  },
+  /** 堆沙堡：沙沙聲加一聲叮；推倒是比較低的沙沙聲 */
+  sand: (build = true) => {
+    noise(0, 0.35, build ? 900 : 500, 0.45);
+    if (build) tone(1568, 0.32, 0.2, 'triangle', 0.25);
+  },
   /** 按鈕點擊 */
   tap: () => tone(660, 0, 0.08, 'triangle', 0.3),
   /** 答對：上行琶音 */

@@ -2956,104 +2956,158 @@ button {
   gap: 8px;
 }
 
-/* ---------- 自己的家：在島上直接佈置（docs/plans/home.md 第 7 節） ---------- */
-/* 家具包：底部，左邊留給搖桿 */
+/* ---------- 自己的家：在島上直接佈置（docs/plans/home.md 第 7 節；第 10 節第 ① 批改成底部細長一條） ---------- */
+/*
+ * 三個位置一個來源：--decor-left（左邊留給搖桿）、--decor-bottom（手機留給搖桿）、--decor-strip-h（家具包條的高度，
+ * 不含上方的提示）。旁邊家具的卡片疊在家具包上方時用它們算位置
+ */
+:root {
+  --decor-left: 168px;
+  --decor-bottom: 12px;
+  --decor-strip-h: 68px;
+}
+@media (max-width: 600px) {
+  :root {
+    --decor-left: 12px;
+    --decor-bottom: 166px;
+  }
+}
+/* 家具包：底部細長一條（左邊是家具，右邊是轉方向、放下、關上），提示一行浮在條的上方 */
 .decor-bag {
   position: absolute;
-  left: 168px;
+  left: var(--decor-left);
   right: 12px;
-  bottom: 12px;
-  padding: 8px 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  bottom: var(--decor-bottom);
+  padding: 6px 8px;
 }
-.decor-bag-head {
+.decor-bag-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 .decor-hint {
-  flex: 1;
-  font-size: 18px;
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 2px 12px;
+  border: 3px solid var(--ink);
+  border-radius: 999px;
+  background: #fff;
+  font-size: 15px;
   font-weight: 700;
+  box-shadow: 0 3px 0 rgba(43, 42, 76, 0.88);
 }
 .decor-hint.bad {
   color: #c2410c;
 }
 .decor-bag-items {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  gap: 8px;
+  gap: 6px;
   overflow-x: auto;
   overscroll-behavior: contain;
-  padding-bottom: 2px;
+  padding: 2px;
 }
 .decor-bag-item {
   flex: 0 0 auto;
-  min-width: 78px;
+  min-width: 48px;
+  height: 52px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 6px 8px;
-  border: 3px solid var(--ink);
-  border-radius: 14px;
+  justify-content: center;
+  gap: 0;
+  padding: 2px 6px;
+  border: 2px solid var(--ink);
+  border-radius: 12px;
   background: #fff;
   font: inherit;
   cursor: pointer;
 }
 .decor-bag-item .icon {
-  font-size: 28px;
-  line-height: 1.1;
+  font-size: 22px;
+  line-height: 1.05;
 }
 .decor-bag-item .name {
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 700;
+  line-height: 1.1;
 }
 .decor-bag-item .count {
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1.1;
 }
 .decor-bag-item.on {
   background: #c8f2b8;
-  outline: 4px solid #2b2a4c;
+  outline: 3px solid #2b2a4c;
 }
 .decor-bag-item:disabled {
   opacity: 0.45;
   cursor: default;
 }
-/* 旁邊家具的按鈕：底部中間 */
+/* 右邊的圓形小按鈕（轉方向、關上）與放下 */
+.decor-bag-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn.decor-round {
+  width: 44px;
+  height: 44px;
+  min-width: 0;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 20px;
+}
+.btn.decor-place-btn {
+  height: 48px;
+  padding: 0 14px;
+  font-size: 17px;
+}
+/* 旁邊家具的卡片：底部中間；寬度不超過畫面，放不下就換行 */
 .decor-near {
   position: absolute;
   left: 50%;
   bottom: 70px;
   transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  white-space: nowrap;
+  gap: 6px;
+  padding: 6px 10px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
 }
 .decor-near-name {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
+  white-space: nowrap;
 }
-/* 家具包打開時，旁邊家具的按鈕移到家具包上面 */
+.decor-near .btn {
+  white-space: nowrap;
+}
+/* 家具包打開時，旁邊家具的卡片移到家具包（含上方的提示）上面 */
 .decor-near.over-bag {
-  bottom: 190px;
+  bottom: calc(var(--decor-bottom) + var(--decor-strip-h) + 44px);
 }
 @media (max-width: 600px) {
-  .decor-bag {
-    left: 12px;
-    bottom: 166px;
+  .decor-near {
+    bottom: var(--decor-bottom);
   }
-  .decor-hint {
+  .decor-near .btn {
+    padding-left: 10px;
+    padding-right: 10px;
     font-size: 15px;
   }
-  .decor-near {
-    bottom: 166px;
-  }
-  .decor-near.over-bag {
-    bottom: 340px;
+  /* 手機上轉方向、收起來只留圖示（字在 aria-label），卡片才排得成一行 */
+  .decor-near .btn-label {
+    display: none;
   }
 }
 
@@ -3063,7 +3117,7 @@ button {
 }
 .surface-row-label {
   flex: none;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   min-width: 2.5em;
 }

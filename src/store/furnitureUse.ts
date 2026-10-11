@@ -96,9 +96,12 @@ export function exitPoint(item: YardItem, space: DecorSpace): { x: number; z: nu
   return localToWorld(item, space, e.x, e.z);
 }
 
+/** 鞦韆盪的快慢（角頻率，弧度／秒；盪到一邊的時刻是 (k + 0.5) × π / SWING_RATE） */
+export const SWING_RATE = 2.4;
+
 /** 鞦韆盪的角度（弧度；從 0 開始，最大 0.55） */
 export function swingAngle(t: number): number {
-  return 0.55 * Math.sin(t * 2.4);
+  return 0.55 * Math.sin(t * SWING_RATE);
 }
 
 /** 某一刻角色的樣子：位置（世界座標）、抬高、朝向、姿勢、縮放、繞樞軸的傾斜（鞦韆）、做完了沒（溜滑梯） */
