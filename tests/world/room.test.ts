@@ -5,8 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { HOME_SPAWN, HOUSE_DOOR_RANGE, ROOM_RECT, atRoomExit, houseDoor, onDoorMat, roomCamera } from '../../src/world/room';
 import { HOUSE } from '../../src/world/layout';
 import { resolveCollisions } from '../../src/world/movement';
-import { HOME_CLEAR_CELLS, HOME_DOOR_CELLS, homeCellToWorld, isHomeCell } from '../../src/store/home';
-import { HOME_SPACE } from '../../src/store/home';
+import { HOME_CLEAR_CELLS, HOME_DOOR_CELLS, HOME_SPACE, homeCellToWorld, isHomeCell } from '../../src/store/home';
 
 describe('房間的幾何', () => {
   it('房間 10×10 公尺，中心在原點', () => {

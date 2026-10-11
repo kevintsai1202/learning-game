@@ -84,6 +84,7 @@ export function setHouseKey(key: string | null, opts: { teacher?: boolean } = {}
       teleport(SPAWN);
       player.heading = Math.PI;
     }
+    player.snapCamera = true;
     useHome.setState({ houseKey: key, inside: null, onMat: false, nearDoor: false });
     return;
   }
