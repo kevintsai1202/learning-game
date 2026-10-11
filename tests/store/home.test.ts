@@ -10,6 +10,7 @@ import { budgetAfter, canPlace, decorObstacles, frontCell, isDecor, nearestItem,
 import {
   DEFAULT_FLOOR,
   DEFAULT_WALL,
+  HOME_CLEAR_CELLS,
   HOME_DOOR_CELLS,
   HOME_MAX_ITEMS,
   HOME_SIZE,
@@ -32,11 +33,12 @@ const pid = (s: SaveData) => s.profiles[0].id;
 const prof = (s: SaveData): Profile => s.profiles[0];
 const item = (id: string, gx: number, gz: number, rot: 0 | 1 | 2 | 3 = 0): YardItem => ({ id, gx, gz, rot });
 
-describe('房間的格子（10×10，門口不能擺）', () => {
-  it('10×10 減掉門口的格子；都在 0～9、不重複', () => {
+describe('房間的格子（10×10，門口與門口前面不能擺）', () => {
+  it('10×10 減掉門口兩格與門口前面兩格（96 格）；都在 0～9、不重複', () => {
     const cells = homeCells();
     expect(HOME_SIZE).toBe(10);
-    expect(cells).toHaveLength(HOME_SIZE * HOME_SIZE - HOME_DOOR_CELLS.length);
+    expect(HOME_CLEAR_CELLS).toHaveLength(4);
+    expect(cells).toHaveLength(96);
     expect(new Set(cells.map((c) => `${c.gx},${c.gz}`)).size).toBe(cells.length);
     for (const c of cells) {
       expect(c.gx).toBeGreaterThanOrEqual(0);
@@ -53,6 +55,7 @@ describe('房間的格子（10×10，門口不能擺）', () => {
       expect(Math.abs(homeCellToWorld(d.gx, d.gz).x)).toBeLessThan(1);
       expect(isHomeCell(d.gx, d.gz)).toBe(false);
     }
+    for (const c of HOME_CLEAR_CELLS) expect(isHomeCell(c.gx, c.gz)).toBe(false);
     expect(isHomeCell(0, 0)).toBe(true);
     expect(isHomeCell(9, 0)).toBe(true);
     expect(isHomeCell(-1, 0)).toBe(false);
@@ -177,7 +180,7 @@ describe('房間的擺設（cleanHome、setHome）', () => {
     expect(cleanHome({ items, wall: DEFAULT_WALL, floor: DEFAULT_FLOOR }, p).items).toEqual([item('decor.bed', 0, 0), item('decor.sofa', 3, 0)]);
   });
 
-  it(`最多 ${HOME_MAX_ITEMS} 個（房間 98 格，填滿也不會超過）`, () => {
+  it(`最多 ${HOME_MAX_ITEMS} 個（房間 96 格，填滿也不會超過）`, () => {
     const p = prof(kidSave(0, Array(200).fill('decor.rug')));
     const items = homeCells().map((c) => item('decor.rug', c.gx, c.gz));
     expect(cleanHome({ items, wall: DEFAULT_WALL, floor: DEFAULT_FLOOR }, p).items.length).toBeLessThanOrEqual(HOME_MAX_ITEMS);
@@ -207,7 +210,7 @@ describe('房間裡放在角色面前（動森做法，同一套函式換成房�
     const [door] = HOME_DOOR_CELLS;
     expect(canPlace([], door.gx, door.gz, 'decor.bed', { 'decor.bed': 1 }, HOME_SPACE)).toBe('這裡不能擺');
     expect(canPlace([], 0, 0, 'decor.bed', { 'decor.bed': 1 }, HOME_SPACE)).toBeNull();
-    // 房間只有 98 格，合法的擺法到不了 100 個；用格子外的假項目湊滿，檢查上限的提示
+    // 房間只有 96 格，合法的擺法到不了 100 個；用格子外的假項目湊滿，檢查上限的提示
     const full = Array.from({ length: HOME_MAX_ITEMS }, (_, i) => item('decor.rug', 20 + i, 20));
     expect(canPlace(full, 0, 0, 'decor.bed', { 'decor.bed': 1 }, HOME_SPACE)).toBe('屋裡已經擺滿了');
   });

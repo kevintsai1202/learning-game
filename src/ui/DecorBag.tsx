@@ -1,15 +1,30 @@
 /**
- * 在島上直接佈置（自己的家改版，docs/plans/home.md 第 7 節）：動森做法的家具包與旁邊家具的按鈕。
+ * 在島上與屋裡直接佈置（自己的家，docs/plans/home.md 第 7、8 節）：動森做法的家具包與旁邊家具的按鈕。
  * - DecorBag：「🎒 家具」打開的家具包（底部，留出左下的搖桿）。選一樣家具，角色面前那一格出現預覽，
  *   按「⬇️ 放下」擺好（可以先「🔄」轉方向）；不能放時說原因。
  * - DecorNear：沒選家具時，角色旁邊有擺好的家具就出現「🔄 轉方向」「👜 收起來」。
- * 規則在 src/store/yard.ts，狀態與動作在 src/store/useDecor.ts。
+ * - SurfacePanel：在自己的屋裡按「🎨 壁紙地板」打開，選擁有的壁紙與地板（第二期）。
+ * 每種家具剩幾個是島上加屋裡一起算。規則在 src/store/yard.ts、home.ts，狀態與動作在 src/store/useDecor.ts。
  */
 import { useEffect } from 'react';
 import { useGame } from '../store/useGame';
 import { FURNITURE, findItem } from '../store/catalog';
-import { ownedDecor, remainingDecor } from '../store/yard';
-import { frontProblem, pickDecor, pickUpNear, placeFront, rotateGhost, rotateNear, toggleBag, useDecor } from '../store/useDecor';
+import { ownedDecor } from '../store/yard';
+import {
+  chooseSurface,
+  frontProblem,
+  pickDecor,
+  pickUpNear,
+  placeFront,
+  remainingAll,
+  rotateGhost,
+  rotateNear,
+  surfaceChoices,
+  toggleBag,
+  toggleSurface,
+  useDecor,
+} from '../store/useDecor';
+import { useHome } from '../store/useHome';
 import { DECOR_LINES } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
@@ -17,8 +32,9 @@ import { sfx } from '../audio/sfx';
 export function DecorBag() {
   const bagOpen = useDecor((s) => s.bagOpen);
   const picking = useDecor((s) => s.picking);
-  // 面前的格子變了、擺設變了，都要重算能不能放
+  // 面前的格子變了、擺設變了、進出屋，都要重算能不能放與剩幾個
   useDecor((s) => s.front);
+  useHome((s) => s.inside);
   const profile = useGame((s) => s.profile());
   const owned = profile ? ownedDecor(profile) : {};
   const hasAny = Object.keys(owned).length > 0;
@@ -31,9 +47,13 @@ export function DecorBag() {
   }, [bagOpen]);
 
   if (!bagOpen) return null;
-  const left = remainingDecor({ items: profile?.yard ?? [] }, owned);
+  const left = remainingAll();
   const problem = frontProblem();
-  const hint = picking ? (problem ?? `按「放下」，把${findItem(picking)?.name ?? ''}擺在面前`) : hasAny ? '選一樣家具，再走到想放的地方' : '還沒有家具，到百寶屋的「🏡 家具」買吧！';
+  const hint = picking
+    ? (problem ?? `按「放下」，把${findItem(picking)?.name ?? ''}擺在面前`)
+    : hasAny
+      ? '選一樣家具，再走到想放的地方'
+      : '還沒有家具，到百寶屋的「🏡 家具」或「🛋️ 室內」買吧！';
 
   return (
     <div className="decor-bag card" role="dialog" aria-label="家具包" data-testid="decor-bag">
@@ -94,6 +114,57 @@ export function DecorBag() {
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+/** 壁紙地板面板（只在自己的屋裡）：擁有的壁紙與地板，點了就換；現在用的標 on */
+export function SurfacePanel() {
+  const open = useDecor((s) => s.surfaceOpen);
+  // 換了壁紙地板、買了新的都要重畫
+  useGame((s) => s.profile());
+  if (!open) return null;
+  const c = surfaceChoices();
+  /** 一排選項 */
+  const row = (label: string, list: typeof c.walls, now: string, kind: 'wall' | 'floor') => (
+    <div className="decor-bag-items surface-row">
+      <span className="surface-row-label">{label}</span>
+      {list.map((it) => (
+        <button
+          key={it.id}
+          className={`decor-bag-item ${now === it.id ? 'on' : ''}`}
+          onClick={() => {
+            sfx.tap();
+            chooseSurface(it.id);
+          }}
+          aria-label={`${label}：${it.name}`}
+          aria-pressed={now === it.id}
+          data-testid={`surface-${kind}-${it.id}`}
+        >
+          <span className="icon">{it.emoji}</span>
+          <span className="name">{it.name}</span>
+        </button>
+      ))}
+    </div>
+  );
+  return (
+    <div className="decor-bag card surface-panel" role="dialog" aria-label="壁紙地板" data-testid="surface-panel">
+      <div className="decor-bag-head">
+        <span className="decor-hint">🎨 選壁紙和地板（百寶屋的「🛋️ 室內」可以買更多）</span>
+        <button
+          className="btn small white"
+          onClick={() => {
+            sfx.tap();
+            toggleSurface(false);
+          }}
+          aria-label="關上壁紙地板"
+          data-testid="surface-close"
+        >
+          ✕
+        </button>
+      </div>
+      {row('壁紙', c.walls, c.wall, 'wall')}
+      {row('地板', c.floors, c.floor, 'floor')}
     </div>
   );
 }

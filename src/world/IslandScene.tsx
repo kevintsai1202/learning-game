@@ -26,9 +26,9 @@ import { treesAway, type SceneLook } from './landmarks';
 import { FLAGPOLE, HOUSE, PLATE } from './layout';
 import { usePresence } from '../online/usePresence';
 import { sceneDebug } from './sceneDebug';
-import { DecorGhost, YardDecor } from './Furniture';
-import { resetDecor, updateDecorSpot, useDecor } from '../store/useDecor';
-import { HOUSE_TREE_CLEAR, canPlace, frontCell, ownedDecor, yardObstacles, type YardCell } from '../store/yard';
+import { YardDecor } from './Furniture';
+import { DecorLayer } from './DecorLayer';
+import { HOUSE_TREE_CLEAR, YARD_SPACE, yardObstacles } from '../store/yard';
 import { occluders, type Occluder } from './occlusion';
 import { useGame } from '../store/useGame';
 import { useRealtime } from '../online/realtimeClient';
@@ -67,24 +67,6 @@ function SkyDome({ sky }: { sky: SceneLook['sky'] }) {
 }
 
 /** 標題畫面的環繞鏡頭 */
-/** 預覽的那一格能不能放（給底下薄板的顏色） */
-function canPlaceHere(id: string, cell: YardCell): boolean {
-  const p = useGame.getState().profile();
-  return !!p && canPlace(p.yard ?? [], cell.gx, cell.gz, id, ownedDecor(p)) === null;
-}
-
-/**
- * 在島上直接佈置（動森做法）：每一格畫面算角色面前的那一格與旁邊最靠近的家具，有變才更新 store。
- * 離開自己的島（這個元件卸下）時關上家具包
- */
-function DecorProbe() {
-  useFrame(() => {
-    updateDecorSpot(frontCell(player.pos, player.heading), player.pos);
-  });
-  useEffect(() => () => resetDecor(), []);
-  return null;
-}
-
 /** 擋住角色時要隱形的建築群組（id → three 的 group）；建築在 ZONES，自己的島多一棟小屋（house） */
 const occluderGroups = new Map<string, THREE.Group>();
 function setOccluderGroup(id: string, g: THREE.Group | null): void {
@@ -206,9 +188,6 @@ export function IslandScene({
   const yard = hasHome && mode !== 'attract' ? shownYard({ ownIsland: true, visiting, local: localYard, host: hostYard }) : null;
   /** 可以佈置：自己的島、不是拜訪別人、不是熊熊老師、在島上玩（動森做法：角色面前出現預覽） */
   const canDeco = hasHome && !visiting && !gm && mode === 'play';
-  const picking = useDecor((s) => s.picking);
-  const ghostRot = useDecor((s) => s.ghostRot);
-  const front = useDecor((s) => s.front);
   /** 小屋擋住角色而隱形（「○○的家」牌子是 DOM，不會跟著 3D 的 visible，要另外藏） */
   const [houseHidden, setHouseHidden] = useState(false);
   /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
@@ -295,8 +274,7 @@ export function IslandScene({
       {look.home && mode !== 'attract' && <HouseDoorProbe active={interactive} />}
       {look.home && <IslandPlate name={look.home.name} />}
       {yard && <YardDecor items={yard} />}
-      {canDeco && picking && front && <DecorGhost id={picking} gx={front.gx} gz={front.gz} rot={ghostRot} ok={canPlaceHere(picking, front)} />}
-      {canDeco && <DecorProbe />}
+      {canDeco && <DecorLayer space={YARD_SPACE} />}
       {mode !== 'attract' && <OcclusionHider hasHome={hasHome} onChange={(h) => setHouseHidden(h.includes('house'))} />}
       {ZONES.map((z) => {
         const B = BUILDINGS[z.id];

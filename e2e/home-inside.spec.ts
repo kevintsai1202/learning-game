@@ -98,3 +98,94 @@ test('走到小屋門口進屋、房間畫出來；腳踏墊回到島上；點�
   await page.keyboard.up('ArrowDown');
   expect(errors).toEqual([]);
 });
+
+/** 佈置的狀態（家具包、選著的家具、面前的格子、旁邊的家具） */
+const decorOf = (page: Page) => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__game.yard.store.getState())));
+/** 目前角色的房間 */
+const roomOf = (page: Page) => page.evaluate(() => (window as any).__game.game.getState().profile().home ?? null);
+
+/** 屋裡：讓角色站在房間某一格南邊 1.2 公尺、面向北方（那一格就在面前），等面前的格子更新 */
+async function faceRoomCell(page: Page, cell: { gx: number; gz: number }): Promise<void> {
+  await page.evaluate(({ gx, gz }) => {
+    const g = (window as any).__game;
+    const w = g.home.world(gx, gz);
+    g.teleport({ x: w.x, z: w.z + 1.2 });
+    g.player.heading = Math.PI;
+  }, cell);
+  await expect.poll(async () => (await decorOf(page)).front).toEqual(cell);
+}
+
+test('屋裡佈置：家具包和島上共用數量、放下床、旁邊轉方向與收起來、換壁紙地板；重新整理後還在', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await freshStart(page);
+  await createKid(page);
+  // 收藏 2 張長椅（島上擺 1 張）、1 張床、天空藍壁紙
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    const ids = ['decor.bench', 'decor.bench', 'decor.bed', 'wall.sky'];
+    g.game.setState((st: any) => ({
+      save: { ...st.save, profiles: st.save.profiles.map((p: any) => (p.id === st.save.activeProfileId ? { ...p, inventory: [...p.inventory, ...ids] } : p)) },
+    }));
+    const [c] = g.yard.cells();
+    g.game.getState().saveYard([{ id: 'decor.bench', gx: c.gx, gz: c.gz, rot: 0 }]);
+    g.teleport(g.home.door());
+  });
+  await page.getByTestId('enter-home').click();
+  await expect.poll(async () => (await page.evaluate(() => (window as any).__game.home.store.getState().inside))).toBe('mine');
+
+  // 家具包：長椅剩 1 張（島上擺了 1 張），床 1 張
+  await page.getByTestId('hud-decor').click();
+  await expect(page.getByTestId('decor-pick-decor.bench')).toContainText('× 1');
+  await expect(page.getByTestId('decor-pick-decor.bed')).toContainText('× 1');
+  await page.getByTestId('decor-pick-decor.bed').click();
+  await faceRoomCell(page, { gx: 2, gz: 3 });
+  await expect(page.getByTestId('decor-hint')).toContainText('放下');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/03-room-ghost.png` });
+  await page.getByTestId('decor-place').click();
+  await expect.poll(async () => (await roomOf(page))?.items).toEqual([{ id: 'decor.bed', gx: 2, gz: 3, rot: 0 }]);
+
+  // 門口前面不能擺
+  await page.getByTestId('decor-pick-decor.bench').click();
+  await page.evaluate(() => {
+    const g = (window as any).__game;
+    g.teleport({ x: g.home.spawn.x, z: g.home.mat.z });
+    g.player.heading = Math.PI;
+  });
+  await expect(page.getByTestId('decor-hint')).toContainText('這裡不能擺');
+  // 最後一張長椅擺進屋：島上加屋裡都擺完，家具包裡是 × 0
+  await faceRoomCell(page, { gx: 7, gz: 3 });
+  await page.getByTestId('decor-place').click();
+  await expect(page.getByTestId('decor-pick-decor.bench')).toContainText('× 0');
+  await expect(page.getByTestId('decor-pick-decor.bench')).toBeDisabled();
+
+  // 走到床旁邊：轉方向、收起來
+  await faceRoomCell(page, { gx: 2, gz: 3 });
+  await expect(page.getByTestId('decor-near')).toContainText('床');
+  await page.getByTestId('decor-near-rotate').click();
+  await expect.poll(async () => (await roomOf(page))?.items.find((it: any) => it.id === 'decor.bed')?.rot).toBe(1);
+  await page.getByTestId('decor-near-pickup').click();
+  await expect.poll(async () => (await roomOf(page))?.items.map((it: any) => it.id)).toEqual(['decor.bench']);
+
+  // 壁紙地板：打開面板時家具包關上；換天空藍
+  await page.getByTestId('hud-surface').click();
+  await expect(page.getByTestId('surface-panel')).toBeVisible();
+  await expect(page.getByTestId('decor-bag')).toHaveCount(0);
+  await expect(page.getByTestId('surface-wall-wall.cream')).toHaveClass(/on/);
+  await page.getByTestId('surface-wall-wall.sky').click();
+  await expect.poll(async () => (await roomOf(page))?.wall).toBe('wall.sky');
+  await expect(page.getByTestId('surface-wall-wall.sky')).toHaveClass(/on/);
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/04-room-wall.png` });
+  await page.getByTestId('surface-close').click();
+
+  // 出屋：島上看不到「🎨 壁紙地板」
+  await page.evaluate(() => (window as any).__game.home.leave());
+  await expect(page.getByTestId('hud-surface')).toHaveCount(0);
+
+  // 重新整理後還在（存在裝置上）
+  await page.reload();
+  expect(await roomOf(page)).toEqual({ items: [{ id: 'decor.bench', gx: 7, gz: 3, rot: 0 }], wall: 'wall.sky', floor: 'floor.wood' });
+  expect(errors).toEqual([]);
+});

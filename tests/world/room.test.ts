@@ -5,7 +5,8 @@ import { describe, expect, it } from 'vitest';
 import { HOME_SPAWN, HOUSE_DOOR_RANGE, ROOM_RECT, atRoomExit, houseDoor, onDoorMat, roomCamera } from '../../src/world/room';
 import { HOUSE } from '../../src/world/layout';
 import { resolveCollisions } from '../../src/world/movement';
-import { HOME_DOOR_CELLS, homeCellToWorld } from '../../src/store/home';
+import { HOME_CLEAR_CELLS, HOME_DOOR_CELLS, homeCellToWorld, isHomeCell } from '../../src/store/home';
+import { HOME_SPACE } from '../../src/store/home';
 
 describe('房間的幾何', () => {
   it('房間 10×10 公尺，中心在原點', () => {
@@ -18,6 +19,10 @@ describe('房間的幾何', () => {
     expect(onDoorMat({ x: 3, z: 4.5 })).toBe(false);
     expect(onDoorMat(HOME_SPAWN)).toBe(false);
     expect(HOME_SPAWN.heading).toBeCloseTo(Math.PI);
+    // 進屋站的那一格不能擺家具（不會一進來就被家具推開）
+    const at = HOME_SPACE.toCell(HOME_SPAWN.x + 0.3, HOME_SPAWN.z);
+    expect(isHomeCell(at.gx, at.gz)).toBe(false);
+    expect(HOME_CLEAR_CELLS.some((c) => c.gx === at.gx && c.gz === at.gz)).toBe(true);
   });
 
   it('走出去：站在前緣的門口、往前（+z）推才算；出生點不算；門口以外的前緣不算', () => {

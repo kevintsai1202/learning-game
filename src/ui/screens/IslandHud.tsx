@@ -18,8 +18,8 @@ import { DuelInviteCard } from '../DuelInviteCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 import { canDecorate, classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
-import { toggleBag, useDecor } from '../../store/useDecor';
-import { DecorBag, DecorNear } from '../DecorBag';
+import { toggleBag, toggleSurface, useDecor } from '../../store/useDecor';
+import { DecorBag, DecorNear, SurfacePanel } from '../DecorBag';
 import { goHome, kickVisitor, setIslandOpen, useRealtime } from '../../online/realtimeClient';
 import { usePresence } from '../../online/usePresence';
 import { useShallow } from 'zustand/react/shallow';
@@ -159,6 +159,25 @@ function DecorButton() {
       data-testid="hud-decor"
     >
       🎒 家具
+    </button>
+  );
+}
+
+/** 壁紙地板（自己的家第二期）：只在自己的屋裡 */
+function SurfaceButton() {
+  const ownHome = useHome((s) => s.inside !== null && s.inside === s.houseKey && s.houseKey === 'mine');
+  if (!ownHome) return null;
+  return (
+    <button
+      className="hud-chip"
+      style={{ paddingLeft: 14 }}
+      onClick={() => {
+        sfx.tap();
+        toggleSurface();
+      }}
+      data-testid="hud-surface"
+    >
+      🎨 壁紙地板
     </button>
   );
 }
@@ -398,6 +417,7 @@ export function IslandHud() {
           <IslandSwitch />
           <VisitHome />
           <DecorButton />
+          <SurfaceButton />
           <OpenToggle />
           <Visitors />
           <FriendsButton />
@@ -445,6 +465,7 @@ export function IslandHud() {
       {touch && <Joystick />}
       {/* 在島上直接佈置（自己的家）：家具包、旁邊家具的按鈕 */}
       <DecorBag />
+      <SurfacePanel />
       <DecorNear />
       <ChatPanel />
       {/* 禮物卡片與送禮視窗：只在島上（不打斷答題） */}

@@ -12,13 +12,15 @@ import { budgetAfter, cleanItems, ownedDecor, yardItemSchema, type DecorSpace, t
 
 /** 房間的邊長（格） */
 export const HOME_SIZE = 10;
-/** 屋裡最多擺幾個家具（房間只有 98 格，這是存檔格式的上限） */
+/** 屋裡最多擺幾個家具（房間只有 96 格，這是存檔格式的上限） */
 export const HOME_MAX_ITEMS = 100;
-/** 門口的腳踏墊（前緣中間兩格，不能擺；房間邊長是偶數，兩格才會在正中間） */
+/** 門口的腳踏墊（前緣中間兩格；房間邊長是偶數，兩格才會在正中間） */
 export const HOME_DOOR_CELLS: readonly YardCell[] = [
   { gx: HOME_SIZE / 2 - 1, gz: HOME_SIZE - 1 },
   { gx: HOME_SIZE / 2, gz: HOME_SIZE - 1 },
 ];
+/** 不能擺家具的格子：腳踏墊兩格，加上腳踏墊前面兩格（進屋站的地方，擺了家具會一進來就被推到腳踏墊上） */
+export const HOME_CLEAR_CELLS: readonly YardCell[] = [...HOME_DOOR_CELLS, ...HOME_DOOR_CELLS.map((c) => ({ gx: c.gx, gz: c.gz - 1 }))];
 /** 預設的壁紙與地板（不用買就擁有） */
 export const DEFAULT_WALL = 'wall.cream';
 export const DEFAULT_FLOOR = 'floor.wood';
@@ -47,12 +49,12 @@ function homeWorldToCell(x: number, z: number): YardCell {
   return { gx: Math.round(x + (HOME_SIZE - 1) / 2) + 0, gz: Math.round(z + (HOME_SIZE - 1) / 2) + 0 };
 }
 
-/** 是不是門口的格子 */
+/** 是不是門口與門口前面（不能擺）的格子 */
 function isDoorCell(gx: number, gz: number): boolean {
-  return HOME_DOOR_CELLS.some((d) => d.gx === gx && d.gz === gz);
+  return HOME_CLEAR_CELLS.some((d) => d.gx === gx && d.gz === gz);
 }
 
-/** 這一格能不能擺家具：房間裡、不是門口 */
+/** 這一格能不能擺家具：房間裡、不是門口與門口前面 */
 export function isHomeCell(gx: number, gz: number): boolean {
   return Number.isInteger(gx) && Number.isInteger(gz) && gx >= 0 && gx < HOME_SIZE && gz >= 0 && gz < HOME_SIZE && !isDoorCell(gx, gz);
 }

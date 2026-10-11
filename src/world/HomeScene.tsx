@@ -10,6 +10,7 @@ import { useThree, useFrame, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { Player, TargetMarker } from './Player';
 import { YardDecor } from './Furniture';
+import { DecorLayer } from './DecorLayer';
 import { inputDirection, player } from './input';
 import { DOOR_MAT, ROOM_RECT, atRoomExit, onDoorMat } from './room';
 import { sceneDebug } from './sceneDebug';
@@ -288,6 +289,9 @@ export function HomeScene({
   /** 熊熊老師進屋 */
   gm?: boolean;
 }) {
+  /** 自己的家（不是朋友的家、不是熊熊老師）可以佈置 */
+  const own = useHome((s) => s.houseKey === 'mine');
+  const canDeco = own && !gm && active;
   /** 擋路的家具（地毯可以走過去） */
   const obstacles = useMemo(() => decorObstacles(home.items, HOME_SPACE), [home.items]);
   /** 點地板：走過去（範圍外的會被夾回房間裡） */
@@ -316,6 +320,7 @@ export function HomeScene({
       <RoomProbe />
       <Room wall={home.wall} floor={home.floor} onFloorTap={onFloorTap} />
       <YardDecor items={home.items} space={HOME_SPACE} />
+      {canDeco && <DecorLayer space={HOME_SPACE} />}
       <Player avatar={avatar} obstacles={obstacles} active={active} teacher={gm} bounds={ROOM_RECT} doors={[]} roomView />
       <TargetMarker />
       <DoorProbe active={active} />

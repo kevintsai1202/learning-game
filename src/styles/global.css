@@ -3052,3 +3052,14 @@ button {
     bottom: 340px;
   }
 }
+
+/* 壁紙地板面板（自己的家第二期）：和家具包同一個位置，兩排選項 */
+.surface-row {
+  align-items: center;
+}
+.surface-row-label {
+  flex: none;
+  font-size: 15px;
+  font-weight: 700;
+  min-width: 2.5em;
+}

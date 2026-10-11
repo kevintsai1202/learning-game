@@ -10,7 +10,7 @@ import { create } from 'zustand';
 import { player, teleport } from '../world/input';
 import { HOUSE, SPAWN } from '../world/layout';
 import { DOOR_MAT, HOME_SPAWN, houseDoor } from '../world/room';
-import { resetDecor } from './useDecor';
+import { homeCellToWorld, homeCells } from './home';
 
 interface HomeStore {
   /** 島上的小屋是誰的；沒有小屋是 null */
@@ -32,7 +32,7 @@ export function houseKeyOf(hasHouse: boolean, host: { id: string } | null): stri
   return hasHouse ? (host?.id ?? 'mine') : null;
 }
 
-/** e2e 用（window.__game.home）：狀態、進屋、出屋、小屋門口、屋裡的腳踏墊與出生點 */
+/** e2e 用（window.__game.home）：狀態、進屋、出屋、小屋門口、屋裡的腳踏墊與出生點、房間的格子與座標 */
 export const homeDebug = {
   store: useHome,
   enter: enterHome,
@@ -40,6 +40,8 @@ export const homeDebug = {
   door: houseDoor,
   mat: DOOR_MAT,
   spawn: HOME_SPAWN,
+  cells: homeCells,
+  world: homeCellToWorld,
 };
 
 /** 現在在屋裡 */
@@ -48,13 +50,15 @@ export function isInsideHome(): boolean {
   return inside !== null && inside === houseKey;
 }
 
-/** 進屋：島上有小屋才進得去；站到房間門口裡面、面向房間；家具包關上（島上與屋裡的格子不一樣） */
+/**
+ * 進屋：島上有小屋才進得去；站到房間門口裡面、面向房間。
+ * 家具包由場景的 DecorProbe 卸下時關上（島上與屋裡的格子不一樣；useDecor 會讀這裡，不能反過來 import）
+ */
 export function enterHome(): boolean {
   const { houseKey } = useHome.getState();
   if (houseKey === null) return false;
   teleport(HOME_SPAWN);
   player.heading = HOME_SPAWN.heading;
-  resetDecor();
   useHome.setState({ inside: houseKey, nearDoor: false, onMat: false });
   return true;
 }
@@ -63,7 +67,6 @@ export function enterHome(): boolean {
 export function leaveHome(): void {
   teleport(houseDoor());
   player.heading = HOUSE.rotY;
-  resetDecor();
   useHome.setState({ inside: null, onMat: false });
 }
 
@@ -79,7 +82,6 @@ export function setHouseKey(key: string | null, opts: { teacher?: boolean } = {}
       teleport(SPAWN);
       player.heading = Math.PI;
     }
-    resetDecor();
     useHome.setState({ houseKey: key, inside: null, onMat: false, nearDoor: false });
     return;
   }
