@@ -1,9 +1,13 @@
 /**
- * 唯一的 3D 畫布：島上時畫島嶼，答題與結算時換成活動舞台。
+ * 唯一的 3D 畫布：島上時畫島嶼，進屋時畫屋子裡（自己的家第二期），答題與結算時換成活動舞台。
  * 全程只用一個 WebGL context，平板比較不會因為建立太多 context 而當掉。
  */
 import { Canvas } from '@react-three/fiber';
+import { useEffect } from 'react';
 import { IslandScene } from './IslandScene';
+import { HomeScene } from './HomeScene';
+import { houseKeyOf, setHouseKey, useHome } from '../store/useHome';
+import { shownHome, useHostYard } from '../online/useHostYard';
 import { StageScene } from './StageScene';
 import { useUi } from '../store/useUi';
 import { useGame } from '../store/useGame';
@@ -39,6 +43,9 @@ export function GameCanvas() {
   const visiting = useRealtime((s) => s.visiting);
   /** 熊熊老師在班上某個孩子的島上（島嶼互訪 I2） */
   const gmVisiting = useGm((s) => s.visiting);
+  /** 伺服器給的島主房間（別人的家） */
+  const hostHome = useHostYard((s) => s.home);
+  const inside = useHome((s) => s.inside);
   const low = quality === 'low' || (quality === 'auto' && isLowEnd());
   const onStage = screen === 'activity' || screen === 'result';
   const activity = run ? findActivity(run.activityId) : undefined;
@@ -50,6 +57,16 @@ export function GameCanvas() {
       ? sceneLookOf({ kind: 'friend', kidName: TEACHER_NAME, hostName: gmVisiting.name }, [gmRoom.code])
       : sceneLookOf({ kind: 'class', kidName: TEACHER_NAME, classCode: gmRoom.code, className: gmRoom.name }, [gmRoom.code])
     : sceneLookOf(mode === 'attract' || !profile ? null : lookWithVisit(islandLook(profile), visiting), classesOf(profile).map((r) => r.code));
+  /** 這座島的小屋是誰的（自己的家第二期）：換島、回到標題時在屋裡的人被迫出來 */
+  const host = gm ? gmVisiting : visiting;
+  const houseKey = mode === 'attract' ? null : houseKeyOf(look.home !== null, host);
+  const houseName = look.home?.name ?? null;
+  useEffect(() => {
+    setHouseKey(houseKey, { teacher: gm });
+    useHome.setState({ houseName });
+  }, [houseKey, houseName, gm]);
+  /** 在這座島的屋子裡（選單打開時照樣畫屋子，不互動） */
+  const inHome = inside !== null && inside === houseKey;
 
   return (
     <Canvas
@@ -66,6 +83,14 @@ export function GameCanvas() {
     >
       {onStage ? (
         <StageScene avatar={profile?.avatar ?? FALLBACK_AVATAR} subject={theme} />
+      ) : inHome ? (
+        <HomeScene
+          avatar={profile && !gm ? equippedOf(profile) : FALLBACK_AVATAR}
+          home={shownHome({ visiting: host !== null, local: profile?.home, host: hostHome })}
+          active={mode === 'play'}
+          shadows={!low}
+          gm={gm}
+        />
       ) : (
         <IslandScene mode={mode} avatar={profile && !gm ? equippedOf(profile) : null} shadows={!low} look={look} gm={gm} />
       )}

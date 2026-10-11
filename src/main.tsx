@@ -22,6 +22,7 @@ import { useGm } from './online/gmClient';
 import { sceneDebug } from './world/sceneDebug';
 import { useFriendDuel } from './online/useFriendDuel';
 import { yardDebug } from './store/useDecor';
+import { homeDebug } from './store/useHome';
 import './styles/global.css';
 
 declare global {
@@ -59,6 +60,8 @@ declare global {
       duel: typeof useFriendDuel;
       /** 自己的家：島上的格子、佈置的狀態與動作（動森做法）、別人的島的擺設 */
       yard: typeof yardDebug;
+      /** 自己的家第二期：進屋的狀態、進屋、出屋 */
+      home: typeof homeDebug;
     };
   }
 }
@@ -83,6 +86,7 @@ window.__game = {
   scene: sceneDebug,
   duel: useFriendDuel,
   yard: yardDebug,
+  home: homeDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

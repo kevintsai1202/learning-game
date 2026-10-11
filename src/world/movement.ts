@@ -32,8 +32,17 @@ export function moveByInput(pos: Vec2, dir: Vec2, speed: number, dt: number): Ve
   return { x: pos.x + dir.x * k, z: pos.z + dir.z * k };
 }
 
-/** 把位置推出所有障礙物，並限制在可行走半徑內（bodyR 為角色身體半徑） */
-export function resolveCollisions(pos: Vec2, obstacles: Obstacle[], walkRadius: number, bodyR: number): Vec2 {
+/** 長方形的範圍（中心在原點，寬 2 × halfX、深 2 × halfZ；自己的家第二期的房間） */
+export interface RoomRect {
+  halfX: number;
+  halfZ: number;
+}
+
+/**
+ * 把位置推出所有障礙物，並限制在可行走範圍內（bodyR 為角色身體半徑）：
+ * 島上是圓形（bounds 是半徑），屋裡是長方形（RoomRect）。夾限放在同一個迴圈裡，家具把人推到牆外時也會夾回來
+ */
+export function resolveCollisions(pos: Vec2, obstacles: Obstacle[], bounds: number | RoomRect, bodyR: number): Vec2 {
   let { x, z } = pos;
   for (let iter = 0; iter < 3; iter++) {
     for (const o of obstacles) {
@@ -49,11 +58,16 @@ export function resolveCollisions(pos: Vec2, obstacles: Obstacle[], walkRadius: 
         z = o.z + nz * min;
       }
     }
-    const r = Math.hypot(x, z);
-    const max = walkRadius - bodyR;
-    if (r > max) {
-      x = (x / r) * max;
-      z = (z / r) * max;
+    if (typeof bounds === 'number') {
+      const r = Math.hypot(x, z);
+      const max = bounds - bodyR;
+      if (r > max) {
+        x = (x / r) * max;
+        z = (z / r) * max;
+      }
+    } else {
+      x = Math.max(-bounds.halfX + bodyR, Math.min(bounds.halfX - bodyR, x));
+      z = Math.max(-bounds.halfZ + bodyR, Math.min(bounds.halfZ - bodyR, z));
     }
   }
   return { x, z };

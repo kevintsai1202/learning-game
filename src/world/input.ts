@@ -13,8 +13,8 @@ export const player = {
   heading: Math.PI,
   /** 點地面設定的目標點 */
   target: null as Vec2 | null,
-  /** 走到目標後要自動進入的建築（點建築時設定） */
-  autoEnter: null as ZoneId | null,
+  /** 走到目標後要自動進入的建築（點建築時設定）；home 是島主的小屋（自己的家第二期） */
+  autoEnter: null as ZoneId | 'home' | null,
 };
 
 /** 鍵盤與搖桿輸入 */

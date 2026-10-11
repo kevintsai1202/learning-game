@@ -2,7 +2,7 @@
  * 別人的島的院子（自己的家）：即時連線的訊息怎麼更新、島上要畫哪一份院子。
  */
 import { beforeEach, describe, expect, it } from 'vitest';
-import { applyHostYard, clearHostYard, shownYard, useHostYard } from '../../src/online/useHostYard';
+import { applyHostYard, clearHostYard, shownHome, shownYard, useHostYard } from '../../src/online/useHostYard';
 
 const BENCH = { id: 'decor.bench', gx: 0, gz: 4, rot: 1 as const };
 const FLAGS = { chatOpen: true, giftsOpen: true };
@@ -32,5 +32,28 @@ describe('shownYard', () => {
     expect(shownYard({ ownIsland: true, visiting: false, local: [BENCH], host: null })).toEqual([BENCH]);
     expect(shownYard({ ownIsland: true, visiting: false, local: undefined, host: null })).toEqual([]);
     expect(shownYard({ ownIsland: false, visiting: false, local: [BENCH], host: null })).toBeNull();
+  });
+});
+
+describe('別人的島的房間（自己的家第二期）', () => {
+  const HOME = { items: [{ id: 'decor.bed', gx: 1, gz: 1, rot: 0 as const }], wall: 'wall.sky', floor: 'floor.wood' };
+  const EMPTY = { items: [], wall: 'wall.cream', floor: 'floor.wood' };
+
+  it('welcome 換成島主的房間（舊版伺服器、班級島沒有，變成 null）；home 是島主改了房間', () => {
+    applyHostYard({ t: 'welcome', self: 'a', island: 'own', room: FLAGS, members: [], chat: [], yard: [], home: HOME });
+    expect(useHostYard.getState().home).toEqual(HOME);
+    applyHostYard({ t: 'welcome', self: 'a', island: 'class', room: FLAGS, members: [], chat: [] });
+    expect(useHostYard.getState().home).toBeNull();
+    applyHostYard({ t: 'home', home: HOME });
+    expect(useHostYard.getState().home).toEqual(HOME);
+    clearHostYard();
+    expect(useHostYard.getState().home).toBeNull();
+  });
+
+  it('shownHome：別人的島畫伺服器給的（舊版伺服器沒給是空房間）；自己的島畫本機存檔的', () => {
+    expect(shownHome({ visiting: true, local: undefined, host: HOME })).toEqual(HOME);
+    expect(shownHome({ visiting: true, local: HOME, host: null })).toEqual(EMPTY);
+    expect(shownHome({ visiting: false, local: HOME, host: null })).toEqual(HOME);
+    expect(shownHome({ visiting: false, local: undefined, host: HOME })).toEqual(EMPTY);
   });
 });

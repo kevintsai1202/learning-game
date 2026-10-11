@@ -10,6 +10,7 @@ import { ANNOUNCE_MAX } from '../../online/realtime';
 import { Joystick } from './IslandHud';
 import { sfx } from '../../audio/sfx';
 import { GmRoster } from './GmRoster';
+import { HomeDoorBubble } from '../HomeDoorBubble';
 
 /** 連線狀態的文字 */
 const STATUS_TEXT = { off: '', connecting: '連線中…', online: '🟢 在島上', error: '' } as const;
@@ -136,6 +137,8 @@ export function GmHud() {
           🔔 集合
         </button>
       </form>
+      {/* 孩子的島上：小屋門口與屋裡腳踏墊的泡泡（熊熊老師也能進孩子的家，自己的家第二期） */}
+      <HomeDoorBubble touch={touch} />
       {touch && <Joystick />}
     </>
   );

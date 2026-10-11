@@ -1,5 +1,6 @@
 /**
- * 院子的家具（自己的家第一期，docs/plans/home.md 第 3.2 節）：21 種低多邊形模型，全部用程式畫（原創）。
+ * 家具（自己的家，docs/plans/home.md）：島上的 21 種（第 3.2 節）與室內的 15 種（第二期，第 8 節）低多邊形模型，
+ * 全部用程式畫（原創）。島上或屋裡都能擺（YardDecor 與 DecorGhost 吃擺放的地方 space）。
  * 每樣家具佔一格（約 1 公尺見方），模型以格子中心為原點、正面朝 +z（轉方向由外層 group 處理）。
  * 整個院子包在 StaticMerge 裡合併網格（平板上少很多 draw call）；院子換了就用新的 key 重新合併。
  * 風車的扇葉會轉（標成 dynamic，不合併）。
@@ -8,7 +9,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type * as THREE from 'three';
 import { StaticMerge } from './StaticMerge';
-import { cellToWorld, visibleYard, type YardItem } from '../store/yard';
+import { YARD_SPACE, visibleYard, type DecorSpace, type YardItem } from '../store/yard';
 
 /** 常用的顏色 */
 const WOOD = '#b0773f';
@@ -74,6 +75,261 @@ function FlowerBed({ color }: { color: string }) {
       )}
     </>
   );
+}
+
+/** 室內家具的顏色 */
+const BLACK = '#2b2b33';
+const CLOTH_RED = '#e8455a';
+const CLOTH_BLUE = '#4a86e8';
+const GLASS = '#9fe3f5';
+
+/** 床：床頭板在後面（-z），白色床墊、藍色被子、白枕頭 */
+function Bed() {
+  return (
+    <>
+      <Box p={[0, 0.15, 0]} s={[0.9, 0.3, 0.95]} c={WOOD} />
+      <Box p={[0, 0.36, 0.02]} s={[0.84, 0.12, 0.88]} c={WHITE} />
+      <Box p={[0, 0.44, 0.15]} s={[0.86, 0.06, 0.62]} c={CLOTH_BLUE} />
+      <Box p={[0, 0.47, -0.3]} s={[0.5, 0.1, 0.22]} c={WHITE} />
+      <Box p={[0, 0.4, -0.46]} s={[0.92, 0.8, 0.07]} c={WOOD_DARK} />
+    </>
+  );
+}
+
+/** 書桌：桌面、四隻腳、抽屜、筆筒 */
+function Desk() {
+  return (
+    <>
+      <Box p={[0, 0.62, 0]} s={[0.9, 0.06, 0.55]} c={WOOD} />
+      {[-0.4, 0.4].map((x) => [-0.22, 0.22].map((z) => <Box key={`${x},${z}`} p={[x, 0.3, z]} s={[0.06, 0.6, 0.06]} c={WOOD_DARK} />))}
+      <Box p={[0.24, 0.5, 0]} s={[0.36, 0.18, 0.5]} c={WOOD_DARK} />
+      <Box p={[0.24, 0.5, 0.26]} s={[0.1, 0.04, 0.02]} c={WHITE} />
+      <Cyl p={[-0.3, 0.72, -0.1]} rt={0.06} rb={0.06} h={0.14} c={CLOTH_RED} n={8} />
+    </>
+  );
+}
+
+/** 椅子：椅面、四隻腳、椅背在後面 */
+function Chair() {
+  return (
+    <>
+      <Box p={[0, 0.42, 0]} s={[0.46, 0.06, 0.46]} c={WOOD} />
+      {[-0.19, 0.19].map((x) => [-0.19, 0.19].map((z) => <Box key={`${x},${z}`} p={[x, 0.2, z]} s={[0.05, 0.4, 0.05]} c={WOOD_DARK} />))}
+      <Box p={[0, 0.7, -0.2]} s={[0.46, 0.5, 0.05]} c={WOOD} />
+    </>
+  );
+}
+
+/** 沙發：坐墊、椅背、兩邊扶手 */
+function Sofa() {
+  return (
+    <>
+      <Box p={[0, 0.2, 0.05]} s={[0.96, 0.32, 0.6]} c={CLOTH_RED} />
+      <Box p={[0, 0.45, -0.22]} s={[0.96, 0.5, 0.18]} c={CLOTH_RED} />
+      {[-0.44, 0.44].map((x) => (
+        <Box key={x} p={[x, 0.36, 0.05]} s={[0.1, 0.3, 0.6]} c="#c93448" />
+      ))}
+      <Box p={[0, 0.38, 0.08]} s={[0.76, 0.06, 0.5]} c="#f28b9b" />
+    </>
+  );
+}
+
+/** 地毯：可以走過去的一片布，有一圈邊 */
+function Rug() {
+  return (
+    <>
+      <Box p={[0, 0.012, 0]} s={[0.96, 0.02, 0.96]} c="#f2b33d" />
+      <Box p={[0, 0.02, 0]} s={[0.72, 0.02, 0.72]} c={CLOTH_RED} />
+      <Box p={[0, 0.026, 0]} s={[0.34, 0.02, 0.34]} c={WHITE} />
+    </>
+  );
+}
+
+/** 立燈：底座、長桿、燈罩、燈泡 */
+function FloorLamp() {
+  return (
+    <>
+      <Cyl p={[0, 0.04, 0]} rt={0.2} rb={0.22} h={0.08} c={BLACK} n={10} />
+      <Cyl p={[0, 0.8, 0]} rt={0.03} rb={0.03} h={1.5} c={BLACK} n={6} />
+      <Cyl p={[0, 1.55, 0]} rt={0.16} rb={0.28} h={0.3} c="#fff1b8" n={10} />
+      <Ball p={[0, 1.45, 0]} r={0.08} c="#ffe066" />
+    </>
+  );
+}
+
+/** 書架：靠後的木框、三層隔板、彩色的書 */
+function Bookshelf() {
+  const books = ['#e8455a', '#4a86e8', '#4aa84d', '#f2b33d', '#9b59b6'];
+  return (
+    <>
+      <Box p={[0, 0.72, -0.28]} s={[0.92, 1.44, 0.06]} c={WOOD_DARK} />
+      {[-0.43, 0.43].map((x) => (
+        <Box key={x} p={[x, 0.72, -0.12]} s={[0.06, 1.44, 0.36]} c={WOOD} />
+      ))}
+      {[0.03, 0.5, 0.97, 1.41].map((y) => (
+        <Box key={y} p={[0, y, -0.12]} s={[0.86, 0.05, 0.36]} c={WOOD} />
+      ))}
+      {[0.24, 0.71, 1.18].map((y, row) =>
+        books.slice(row, row + 4).map((c, i) => <Box key={`${row},${i}`} p={[-0.27 + i * 0.18, y, -0.12]} s={[0.12, 0.36 - (i % 2) * 0.06, 0.28]} c={c} />),
+      )}
+    </>
+  );
+}
+
+/** 電視：矮櫃上一台電視（畫面藍色） */
+function Tv() {
+  return (
+    <>
+      <Box p={[0, 0.2, 0]} s={[0.9, 0.4, 0.42]} c={WOOD} />
+      <Box p={[0, 0.72, -0.05]} s={[0.84, 0.54, 0.07]} c={BLACK} />
+      <Box p={[0, 0.72, -0.01]} s={[0.74, 0.44, 0.01]} c="#5ec4e8" />
+      <Box p={[0, 0.43, -0.05]} s={[0.2, 0.06, 0.16]} c={BLACK} />
+    </>
+  );
+}
+
+/** 盆栽：陶盆裡的葉子 */
+function Plant() {
+  return (
+    <>
+      <Cyl p={[0, 0.2, 0]} rt={0.22} rb={0.16} h={0.4} c="#c96f3b" n={10} />
+      <Cyl p={[0, 0.41, 0]} rt={0.2} rb={0.2} h={0.02} c="#6b4a2f" n={10} />
+      <Ball p={[0, 0.65, 0]} r={0.24} c={LEAF} />
+      <Ball p={[0.16, 0.8, 0.05]} r={0.16} c={LEAF_DARK} />
+      <Ball p={[-0.14, 0.86, -0.04]} r={0.15} c={LEAF} />
+    </>
+  );
+}
+
+/** 鋼琴：黑色琴身、白鍵與黑鍵在前面、琴椅 */
+function Piano() {
+  return (
+    <>
+      <Box p={[0, 0.55, -0.15]} s={[0.92, 1.1, 0.42]} c={BLACK} />
+      <Box p={[0, 0.66, 0.1]} s={[0.86, 0.06, 0.2]} c={WHITE} />
+      {[-0.33, -0.2, 0, 0.13, 0.26].map((x) => (
+        <Box key={x} p={[x, 0.7, 0.06]} s={[0.05, 0.04, 0.12]} c={BLACK} />
+      ))}
+      {[-0.4, 0.4].map((x) => (
+        <Box key={x} p={[x, 0.3, 0.1]} s={[0.06, 0.6, 0.06]} c={BLACK} />
+      ))}
+      <Box p={[0, 0.3, 0.38]} s={[0.5, 0.08, 0.22]} c={BLACK} />
+    </>
+  );
+}
+
+/** 衣櫃：高高的木櫃、兩扇門、兩個把手 */
+function Wardrobe() {
+  return (
+    <>
+      <Box p={[0, 0.82, -0.18]} s={[0.92, 1.64, 0.56]} c={WOOD} />
+      <Box p={[0, 0.82, 0.11]} s={[0.02, 1.5, 0.02]} c={WOOD_DARK} />
+      {[-0.08, 0.08].map((x) => (
+        <Ball key={x} p={[x, 0.85, 0.12]} r={0.035} c="#f2b33d" />
+      ))}
+      <Box p={[0, 1.66, -0.18]} s={[0.96, 0.06, 0.6]} c={WOOD_DARK} />
+    </>
+  );
+}
+
+/** 熊熊玩偶：坐著的棕色小熊 */
+function Teddy() {
+  const fur = '#b5794a';
+  return (
+    <>
+      <Ball p={[0, 0.22, 0]} r={0.22} c={fur} />
+      <Ball p={[0, 0.55, 0.02]} r={0.17} c={fur} />
+      {[-0.12, 0.12].map((x) => (
+        <Ball key={x} p={[x, 0.7, 0]} r={0.06} c={fur} />
+      ))}
+      <Ball p={[0, 0.51, 0.16]} r={0.07} c="#e8c9a0" />
+      <Ball p={[0, 0.54, 0.22]} r={0.025} c={BLACK} />
+      {[-0.17, 0.17].map((x) => (
+        <Ball key={x} p={[x, 0.1, 0.15]} r={0.08} c={fur} />
+      ))}
+      <Box p={[0, 0.4, 0.14]} s={[0.16, 0.05, 0.03]} c={CLOTH_RED} />
+    </>
+  );
+}
+
+/** 玩具箱：彩色的箱子，上面有球和積木 */
+function ToyBox() {
+  return (
+    <>
+      <Box p={[0, 0.22, 0]} s={[0.76, 0.44, 0.54]} c={CLOTH_BLUE} />
+      <Box p={[0, 0.46, 0]} s={[0.8, 0.05, 0.58]} c="#f2b33d" />
+      <Box p={[0, 0.3, 0.28]} s={[0.4, 0.14, 0.01]} c={WHITE} />
+      <Ball p={[-0.18, 0.6, 0.05]} r={0.1} c={CLOTH_RED} />
+      <Box p={[0.15, 0.57, -0.05]} s={[0.16, 0.16, 0.16]} c={LEAF} />
+    </>
+  );
+}
+
+/** 餐桌：方桌、四隻腳、盤子與杯子 */
+function DiningTable() {
+  return (
+    <>
+      <Box p={[0, 0.7, 0]} s={[0.92, 0.06, 0.92]} c={WOOD} />
+      {[-0.38, 0.38].map((x) => [-0.38, 0.38].map((z) => <Box key={`${x},${z}`} p={[x, 0.34, z]} s={[0.07, 0.68, 0.07]} c={WOOD_DARK} />))}
+      <Cyl p={[-0.15, 0.74, 0.1]} rt={0.14} rb={0.12} h={0.02} c={WHITE} n={12} />
+      <Ball p={[-0.15, 0.78, 0.1]} r={0.05} c={CLOTH_RED} />
+      <Cyl p={[0.2, 0.79, -0.15]} rt={0.05} rb={0.04} h={0.12} c={GLASS} n={8} />
+    </>
+  );
+}
+
+/** 魚缸：木頭架子上的水族箱，裡面有水草和小魚 */
+function Aquarium() {
+  return (
+    <>
+      <Box p={[0, 0.25, 0]} s={[0.9, 0.5, 0.5]} c={WOOD_DARK} />
+      <Box p={[0, 0.78, 0]} s={[0.86, 0.56, 0.46]} c={GLASS} />
+      <Box p={[0, 0.53, 0]} s={[0.82, 0.04, 0.42]} c="#f2d9a0" />
+      <Cone p={[-0.25, 0.68, -0.08]} r={0.06} h={0.26} c={LEAF} n={5} />
+      <Cone p={[0.28, 0.66, 0.05]} r={0.05} h={0.22} c={LEAF_DARK} n={5} />
+      <Box p={[-0.05, 0.82, 0.16]} s={[0.14, 0.08, 0.04]} c="#ff8a3d" />
+      <Box p={[0.15, 0.92, 0.16]} s={[0.12, 0.07, 0.04]} c="#ffe066" />
+      <Box p={[0, 1.07, 0]} s={[0.9, 0.04, 0.5]} c={BLACK} />
+    </>
+  );
+}
+
+/** 室內家具（第二期進屋）的模型；不是室內家具回傳 null */
+function IndoorModel({ id }: { id: string }) {
+  switch (id) {
+    case 'decor.bed':
+      return <Bed />;
+    case 'decor.desk':
+      return <Desk />;
+    case 'decor.chair':
+      return <Chair />;
+    case 'decor.sofa':
+      return <Sofa />;
+    case 'decor.rug':
+      return <Rug />;
+    case 'decor.floorlamp':
+      return <FloorLamp />;
+    case 'decor.bookshelf':
+      return <Bookshelf />;
+    case 'decor.tv':
+      return <Tv />;
+    case 'decor.plant':
+      return <Plant />;
+    case 'decor.piano':
+      return <Piano />;
+    case 'decor.wardrobe':
+      return <Wardrobe />;
+    case 'decor.teddy':
+      return <Teddy />;
+    case 'decor.toybox':
+      return <ToyBox />;
+    case 'decor.table':
+      return <DiningTable />;
+    case 'decor.aquarium':
+      return <Aquarium />;
+    default:
+      return null;
+  }
 }
 
 /** 一樣家具的模型（不認得的 id 不畫） */
@@ -287,7 +543,8 @@ export function FurnitureModel({ id }: { id: string }) {
         </>
       );
     default:
-      return null;
+      // 室內家具（第二期進屋）
+      return <IndoorModel id={id} />;
   }
 }
 
@@ -313,15 +570,18 @@ function Windmill() {
   );
 }
 
-/** 院子：把家具放到格子上（轉方向），整個院子合併網格；不認得的家具跳過、最多 60 個 */
-export function YardDecor({ items }: { items: readonly YardItem[] }) {
-  const shown = useMemo(() => visibleYard(items), [items]);
+/**
+ * 擺好的家具：放到格子上（轉方向），全部合併網格；不認得的家具跳過、最多擺放地方的上限個。
+ * space 是島上（預設）或屋裡（HOME_SPACE，房間的座標）
+ */
+export function YardDecor({ items, space = YARD_SPACE }: { items: readonly YardItem[]; space?: DecorSpace }) {
+  const shown = useMemo(() => visibleYard(items, space.max), [items, space]);
   /** 院子的內容換了就重新合併 */
   const key = useMemo(() => shown.map((it) => `${it.id}@${it.gx},${it.gz},${it.rot}`).join('|'), [shown]);
   return (
     <StaticMerge key={key}>
       {shown.map((it) => {
-        const w = cellToWorld(it.gx, it.gz);
+        const w = space.toWorld(it.gx, it.gz);
         return (
           <group key={`${it.gx},${it.gz}`} position={[w.x, 0, w.z]} rotation={[0, (it.rot * Math.PI) / 2, 0]}>
             <FurnitureModel id={it.id} />
@@ -337,7 +597,7 @@ export function YardDecor({ items }: { items: readonly YardItem[] }) {
  * 能放是綠色、不能放是紅色；上方一個上下跳的箭頭（角色背對鏡頭時，預覽會被角色擋住，箭頭還看得到）。
  * 每一格畫面都可能動，不放進 StaticMerge
  */
-export function DecorGhost({ id, gx, gz, rot, ok }: { id: string; gx: number; gz: number; rot: number; ok: boolean }) {
+export function DecorGhost({ id, gx, gz, rot, ok, space = YARD_SPACE }: { id: string; gx: number; gz: number; rot: number; ok: boolean; space?: DecorSpace }) {
   const group = useRef<THREE.Group>(null);
   // 模型改成半透明（模型的材質是各自的，不會影響別的家具）
   useEffect(() => {
@@ -355,7 +615,7 @@ export function DecorGhost({ id, gx, gz, rot, ok }: { id: string; gx: number; gz
   useFrame((state) => {
     if (arrow.current) arrow.current.position.y = 2.3 + Math.sin(state.clock.elapsedTime * 4) * 0.15;
   });
-  const w = cellToWorld(gx, gz);
+  const w = space.toWorld(gx, gz);
   return (
     <group position={[w.x, 0, w.z]}>
       <mesh ref={arrow} position={[0, 2.3, 0]} rotation={[Math.PI, 0, 0]}>

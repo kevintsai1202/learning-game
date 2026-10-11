@@ -33,6 +33,19 @@ describe('resolveCollisions 碰撞', () => {
     const p = resolveCollisions({ x: 100, z: 0 }, [], WALK_RADIUS, 0.4);
     expect(Math.hypot(p.x, p.z)).toBeLessThanOrEqual(WALK_RADIUS - 0.4 + 1e-9);
   });
+
+  // 自己的家第二期：房間是長方形（中心在原點）
+  const ROOM = { halfX: 5, halfZ: 5 };
+  it('房間：不會走出長方形（四邊各留身體半徑）', () => {
+    expect(resolveCollisions({ x: 9, z: -9 }, [], ROOM, 0.45)).toEqual({ x: 4.55, z: -4.55 });
+    expect(resolveCollisions({ x: -1, z: 7 }, [], ROOM, 0.45)).toEqual({ x: -1, z: 4.55 });
+    expect(resolveCollisions({ x: 1, z: 2 }, [], ROOM, 0.45)).toEqual({ x: 1, z: 2 });
+  });
+  it('房間：牆角的家具把人往牆外推，會夾回房間裡', () => {
+    const p = resolveCollisions({ x: 4.5, z: 4.4 }, [{ x: 4.3, z: 4.3, r: 0.45 }], ROOM, 0.45);
+    expect(Math.abs(p.x)).toBeLessThanOrEqual(4.55 + 1e-9);
+    expect(Math.abs(p.z)).toBeLessThanOrEqual(4.55 + 1e-9);
+  });
 });
 
 describe('nearestDoor 靠近門口', () => {

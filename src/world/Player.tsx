@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { WALK_RADIUS, ZONES, doorOf } from './layout';
-import { lerpAngle, moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle } from './movement';
+import { lerpAngle, moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle, type RoomRect } from './movement';
 import { inputDirection, player } from './input';
 import { useUi, type ZoneId } from '../store/useUi';
 import type { AvatarConfig } from '../store/save';
@@ -18,6 +18,8 @@ import { Html } from '@react-three/drei';
 import { usePresence } from '../online/usePresence';
 import { LABEL_DISTANCE_FACTOR } from './RemotePlayers';
 import { Teacher } from './Teacher';
+import { enterHome } from '../store/useHome';
+import { roomCamera } from './room';
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -33,9 +35,15 @@ interface PlayerProps {
   active: boolean;
   /** 老師以熊熊老師進島（老師 GM 的 G2）：畫熊熊老師、不偵測建築門口（老師不進建築） */
   teacher?: boolean;
+  /** 可以走的範圍：島上是半徑（預設），屋裡是長方形（自己的家第二期） */
+  bounds?: number | RoomRect;
+  /** 偵測哪些建築的門口（預設島上的建築；屋裡沒有） */
+  doors?: { id: ZoneId; x: number; z: number }[];
+  /** 屋裡：鏡頭固定在房間前上方看整間房，不跟著角色 */
+  roomView?: boolean;
 }
 
-export function Player({ avatar, obstacles, active, teacher = false }: PlayerProps) {
+export function Player({ avatar, obstacles, active, teacher = false, bounds = WALK_RADIUS, doors = DOORS, roomView = false }: PlayerProps) {
   const group = useRef<THREE.Group>(null);
   const motion = useRef<MotionState>({ speed: 0 });
   const lastNear = useRef<ZoneId | null>(null);
@@ -66,11 +74,13 @@ export function Player({ avatar, obstacles, active, teacher = false }: PlayerPro
             const zone = player.autoEnter;
             player.autoEnter = null;
             sfx.door();
-            useUi.getState().enterZone(zone);
+            // 小屋不是建築（不走建築的選單）
+            if (zone === 'home') enterHome();
+            else useUi.getState().enterZone(zone);
           }
         }
       }
-      next = resolveCollisions(next, obstacles, WALK_RADIUS, 0.45);
+      next = resolveCollisions(next, obstacles, bounds, 0.45);
       // 被障礙物擋住、幾乎走不動時放棄目標，避免原地踏步
       if (player.target && Math.hypot(next.x - player.pos.x, next.z - player.pos.z) < SPEED * dt * 0.05) {
         player.target = null;
@@ -89,12 +99,19 @@ export function Player({ avatar, obstacles, active, teacher = false }: PlayerPro
     }
 
     // 門口偵測：變更時才寫入 store
-    const near = active && !teacher ? nearestDoor(next, DOORS, DOOR_RANGE) : null;
+    const near = active && !teacher ? nearestDoor(next, doors, DOOR_RANGE) : null;
     if (near !== lastNear.current) {
       lastNear.current = near;
       useUi.getState().setNearZone(near);
     }
 
+    // 屋裡：鏡頭固定在前上方，整間房放得進畫面（每一格直接設，不慢慢移）
+    if (roomView) {
+      const c = roomCamera(size.width / Math.max(size.height, 1));
+      camera.position.set(c.position.x, c.position.y, c.position.z);
+      camera.lookAt(c.target.x, c.target.y, c.target.z);
+      return;
+    }
     // 鏡頭跟隨：直式螢幕拉遠一點，才看得到左右兩邊的建築
     const portrait = size.height > size.width * 1.1;
     const k = 1 - Math.exp(-dt * 3.5);

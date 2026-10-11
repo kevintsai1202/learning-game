@@ -26,6 +26,8 @@ import { useShallow } from 'zustand/react/shallow';
 import { VISIT_LINES } from '../lines';
 import { ISLAND_LINES } from '../lines';
 import { FriendsButton, FriendsPanel } from '../FriendsPanel';
+import { HomeDoorBubble } from '../HomeDoorBubble';
+import { useHome } from '../../store/useHome';
 
 /** 同步狀態的圖示與文字 */
 const CLOUD_LABEL: Record<CloudStatus, string> = {
@@ -342,6 +344,9 @@ export function IslandHud() {
   const totalStars = profile ? Object.values(profile.bestStars).reduce((s, v) => s + v, 0) : 0;
   /** 家具包打開時，底部的走路提示讓位 */
   const bagOpen = useDecor((s) => s.bagOpen);
+  /** 在屋裡（自己的家第二期）；小屋門口或腳踏墊的泡泡出現時，走路提示讓位 */
+  const inHome = useHome((s) => s.inside !== null && s.inside === s.houseKey);
+  const homeBubble = useHome((s) => (s.inside !== null && s.inside === s.houseKey ? s.onMat : s.nearDoor));
 
   // 走到門口時唸出建築介紹
   useEffect(() => {
@@ -428,8 +433,15 @@ export function IslandHud() {
           </button>
         </div>
       ) : (
-        !bagOpen && <div className="hud-hint">{touch ? '點地面走過去・點建築就會進去' : '點地面或用方向鍵走路・點建築就會進去'}</div>
+        !bagOpen &&
+        !homeBubble && (
+          <div className="hud-hint" data-testid="hud-hint">
+            {inHome ? '走到門口的腳踏墊，就能回到島上' : touch ? '點地面走過去・點建築就會進去' : '點地面或用方向鍵走路・點建築就會進去'}
+          </div>
+        )
       )}
+      {/* 小屋門口與屋裡腳踏墊的泡泡（自己的家第二期；進屋時唸歡迎，一直掛著） */}
+      {!near && <HomeDoorBubble touch={touch} />}
       {touch && <Joystick />}
       {/* 在島上直接佈置（自己的家）：家具包、旁邊家具的按鈕 */}
       <DecorBag />

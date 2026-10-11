@@ -34,6 +34,8 @@ import { useGame } from '../store/useGame';
 import { useRealtime } from '../online/realtimeClient';
 import { useGm } from '../online/gmClient';
 import { shownYard, useHostYard } from '../online/useHostYard';
+import { HOUSE_DOOR_RANGE, houseDoor } from './room';
+import { useHome } from '../store/useHome';
 
 /** 天空與燈光（L5）：白天是原本的樣子；黃昏是暖橘的地平線、偏紫的天頂、低而偏橘的太陽 */
 const SKY = {
@@ -124,6 +126,20 @@ function OcclusionHider({ hasHome, onChange }: { hasHome: boolean; /** 隱形的
   return null;
 }
 
+/**
+ * 小屋門口（自己的家第二期）：每一格畫面看角色是不是站在小屋門口（出現「進去嗎？」）。
+ * 熊熊老師也算（老師可以進孩子的家）；離開島嶼場景時清掉
+ */
+function HouseDoorProbe({ active }: { active: boolean }) {
+  useFrame(() => {
+    const d = houseDoor();
+    const near = active && Math.hypot(player.pos.x - d.x, player.pos.z - d.z) <= HOUSE_DOOR_RANGE;
+    if (near !== useHome.getState().nearDoor) useHome.setState({ nearDoor: near });
+  });
+  useEffect(() => () => useHome.setState({ nearDoor: false }), []);
+  return null;
+}
+
 /** e2e 用：把 3D 座標換成畫面座標（sceneDebug.project） */
 function SceneProbe() {
   const { camera, gl } = useThree();
@@ -166,8 +182,8 @@ export function IslandScene({
   /** 老師以熊熊老師進島 */
   gm?: boolean;
 }) {
-  /** 島上有別人是熊熊老師（老師進島了；在建築裡的不算） */
-  const teacherHere = usePresence((s) => Object.values(s.members).some((m) => m.role === 'teacher' && m.id !== s.selfId && m.zone === null));
+  /** 島上有別人是熊熊老師（老師進島了；在孩子的屋子裡也算，NPC 不會跑回廣場） */
+  const teacherHere = usePresence((s) => Object.values(s.members).some((m) => m.role === 'teacher' && m.id !== s.selfId));
   /** 廣場上的 NPC 熊熊老師要不要藏起來：真的熊熊老師在島上時（標題畫面不藏） */
   const hideNpc = mode !== 'attract' && (gm || teacherHere);
   useEffect(() => {
@@ -228,6 +244,15 @@ export function IslandScene({
     player.autoEnter = gm ? null : id;
   };
 
+  /** 點小屋：走到門口後自動進屋（熊熊老師也可以；擋住角色而隱形時不算） */
+  const onHouseTap = (e: ThreeEvent<PointerEvent>) => {
+    if (!interactive || sceneDebug.hiddenZones.includes('house')) return;
+    e.stopPropagation();
+    sfx.tap();
+    player.target = houseDoor();
+    player.autoEnter = 'home';
+  };
+
   return (
     <>
       <SkyDome sky={look.sky} />
@@ -258,10 +283,16 @@ export function IslandScene({
       <Dock />
       {look.flag && <ClassFlag name={look.flag.name} color={look.flag.color} />}
       {look.home && (
-        <group ref={(g) => setOccluderGroup('house', g)}>
+        <group
+          ref={(g) => setOccluderGroup('house', g)}
+          onPointerDown={onHouseTap}
+          onPointerOver={() => interactive && (document.body.style.cursor = 'pointer')}
+          onPointerOut={() => (document.body.style.cursor = '')}
+        >
           <KidHouse name={look.home.name} label={!houseHidden} />
         </group>
       )}
+      {look.home && mode !== 'attract' && <HouseDoorProbe active={interactive} />}
       {look.home && <IslandPlate name={look.home.name} />}
       {yard && <YardDecor items={yard} />}
       {canDeco && picking && front && <DecorGhost id={picking} gx={front.gx} gz={front.gz} rot={ghostRot} ok={canPlaceHere(picking, front)} />}
