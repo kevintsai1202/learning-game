@@ -13,7 +13,6 @@ import type { DuelEvent, DuelSide } from '../engine/puzzle/friend';
 import type { DuelDeclineReason, DuelMoveKind } from '../engine/puzzle/duelMoves';
 import { duelCheck } from '../puzzle/friendRound';
 import { usePuzzleNow } from '../puzzle/now';
-import { useYardEdit } from '../store/useYardEdit';
 import type { RemoteMember } from './presence';
 import { DUEL_LINES } from '../ui/lines';
 
@@ -217,8 +216,8 @@ export function clearDuelNote(): void {
 export function handleDuelMessage(msg: ServerMessage, selfId: string | null): void {
   if (msg.t === 'duelInvite') {
     const s = useFriendDuel.getState();
-    // 休息鎖定、佈置院子中（自己的家）也算忙
-    if (blocked || useYardEdit.getState().edit !== null || inviteBusy(useUi.getState().screen, usePuzzleNow.getState().title !== null, s)) {
+    // 休息鎖定中也算忙
+    if (blocked || inviteBusy(useUi.getState().screen, usePuzzleNow.getState().title !== null, s)) {
       sender?.({ t: 'duelReply', from: msg.from, accept: false, reason: 'busy' });
       return;
     }

@@ -6,4 +6,6 @@ export const sceneDebug = {
   npcTeacher: true,
   /** 3D 座標換成畫面座標（e2e 點 3D 物件用，例如佈置院子的格子；島嶼場景掛上） */
   project: null as null | ((x: number, y: number, z: number) => { x: number; y: number }),
+  /** 擋住角色而隱形的建築（ZoneId 或 house；自己的家改版） */
+  hiddenZones: [] as string[],
 };

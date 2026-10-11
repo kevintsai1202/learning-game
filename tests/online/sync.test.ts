@@ -104,3 +104,34 @@ describe('rebase：伺服器版本＋還沒送出的操作', () => {
     expect(rebase(server, emptyOutbox(), cloud, NOW).cloud).toEqual(cloud);
   });
 });
+
+describe('待送佇列：院子的擺設（自己的家）只留最新的一份', () => {
+  const AT = '2026-10-11T10:00:00+08:00';
+  const yard = (id: string, n: number): Op => ({ id, at: AT, kind: 'yard', items: Array.from({ length: n }, (_, i) => ({ id: 'decor.grass', gx: i, gz: 20, rot: 0 as const })) });
+  const buy = (id: string): Op => ({ id, at: AT, kind: 'buy', itemId: 'decor.grass' });
+
+  it('連記三筆 yard，待送段只剩最後一筆', () => {
+    let box = emptyOutbox();
+    box = enqueue(box, yard('y1', 1));
+    box = enqueue(box, yard('y2', 2));
+    box = enqueue(box, yard('y3', 3));
+    expect(box.pending.map((o) => o.id)).toEqual(['y3']);
+  });
+
+  it('中間夾著購買：購買留著、順序不變，舊的 yard 拿掉', () => {
+    let box = emptyOutbox();
+    box = enqueue(box, buy('b1'));
+    box = enqueue(box, yard('y1', 1));
+    box = enqueue(box, buy('b2'));
+    box = enqueue(box, yard('y2', 2));
+    expect(box.pending.map((o) => o.id)).toEqual(['b1', 'b2', 'y2']);
+  });
+
+  it('已經送出的（送出中段）不動', () => {
+    let box = enqueue(emptyOutbox(), yard('y1', 1));
+    box = takeBatch(box).box;
+    box = enqueue(box, yard('y2', 2));
+    expect(box.inflight.map((o) => o.id)).toEqual(['y1']);
+    expect(box.pending.map((o) => o.id)).toEqual(['y2']);
+  });
+});

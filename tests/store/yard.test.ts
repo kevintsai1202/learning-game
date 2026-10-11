@@ -1,23 +1,28 @@
 /**
- * 自己的家第一期：院子（docs/plans/home.md 第 3 節）。院子的格子、家具目錄、擺放檢查、重複購買、佈置模式的狀態。
- * 這些規則前端與伺服器共用。
+ * 自己的家：在島上直接佈置全島（docs/plans/home.md 第 7 節）。全島的格子、家具目錄、擺放檢查、重複購買、
+ * 放在角色面前、轉方向、收起來、最靠近的家具。這些規則前端與伺服器共用。
  */
 import { describe, expect, it } from 'vitest';
-import { HOUSE, WALK_RADIUS, ZONES } from '../../src/world/layout';
+import { HOUSE, PLATE, SPAWN, WALK_RADIUS, ZONES, doorOf } from '../../src/world/layout';
+import { PLAZA } from '../../src/world/scenery';
 import { FURNITURE, ITEMS, SLOTS, equippedOf, findItem } from '../../src/store/catalog';
 import { addProfile, buyItem, createEmptySave, parseProfile, setYard, type Profile, type SaveData } from '../../src/store/save';
 import {
   DECOR_MAX_OWNED,
   YARD_MAX_ITEMS,
-  YARD_RADIUS,
+  canPlace,
   cellToWorld,
   cleanYard,
-  editYard,
+  frontCell,
   isDecor,
   isYardCell,
+  islandTrees,
+  nearestItem,
   ownedDecor,
+  placeItem,
   remainingDecor,
-  startEdit,
+  removeItem,
+  rotateItem,
   visibleYard,
   yardCells,
   yardObstacles,
@@ -34,27 +39,39 @@ function kidSave(coins = 500): SaveData {
 const pid = (s: SaveData) => s.profiles[0].id;
 const prof = (s: SaveData): Profile => s.profiles[0];
 
-describe('院子的格子', () => {
+describe('全島的格子', () => {
   const cells = yardCells();
 
-  it('大約 50 格（45～60），格子不重複', () => {
-    expect(cells.length).toBeGreaterThanOrEqual(45);
-    expect(cells.length).toBeLessThanOrEqual(60);
+  it('幾百格（400～1200），格子不重複', () => {
+    expect(cells.length).toBeGreaterThanOrEqual(400);
+    expect(cells.length).toBeLessThanOrEqual(1200);
     expect(new Set(cells.map((c) => `${c.gx},${c.gz}`)).size).toBe(cells.length);
   });
 
-  it(`都在小屋 ${YARD_RADIUS} 公尺內、不碰到小屋、都在草地上、離建築至少 0.6 公尺`, () => {
+  it('都在草地上、不碰到建築與門口、步道外、廣場外、出生點與門牌外、小屋外、不在樹上', () => {
+    const trees = islandTrees();
     for (const c of cells) {
       const w = cellToWorld(c.gx, c.gz);
-      const d = Math.hypot(w.x - HOUSE.x, w.z - HOUSE.z);
-      expect(d).toBeLessThanOrEqual(YARD_RADIUS);
-      expect(d).toBeGreaterThan(HOUSE.radius + 0.5);
       expect(Math.hypot(w.x, w.z)).toBeLessThanOrEqual(WALK_RADIUS - 0.8);
-      for (const z of ZONES) expect(Math.hypot(w.x - z.x, w.z - z.z)).toBeGreaterThan(z.radius + 0.6);
+      for (const z of ZONES) {
+        expect(Math.hypot(w.x - z.x, w.z - z.z)).toBeGreaterThan(z.radius + 0.6);
+        const d = doorOf(z);
+        expect(Math.hypot(w.x - d.x, w.z - d.z)).toBeGreaterThanOrEqual(1.5);
+      }
+      expect(Math.hypot(w.x - PLAZA.x, w.z - PLAZA.z)).toBeGreaterThanOrEqual(PLAZA.radius);
+      expect(Math.hypot(w.x - SPAWN.x, w.z - SPAWN.z)).toBeGreaterThanOrEqual(3.5);
+      expect(Math.hypot(w.x - PLATE.x, w.z - PLATE.z)).toBeGreaterThanOrEqual(1.2);
+      expect(Math.hypot(w.x - HOUSE.x, w.z - HOUSE.z)).toBeGreaterThan(HOUSE.radius + 0.5);
+      for (const t of trees) expect(Math.hypot(w.x - t.x, w.z - t.z)).toBeGreaterThanOrEqual(1);
     }
   });
 
-  it('小屋門口往前的走道空著（門前 3 公尺內沒有格子）', () => {
+  it('原本小屋院子（6 公尺內）的格子大多還在：舊的擺設改版後大多留著', () => {
+    const near = cells.filter((c) => Math.hypot(c.gx, c.gz) <= 6);
+    expect(near.length).toBeGreaterThanOrEqual(45);
+  });
+
+  it('小屋門口往前的走道空著', () => {
     const dir = { x: Math.sin(HOUSE.rotY), z: Math.cos(HOUSE.rotY) };
     for (const d of [2.6, 3.2, 4]) {
       const x = HOUSE.x + dir.x * d;
@@ -66,7 +83,7 @@ describe('院子的格子', () => {
   it('isYardCell 和清單一致', () => {
     for (const c of cells) expect(isYardCell(c.gx, c.gz)).toBe(true);
     expect(isYardCell(0, 0)).toBe(false);
-    expect(isYardCell(50, 50)).toBe(false);
+    expect(isYardCell(99, 99)).toBe(false);
   });
 });
 
@@ -132,7 +149,7 @@ describe('擺放檢查（cleanYard、setYard）', () => {
     expect(cleanYard(items, { 'decor.bench': 1, 'decor.fence': 1 })).toEqual(items);
   });
 
-  it('拿掉：不是家具、不在院子裡、格子重複、超過擁有的數量', () => {
+  it('拿掉：不是家具、不在可以擺的格子、格子重複、超過擁有的數量', () => {
     const items = [
       item('decor.bench', c1),
       item('hat.crown', c2),
@@ -145,15 +162,12 @@ describe('擺放檢查（cleanYard、setYard）', () => {
   });
 
   it(`最多 ${YARD_MAX_ITEMS} 個`, () => {
-    const cells = yardCells();
-    const many = cells.map((c) => item('decor.grass', c));
-    expect(many.length).toBeLessThanOrEqual(YARD_MAX_ITEMS);
-    const owned = { 'decor.grass': 999 };
-    const extra = [...many, ...many.map((c) => ({ ...c, id: 'decor.stone' }))];
-    expect(cleanYard(extra, { ...owned, 'decor.stone': 999 }).length).toBeLessThanOrEqual(YARD_MAX_ITEMS);
+    const many = yardCells().map((c) => item('decor.grass', c));
+    expect(many.length).toBeGreaterThan(YARD_MAX_ITEMS);
+    expect(cleanYard(many, { 'decor.grass': 9999 })).toHaveLength(YARD_MAX_ITEMS);
   });
 
-  it('setYard 照擁有的家具清理後存進角色；舊存檔沒有院子', () => {
+  it('setYard 照擁有的家具清理後存進角色；舊存檔沒有擺設', () => {
     let s = kidSave(100);
     expect(prof(s).yard).toBeUndefined();
     s = buyItem(s, pid(s), 'decor.bench', 40);
@@ -162,88 +176,64 @@ describe('擺放檢查（cleanYard、setYard）', () => {
   });
 });
 
-describe('佈置模式（editYard）', () => {
-  const [c1, c2, c3] = yardCells();
-  const owned = { 'decor.bench': 2, 'decor.fence': 1 };
+describe('放在角色面前（動森做法）', () => {
+  /** 一格可以擺的格子中心，角色站在它南邊 1.2 公尺、面向北方（heading = π） */
+  const target = yardCells()[Math.floor(yardCells().length / 2)];
+  const w = cellToWorld(target.gx, target.gz);
+  const stand = { x: w.x, z: w.z + 1.2 };
 
-  it('選家具再點空格子放下，可以連續放；放完了就不再選著', () => {
-    let s = startEdit([]);
-    s = editYard(s, { t: 'pick', id: 'decor.bench' }, owned);
-    expect(s.picking).toBe('decor.bench');
-    s = editYard(s, { t: 'tap', ...c1 }, owned);
-    s = editYard(s, { t: 'tap', ...c2 }, owned);
-    expect(s.items).toEqual([
-      { id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 },
-      { id: 'decor.bench', gx: c2.gx, gz: c2.gz, rot: 0 },
-    ]);
-    expect(s.picking).toBeNull();
-    expect(remainingDecor(s, owned)).toEqual({ 'decor.bench': 0, 'decor.fence': 1 });
+  it('frontCell：角色面前約 1.2 公尺的那一格', () => {
+    expect(frontCell(stand, Math.PI)).toEqual({ gx: target.gx, gz: target.gz });
+    expect(frontCell({ x: w.x - 1.2, z: w.z }, Math.PI / 2)).toEqual({ gx: target.gx, gz: target.gz });
   });
 
-  it('沒有剩下的家具不能選；點不在院子裡或已經有東西的格子不放', () => {
-    let s = startEdit([{ id: 'decor.fence', gx: c1.gx, gz: c1.gz, rot: 0 }]);
-    expect(editYard(s, { t: 'pick', id: 'decor.fence' }, owned).picking).toBeNull();
-    s = editYard(s, { t: 'pick', id: 'decor.bench' }, owned);
-    expect(editYard(s, { t: 'tap', gx: 0, gz: 0 }, owned).items).toHaveLength(1);
-    const onTaken = editYard(s, { t: 'tap', ...c1 }, owned);
-    expect(onTaken.items).toHaveLength(1);
+  it('canPlace：可以擺的空格子、還有剩才行；不行時說原因', () => {
+    const owned = { 'decor.bench': 1 };
+    expect(canPlace([], target.gx, target.gz, 'decor.bench', owned)).toBe(null);
+    expect(canPlace([], 0, 0, 'decor.bench', owned)).toBe('這裡不能擺');
+    const taken = [{ id: 'decor.bench', gx: target.gx, gz: target.gz, rot: 0 as const }];
+    expect(canPlace(taken, target.gx, target.gz, 'decor.bench', { 'decor.bench': 2 })).toBe('這裡已經有東西了');
+    const [other] = yardCells().filter((c) => c.gx !== target.gx || c.gz !== target.gz);
+    expect(canPlace(taken, other.gx, other.gz, 'decor.bench', owned)).toBe('這個家具都擺出去了');
   });
 
-  it('沒有選家具時點擺好的家具：選起來；轉方向、收起來', () => {
-    let s = startEdit([{ id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 3 }]);
-    s = editYard(s, { t: 'tap', ...c1 }, owned);
-    expect(s.selected).toBe(0);
-    s = editYard(s, { t: 'rotate' }, owned);
-    expect(s.items[0].rot).toBe(0);
-    s = editYard(s, { t: 'putAway' }, owned);
-    expect(s.items).toEqual([]);
-    expect(s.selected).toBeNull();
+  it('placeItem：放下（方向照預覽）；不能擺時不變', () => {
+    const owned = { 'decor.bench': 1 };
+    const items = placeItem([], target.gx, target.gz, 'decor.bench', 2, owned);
+    expect(items).toEqual([{ id: 'decor.bench', gx: target.gx, gz: target.gz, rot: 2 }]);
+    expect(placeItem(items, target.gx, target.gz, 'decor.bench', 0, { 'decor.bench': 5 })).toBe(items);
+    expect(remainingDecor({ items }, owned)).toEqual({ 'decor.bench': 0 });
   });
 
-  it('移動：選起來、按移動、點空格子；點到有東西的格子不動', () => {
-    let s = startEdit([
-      { id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 },
-      { id: 'decor.fence', gx: c2.gx, gz: c2.gz, rot: 0 },
-    ]);
-    s = editYard(s, { t: 'tap', ...c1 }, owned);
-    s = editYard(s, { t: 'move' }, owned);
-    expect(s.moving).toBe(true);
-    expect(editYard(s, { t: 'tap', ...c2 }, owned).items[0]).toMatchObject({ gx: c1.gx, gz: c1.gz });
-    s = editYard(s, { t: 'tap', ...c3 }, owned);
-    expect(s.items[0]).toMatchObject({ gx: c3.gx, gz: c3.gz });
-    expect(s.moving).toBe(false);
+  it('rotateItem、removeItem：對某一格的家具轉方向、收起來', () => {
+    const items: YardItem[] = [{ id: 'decor.bench', gx: target.gx, gz: target.gz, rot: 3 }];
+    expect(rotateItem(items, target.gx, target.gz)).toEqual([{ id: 'decor.bench', gx: target.gx, gz: target.gz, rot: 0 }]);
+    expect(removeItem(items, target.gx, target.gz)).toEqual([]);
+    expect(removeItem(items, 0, 0)).toBe(items);
   });
 
-  it('點空地取消選取；選家具時取消選取擺好的家具', () => {
-    let s = startEdit([{ id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 }]);
-    s = editYard(s, { t: 'tap', ...c1 }, owned);
-    expect(editYard(s, { t: 'tap', ...c2 }, owned).selected).toBeNull();
-    const picked = editYard(s, { t: 'pick', id: 'decor.fence' }, owned);
-    expect(picked.selected).toBeNull();
-    expect(picked.picking).toBe('decor.fence');
+  it('nearestItem：1.5 公尺內最靠近的家具；太遠沒有', () => {
+    const [a, b] = yardCells();
+    const items: YardItem[] = [
+      { id: 'decor.bench', gx: a.gx, gz: a.gz, rot: 0 },
+      { id: 'decor.fence', gx: b.gx, gz: b.gz, rot: 0 },
+    ];
+    const wa = cellToWorld(a.gx, a.gz);
+    expect(nearestItem(items, { x: wa.x - 0.9, z: wa.z - 0.3 })).toEqual(items[0]);
+    expect(nearestItem(items, { x: wa.x + 30, z: wa.z })).toBeNull();
   });
 });
 
-describe('存檔格式', () => {
-  it(`整份存檔的院子最多 ${YARD_MAX_ITEMS} 個（上傳整份存檔的路徑不經過 yard 操作）`, () => {
-    const p = prof(kidSave());
-    const one = { id: 'decor.grass', gx: 0, gz: 4, rot: 0 };
-    expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS).fill(one) })).not.toBeNull();
-    expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS + 1).fill(one) })).toBeNull();
-    expect(parseProfile({ ...p, yard: [{ ...one, rot: 5 }] })).toBeNull();
-  });
-});
-
-describe('島上畫院子（別人的院子可能是比較新的版本）', () => {
+describe('島上畫擺設（別人的島可能是比較新的版本）', () => {
   const [c1, c2, c3] = yardCells();
-  it('visibleYard：不認得的家具跳過、最多畫 60 個，不丟例外', () => {
+  it('visibleYard：不認得的家具跳過、最多畫 300 個，不丟例外', () => {
     const items = [
       { id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 as const },
       { id: 'decor.rocket', gx: c2.gx, gz: c2.gz, rot: 0 as const },
       { id: 'hat.crown', gx: c3.gx, gz: c3.gz, rot: 0 as const },
     ];
     expect(visibleYard(items)).toEqual([items[0]]);
-    expect(visibleYard(Array(80).fill(items[0]))).toHaveLength(YARD_MAX_ITEMS);
+    expect(visibleYard(Array(400).fill(items[0]))).toHaveLength(YARD_MAX_ITEMS);
   });
 
   it('yardObstacles：擋路的家具在格子中心、半徑 0.45；花草、石板路、小池塘可以走過去', () => {
@@ -254,5 +244,16 @@ describe('島上畫院子（別人的院子可能是比較新的版本）', () =
     ];
     const w = cellToWorld(c1.gx, c1.gz);
     expect(yardObstacles(items)).toEqual([{ x: w.x, z: w.z, r: 0.45 }]);
+  });
+});
+
+describe('存檔格式', () => {
+  it(`整份存檔的擺設最多 ${YARD_MAX_ITEMS} 個、座標 ±40（整份上傳的路徑不經過 yard 操作）`, () => {
+    const p = prof(kidSave());
+    const one = { id: 'decor.grass', gx: 30, gz: -12, rot: 0 };
+    expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS).fill(one) })).not.toBeNull();
+    expect(parseProfile({ ...p, yard: Array(YARD_MAX_ITEMS + 1).fill(one) })).toBeNull();
+    expect(parseProfile({ ...p, yard: [{ ...one, rot: 5 }] })).toBeNull();
+    expect(parseProfile({ ...p, yard: [{ ...one, gx: 41 }] })).toBeNull();
   });
 });

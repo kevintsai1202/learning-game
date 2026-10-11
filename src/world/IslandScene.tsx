@@ -26,9 +26,10 @@ import { treesAway, type SceneLook } from './landmarks';
 import { FLAGPOLE, HOUSE, PLATE } from './layout';
 import { usePresence } from '../online/usePresence';
 import { sceneDebug } from './sceneDebug';
-import { YardDecor, YardGrid } from './Furniture';
-import { useYardEdit } from '../store/useYardEdit';
-import { YARD_RADIUS, yardObstacles } from '../store/yard';
+import { DecorGhost, YardDecor } from './Furniture';
+import { resetDecor, updateDecorSpot, useDecor } from '../store/useDecor';
+import { HOUSE_TREE_CLEAR, canPlace, frontCell, ownedDecor, yardObstacles, type YardCell } from '../store/yard';
+import { occluders, type Occluder } from './occlusion';
 import { useGame } from '../store/useGame';
 import { useRealtime } from '../online/realtimeClient';
 import { useGm } from '../online/gmClient';
@@ -64,6 +65,64 @@ function SkyDome({ sky }: { sky: SceneLook['sky'] }) {
 }
 
 /** 標題畫面的環繞鏡頭 */
+/** 預覽的那一格能不能放（給底下薄板的顏色） */
+function canPlaceHere(id: string, cell: YardCell): boolean {
+  const p = useGame.getState().profile();
+  return !!p && canPlace(p.yard ?? [], cell.gx, cell.gz, id, ownedDecor(p)) === null;
+}
+
+/**
+ * 在島上直接佈置（動森做法）：每一格畫面算角色面前的那一格與旁邊最靠近的家具，有變才更新 store。
+ * 離開自己的島（這個元件卸下）時關上家具包
+ */
+function DecorProbe() {
+  useFrame(() => {
+    updateDecorSpot(frontCell(player.pos, player.heading), player.pos);
+  });
+  useEffect(() => () => resetDecor(), []);
+  return null;
+}
+
+/** 擋住角色時要隱形的建築群組（id → three 的 group）；建築在 ZONES，自己的島多一棟小屋（house） */
+const occluderGroups = new Map<string, THREE.Group>();
+function setOccluderGroup(id: string, g: THREE.Group | null): void {
+  if (g) occluderGroups.set(id, g);
+  else occluderGroups.delete(id);
+}
+
+/** 建築的包圍球：球心在建築中間高度，半徑比碰撞半徑大一點（挑戰塔比較高，球大一點） */
+function occluderSpheres(hasHome: boolean): Occluder[] {
+  const out: Occluder[] = ZONES.map((z) => ({ id: z.id, x: z.x, y: z.id === 'tower' ? 4 : 2.5, z: z.z, r: z.radius + (z.id === 'tower' ? 2 : 1) }));
+  if (hasHome) out.push({ id: 'house', x: HOUSE.x, y: 2, z: HOUSE.z, r: HOUSE.radius + 1 });
+  return out;
+}
+
+/**
+ * 擋住角色的建築隱形（自己的家改版）：每一格畫面算鏡頭到角色頭頂的線段穿過哪些建築，那幾棟 visible = false，
+ * 走出來就恢復。建築的材質有共用快取，不能改不透明度。sceneDebug.hiddenZones 給 e2e 與點建築的判斷用
+ */
+function OcclusionHider({ hasHome }: { hasHome: boolean }) {
+  const { camera } = useThree();
+  const spheres = useMemo(() => occluderSpheres(hasHome), [hasHome]);
+  const last = useRef('');
+  useFrame(() => {
+    const hidden = occluders(camera.position, { x: player.pos.x, y: 1, z: player.pos.z }, spheres);
+    const key = hidden.join(',');
+    if (key === last.current) return;
+    last.current = key;
+    sceneDebug.hiddenZones = hidden;
+    for (const [id, g] of occluderGroups) g.visible = !hidden.includes(id);
+  });
+  useEffect(
+    () => () => {
+      sceneDebug.hiddenZones = [];
+      for (const g of occluderGroups.values()) g.visible = true;
+    },
+    [],
+  );
+  return null;
+}
+
 /** e2e 用：把 3D 座標換成畫面座標（sceneDebug.project） */
 function SceneProbe() {
   const { camera, gl } = useThree();
@@ -116,22 +175,23 @@ export function IslandScene({
   const allTrees = useMemo(() => placeTrees(), []);
   const hasHome = look.home !== null;
   const hasFlag = look.flag !== null;
-  /** 自己的島空出小屋與院子（自己的家，docs/plans/home.md；其他島的樹一棵不動） */
-  const yardClear = YARD_RADIUS + 0.6;
+  /** 自己的島空出小屋周圍（自己的家，docs/plans/home.md；其他島的樹一棵不動；擺家具的格子用同一個半徑） */
+  const yardClear = HOUSE_TREE_CLEAR;
   const trees = useMemo(() => (hasHome ? treesAway(allTrees, HOUSE, yardClear) : allTrees), [allTrees, hasHome, yardClear]);
   const allFlowers = useMemo(() => placeFlowers(), []);
   const flowers = useMemo(() => (hasHome ? allFlowers.filter((f) => Math.hypot(f.x - HOUSE.x, f.z - HOUSE.z) > yardClear) : allFlowers), [allFlowers, hasHome, yardClear]);
-  /** 院子：自己的島畫本機存檔的，別人的島（拜訪朋友、熊熊老師去孩子的島）畫伺服器給的；班級島沒有 */
+  /** 島上的擺設：自己的島畫本機存檔的，別人的島（拜訪朋友、熊熊老師去孩子的島）畫伺服器給的；班級島沒有 */
   const localYard = useGame((s) => s.profile()?.yard);
   const hostYard = useHostYard((s) => s.items);
   const kidVisiting = useRealtime((s) => s.visiting !== null);
   const gmVisiting = useGm((s) => s.visiting !== null);
-  const savedYard = hasHome && mode !== 'attract' ? shownYard({ ownIsland: true, visiting: gm ? gmVisiting : kidVisiting, local: localYard, host: hostYard }) : null;
-  /** 佈置模式（自己的家）：畫正在改的院子與格子；角色不走路、點地面與建築沒有作用 */
-  const editRaw = useYardEdit((s) => s.edit);
-  /** 只在自己的島上佈置（佈置中換島時，HUD 那邊會取消，這裡先不畫） */
-  const editing = editRaw && hasHome && !(gm ? gmVisiting : kidVisiting) ? editRaw : null;
-  const yard = editing ? editing.items : savedYard;
+  const visiting = gm ? gmVisiting : kidVisiting;
+  const yard = hasHome && mode !== 'attract' ? shownYard({ ownIsland: true, visiting, local: localYard, host: hostYard }) : null;
+  /** 可以佈置：自己的島、不是拜訪別人、不是熊熊老師、在島上玩（動森做法：角色面前出現預覽） */
+  const canDeco = hasHome && !visiting && !gm && mode === 'play';
+  const picking = useDecor((s) => s.picking);
+  const ghostRot = useDecor((s) => s.ghostRot);
+  const front = useDecor((s) => s.front);
   /** 碰撞：建築、噴水池、老師、樹，加上這座島的地標（小屋、門牌、旗桿） */
   const obstacles = useMemo(
     () => [
@@ -144,7 +204,7 @@ export function IslandScene({
     [trees, hasHome, hasFlag, yard],
   );
   const sky = SKY[look.sky];
-  const interactive = mode === 'play' && !editing;
+  const interactive = mode === 'play';
   const sun = useRef<THREE.DirectionalLight>(null);
 
   /** 點地面：走過去 */
@@ -154,9 +214,9 @@ export function IslandScene({
     player.autoEnter = null;
   };
 
-  /** 點建築：走到門口後自動進去 */
+  /** 點建築：走到門口後自動進去（擋住角色而隱形的建築不算） */
   const onBuildingTap = (id: ZoneId) => (e: ThreeEvent<PointerEvent>) => {
-    if (!interactive) return;
+    if (!interactive || sceneDebug.hiddenZones.includes(id)) return;
     e.stopPropagation();
     sfx.tap();
     const zone = ZONES.find((z) => z.id === id)!;
@@ -194,15 +254,22 @@ export function IslandScene({
       <Clouds />
       <Dock />
       {look.flag && <ClassFlag name={look.flag.name} color={look.flag.color} />}
-      {look.home && <KidHouse name={look.home.name} label={!editing} />}
+      {look.home && (
+        <group ref={(g) => setOccluderGroup('house', g)}>
+          <KidHouse name={look.home.name} />
+        </group>
+      )}
       {look.home && <IslandPlate name={look.home.name} />}
       {yard && <YardDecor items={yard} />}
-      {editing && <YardGrid edit={editing} />}
+      {canDeco && picking && front && <DecorGhost id={picking} gx={front.gx} gz={front.gz} rot={ghostRot} ok={canPlaceHere(picking, front)} />}
+      {canDeco && <DecorProbe />}
+      {mode !== 'attract' && <OcclusionHider hasHome={hasHome} />}
       {ZONES.map((z) => {
         const B = BUILDINGS[z.id];
         return (
           <group
             key={z.id}
+            ref={(g) => setOccluderGroup(z.id, g)}
             position={[z.x, 0, z.z]}
             rotation={[0, z.rotY, 0]}
             onPointerDown={onBuildingTap(z.id)}
@@ -232,7 +299,7 @@ export function IslandScene({
         <AttractCamera />
       ) : (
         <>
-          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} decorating={!!editing} />
+          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} />
           <TargetMarker />
           {/* 同房間的其他玩家（沒有人在線上時什麼都不畫） */}
           <RemotePlayers />

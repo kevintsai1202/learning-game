@@ -1,7 +1,8 @@
 /**
- * 自己的家第一期：院子（docs/plans/home.md 第 3 節）。
- * 百寶屋買家具、佈置模式（選家具、點格子放下、轉方向、移動、收起來、完成與取消）、重新整理後還在、
- * 兩台裝置：朋友來玩看得到院子。佈置模式的動作透過 window.__game.yard 操作（點 3D 格子只留一個真的點）。
+ * 自己的家：在島上直接佈置全島（docs/plans/home.md 第 7 節，動森做法）。
+ * 百寶屋買家具、家具包選一樣 → 角色面前出現預覽 → 放下（真的點「放下」按鈕）、走到旁邊轉方向與收起來、
+ * 重新整理後還在、擋住角色的建築隱形、兩台裝置：朋友來玩看得到擺設與更新。
+ * 角色的位置與方向直接設定（window.__game.player），面前的格子由規則決定，不必算螢幕座標。
  * 截圖在 e2e/screenshots/home/（不進版控）。
  */
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
@@ -43,8 +44,10 @@ const FURNITURE = [
   'decor.pond',
 ];
 
-/** 目前角色的院子 */
+/** 目前角色的擺設 */
 const yardOf = (page: Page) => page.evaluate(() => (window as any).__game.game.getState().profile().yard ?? []);
+/** 佈置的狀態（家具包、選著的家具、面前的格子、旁邊的家具） */
+const decorOf = (page: Page) => page.evaluate(() => JSON.parse(JSON.stringify((window as any).__game.yard.store.getState())));
 
 /** 直接給目前角色幾個家具（不經過百寶屋；測佈置與畫面用） */
 async function giveFurniture(page: Page, ids: string[]): Promise<void> {
@@ -56,112 +59,130 @@ async function giveFurniture(page: Page, ids: string[]): Promise<void> {
   }, ids);
 }
 
-test('院子畫出 21 種家具：擋路的家具走不過去，沒有頁面錯誤', async ({ page }) => {
+/** 讓角色站在某一格南邊 1.2 公尺、面向北方（那一格就在面前），等面前的格子更新 */
+async function faceCell(page: Page, cell: { gx: number; gz: number }): Promise<void> {
+  await page.evaluate(({ gx, gz }) => {
+    const g = (window as any).__game;
+    const w = g.yard.world(gx, gz);
+    g.teleport({ x: w.x, z: w.z + 1.2 });
+    g.player.heading = Math.PI;
+  }, cell);
+  await expect.poll(async () => (await decorOf(page)).front).toEqual(cell);
+}
+
+/** 可以擺的格子裡，離某個世界座標最近的幾格 */
+async function cellsNear(page: Page, x: number, z: number, n: number): Promise<{ gx: number; gz: number }[]> {
+  return page.evaluate(
+    ({ x, z, n }) => {
+      const g = (window as any).__game;
+      const cells: { gx: number; gz: number }[] = g.yard.cells();
+      return cells
+        .map((c) => ({ c, d: Math.hypot(g.yard.world(c.gx, c.gz).x - x, g.yard.world(c.gx, c.gz).z - z) }))
+        .sort((a, b) => a.d - b.d)
+        .slice(0, n)
+        .map((v) => v.c);
+    },
+    { x, z, n },
+  );
+}
+
+test('全島擺 21 種家具：平常的畫面就看得到，沒有頁面錯誤', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await freshStart(page);
   await createKid(page);
   await giveFurniture(page, FURNITURE);
-  // 院子前 21 格各擺一樣，方向輪流
-  await page.evaluate((ids) => {
-    const g = (window as any).__game;
-    const cells = g.yard.cells();
-    g.game.getState().saveYard(ids.map((id: string, i: number) => ({ id, gx: cells[i].gx, gz: cells[i].gz, rot: i % 4 })));
-  }, FURNITURE);
+  // 廣場東南邊的空地擺 21 樣，方向輪流
+  const cells = await cellsNear(page, 9, 5, FURNITURE.length);
+  await page.evaluate(
+    ({ ids, cells }) => {
+      const g = (window as any).__game;
+      g.game.getState().saveYard(ids.map((id: string, i: number) => ({ id, gx: cells[i].gx, gz: cells[i].gz, rot: i % 4 })));
+    },
+    { ids: FURNITURE, cells },
+  );
   expect(await yardOf(page)).toHaveLength(FURNITURE.length);
-  // 從院子東南邊看過去
-  await page.evaluate(() => (window as any).__game.teleport({ x: -11, z: 17 }));
-  await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${SHOTS}/01-yard-all.png` });
-  await page.evaluate(() => (window as any).__game.teleport({ x: -7.5, z: 6.5 }));
-  await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${SHOTS}/02-yard-north.png` });
-  // 佈置模式的鏡頭從上面看（看清楚每一樣家具），取消不改院子
-  await page.getByTestId('hud-decor').click();
-  await page.waitForTimeout(2500);
-  await page.screenshot({ path: `${SHOTS}/02b-yard-top.png` });
-  await page.getByTestId('decor-cancel').click();
-  expect(await yardOf(page)).toHaveLength(FURNITURE.length);
+  await page.evaluate(() => (window as any).__game.teleport({ x: 9, z: 10 }));
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: `${SHOTS}/01-island-all.png` });
   expect(errors).toEqual([]);
 });
 
-/** 佈置模式的狀態 */
-const editOf = (page: Page) => page.evaluate(() => (window as any).__game.yard.store.getState().edit);
-/** 佈置模式的一個動作 */
-const act = (page: Page, a: object) => page.evaluate((a) => (window as any).__game.yard.act(a), a);
-
-test('佈置模式：選家具點格子放下、轉方向、移動、收起來；完成存起來，重新整理後還在；取消不存', async ({ page }) => {
+test('動森做法：家具包選一樣、面前出現預覽、轉方向、放下；走到旁邊轉方向與收起來；不能擺的地方說原因；重新整理後還在', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await freshStart(page);
   await createKid(page);
   await giveFurniture(page, ['decor.bench', 'decor.bench', 'decor.fence']);
+  // 兩格離遠一點（站在第二格前面時，不會撞到第一張長椅而被推開）
+  const near = await cellsNear(page, 8, 5, 30);
+  const c1 = near[0];
+  const c2 = near.find((c) => Math.abs(c.gx - c1.gx) + Math.abs(c.gz - c1.gz) >= 4)!;
+
   await page.getByTestId('hud-decor').click();
-  await expect(page.getByTestId('decor-panel')).toBeVisible();
+  await expect(page.getByTestId('decor-bag')).toBeVisible();
   await expect(page.getByTestId('decor-pick-decor.bench')).toContainText('× 2');
   await page.getByTestId('decor-pick-decor.bench').click();
-  await expect(page.getByTestId('decor-hint')).toContainText('長椅');
-  // 鏡頭轉到院子上方之後，真的點一格（3D 格子）：選院子南邊的一格
-  await page.waitForTimeout(2000);
-  // 真的點的那一格：畫面上最靠近正中間的格子（上下有面板，邊緣的格子可能被擋住）
-  const { cells, c1, at } = await page.evaluate(() => {
+  await faceCell(page, c1);
+  await expect(page.getByTestId('decor-hint')).toContainText('放下');
+  await page.getByTestId('decor-ghost-rotate').click();
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/02-ghost.png` });
+  await page.getByTestId('decor-place').click();
+  await expect.poll(() => yardOf(page)).toEqual([{ id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 1 }]);
+  await expect(page.getByTestId('decor-pick-decor.bench')).toContainText('× 1');
+
+  // 同一格不能再放：說原因、放下按鈕停用
+  await expect(page.getByTestId('decor-hint')).toContainText('這裡已經有東西了');
+  await expect(page.getByTestId('decor-place')).toBeDisabled();
+  // 面向建築（百寶屋）：這裡不能擺
+  await page.evaluate(() => {
     const g = (window as any).__game;
-    const cells: { gx: number; gz: number }[] = g.yard.cells();
-    const cx = window.innerWidth / 2;
-    const cy = window.innerHeight / 2;
-    const withPos = cells.map((c) => {
-      const w = g.yard.world(c.gx, c.gz);
-      return { c, p: g.scene.project(w.x, 0.04, w.z) as { x: number; y: number } };
-    });
-    withPos.sort((a, b) => Math.hypot(a.p.x - cx, a.p.y - cy) - Math.hypot(b.p.x - cx, b.p.y - cy));
-    return { cells, c1: withPos[0].c, at: withPos[0].p };
+    g.teleport({ x: -7.5, z: 15 });
+    g.player.heading = Math.PI;
   });
-  const [c2, c3] = cells.filter((c) => c.gx !== c1.gx || c.gz !== c1.gz);
-  await page.mouse.click(at.x, at.y);
-  await page.waitForTimeout(500);
-  await expect.poll(async () => (await editOf(page)).items).toEqual([{ id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 }]);
-  await page.screenshot({ path: `${SHOTS}/03-decor-mode.png` });
-  // 第二張長椅放在另一格；放完了就不再選著
-  await act(page, { t: 'tap', ...c2 });
-  expect((await editOf(page)).picking).toBeNull();
-  await expect(page.getByTestId('decor-pick-decor.bench')).toContainText('× 0');
-  // 點第一張長椅：轉方向、移動到第三格
-  await act(page, { t: 'tap', ...c1 });
-  await expect(page.getByTestId('decor-rotate')).toBeVisible();
-  await page.getByTestId('decor-rotate').click();
-  await page.getByTestId('decor-move').click();
-  await expect(page.getByTestId('decor-hint')).toContainText('搬過去');
-  await act(page, { t: 'tap', ...c3 });
-  // 第二張長椅收起來
-  await act(page, { t: 'tap', ...c2 });
-  await page.getByTestId('decor-putaway').click();
-  await page.waitForTimeout(600);
-  await page.screenshot({ path: `${SHOTS}/04-decor-edited.png` });
-  await page.getByTestId('decor-done').click();
-  await expect(page.getByTestId('decor-panel')).toHaveCount(0);
-  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c3.gx, gz: c3.gz, rot: 1 }]);
+  await expect(page.getByTestId('decor-hint')).toContainText('這裡不能擺');
 
-  // 取消：放了柵欄再取消，院子不變
-  await page.getByTestId('hud-decor').click();
-  await page.getByTestId('decor-pick-decor.fence').click();
-  await act(page, { t: 'tap', ...c2 });
-  expect((await editOf(page)).items).toHaveLength(2);
-  await page.getByTestId('decor-cancel').click();
-  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c3.gx, gz: c3.gz, rot: 1 }]);
+  // 第二張長椅放在另一格，放完了就不再選著
+  await faceCell(page, c2);
+  await page.getByTestId('decor-place').click();
+  await expect.poll(async () => (await decorOf(page)).picking).toBeNull();
+  expect(await yardOf(page)).toHaveLength(2);
 
-  // 佈置到一半離開島上（進建築）：這次的佈置取消
-  await page.getByTestId('hud-decor').click();
-  await page.getByTestId('decor-pick-decor.fence').click();
-  await act(page, { t: 'tap', ...c2 });
-  await page.evaluate(() => (window as any).__game.ui.getState().enterZone('shop'));
-  await expect.poll(() => editOf(page)).toBeNull();
-  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c3.gx, gz: c3.gz, rot: 1 }]);
-  await page.getByTestId('leave-shop').click();
+  // 走到第一張長椅旁邊：轉方向、收起來
+  await faceCell(page, c1);
+  await expect(page.getByTestId('decor-near')).toContainText('長椅');
+  await page.getByTestId('decor-near-rotate').click();
+  await expect.poll(async () => (await yardOf(page)).find((it: any) => it.gx === c1.gx && it.gz === c1.gz)?.rot).toBe(2);
+  await page.screenshot({ path: `${SHOTS}/03-near.png` });
+  await page.getByTestId('decor-near-pickup').click();
+  // 連續放的時候預覽的方向照舊（第二張長椅也是轉過一次的方向，排柵欄比較方便）
+  await expect.poll(() => yardOf(page)).toEqual([{ id: 'decor.bench', gx: c2.gx, gz: c2.gz, rot: 1 }]);
 
-  // 重新整理後還在（存在裝置上）
+  // 關上家具包；重新整理後擺設還在（存在裝置上）
+  await page.getByTestId('decor-close').click();
+  await expect(page.getByTestId('decor-bag')).toHaveCount(0);
   await page.reload();
-  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c3.gx, gz: c3.gz, rot: 1 }]);
+  expect(await yardOf(page)).toEqual([{ id: 'decor.bench', gx: c2.gx, gz: c2.gz, rot: 1 }]);
   expect(errors).toEqual([]);
+});
+
+test('擋住角色的建築隱形：走到百寶屋、小屋後面就看不見那一棟，走出來恢復', async ({ page }) => {
+  await freshStart(page);
+  await createKid(page);
+  const hidden = () => page.evaluate(() => (window as any).__game.scene.hiddenZones as string[]);
+  // 百寶屋北邊（鏡頭在南邊）
+  await page.evaluate(() => (window as any).__game.teleport({ x: -7.5, z: 6.6 }));
+  await expect.poll(hidden).toContain('shop');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${SHOTS}/04-behind-shop.png` });
+  // 小屋北邊
+  await page.evaluate(() => (window as any).__game.teleport({ x: -14, z: 6.5 }));
+  await expect.poll(hidden).toContain('house');
+  await page.screenshot({ path: `${SHOTS}/05-behind-house.png` });
+  // 走出來（出生點）恢復
+  await page.evaluate(() => (window as any).__game.teleport({ x: 0, z: 13 }));
+  await expect.poll(hidden).toEqual([]);
 });
 
 test('百寶屋的家具分頁：一個一個買，同一種可以買很多個；家具包看得到', async ({ page }) => {
@@ -178,13 +199,13 @@ test('百寶屋的家具分頁：一個一個買，同一種可以買很多個�
   await page.getByTestId('buy-decor.fence').click();
   await expect(page.getByTestId('decor-count-decor.fence')).toHaveText('已有 2 個');
   await expect(page.getByRole('dialog', { name: '百寶屋' }).locator('.panel-head h2')).toContainText('88');
-  await page.screenshot({ path: `${SHOTS}/05-shop-decor.png` });
+  await page.screenshot({ path: `${SHOTS}/06-shop-decor.png` });
   await page.getByTestId('leave-shop').click();
   await page.getByTestId('hud-decor').click();
   await expect(page.getByTestId('decor-pick-decor.fence')).toContainText('× 2');
 });
 
-test('朋友來玩看得到院子：島主擺好按完成，朋友上岸就看到；島主再改，朋友馬上更新', async ({ browser, baseURL, request }) => {
+test('朋友來玩看得到擺設：島主放下，朋友上岸就看到；島主收起來，朋友馬上更新', async ({ browser, baseURL, request }) => {
   test.setTimeout(300_000);
   const room = await createClassViaApi(request, '二年五班');
   for (const [nickname, pin, animal] of [
@@ -209,33 +230,33 @@ test('朋友來玩看得到院子：島主擺好按完成，朋友上岸就看�
     if (await ok.isVisible()) await ok.click();
   }
 
-  // 小美買長椅、回自己的島、擺在院子裡、按完成（一秒後同步到伺服器）
+  // 小美買長椅、回自己的島、放在面前（一秒後同步到伺服器）
   expect(await b.page.evaluate(() => (window as any).__game.game.getState().purchase('decor.bench', 40))).toBe(true);
   await b.page.getByTestId('hud-island').click();
   await expect.poll(() => b.page.evaluate(() => (window as any).__game.realtime.getState().island)).toBe('own');
-  const cell = await b.page.evaluate(() => (window as any).__game.yard.cells()[0]);
+  const [cell] = await cellsNear(b.page, 8, 5, 1);
   const bench = { id: 'decor.bench', gx: cell.gx, gz: cell.gz, rot: 0 };
   await b.page.getByTestId('hud-decor').click();
-  await act(b.page, { t: 'pick', id: 'decor.bench' });
-  await act(b.page, { t: 'tap', gx: cell.gx, gz: cell.gz });
-  await b.page.getByTestId('decor-done').click();
+  await b.page.getByTestId('decor-pick-decor.bench').click();
+  await faceCell(b.page, cell);
+  await b.page.getByTestId('decor-place').click();
   await expect.poll(async () => (await cloudState(b.page)).pending).toBe(0);
+  await b.page.getByTestId('decor-close').click();
   await b.page.getByTestId('island-open').click();
 
-  // 阿寶去小美的島：上岸就看到長椅
+  // 阿寶去小美的島：上岸就看到長椅；朋友的島上沒有家具包
   await a.page.getByTestId('hud-friends').click();
   await a.page.getByTestId('friend-visit-小美').click();
   await expect.poll(() => a.page.evaluate(() => (window as any).__game.realtime.getState().visiting?.name ?? null)).toBe('小美');
   await expect.poll(() => a.page.evaluate(() => (window as any).__game.yard.host.getState().items)).toEqual([bench]);
-  await a.page.evaluate(() => (window as any).__game.teleport({ x: -11, z: 16 }));
+  await expect(a.page.getByTestId('hud-decor')).toHaveCount(0);
+  await a.page.evaluate(() => (window as any).__game.teleport({ x: 8, z: 9 }));
   await a.page.waitForTimeout(1500);
-  await a.page.screenshot({ path: `${SHOTS}/06-friend-sees-yard.png` });
+  await a.page.screenshot({ path: `${SHOTS}/07-friend-sees.png` });
 
-  // 小美把長椅收起來：阿寶那邊馬上更新
-  await b.page.getByTestId('hud-decor').click();
-  await act(b.page, { t: 'tap', gx: cell.gx, gz: cell.gz });
-  await b.page.getByTestId('decor-putaway').click();
-  await b.page.getByTestId('decor-done').click();
+  // 小美走到長椅旁邊收起來：阿寶那邊馬上更新
+  await faceCell(b.page, cell);
+  await b.page.getByTestId('decor-near-pickup').click();
   await expect.poll(() => a.page.evaluate(() => (window as any).__game.yard.host.getState().items)).toEqual([]);
   expect(pageErrors(a.page)).toEqual([]);
   expect(pageErrors(b.page)).toEqual([]);

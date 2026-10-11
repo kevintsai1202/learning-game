@@ -4,12 +4,11 @@
  * 整個院子包在 StaticMerge 裡合併網格（平板上少很多 draw call）；院子換了就用新的 key 重新合併。
  * 風車的扇葉會轉（標成 dynamic，不合併）。
  */
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import type * as THREE from 'three';
 import { StaticMerge } from './StaticMerge';
-import { cellToWorld, visibleYard, yardCells, type YardEdit, type YardItem } from '../store/yard';
-import { decorAct } from '../store/useYardEdit';
+import { cellToWorld, visibleYard, type YardItem } from '../store/yard';
 
 /** 常用的顏色 */
 const WOOD = '#b0773f';
@@ -334,37 +333,42 @@ export function YardDecor({ items }: { items: readonly YardItem[] }) {
 }
 
 /**
- * 佈置模式的格子（docs/plans/home.md 第 3.4 節）：院子每一格一片薄板，點了就是點那一格。
- * 選著家具或正在移動時，空格子亮黃色（草地是綠的，用黃色才看得出來）；選起來的家具那一格是橘色；其他是淡淡的白色
+ * 預覽（動森做法，docs/plans/home.md 第 7 節）：選著的家具半透明地出現在角色面前那一格，底下一片薄板，
+ * 能放是綠色、不能放是紅色；上方一個上下跳的箭頭（角色背對鏡頭時，預覽會被角色擋住，箭頭還看得到）。
+ * 每一格畫面都可能動，不放進 StaticMerge
  */
-export function YardGrid({ edit }: { edit: YardEdit }) {
-  const cells = yardCells();
-  const taken = new Set(edit.items.map((it) => `${it.gx},${it.gz}`));
-  const sel = edit.selected !== null ? edit.items[edit.selected] : null;
-  const placing = edit.picking !== null || edit.moving;
+export function DecorGhost({ id, gx, gz, rot, ok }: { id: string; gx: number; gz: number; rot: number; ok: boolean }) {
+  const group = useRef<THREE.Group>(null);
+  // 模型改成半透明（模型的材質是各自的，不會影響別的家具）
+  useEffect(() => {
+    group.current?.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | undefined;
+      if (m) {
+        m.transparent = true;
+        m.opacity = 0.55;
+        m.depthWrite = false;
+      }
+      o.castShadow = false;
+    });
+  }, [id]);
+  const arrow = useRef<THREE.Mesh>(null);
+  useFrame((state) => {
+    if (arrow.current) arrow.current.position.y = 2.3 + Math.sin(state.clock.elapsedTime * 4) * 0.15;
+  });
+  const w = cellToWorld(gx, gz);
   return (
-    <group>
-      {cells.map((c) => {
-        const w = cellToWorld(c.gx, c.gz);
-        const key = `${c.gx},${c.gz}`;
-        const isSel = sel !== null && sel.gx === c.gx && sel.gz === c.gz;
-        const lit = placing && !taken.has(key);
-        const color = isSel ? '#ff8a3d' : lit ? '#ffe066' : '#ffffff';
-        return (
-          <mesh
-            key={key}
-            position={[w.x, 0.04, w.z]}
-            rotation={[-Math.PI / 2, 0, 0]}
-            onClick={(e) => {
-              e.stopPropagation();
-              decorAct({ t: 'tap', gx: c.gx, gz: c.gz });
-            }}
-          >
-            <planeGeometry args={[0.92, 0.92]} />
-            <meshBasicMaterial color={color} transparent opacity={isSel ? 0.85 : lit ? 0.7 : 0.25} depthWrite={false} />
-          </mesh>
-        );
-      })}
+    <group position={[w.x, 0, w.z]}>
+      <mesh ref={arrow} position={[0, 2.3, 0]} rotation={[Math.PI, 0, 0]}>
+        <coneGeometry args={[0.28, 0.5, 4]} />
+        <meshBasicMaterial color={ok ? '#22c55e' : '#ef4444'} />
+      </mesh>
+      <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[0.95, 0.95]} />
+        <meshBasicMaterial color={ok ? '#4ade80' : '#f87171'} transparent opacity={0.6} depthWrite={false} />
+      </mesh>
+      <group ref={group} rotation={[0, (rot * Math.PI) / 2, 0]} key={id}>
+        <FurnitureModel id={id} />
+      </group>
     </group>
   );
 }

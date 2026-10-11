@@ -18,8 +18,8 @@ import { DuelInviteCard } from '../DuelInviteCard';
 import { GiftDialog } from '../GiftDialog';
 import { shownTitle } from '../../store/badges';
 import { canDecorate, classesOf, currentClass, islandLook, lookWithVisit, nameHere, type IslandTarget } from '../../store/island';
-import { cancelDecorating, startDecorating, useYardEdit } from '../../store/useYardEdit';
-import { DecorPanel } from '../DecorPanel';
+import { toggleBag, useDecor } from '../../store/useDecor';
+import { DecorBag, DecorNear } from '../DecorBag';
 import { goHome, kickVisitor, setIslandOpen, useRealtime } from '../../online/realtimeClient';
 import { usePresence } from '../../online/usePresence';
 import { useShallow } from 'zustand/react/shallow';
@@ -141,7 +141,7 @@ function VisitHome() {
 }
 
 /** 在自己的島上（島嶼互訪 I2）：開放或關閉，讓朋友來玩 */
-/** 「🏡 佈置」（自己的家）：只在自己的島、不是拜訪朋友時；按了進佈置模式（角色停下、鏡頭轉到院子上方） */
+/** 「🎒 家具」（自己的家，動森做法）：只在自己的島、不是拜訪朋友時；打開或關上家具包 */
 function DecorButton() {
   const profile = useGame((s) => s.profile());
   const visiting = useRealtime((s) => s.visiting);
@@ -152,13 +152,11 @@ function DecorButton() {
       style={{ paddingLeft: 14 }}
       onClick={() => {
         sfx.tap();
-        player.target = null;
-        player.autoEnter = null;
-        startDecorating();
+        toggleBag();
       }}
       data-testid="hud-decor"
     >
-      🏡 佈置
+      🎒 家具
     </button>
   );
 }
@@ -342,15 +340,8 @@ export function IslandHud() {
   const goto = useUi((s) => s.goto);
   const touch = typeof window !== 'undefined' && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
   const totalStars = profile ? Object.values(profile.bestStars).reduce((s, v) => s + v, 0) : 0;
-  const decorating = useYardEdit((s) => s.edit !== null);
-  /** 現在能不能佈置（老師請大家集合等換到班級島、被送回自己的島時會變） */
-  const visiting = useRealtime((s) => s.visiting);
-  const decorAllowed = !!profile && canDecorate(islandLook(profile), visiting);
-  // 佈置到一半換到不能佈置的島，或離開島上（進建築、換畫面）：取消這次的佈置
-  useEffect(() => {
-    if (decorating && !decorAllowed) cancelDecorating();
-  }, [decorating, decorAllowed]);
-  useEffect(() => () => cancelDecorating(), []);
+  /** 家具包打開時，底部的走路提示讓位 */
+  const bagOpen = useDecor((s) => s.bagOpen);
 
   // 走到門口時唸出建築介紹
   useEffect(() => {
@@ -371,8 +362,6 @@ export function IslandHud() {
   }, [enterZone]);
 
   const near = nearZone ? zoneById(nearZone) : null;
-  // 佈置院子時只顯示佈置的面板（自己的家）
-  if (decorating) return <DecorPanel />;
   return (
     <>
       <div className="hud-top">
@@ -439,9 +428,12 @@ export function IslandHud() {
           </button>
         </div>
       ) : (
-        <div className="hud-hint">{touch ? '點地面走過去・點建築就會進去' : '點地面或用方向鍵走路・點建築就會進去'}</div>
+        !bagOpen && <div className="hud-hint">{touch ? '點地面走過去・點建築就會進去' : '點地面或用方向鍵走路・點建築就會進去'}</div>
       )}
       {touch && <Joystick />}
+      {/* 在島上直接佈置（自己的家）：家具包、旁邊家具的按鈕 */}
+      <DecorBag />
+      <DecorNear />
       <ChatPanel />
       {/* 禮物卡片與送禮視窗：只在島上（不打斷答題） */}
       <GiftInbox />

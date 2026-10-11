@@ -2952,54 +2952,41 @@ button {
   gap: 8px;
 }
 
-/* ---------- 自己的家：佈置院子（docs/plans/home.md 第 3.4 節） ---------- */
-.decor-panel {
+/* ---------- 自己的家：在島上直接佈置（docs/plans/home.md 第 7 節） ---------- */
+/* 家具包：底部，左邊留給搖桿 */
+.decor-bag {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
-}
-.decor-panel > * {
-  pointer-events: auto;
-}
-.decor-top {
-  position: absolute;
-  top: 12px;
-  left: 12px;
+  left: 168px;
   right: 12px;
+  bottom: 12px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.decor-bag-head {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 8px;
 }
 .decor-hint {
   flex: 1;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
-  text-align: center;
 }
-.decor-actions {
-  position: absolute;
-  top: 78px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 10px;
-  padding: 8px 10px;
+.decor-hint.bad {
+  color: #c2410c;
 }
-.decor-bag {
-  position: absolute;
-  left: 12px;
-  right: 12px;
-  bottom: 12px;
+.decor-bag-items {
   display: flex;
   gap: 8px;
-  padding: 8px;
   overflow-x: auto;
   overscroll-behavior: contain;
+  padding-bottom: 2px;
 }
 .decor-bag-item {
   flex: 0 0 auto;
-  min-width: 82px;
+  min-width: 78px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3012,7 +2999,7 @@ button {
   cursor: pointer;
 }
 .decor-bag-item .icon {
-  font-size: 30px;
+  font-size: 28px;
   line-height: 1.1;
 }
 .decor-bag-item .name {
@@ -3030,13 +3017,38 @@ button {
   opacity: 0.45;
   cursor: default;
 }
+/* 旁邊家具的按鈕：底部中間 */
+.decor-near {
+  position: absolute;
+  left: 50%;
+  bottom: 70px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  white-space: nowrap;
+}
+.decor-near-name {
+  font-size: 18px;
+  font-weight: 700;
+}
+/* 家具包打開時，旁邊家具的按鈕移到家具包上面 */
+.decor-near.over-bag {
+  bottom: 190px;
+}
 @media (max-width: 600px) {
-  .decor-hint {
-    font-size: 16px;
+  .decor-bag {
+    left: 12px;
+    bottom: 166px;
   }
-  .decor-actions {
-    top: 70px;
-    width: max-content;
-    max-width: calc(100% - 24px);
+  .decor-hint {
+    font-size: 15px;
+  }
+  .decor-near {
+    bottom: 166px;
+  }
+  .decor-near.over-bag {
+    bottom: 340px;
   }
 }
