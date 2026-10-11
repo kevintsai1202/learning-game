@@ -597,8 +597,10 @@ test('第 9 節優化：朋友看得到你坐在長椅上、盪鞦韆（座椅�
   await b.page.getByTestId('use-furniture').click();
   await expect.poll(async () => (await memberOn(a.page, '小美'))?.act).toBe('sit');
   const benchW = await a.page.evaluate((c) => (window as any).__game.yard.world(c.gx, c.gz), cells.bench);
-  const sitting = await memberOn(a.page, '小美');
-  expect(Math.hypot(sitting!.x - benchW.x, sitting!.z - benchW.z)).toBeLessThan(0.3);
+  await expect.poll(async () => {
+    const m = await memberOn(a.page, '小美');
+    return Math.hypot(m!.x - benchW.x, m!.z - benchW.z);
+  }).toBeLessThan(0.3);
   await a.page.evaluate((w) => (window as any).__game.teleport({ x: w.x + 1.5, z: w.z + 3 }), benchW);
   await a.page.waitForTimeout(1500);
   await a.page.screenshot({ path: `${SHOTS}/16-friend-sits.png` });

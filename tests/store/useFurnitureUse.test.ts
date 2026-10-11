@@ -5,7 +5,7 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { cellKey, startUse, stopUse, syncActMirror, useFurnitureUse } from '../../src/store/useFurnitureUse';
 import { useHome } from '../../src/store/useHome';
-import { exitPoint } from '../../src/store/furnitureUse';
+import { actFrame, exitPoint } from '../../src/store/furnitureUse';
 import { HOME_SPACE } from '../../src/store/home';
 import { player, teleport } from '../../src/world/input';
 import type { YardItem } from '../../src/store/yard';
@@ -26,6 +26,10 @@ describe('坐下與起來', () => {
     expect(player.act).toMatchObject({ kind: 'sit', item: bench, place: 'home' });
     expect(player.target).toBeNull();
     expect(useFurnitureUse.getState().acting).toEqual({ kind: 'sit', item: bench, place: 'home' });
+    // 一坐下位置就在座位上（位置訊息和動作代碼一起送出去時，別人看到的是座位）
+    const f = actFrame(bench, HOME_SPACE, 'sit', 0);
+    expect(player.pos).toEqual({ x: f.x, z: f.z });
+    expect(player.heading).toBeCloseTo(f.heading);
   });
 
   it('起來：站到起身點、act 清掉', () => {

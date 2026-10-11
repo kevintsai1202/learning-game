@@ -7,7 +7,7 @@
  * 規則在 src/store/furnitureUse.ts。
  */
 import { create } from 'zustand';
-import { exitPoint, useSpecOf, type UseKind } from './furnitureUse';
+import { actFrame, exitPoint, useSpecOf, type UseKind } from './furnitureUse';
 import { HOME_SPACE } from './home';
 import { YARD_SPACE, type DecorSpace, type YardItem } from './yard';
 import { useHome } from './useHome';
@@ -63,6 +63,10 @@ export function startUse(item: YardItem, place: Place): UseKind | null {
   }
   const t0 = nowSec();
   player.act = { kind: spec.kind, item, place, t0 };
+  // 一坐下就站到座位上：下一則位置訊息和動作代碼一起送出時，別人看到的就是座位（不用等下一格畫面）
+  const f = actFrame(item, spaceOf(place), spec.kind, 0);
+  player.pos = { x: f.x, z: f.z };
+  player.heading = f.heading;
   player.target = null;
   player.autoEnter = null;
   syncActMirror();
