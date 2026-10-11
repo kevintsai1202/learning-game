@@ -3207,12 +3207,13 @@ button {
   box-shadow: none;
   opacity: 0.92;
 }
-/* 右側直排圖示：靠右邊中段，圖示下一行小字；放不下時往左排第二欄 */
+/* 右側直排圖示：靠右邊、上下置中，圖示下一行小字；放不下時往左排第二欄（使用者 2026-10-11：要正中） */
 .hud-rail {
   position: absolute;
   right: 8px;
-  top: 92px;
-  max-height: calc(100% - 92px - 250px);
+  top: 50%;
+  transform: translateY(-50%);
+  max-height: calc(100% - 230px);
   display: flex;
   flex-direction: column;
   flex-wrap: wrap-reverse;
@@ -3220,13 +3221,19 @@ button {
   align-items: center;
   gap: 8px;
 }
+/* 家具包、壁紙地板打開時收起直排圖示（像遊戲打開背包時其他選單收起來；條上有關上的鈕） */
+.hud-rail.away {
+  display: none;
+}
 :root.phone .hud-rail .hud-chip {
   position: relative;
-  width: 54px;
-  height: 54px;
+  width: 58px;
+  height: 58px;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
-  padding: 2px;
+  /* 電腦版的晶片有行內的 padding-left，直排圖示要蓋掉，字才會置中 */
+  padding: 2px 0 !important;
   border-radius: 16px;
   gap: 0;
 }
@@ -3235,16 +3242,38 @@ button {
   line-height: 1.05;
 }
 :root.phone .hud-rail .chip-text {
+  display: block;
+  width: 100%;
   font-size: 0;
   line-height: 1.15;
-  max-width: 52px;
+  text-align: center;
   overflow: hidden;
   white-space: nowrap;
 }
 /* 直排圖示用短字（data-short；原本的字留在文字內容裡給朗讀器與 e2e） */
 :root.phone .hud-rail .chip-text::after {
   content: attr(data-short);
-  font-size: 11px;
+  font-size: 10px;
+  letter-spacing: -0.5px;
+}
+/* 數量的小圓點（朋友在線上幾位、訪客幾位）：只在手機的直排圖示顯示（電腦的字裡已經有數字） */
+.chip-badge {
+  display: none;
+}
+:root.phone .hud-rail .chip-badge {
+  display: grid;
+  place-items: center;
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  border-radius: 999px;
+  border: 2px solid var(--ink);
+  background: #ffd84d;
+  font-size: 12px;
+  font-weight: 900;
 }
 :root.phone .hud-rail .hud-chip.island-open-on {
   background: #c8f2b8;
@@ -3327,10 +3356,9 @@ button {
   :root.phone .decor-bag {
     right: 210px;
   }
-  /* 橫式手機：直排圖示從最上面排、小一點、不寫字；☰ 在上方一行 */
+  /* 橫式手機：直排圖示上下置中、小一點、不寫字 */
   :root.phone .hud-rail {
-    top: 56px;
-    max-height: calc(100% - 56px - 110px);
+    max-height: calc(100% - 130px);
     gap: 6px;
   }
   :root.phone .hud-rail .hud-chip {

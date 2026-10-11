@@ -73,7 +73,9 @@ for (const dev of DEVICES) {
       await page.waitForTimeout(1500);
       report.bag = await boxOf(page, 'decor-bag');
       // 提示：電腦在家具包條上方；手機（第 10.2 節）在右下大動作鍵上面的小字
-      report.hint = (await boxOf(page, 'decor-hint')) ?? (await page.locator('.action-caption').first().boundingBox());
+      // （boundingBox 會一直等元素出現，先數有沒有）
+      const caption = page.locator('.action-caption');
+      report.hint = (await boxOf(page, 'decor-hint')) ?? ((await caption.count()) ? await caption.first().boundingBox() : null);
       // 電腦沒有搖桿：先數有沒有（boundingBox 會一直等元素出現）
       report.joystick = (await page.locator('.joystick').count()) ? await page.locator('.joystick').first().boundingBox() : null;
       report.avatarPicking = await avatarOnScreen(page);
@@ -82,7 +84,8 @@ for (const dev of DEVICES) {
       const av = report.avatarPicking as { feet: { y: number }; head: { y: number } };
       expect(bag.height, '家具包高度').toBeLessThanOrEqual(110);
       expect(av.feet.y, '角色的腳在家具包上方').toBeLessThan(bag.y);
-      expect((report.hint as { height: number }).height, '提示一行').toBeLessThanOrEqual(60);
+      // 提示一行（手機上選著家具、可以放的時候大動作鍵上已經寫了，不顯示提示）
+      if (report.hint) expect((report.hint as { height: number }).height, '提示一行').toBeLessThanOrEqual(60);
       // 家具包開著時點地面：角色走到點的地方（畫面往上移之後點擊照樣準）
       const target = await page.evaluate((c) => {
         const g = (window as any).__game;

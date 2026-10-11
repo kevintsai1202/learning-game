@@ -120,9 +120,12 @@ export function ActionKey() {
 
   return (
     <div className="action-key-wrap" role="group" aria-label={view.caption} data-testid={view.container}>
-      <span className={`action-caption ${view.disabled ? 'bad' : ''}`} role="status">
-        {view.caption}
-      </span>
+      {/* 上面一行小字只有警告時才顯示（不能放的原因）；鍵上已經寫了是什麼 */}
+      {view.showCaption && (
+        <span className={`action-caption ${view.disabled ? 'bad' : ''}`} role="status">
+          {view.caption}
+        </span>
+      )}
       <div className="action-row">
         {view.secondary.map((a) => (
           <button key={a} className="btn white action-sub" onClick={() => doSecondary(a)} aria-label={SECONDARY[a].label} title={SECONDARY[a].label} data-testid={SECONDARY[a].testid}>

@@ -29,9 +29,10 @@ export function FriendsButton() {
       data-testid="hud-friends"
     >
       <span className="chip-icon">👫</span>{' '}
-      <span className="chip-text" data-short={`朋友 ${count}`}>
+      <span className="chip-text" data-short="朋友">
         {count}
       </span>
+      {count > 0 && <span className="chip-badge">{count}</span>}
     </button>
   );
 }

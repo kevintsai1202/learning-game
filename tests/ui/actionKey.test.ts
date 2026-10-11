@@ -13,13 +13,27 @@ describe('pickAction', () => {
     expect(pickAction(NONE)).toBeNull();
   });
 
-  it('建築門口：進去（寫建築名稱）', () => {
-    expect(pickAction({ ...NONE, zone: { name: '數學城堡', icon: '🏰' } })).toMatchObject({ main: 'enterZone', label: '進去', caption: '🏰 數學城堡', container: 'door-bubble', secondary: [] });
+  it('建築門口：鍵上是建築的圖示加「進去」（建築名稱給朗讀器，不另外顯示）', () => {
+    expect(pickAction({ ...NONE, zone: { name: '數學城堡', icon: '🏰' } })).toMatchObject({
+      main: 'enterZone',
+      label: '🏰 進去',
+      caption: '🏰 數學城堡',
+      showCaption: false,
+      container: 'door-bubble',
+      secondary: [],
+    });
   });
 
-  it('小屋門口：進去（○○的家）；腳踏墊：出去（回到島上）', () => {
-    expect(pickAction({ ...NONE, houseDoor: { name: '小安' } })).toMatchObject({ main: 'enterHome', caption: '🏠 小安的家', container: 'home-door-bubble' });
-    expect(pickAction({ ...NONE, onMat: true })).toMatchObject({ main: 'leaveHome', label: '出去', caption: '🚪 回到島上', container: 'home-mat-bubble' });
+  it('小屋門口：🏠 進去（○○的家）；腳踏墊：🚪 出去（回到島上）', () => {
+    expect(pickAction({ ...NONE, houseDoor: { name: '小安' } })).toMatchObject({ main: 'enterHome', label: '🏠 進去', caption: '🏠 小安的家', container: 'home-door-bubble' });
+    expect(pickAction({ ...NONE, onMat: true })).toMatchObject({ main: 'leaveHome', label: '🚪 出去', caption: '🚪 回到島上', container: 'home-mat-bubble' });
+  });
+
+  it('上面的小字只有警告時才顯示（不能放的原因）；其他時候鍵上已經寫了', () => {
+    expect(pickAction({ ...NONE, near: { name: '溜滑梯', emoji: '🛝', use: '🛝 溜滑梯', decor: false } })?.showCaption).toBe(false);
+    expect(pickAction({ ...NONE, acting: { kind: 'sit', name: '長椅', emoji: '🪑' } })?.showCaption).toBe(false);
+    expect(pickAction({ ...NONE, picking: { name: '長椅', problem: null } })?.showCaption).toBe(false);
+    expect(pickAction({ ...NONE, picking: { name: '長椅', problem: '這裡不能擺' } })?.showCaption).toBe(true);
   });
 
   it('旁邊可以用的家具：主鍵是用法；自己能佈置的地方多轉方向、收起來', () => {
@@ -39,7 +53,7 @@ describe('pickAction', () => {
   });
 
   it('正在用：起來；溜滑梯途中不顯示', () => {
-    expect(pickAction({ ...NONE, acting: { kind: 'sit', name: '長椅', emoji: '🪑' } })).toMatchObject({ main: 'stop', label: '起來', container: 'use-card' });
+    expect(pickAction({ ...NONE, acting: { kind: 'sit', name: '長椅', emoji: '🪑' } })).toMatchObject({ main: 'stop', label: '⬆️ 起來', container: 'use-card' });
     expect(pickAction({ ...NONE, acting: { kind: 'slide', name: '溜滑梯', emoji: '🛝' } })).toBeNull();
   });
 

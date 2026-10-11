@@ -69,6 +69,20 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
       expect.soft(top.height, `${where} 上方一行的高度`).toBeLessThanOrEqual(64);
       const rail = (await page.getByTestId('hud-rail').boundingBox())!;
       expect.soft(rail.x, `${where} 右側圖示靠右`).toBeGreaterThanOrEqual(w * (w > h ? 0.85 : 0.75));
+      // 右側圖示上下置中；每個圖示的字都在圖示裡面（使用者 2026-10-11：沒正中、字跑出去）
+      expect.soft(Math.abs(rail.y + rail.height / 2 - h / 2), `${where} 右側圖示沒有上下置中`).toBeLessThanOrEqual(h * 0.06);
+      const spill = await page.evaluate(() =>
+        [...document.querySelectorAll('.hud-rail .hud-chip')].flatMap((chip) => {
+          const c = chip.getBoundingClientRect();
+          const t = chip.querySelector('.chip-text');
+          if (!t) return [];
+          const r = t.getBoundingClientRect();
+          // 橫式手機的直排圖示不寫字（沒有大小）
+          if (r.width === 0) return [];
+          return r.left < c.left - 1 || r.right > c.right + 1 || t.scrollWidth > t.clientWidth + 1 ? [`${chip.textContent} [${Math.round(r.left)}..${Math.round(r.right)}] in [${Math.round(c.left)}..${Math.round(c.right)}] sw=${t.scrollWidth} cw=${t.clientWidth}`] : [];
+        }),
+      );
+      expect.soft(spill, `${where} 圖示的字跑出圖示`).toEqual([]);
       expect.soft(await offscreen(page, w), `${where} 超出畫面的元素`).toEqual([]);
       // 角色在中間一帶、腳沒有被介面蓋住
       const feet = await avatarFeet(page);
@@ -115,6 +129,8 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
       }));
     });
     await page.getByTestId('hud-decor').click();
+    // 家具包打開時直排圖示收起來
+    await expect(page.getByTestId('hud-rail')).toBeHidden();
     await page.getByTestId('decor-pick-decor.bench').click();
     const cell = await page.evaluate(() => {
       const g = (window as any).__game;

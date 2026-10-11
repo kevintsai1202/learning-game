@@ -213,6 +213,8 @@ function HudMenu() {
  */
 function PhoneHud({ touch }: { touch: boolean }) {
   const profile = useGame((s) => s.profile());
+  /** 家具包或壁紙地板打開時，直排圖示收起來 */
+  const panelOpen = useDecor((s) => s.bagOpen || s.surfaceOpen);
   const goto = useUi((s) => s.goto);
   const totalStars = profile ? Object.values(profile.bestStars).reduce((s, v) => s + v, 0) : 0;
   return (
@@ -238,7 +240,7 @@ function PhoneHud({ touch }: { touch: boolean }) {
       <div className="phone-sub">
         <LocationChip />
       </div>
-      <div className="hud-rail" data-testid="hud-rail">
+      <div className={`hud-rail ${panelOpen ? 'away' : ''}`} data-testid="hud-rail">
         <IslandSwitch />
         <VisitHome />
         <DecorButton />
@@ -358,7 +360,8 @@ function Visitors() {
   return (
     <div className="island-menu-wrap">
       <button className="hud-chip" style={{ paddingLeft: 14 }} onClick={() => setOpen((v) => !v)} aria-expanded={open} data-testid="hud-visitors">
-        <ChipText icon="👥" text={`訪客 ${visitors.length}`} />
+        <ChipText icon="👥" text={`訪客 ${visitors.length}`} short="訪客" />
+        <span className="chip-badge">{visitors.length}</span>
       </button>
       {open && (
         <div className="island-menu card" role="menu" data-testid="visitors-panel">

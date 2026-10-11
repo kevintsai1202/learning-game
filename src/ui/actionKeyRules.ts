@@ -31,8 +31,10 @@ export interface ActionKeyView {
   main: MainAction;
   /** 大鍵上的字 */
   label: string;
-  /** 上面一行小字（是什麼） */
+  /** 是什麼（給朗讀器；警告時也顯示在大鍵上面） */
   caption: string;
+  /** 上面一行小字要不要顯示：只有警告（不能放的原因）時；其他時候鍵上已經寫了（使用者 2026-10-11） */
+  showCaption: boolean;
   /** 外框的 data-testid */
   container: string;
   disabled: boolean;
@@ -46,6 +48,7 @@ export function pickAction(s: ActionState): ActionKeyView | null {
       main: 'place',
       label: '放下',
       caption: s.picking.problem ?? `放下${s.picking.name}`,
+      showCaption: !!s.picking.problem,
       container: 'decor-place-key',
       disabled: !!s.picking.problem,
       secondary: ['ghostRotate'],
@@ -53,16 +56,19 @@ export function pickAction(s: ActionState): ActionKeyView | null {
   if (s.acting) {
     // 溜滑梯途中不能起來（溜完自己站起來）
     if (s.acting.kind === 'slide') return null;
-    return { main: 'stop', label: '起來', caption: `${s.acting.emoji} ${s.acting.name}`, container: 'use-card', disabled: false, secondary: [] };
+    return { main: 'stop', label: '⬆️ 起來', caption: `${s.acting.emoji} ${s.acting.name}`, showCaption: false, container: 'use-card', disabled: false, secondary: [] };
   }
-  if (s.zone) return { main: 'enterZone', label: '進去', caption: `${s.zone.icon} ${s.zone.name}`, container: 'door-bubble', disabled: false, secondary: [] };
-  if (s.houseDoor) return { main: 'enterHome', label: '進去', caption: `🏠 ${s.houseDoor.name}的家`, container: 'home-door-bubble', disabled: false, secondary: [] };
-  if (s.onMat) return { main: 'leaveHome', label: '出去', caption: '🚪 回到島上', container: 'home-mat-bubble', disabled: false, secondary: [] };
+  if (s.zone)
+    return { main: 'enterZone', label: `${s.zone.icon} 進去`, caption: `${s.zone.icon} ${s.zone.name}`, showCaption: false, container: 'door-bubble', disabled: false, secondary: [] };
+  if (s.houseDoor)
+    return { main: 'enterHome', label: '🏠 進去', caption: `🏠 ${s.houseDoor.name}的家`, showCaption: false, container: 'home-door-bubble', disabled: false, secondary: [] };
+  if (s.onMat) return { main: 'leaveHome', label: '🚪 出去', caption: '🚪 回到島上', showCaption: false, container: 'home-mat-bubble', disabled: false, secondary: [] };
   if (s.near) {
     const caption = `${s.near.emoji} ${s.near.name}`;
     const container = s.near.decor ? 'decor-near' : 'use-card';
-    if (s.near.use) return { main: 'use', label: s.near.use, caption, container, disabled: false, secondary: s.near.decor ? ['rotate', 'pickup'] : [] };
-    if (s.near.decor) return { main: 'rotate', label: '🔄 轉方向', caption, container, disabled: false, secondary: ['pickup'] };
+    if (s.near.use)
+      return { main: 'use', label: s.near.use, caption, showCaption: false, container, disabled: false, secondary: s.near.decor ? ['rotate', 'pickup'] : [] };
+    if (s.near.decor) return { main: 'rotate', label: '🔄 轉方向', caption, showCaption: false, container, disabled: false, secondary: ['pickup'] };
   }
   return null;
 }
