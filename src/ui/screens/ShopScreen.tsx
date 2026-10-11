@@ -2,12 +2,13 @@
  * 百寶屋：分頁列出帽子、眼鏡、背後、手持道具、寵物、走路特效，以及換動物和顏色（換外觀免費）。
  * 金幣道具買了就自動戴上；獎章專屬道具鎖起來並寫出需要的獎章，點一下帶孩子到獎章簿看怎麼拿。
  * 「貼紙簿」顯示同學送的貼紙（每種幾張、最近是誰送的）與最近收到的禮物。
- * 「家具」（自己的家，docs/plans/home.md）：一個一個買，同一種可以買很多個，到自己的島按「佈置」擺在院子裡。
+ * 「家具」「室內」（自己的家，docs/plans/home.md）：一個一個買，同一種可以買很多個，在島上或屋裡按「🎒 家具」擺；
+ * 「室內」另有壁紙與地板，買一次就有，進屋按「🎨 壁紙地板」換（第二期，第 8 節）。
  */
 import { useState } from 'react';
 import { useGame } from '../../store/useGame';
 import { useUi } from '../../store/useUi';
-import { itemsOfSlot, owns, type AvatarSlot, type CatalogItem, type Slot } from '../../store/catalog';
+import { FLOORS, FURNITURE, WALLPAPERS, itemsOfSlot, owns, type AvatarSlot, type CatalogItem, type Slot } from '../../store/catalog';
 import { DECOR_MAX_OWNED, ownedCount } from '../../store/yard';
 import { badgeById } from '../../store/badges';
 import { normalizeAvatar, type Profile } from '../../store/save';
@@ -20,8 +21,8 @@ import { boughtLine } from '../lines';
 import { teleport } from '../../world/input';
 import { doorOf, zoneById } from '../../world/layout';
 
-/** 分頁：六種道具格子、家具，加上貼紙簿與換造型 */
-type Tab = Slot | 'stickers' | 'look';
+/** 分頁：六種道具格子、島上的家具、室內（室內家具與壁紙地板），加上貼紙簿與換造型 */
+type Tab = Exclude<Slot, 'wall' | 'floor'> | 'indoor' | 'stickers' | 'look';
 const TABS: { id: Tab; name: string }[] = [
   { id: 'hat', name: '🎩 帽子' },
   { id: 'face', name: '👓 眼鏡' },
@@ -30,6 +31,7 @@ const TABS: { id: Tab; name: string }[] = [
   { id: 'pet', name: '🐥 寵物' },
   { id: 'trail', name: '✨ 特效' },
   { id: 'decor', name: '🏡 家具' },
+  { id: 'indoor', name: '🛋️ 室內' },
   { id: 'stickers', name: '📒 貼紙簿' },
   { id: 'look', name: '🐻 換造型' },
 ];
@@ -69,7 +71,7 @@ export function ShopScreen() {
     if (item.price === undefined || !purchase(item.id, item.price)) return;
     sfx.coin();
     speak(boughtLine(item.name));
-    if (item.slot === 'decor') return;
+    if (item.slot === 'decor' || item.slot === 'wall' || item.slot === 'floor') return;
     const now = normalizeAvatar(useGame.getState().profile()!.avatar);
     updateAvatar({ ...now, [item.slot]: item.id });
   };
@@ -77,7 +79,8 @@ export function ShopScreen() {
   /** 一樣家具的卡片：價格、已經有幾個（擺了幾個），每按一次買一個 */
   const decorCard = (item: CatalogItem) => {
     const count = ownedCount(profile, item.id);
-    const placed = (profile.yard ?? []).filter((it) => it.id === item.id).length;
+    // 島上加屋裡一起算
+    const placed = [...(profile.yard ?? []), ...(profile.home?.items ?? [])].filter((it) => it.id === item.id).length;
     const full = count >= DECOR_MAX_OWNED;
     return (
       <div key={item.id} className="activity-card shop-card" style={{ cursor: 'default' }} data-testid={`decor-${item.id}`}>
@@ -93,9 +96,30 @@ export function ShopScreen() {
     );
   };
 
+  /** 一種壁紙或地板的卡片：買一次就有（預設款本來就有），進屋再換 */
+  const surfaceCard = (item: CatalogItem) => {
+    const has = owns(profile, item.id);
+    return (
+      <div key={item.id} className="activity-card shop-card" style={{ cursor: 'default' }} data-testid={`surface-${item.id}`}>
+        <span className="icon">{item.emoji}</span>
+        <span className="name">{item.name}</span>
+        {has ? (
+          <small className="plain" data-testid={`owned-${item.id}`}>
+            ✔ 已經有了
+          </small>
+        ) : (
+          <button className="btn small" disabled={profile.coins < (item.price ?? 0)} onClick={() => buy(item)} data-testid={`buy-${item.id}`}>
+            🪙 {item.price}
+          </button>
+        )}
+      </div>
+    );
+  };
+
   /** 一項道具的卡片：擁有就能戴上／脫下；獎章專屬沒拿到就鎖住；其他用金幣買 */
   const card = (item: CatalogItem) => {
     if (item.slot === 'decor') return decorCard(item);
+    if (item.slot === 'wall' || item.slot === 'floor') return surfaceCard(item);
     const slot = item.slot;
     const has = owns(profile, item.id);
     const wearing = avatar[slot] === item.id;
@@ -168,10 +192,19 @@ export function ShopScreen() {
             </>
           ) : tab === 'stickers' ? (
             <StickerBook profile={profile} />
+          ) : tab === 'indoor' ? (
+            <>
+              <div className="activity-grid">{FURNITURE.filter((f) => f.indoor).map(card)}</div>
+              <span className="label">壁紙</span>
+              <div className="activity-grid">{WALLPAPERS.map(card)}</div>
+              <span className="label">地板</span>
+              <div className="activity-grid">{FLOORS.map(card)}</div>
+            </>
           ) : (
-            <div className="activity-grid">{itemsOfSlot(tab).map(card)}</div>
+            <div className="activity-grid">{(tab === 'decor' ? FURNITURE.filter((f) => !f.indoor) : itemsOfSlot(tab)).map(card)}</div>
           )}
-          {tab === 'decor' && <p className="notice">買了家具，回到自己的島按「🏡 佈置」，就能擺在小屋的院子裡。</p>}
+          {(tab === 'decor' || tab === 'indoor') && <p className="notice">買了家具，在自己的島上或屋裡按「🎒 家具」，就能擺在面前。</p>}
+          {tab === 'indoor' && <p className="notice">壁紙和地板買一次就有，進屋按「🎨 壁紙地板」換。</p>}
           <p className="notice">答題可以賺金幣：一次答對 1 枚，每顆星再加 2 枚。鎖起來的道具要拿到獎章才有，點一下看怎麼拿。</p>
         </div>
       </div>

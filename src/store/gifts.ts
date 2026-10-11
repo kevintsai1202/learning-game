@@ -3,7 +3,7 @@
  * 伺服器依這裡判斷什麼能送、價格多少、收下後存檔怎麼變，所以不能 import 任何畫面、音訊或 3D 的程式；
  * 只用 type import 讀 save.ts（避免執行期的循環引用）。
  */
-import { findItem, owns } from './catalog';
+import { SLOTS, findItem, owns, type Slot } from './catalog';
 import type { Profile } from './save';
 
 /** 一種貼紙（只能當禮物收，不能自己買） */
@@ -45,8 +45,8 @@ export function giftPrice(itemId: string): number | null {
   const sticker = findSticker(itemId);
   if (sticker) return sticker.price;
   const item = findItem(itemId);
-  // 家具（自己的家）不能當禮物
-  return item && !item.badge && item.slot !== 'decor' && item.price !== undefined ? item.price : null;
+  // 只有穿戴的道具能送；家具、壁紙地板（自己的家）不能當禮物
+  return item && !item.badge && (SLOTS as readonly Slot[]).includes(item.slot) && item.price !== undefined ? item.price : null;
 }
 
 /** 禮物的名稱：貼紙是「鬱金香貼紙」，外觀道具直接用名稱 */

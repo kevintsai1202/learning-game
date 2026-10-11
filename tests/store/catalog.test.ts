@@ -24,13 +24,13 @@ describe('商品目錄', () => {
 });
 
 describe('商品目錄：外觀道具（R2）', () => {
-  it('id 不重複、每項都有名稱與圖示；金幣道具有價格、獎章專屬道具沒有價格', () => {
+  it('id 不重複、每項都有名稱與圖示；金幣道具有價格、獎章專屬道具與免費的預設款沒有價格', () => {
     expect(new Set(ITEMS.map((i) => i.id)).size).toBe(ITEMS.length);
     for (const i of ITEMS) {
       expect(i.name, i.id).toBeTruthy();
       expect(i.emoji, i.id).toBeTruthy();
       expect(i.id.startsWith(`${i.slot}.`), i.id).toBe(true);
-      if (i.badge) expect(i.price, i.id).toBeUndefined();
+      if (i.badge || i.free) expect(i.price, i.id).toBeUndefined();
       else expect(i.price, i.id).toBeGreaterThan(0);
     }
     expect(itemsOfSlot('face').map((i) => i.id)).toEqual(['face.round', 'face.sun', 'face.heart']);

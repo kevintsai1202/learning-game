@@ -88,8 +88,9 @@ describe('全島的格子', () => {
 });
 
 describe('家具目錄', () => {
-  it('21 種家具，id 開頭 decor.，都有價格，格子是 decor', () => {
-    expect(FURNITURE).toHaveLength(21);
+  it('島上的 21 種加室內的 15 種家具，id 開頭 decor.，都有價格，格子是 decor', () => {
+    expect(FURNITURE.filter((f) => !f.indoor)).toHaveLength(21);
+    expect(FURNITURE).toHaveLength(36);
     for (const f of FURNITURE) {
       expect(f.id.startsWith('decor.')).toBe(true);
       expect(f.slot).toBe('decor');
@@ -102,9 +103,9 @@ describe('家具目錄', () => {
     expect(isDecor('decor.nope')).toBe(false);
   });
 
-  it('花草、石板路、小池塘可以走過去，其他擋路', () => {
+  it('花草、石板路、小池塘、地毯可以走過去，其他擋路', () => {
     const walkable = FURNITURE.filter((f) => f.walkable).map((f) => f.id);
-    expect(walkable.sort()).toEqual(['decor.bed-red', 'decor.bed-yellow', 'decor.grass', 'decor.mushroom', 'decor.pond', 'decor.stone', 'decor.tulip'].sort());
+    expect(walkable.sort()).toEqual(['decor.bed-red', 'decor.bed-yellow', 'decor.grass', 'decor.mushroom', 'decor.pond', 'decor.rug', 'decor.stone', 'decor.tulip'].sort());
   });
 
   it('家具不是穿戴的格子：外觀不受影響', () => {

@@ -11,6 +11,7 @@ import { SLOTS, findItem, owns } from '../store/catalog';
 import { badgeById } from '../store/badges';
 import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
 import { DECOR_MAX_OWNED, YARD_MAX_ITEMS, isDecor, ownedCount, yardItemSchema, type YardItem } from '../store/yard';
+import { homeSchema, type HomeState } from '../store/home';
 import {
   ANIMAL_IDS,
   addPlayTime,
@@ -22,6 +23,7 @@ import {
   setCurriculum,
   setTitle,
   setYard,
+  setHome,
   storedQuestion,
   type AvatarConfig,
   type CurriculumChoice,
@@ -48,8 +50,10 @@ export type Op =
   /** puzzle：在益智遊戲館玩的時間（同時算進整體與益智遊戲的時間；舊裝置沒有這個欄位） */
   | (OpBase & { kind: 'playTime'; seconds: number; puzzle?: boolean })
   | (OpBase & { kind: 'buy'; itemId: string })
-  /** 院子的擺設（自己的家，docs/plans/home.md）：整份取代，套用時照擁有的家具清理 */
+  /** 島上的擺設（自己的家，docs/plans/home.md）：整份取代，套用時照擁有的家具清理 */
   | (OpBase & { kind: 'yard'; items: YardItem[] })
+  /** 房間的擺設與壁紙地板（自己的家第二期）：整份取代，套用時照擁有的家具與壁紙地板清理 */
+  | (OpBase & { kind: 'home'; home: HomeState })
   | (OpBase & { kind: 'avatar'; avatar: AvatarConfig })
   | (OpBase & { kind: 'curriculum'; curriculum: CurriculumChoice })
   | (OpBase & { kind: 'title'; badge: string | null })
@@ -104,6 +108,7 @@ export const opSchema = z.discriminatedUnion('kind', [
   z.object({ ...base, kind: z.literal('playTime'), seconds: z.number().positive().max(24 * 3600), puzzle: z.boolean().optional() }),
   z.object({ ...base, kind: z.literal('buy'), itemId: z.string().min(1).max(40) }),
   z.object({ ...base, kind: z.literal('yard'), items: z.array(yardItemSchema).max(YARD_MAX_ITEMS) }),
+  z.object({ ...base, kind: z.literal('home'), home: homeSchema }),
   z.object({ ...base, kind: z.literal('avatar'), avatar: avatarSchema }),
   z.object({
     ...base,
@@ -168,7 +173,7 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
     case 'buy': {
       const item = findItem(op.itemId);
       if (!item) return { ok: false, reason: '沒有這個商品' };
-      if (item.price === undefined) return { ok: false, reason: '這個要用獎章換' };
+      if (item.price === undefined) return { ok: false, reason: item.free ? '這個本來就有了' : '這個要用獎章換' };
       const price = item.price;
       // 家具可以重複買（每種最多 DECOR_MAX_OWNED 個）；其他商品已經有就不扣款
       if (isDecor(item.id)) {
@@ -179,6 +184,8 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
     }
     case 'yard':
       return { ok: true, profile: onProfile(profile, (s, id) => setYard(s, id, op.items)) };
+    case 'home':
+      return { ok: true, profile: onProfile(profile, (s, id) => setHome(s, id, op.home)) };
     case 'avatar': {
       // 每一格戴的東西都要已擁有（含靠獎章擁有），而且格子相符
       for (const slot of SLOTS) {

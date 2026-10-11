@@ -33,11 +33,11 @@ export function outboxSize(box: Outbox): number {
 /**
  * 放進一筆操作。遊玩時間若能接在待送段最後一筆遊玩時間後面（同一天、合併後不超過上限），就合併成一筆，
  * 保留第一筆的 id 與時間；否則另起一筆。
- * 院子的擺設（yard，自己的家）是整份取代：待送段裡還沒送出的舊 yard 拿掉，只留最新的一份
+ * 島上的擺設（yard）與房間（home，自己的家）是整份取代：待送段裡還沒送出的同一種拿掉，只留最新的一份
  * （連放很多個家具只送一次；送出中的不能動）
  */
 export function enqueue(box: Outbox, op: Op): Outbox {
-  if (op.kind === 'yard') return { ...box, pending: [...box.pending.filter((o) => o.kind !== 'yard'), op] };
+  if (op.kind === 'yard' || op.kind === 'home') return { ...box, pending: [...box.pending.filter((o) => o.kind !== op.kind), op] };
   const last = box.pending[box.pending.length - 1];
   if (op.kind === 'playTime' && last?.kind === 'playTime') {
     const sameDay = dateKey(new Date(last.at)) === dateKey(new Date(op.at));

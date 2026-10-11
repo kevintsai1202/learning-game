@@ -7,8 +7,11 @@ import type { AvatarConfig, Profile } from './save';
 
 /** 道具戴在哪一格：帽子、眼鏡、背後、手持、寵物、走路特效 */
 export type AvatarSlot = 'hat' | 'face' | 'back' | 'hand' | 'pet' | 'trail';
-/** 商品的種類：穿戴的格子，或擺在院子裡的家具（decor，自己的家，docs/plans/home.md） */
-export type Slot = AvatarSlot | 'decor';
+/**
+ * 商品的種類：穿戴的格子、擺在島上或屋裡的家具（decor）、房間的壁紙（wall）與地板（floor）
+ * （自己的家，docs/plans/home.md）
+ */
+export type Slot = AvatarSlot | 'decor' | 'wall' | 'floor';
 
 /** 一項商品 */
 export interface CatalogItem {
@@ -22,8 +25,12 @@ export interface CatalogItem {
   price?: number;
   /** 獎章專屬道具：需要的獎章 id（得到獎章就擁有，不能買） */
   badge?: string;
-  /** 家具：可以走過去（花草、石板路、小池塘）；沒有這個欄位的家具會擋路 */
+  /** 家具：可以走過去（花草、石板路、小池塘、地毯）；沒有這個欄位的家具會擋路 */
   walkable?: boolean;
+  /** 家具：室內家具（百寶屋分在「室內」那一頁；島上與屋裡都能擺） */
+  indoor?: boolean;
+  /** 壁紙與地板：預設款，不用買就擁有（沒有價格） */
+  free?: boolean;
 }
 
 /** 帽子：原有 8 頂、R2 新增 3 頂金幣帽與 3 頂獎章帽（外觀在 src/world/Hats.tsx） */
@@ -98,10 +105,46 @@ export const FURNITURE: readonly CatalogItem[] = [
   { id: 'decor.sandbox', name: '沙坑', slot: 'decor', emoji: '🏖️', price: 80 },
   { id: 'decor.windmill', name: '風車', slot: 'decor', emoji: '🌀', price: 90 },
   { id: 'decor.pond', name: '小池塘', slot: 'decor', emoji: '🐟', price: 100, walkable: true },
+  // 室內家具（第二期進屋，docs/plans/home.md 第 8 節；外觀在 src/world/Furniture.tsx）
+  { id: 'decor.bed', name: '床', slot: 'decor', emoji: '🛏️', price: 120, indoor: true },
+  { id: 'decor.desk', name: '書桌', slot: 'decor', emoji: '✏️', price: 60, indoor: true },
+  { id: 'decor.chair', name: '椅子', slot: 'decor', emoji: '💺', price: 20, indoor: true },
+  { id: 'decor.sofa', name: '沙發', slot: 'decor', emoji: '🛋️', price: 100, indoor: true },
+  { id: 'decor.rug', name: '地毯', slot: 'decor', emoji: '🧶', price: 30, indoor: true, walkable: true },
+  { id: 'decor.floorlamp', name: '立燈', slot: 'decor', emoji: '🪔', price: 40, indoor: true },
+  { id: 'decor.bookshelf', name: '書架', slot: 'decor', emoji: '📚', price: 70, indoor: true },
+  { id: 'decor.tv', name: '電視', slot: 'decor', emoji: '📺', price: 90, indoor: true },
+  { id: 'decor.plant', name: '盆栽', slot: 'decor', emoji: '🪴', price: 25, indoor: true },
+  { id: 'decor.piano', name: '鋼琴', slot: 'decor', emoji: '🎹', price: 150, indoor: true },
+  { id: 'decor.wardrobe', name: '衣櫃', slot: 'decor', emoji: '👚', price: 80, indoor: true },
+  { id: 'decor.teddy', name: '熊熊玩偶', slot: 'decor', emoji: '🧸', price: 35, indoor: true },
+  { id: 'decor.toybox', name: '玩具箱', slot: 'decor', emoji: '🧩', price: 45, indoor: true },
+  { id: 'decor.table', name: '餐桌', slot: 'decor', emoji: '🍽️', price: 70, indoor: true },
+  { id: 'decor.aquarium', name: '魚缸', slot: 'decor', emoji: '🐠', price: 110, indoor: true },
+];
+
+/** 房間的壁紙（第二期進屋）：買一次就有；第一種是免費的預設款。顏色在 src/world/HomeScene.tsx */
+export const WALLPAPERS: readonly CatalogItem[] = [
+  { id: 'wall.cream', name: '米白牆', slot: 'wall', emoji: '🤍', free: true },
+  { id: 'wall.mint', name: '薄荷綠', slot: 'wall', emoji: '💚', price: 30 },
+  { id: 'wall.sky', name: '天空藍', slot: 'wall', emoji: '💙', price: 30 },
+  { id: 'wall.pink', name: '粉紅點點', slot: 'wall', emoji: '🌸', price: 40 },
+  { id: 'wall.stripe', name: '黃色條紋', slot: 'wall', emoji: '💛', price: 50 },
+  { id: 'wall.star', name: '星空', slot: 'wall', emoji: '⭐', price: 80 },
+];
+
+/** 房間的地板（第二期進屋）：買一次就有；第一種是免費的預設款 */
+export const FLOORS: readonly CatalogItem[] = [
+  { id: 'floor.wood', name: '木頭地板', slot: 'floor', emoji: '🪵', free: true },
+  { id: 'floor.tile', name: '白磁磚', slot: 'floor', emoji: '⬜', price: 30 },
+  { id: 'floor.grass', name: '草皮', slot: 'floor', emoji: '🌱', price: 40 },
+  { id: 'floor.carpet', name: '藍地毯', slot: 'floor', emoji: '🟦', price: 40 },
+  { id: 'floor.check', name: '黑白格子', slot: 'floor', emoji: '🏁', price: 50 },
+  { id: 'floor.pinkwood', name: '粉紅木板', slot: 'floor', emoji: '🩷', price: 60 },
 ];
 
 /** 全部商品 */
-export const ITEMS: readonly CatalogItem[] = [...HATS, ...ACCESSORIES, ...PETS_AND_TRAILS, ...FURNITURE];
+export const ITEMS: readonly CatalogItem[] = [...HATS, ...ACCESSORIES, ...PETS_AND_TRAILS, ...FURNITURE, ...WALLPAPERS, ...FLOORS];
 
 /** 用 id 查商品；查不到回傳 undefined */
 export function findItem(id: string): CatalogItem | undefined {
@@ -115,11 +158,12 @@ export function itemsOfSlot(slot: Slot): CatalogItem[] {
 
 /**
  * 是否擁有：收藏裡有，或已經得到這個獎章專屬道具需要的獎章。目錄裡沒有的 id 一律不算擁有。
- * 獎章道具不寫進收藏，由獎章推算，所以早先得到的獎章也自動擁有。
+ * 獎章道具不寫進收藏，由獎章推算，所以早先得到的獎章也自動擁有。壁紙地板的預設款不用買就擁有。
  */
-export function owns(p: Profile, itemId: string): boolean {
+export function owns(p: Pick<Profile, 'inventory' | 'badges'>, itemId: string): boolean {
   const item = findItem(itemId);
   if (!item) return false;
+  if (item.free) return true;
   if (item.badge) return !!p.badges?.[item.badge];
   return p.inventory.includes(itemId);
 }

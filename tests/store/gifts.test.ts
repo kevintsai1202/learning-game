@@ -33,7 +33,7 @@ describe('禮物目錄', () => {
     expect(giftPrice('pet.dragon')).toBeNull();
     expect(giftPrice('nope')).toBeNull();
     // 每一項外觀：金幣道具照百寶屋價格、獎章道具不能送；家具（自己的家）不能送
-    for (const i of ITEMS) expect(giftPrice(i.id), i.id).toBe(i.badge || i.slot === 'decor' ? null : i.price);
+    for (const i of ITEMS) expect(giftPrice(i.id), i.id).toBe(i.badge || ['decor', 'wall', 'floor'].includes(i.slot) ? null : i.price);
   });
 
   it('禮物的名稱與卡片上的說法：貼紙加「一張」與「貼紙」，外觀直接用名稱', () => {

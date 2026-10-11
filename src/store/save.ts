@@ -9,7 +9,8 @@ import type { AnswerRecord, Question, SessionResult, SubjectId } from '../core/t
 import { subjectSchema } from '../content/schema';
 import { awardBadges, badgeById } from './badges';
 import { owns } from './catalog';
-import { DECOR_MAX_OWNED, YARD_MAX_ITEMS, cleanYard, isDecor, ownedCount, ownedDecor, yardItemSchema, type YardItem } from './yard';
+import { DECOR_MAX_OWNED, YARD_MAX_ITEMS, budgetAfter, cleanYard, isDecor, ownedCount, ownedDecor, yardItemSchema, type YardItem } from './yard';
+import { cleanHome, homeSchema, type HomeState } from './home';
 import { DEFAULT_PUZZLE_LIMIT_MIN, puzzleCoinsFor, trimPuzzleDays, type PuzzleDay, type PuzzleGameId, type PuzzleStats } from './puzzle';
 
 /** 存檔格式版本；欄位有不相容變更時加一，並在 loadSave 補上轉換（v2：加入 recent、curriculum） */
@@ -199,8 +200,10 @@ export interface Profile {
   giftLog?: GiftLogEntry[];
   /** 益智遊戲館的紀錄（2026-10 新增；舊存檔沒有時當作空的） */
   puzzle?: PuzzleStats;
-  /** 自己的家：院子裡的家具（2026-10 新增；舊存檔沒有就是空院子；docs/plans/home.md） */
+  /** 自己的家：島上擺的家具（2026-10 新增；舊存檔沒有就是空的；docs/plans/home.md） */
   yard?: YardItem[];
+  /** 自己的家第二期：房間的擺設與壁紙地板（2026-10 新增；舊存檔沒有就是空房間加預設款；docs/plans/home.md 第 8 節） */
+  home?: HomeState;
 }
 
 /** 全機設定 */
@@ -493,9 +496,14 @@ export function buyItem(save: SaveData, profileId: string, itemId: string, price
   });
 }
 
-/** 院子的擺設（自己的家）：照擁有的家具清理後存進角色（cleanYard） */
+/** 島上的擺設（自己的家）：照擁有的家具（扣掉屋裡已經擺的）清理後存進角色（cleanYard） */
 export function setYard(save: SaveData, profileId: string, items: readonly YardItem[]): SaveData {
-  return updateProfile(save, profileId, (p) => ({ ...p, yard: cleanYard(items, ownedDecor(p)) }));
+  return updateProfile(save, profileId, (p) => ({ ...p, yard: cleanYard(items, budgetAfter(ownedDecor(p), p.home?.items ?? [])) }));
+}
+
+/** 房間的擺設與壁紙地板（自己的家第二期）：照擁有的家具（扣掉島上已經擺的）與壁紙地板清理後存進角色（cleanHome） */
+export function setHome(save: SaveData, profileId: string, home: HomeState): SaveData {
+  return updateProfile(save, profileId, (p) => ({ ...p, home: cleanHome(home, p) }));
 }
 
 /** 更新角色外觀 */
@@ -606,6 +614,8 @@ export const profileSchema = z.object({
     .optional(),
   // 2026-10 自己的家：院子的擺設（可省略；整份上傳的路徑不經過 yard 操作，數量在這裡限制）
   yard: z.array(yardItemSchema).max(YARD_MAX_ITEMS).optional(),
+  // 2026-10 自己的家第二期：房間（可省略；最多 HOME_MAX_ITEMS 個）
+  home: homeSchema.optional(),
 });
 const saveSchema = z.object({
   schemaVersion: z.literal(SAVE_SCHEMA_VERSION),

@@ -3,6 +3,8 @@
  * - 全島的格子：自己的島上所有空草地，格子 1 公尺見方，用相對小屋的整數座標 (gx, gz)。
  * - 擺放檢查：只留下擁有的家具、在可以擺的格子、不重複的格子，最多 YARD_MAX_ITEMS 個。
  * - 動森做法：家具放在角色面前那一格（frontCell）、放下／轉方向／收起來、最靠近的家具（nearestItem）。
+ * - 第二期進屋：房間的格子在 home.ts。擺放與放法的函式吃「擺放的地方」（DecorSpace，預設島上 YARD_SPACE）；
+ *   每種家具的數量島上加屋裡一起算（budgetAfter 扣掉另一邊擺了的）。
  * 伺服器會 import 這個檔，不能 import 畫面、音訊或 3D 的程式；存檔只用 type import（save.ts 會 import 這裡）。
  */
 import { z } from 'zod';
@@ -83,6 +85,23 @@ function worldToCell(x: number, z: number): YardCell {
   return { gx: Math.round((x - HOUSE.x) / CELL), gz: Math.round((z - HOUSE.z) / CELL) };
 }
 
+/**
+ * 擺家具的地方（島上或屋裡）：哪些格子能擺、最多幾個、擺滿時的提示、格子與座標互換。
+ * 島上用世界座標（YARD_SPACE），屋裡用房間的座標（home.ts 的 HOME_SPACE）
+ */
+export interface DecorSpace {
+  /** 這一格能不能擺 */
+  isCell(gx: number, gz: number): boolean;
+  /** 最多擺幾個 */
+  max: number;
+  /** 擺滿時的提示 */
+  full: string;
+  /** 格子的中心座標 */
+  toWorld(gx: number, gz: number): { x: number; z: number };
+  /** 座標落在哪一格 */
+  toCell(x: number, z: number): YardCell;
+}
+
 /** 自己的島上的樹（小屋周圍 HOUSE_TREE_CLEAR 內的拿掉；畫面與格子用同一份） */
 let trees: TreeSpot[] | null = null;
 export function islandTrees(): TreeSpot[] {
@@ -132,6 +151,15 @@ export function isYardCell(gx: number, gz: number): boolean {
   return cellSet!.has(`${gx},${gz}`);
 }
 
+/** 島上（自己的島，世界座標） */
+export const YARD_SPACE: DecorSpace = {
+  isCell: isYardCell,
+  max: YARD_MAX_ITEMS,
+  full: '島上已經擺滿了',
+  toWorld: cellToWorld,
+  toCell: worldToCell,
+};
+
 /** 是不是家具 */
 export function isDecor(id: string): boolean {
   return findItem(id)?.slot === 'decor';
@@ -150,17 +178,27 @@ export function ownedDecor(p: Pick<Profile, 'inventory'>): Record<string, number
 }
 
 /**
- * 擺放檢查：拿掉不是家具、不在可以擺的格子、格子重複、超過擁有數量的項目，最多 YARD_MAX_ITEMS 個（前面的優先）。
+ * 另一邊（島上或屋裡）擺了以後，這一邊每種家具還能擺幾個：擁有的減掉另一邊擺了的，不會小於 0。
+ * 存島上時扣掉屋裡的、存屋裡時扣掉島上的（每次只改一邊，另一邊不動，伺服器與裝置算出來一樣）
+ */
+export function budgetAfter(owned: Record<string, number>, other: readonly YardItem[]): Record<string, number> {
+  const out: Record<string, number> = { ...owned };
+  for (const it of other) if (it.id in out) out[it.id] = Math.max(0, out[it.id] - 1);
+  return out;
+}
+
+/**
+ * 擺放檢查：拿掉不是家具、不在可以擺的格子、格子重複、超過能擺數量（owned）的項目，最多 space.max 個（前面的優先）。
  * 不合法的只拿掉那一個，其餘照存（格子的規則以後小改時，舊的擺放大多還在）
  */
-export function cleanYard(items: readonly YardItem[], owned: Record<string, number>): YardItem[] {
+export function cleanItems(items: readonly YardItem[], owned: Record<string, number>, space: DecorSpace): YardItem[] {
   const used = new Set<string>();
   const placed: Record<string, number> = {};
   const out: YardItem[] = [];
   for (const it of items) {
-    if (out.length >= YARD_MAX_ITEMS) break;
+    if (out.length >= space.max) break;
     const key = `${it.gx},${it.gz}`;
-    if (!isDecor(it.id) || !isYardCell(it.gx, it.gz) || used.has(key)) continue;
+    if (!isDecor(it.id) || !space.isCell(it.gx, it.gz) || used.has(key)) continue;
     if ((placed[it.id] ?? 0) >= (owned[it.id] ?? 0)) continue;
     used.add(key);
     placed[it.id] = (placed[it.id] ?? 0) + 1;
@@ -169,7 +207,12 @@ export function cleanYard(items: readonly YardItem[], owned: Record<string, numb
   return out;
 }
 
-/** 家具包裡每種家具還能擺幾個（擁有的減掉擺了的） */
+/** 島上的擺放檢查（cleanItems 用島上的格子；owned 是島上能擺的數量，已經扣掉屋裡擺的） */
+export function cleanYard(items: readonly YardItem[], owned: Record<string, number>): YardItem[] {
+  return cleanItems(items, owned, YARD_SPACE);
+}
+
+/** 家具包裡每種家具還能擺幾個（擁有的減掉擺了的；島上加屋裡一起算時 items 傳兩邊合起來的） */
 export function remainingDecor(s: { items: readonly YardItem[] }, owned: Record<string, number>): Record<string, number> {
   const out: Record<string, number> = { ...owned };
   for (const it of s.items) if (it.id in out) out[it.id] = Math.max(0, out[it.id] - 1);
@@ -178,9 +221,9 @@ export function remainingDecor(s: { items: readonly YardItem[] }, owned: Record<
 
 // ---------- 動森做法：放在角色面前、轉方向、收起來 ----------
 
-/** 角色面前的那一格（pos 是角色位置，heading 是面向的角度，0 = 南方 +z） */
-export function frontCell(pos: { x: number; z: number }, heading: number): YardCell {
-  return worldToCell(pos.x + Math.sin(heading) * FRONT_DIST, pos.z + Math.cos(heading) * FRONT_DIST);
+/** 角色面前的那一格（pos 是角色位置，heading 是面向的角度，0 = 南方 +z；屋裡傳房間的座標與 HOME_SPACE） */
+export function frontCell(pos: { x: number; z: number }, heading: number, space: DecorSpace = YARD_SPACE): YardCell {
+  return space.toCell(pos.x + Math.sin(heading) * FRONT_DIST, pos.z + Math.cos(heading) * FRONT_DIST);
 }
 
 /** 某一格上的家具（索引；沒有是 -1） */
@@ -188,18 +231,29 @@ function itemAt(items: readonly YardItem[], gx: number, gz: number): number {
   return items.findIndex((it) => it.gx === gx && it.gz === gz);
 }
 
-/** 能不能把某種家具放在某一格：可以回傳 null，不行回傳原因（畫面上的提示） */
-export function canPlace(items: readonly YardItem[], gx: number, gz: number, id: string, owned: Record<string, number>): string | null {
-  if (!isYardCell(gx, gz)) return '這裡不能擺';
+/**
+ * 能不能把某種家具放在某一格：可以回傳 null，不行回傳原因（畫面上的提示）。
+ * owned 是這一邊能擺的數量（島上加屋裡共用時先用 budgetAfter 扣掉另一邊）
+ */
+export function canPlace(items: readonly YardItem[], gx: number, gz: number, id: string, owned: Record<string, number>, space: DecorSpace = YARD_SPACE): string | null {
+  if (!space.isCell(gx, gz)) return '這裡不能擺';
   if (itemAt(items, gx, gz) >= 0) return '這裡已經有東西了';
   if ((remainingDecor({ items }, owned)[id] ?? 0) <= 0) return '這個家具都擺出去了';
-  if (items.length >= YARD_MAX_ITEMS) return '島上已經擺滿了';
+  if (items.length >= space.max) return space.full;
   return null;
 }
 
 /** 放下家具（方向照預覽）；不能放時原樣回傳 */
-export function placeItem(items: readonly YardItem[], gx: number, gz: number, id: string, rot: YardRot, owned: Record<string, number>): readonly YardItem[] {
-  if (canPlace(items, gx, gz, id, owned) !== null) return items;
+export function placeItem(
+  items: readonly YardItem[],
+  gx: number,
+  gz: number,
+  id: string,
+  rot: YardRot,
+  owned: Record<string, number>,
+  space: DecorSpace = YARD_SPACE,
+): readonly YardItem[] {
+  if (canPlace(items, gx, gz, id, owned, space) !== null) return items;
   return [...items, { id, gx, gz, rot }];
 }
 
@@ -217,11 +271,11 @@ export function removeItem(items: readonly YardItem[], gx: number, gz: number): 
 }
 
 /** 角色旁邊（NEAR_DIST 內）最靠近的家具；沒有是 null */
-export function nearestItem(items: readonly YardItem[], pos: { x: number; z: number }, maxDist = NEAR_DIST): YardItem | null {
+export function nearestItem(items: readonly YardItem[], pos: { x: number; z: number }, space: DecorSpace = YARD_SPACE, maxDist = NEAR_DIST): YardItem | null {
   let best: YardItem | null = null;
   let bestD = maxDist;
-  for (const it of visibleYard(items)) {
-    const w = cellToWorld(it.gx, it.gz);
+  for (const it of visibleYard(items, space.max)) {
+    const w = space.toWorld(it.gx, it.gz);
     const d = Math.hypot(w.x - pos.x, w.z - pos.z);
     if (d <= bestD) {
       best = it;
@@ -236,14 +290,19 @@ export function nearestItem(items: readonly YardItem[], pos: { x: number; z: num
 /** 擋路的家具碰撞半徑（公尺） */
 const SOLID_RADIUS = 0.45;
 
-/** 要畫的家具：不認得的跳過（別人的島可能是比較新的版本）、最多 YARD_MAX_ITEMS 個，不丟例外 */
-export function visibleYard(items: readonly YardItem[]): YardItem[] {
-  return items.filter((it) => isDecor(it.id)).slice(0, YARD_MAX_ITEMS);
+/** 要畫的家具：不認得的跳過（別人的島可能是比較新的版本）、最多 max 個（預設島上的上限），不丟例外 */
+export function visibleYard(items: readonly YardItem[], max = YARD_MAX_ITEMS): YardItem[] {
+  return items.filter((it) => isDecor(it.id)).slice(0, max);
 }
 
-/** 擋路的家具（碰撞）：格子中心、半徑 SOLID_RADIUS；花草、石板路、小池塘可以走過去 */
-export function yardObstacles(items: readonly YardItem[]): { x: number; z: number; r: number }[] {
-  return visibleYard(items)
+/** 擋路的家具（碰撞）：格子中心、半徑 SOLID_RADIUS；花草、石板路、小池塘、地毯可以走過去 */
+export function decorObstacles(items: readonly YardItem[], space: DecorSpace): { x: number; z: number; r: number }[] {
+  return visibleYard(items, space.max)
     .filter((it) => !findItem(it.id)?.walkable)
-    .map((it) => ({ ...cellToWorld(it.gx, it.gz), r: SOLID_RADIUS }));
+    .map((it) => ({ ...space.toWorld(it.gx, it.gz), r: SOLID_RADIUS }));
+}
+
+/** 島上擋路的家具 */
+export function yardObstacles(items: readonly YardItem[]): { x: number; z: number; r: number }[] {
+  return decorObstacles(items, YARD_SPACE);
 }

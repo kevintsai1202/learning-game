@@ -325,3 +325,27 @@ describe('操作套用：自己的家的院子（docs/plans/home.md）', () => {
     expect(opSchema.safeParse({ ...ok, items: [{ id: 'decor.bench', gx: 41, gz: 4, rot: 0 }] }).success).toBe(false);
   });
 });
+
+describe('自己的家第二期：房間（home 操作）、壁紙地板（buy 操作）', () => {
+  it('home 操作：照擁有的家具與壁紙地板清理後存進角色；島上已經擺的不能再擺進屋', () => {
+    const [c1] = yardCells();
+    const p = { ...kid(), inventory: ['decor.bed', 'decor.bench', 'wall.sky'], yard: [{ id: 'decor.bench', gx: c1.gx, gz: c1.gz, rot: 0 as const }] };
+    const bed = { id: 'decor.bed', gx: 1, gz: 1, rot: 2 as const };
+    const r = applyOp(p, { id: 'h1', at: AT, kind: 'home', home: { items: [bed, { id: 'decor.bench', gx: 2, gz: 2, rot: 0 }, { id: 'decor.sofa', gx: 3, gz: 3, rot: 0 }], wall: 'wall.sky', floor: 'floor.grass' } }, NOW);
+    expect(r.ok && r.profile.home).toEqual({ items: [bed], wall: 'wall.sky', floor: 'floor.wood' });
+  });
+
+  it('home 操作的格式：最多 100 個、座標是整數、方向 0～3、壁紙地板是字串', () => {
+    const ok = { id: 'h', at: AT, kind: 'home', home: { items: [{ id: 'decor.bed', gx: 0, gz: 4, rot: 3 }], wall: 'wall.cream', floor: 'floor.wood' } };
+    expect(opSchema.safeParse(ok).success).toBe(true);
+    expect(opSchema.safeParse({ ...ok, home: { ...ok.home, items: Array(101).fill(ok.home.items[0]) } }).success).toBe(false);
+    expect(opSchema.safeParse({ ...ok, home: { ...ok.home, items: [{ id: 'decor.bed', gx: 0.5, gz: 4, rot: 0 }] } }).success).toBe(false);
+    expect(opSchema.safeParse({ ...ok, home: { ...ok.home, wall: null } }).success).toBe(false);
+  });
+
+  it('買壁紙：扣一次金幣；再買不扣；預設款本來就有', () => {
+    const p = applyAll(kid(), [{ id: 'w1', at: AT, kind: 'buy', itemId: 'wall.sky' }, { id: 'w2', at: AT, kind: 'buy', itemId: 'wall.sky' }]);
+    expect(p.inventory.filter((v) => v === 'wall.sky')).toHaveLength(1);
+    expect(applyOp(kid(), { id: 'w3', at: AT, kind: 'buy', itemId: 'wall.cream' }, NOW)).toEqual({ ok: false, reason: '這個本來就有了' });
+  });
+});

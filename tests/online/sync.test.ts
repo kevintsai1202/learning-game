@@ -135,3 +135,18 @@ describe('待送佇列：院子的擺設（自己的家）只留最新的一份'
     expect(box.pending.map((o) => o.id)).toEqual(['y2']);
   });
 });
+
+describe('待送佇列：房間的擺設（自己的家第二期）也只留最新的一份', () => {
+  const AT = '2026-10-11T10:00:00+08:00';
+  const home = (id: string, n: number): Op => ({ id, at: AT, kind: 'home', home: { items: Array.from({ length: n }, (_, i) => ({ id: 'decor.bed', gx: i, gz: 0, rot: 0 as const })), wall: 'wall.cream', floor: 'floor.wood' } });
+  const yard = (id: string): Op => ({ id, at: AT, kind: 'yard', items: [] });
+
+  it('連記兩筆 home，待送段只剩最後一筆；島上的 yard 各留各的', () => {
+    let box = emptyOutbox();
+    box = enqueue(box, home('h1', 1));
+    box = enqueue(box, yard('y1'));
+    box = enqueue(box, home('h2', 2));
+    box = enqueue(box, yard('y2'));
+    expect(box.pending.map((o) => o.id)).toEqual(['h2', 'y2']);
+  });
+});
