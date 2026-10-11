@@ -1,6 +1,6 @@
 # 自己的家（島嶼動森化）規劃
 
-> 狀態：**規格確認（2026-10-11）**；**第一期（院子）2026-10-11 04:55 上線**，實作紀錄見第 6 節。總分期見 `docs/plans/roadmap.md`（批次 5）；使用者的決定見第 2 節。
+> 狀態：**規格確認（2026-10-11）**；**第一期（院子）2026-10-11 04:55 上線；改版（在島上直接佈置全島）10:07 上線**，實作紀錄見第 6 節。總分期見 `docs/plans/roadmap.md`（批次 5）；使用者的決定見第 2 節。
 > 相關文件：`docs/plans/islands.md`（自己的島、朋友來玩）、`docs/plans/login-ux-review.md` 第 4.5 節與 `docs/decisions.md`（L5 的小屋）、`docs/plans/rewards.md`（百寶屋、商品目錄）。
 
 ## 1. 需求
@@ -123,7 +123,7 @@
 - **注音與讀音**：重產注音字型子集（「柵」等新字）；「木柵欄」照試聽結果修正讀音。
 - 朋友看得到、伺服器、存檔格式（座標範圍放寬）、碰撞照第一期。
 
-### 7.1 改版實作紀錄（2026-10-11 完成，待上線）
+### 7.1 改版實作紀錄（2026-10-11 完成，10:07 上線）
 
 - **規則**（`src/store/yard.ts`）：`yardCells` 改成全島（格子座標 ±40；排除項目照第 7 節；樹用 `islandTrees()`，和畫面同一個 `HOUSE_TREE_CLEAR`）、`isYardCell` 用 Set；`frontCell`（角色面前 1.2 公尺）、`canPlace`（不行時回傳原因：這裡不能擺、這裡已經有東西了、這個家具都擺出去了、島上已經擺滿了）、`placeItem`／`rotateItem`／`removeItem`、`nearestItem`（1.5 公尺內）。上限 300／50，存檔與 `yard` 操作的格式跟著放寬。拿掉從上面看的佈置模式（`editYard`、`useYardEdit.ts`、`DecorPanel.tsx`、`YardGrid`、俯視鏡頭）。
 - **同步**（`src/online/sync.ts`）：待送段裡新的 `yard` 取代還沒送出的舊 `yard`（送出中的不動）。
