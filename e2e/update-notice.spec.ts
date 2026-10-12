@@ -39,22 +39,30 @@ test('版本一樣不提示；孩子在島上倒數自動重新整理，回到�
   expect(await check(page)).toBe(true);
   await expect(page.getByTestId('update-banner')).toBeVisible();
   await expect(page.getByTestId('update-note')).toContainText('秒後自動更新');
-  // 跳出的動畫跑完再截圖；手機尺寸也截一張（提示不能壓到上方一行的按鈕）
+  // 跳出的動畫跑完再截圖
   await page.waitForTimeout(600);
   await page.screenshot({ path: 'e2e/screenshots/update-banner.png' });
+  await expect.poll(() => loadMark(page), { timeout: 20_000 }).toBeNull();
+  // 重新整理後回到島上、同一個角色；沒有再提示（剛載入不檢查）
+  await expect.poll(() => screen(page), { timeout: 30_000 }).toBe('island');
+  expect(await page.evaluate(() => (window as any).__game.game.getState().save.activeProfileId)).toBe(profileId);
+  await expect(page.getByTestId('update-banner')).toHaveCount(0);
+  // 這次測試的「新版」是假的，重新載入後還是同一版：記成卡住（之後只提示、不再自動重新整理，不會一直重新整理）
+  expect(await page.evaluate(() => (window as any).__game.update.store.getState().stuck)).toBe(true);
+  expect(await check(page)).toBe(true);
+  await expect(page.getByTestId('update-note')).toContainText('過幾分鐘');
+  await markLoad(page);
+  await page.waitForTimeout(12_000);
+  expect(await loadMark(page)).not.toBeNull();
+  // 手機尺寸（只提示、不倒數，版面量得到）：提示不能壓到上方一行的按鈕
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.waitForTimeout(600);
+  await page.waitForTimeout(800);
   await page.screenshot({ path: 'e2e/screenshots/update-banner-phone.png' });
   const banner = (await page.getByTestId('update-banner').boundingBox())!;
   for (const chip of await page.locator('.hud-chip').all()) {
     const b = await chip.boundingBox();
     if (b && b.width > 0) expect(b.y + b.height <= banner.y || b.y >= banner.y + banner.height || b.x + b.width <= banner.x || b.x >= banner.x + banner.width).toBe(true);
   }
-  await expect.poll(() => loadMark(page), { timeout: 20_000 }).toBeNull();
-  // 重新整理後回到島上、同一個角色；沒有再提示（剛載入不檢查）
-  await expect.poll(() => screen(page), { timeout: 30_000 }).toBe('island');
-  expect(await page.evaluate(() => (window as any).__game.game.getState().save.activeProfileId)).toBe(profileId);
-  await expect(page.getByTestId('update-banner')).toHaveCount(0);
 });
 
 test('答題中只提示不重新整理，回到島上才倒數；大人的帳號頁只提示、按了才更新', async ({ page }) => {

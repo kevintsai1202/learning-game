@@ -18,11 +18,13 @@ const COUNTDOWN = 10;
 
 export function UpdateBanner() {
   const available = useUpdate((s) => s.available);
+  /** 剛更新過、版本卻還是舊的（CDN 還沒換完）：只提示，不再自動重新整理 */
+  const stuck = useUpdate((s) => s.stuck);
   const screen = useUi((s) => s.screen);
   const acting = useFurnitureUse((s) => s.acting !== null);
   const duel = useFriendDuel((s) => !!(s.incoming || s.outgoing || s.joining || s.live));
   const picking = useDecor((s) => s.picking !== null);
-  const mode = updateMode(screen, { acting, duel, picking });
+  const mode = stuck ? 'prompt' : updateMode(screen, { acting, duel, picking });
   const [left, setLeft] = useState(COUNTDOWN);
 
   // 安全的時候每秒倒數；不安全或沒有新版時倒數重來
@@ -39,7 +41,13 @@ export function UpdateBanner() {
   }, [available, mode, left]);
 
   if (!available) return null;
-  const note = mode === 'auto' ? `${Math.max(left, 0)} 秒後自動更新` : mode === 'wait' ? '做完回到島上就會更新' : '按「立即更新」換成新版';
+  const note = stuck
+    ? '新版還在傳過來，請過幾分鐘再按「立即更新」'
+    : mode === 'auto'
+      ? `${Math.max(left, 0)} 秒後自動更新`
+      : mode === 'wait'
+        ? '做完回到島上就會更新'
+        : '按「立即更新」換成新版';
   return (
     <div className="update-banner card" role="status" data-testid="update-banner">
       <span className="update-title">🎉 遊戲更新了！</span>

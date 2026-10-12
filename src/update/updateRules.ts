@@ -13,6 +13,14 @@ export function isNewVersion(local: string, remote: unknown): boolean {
   return typeof id === 'string' && id !== '' && id !== local;
 }
 
+/**
+ * 更新後重新載入，網頁的版本號還不是要更新到的那一版（GitHub Pages 的 CDN 剛部署完約 10 分鐘還沒換完、學校的代理伺服器快取了舊網頁）：
+ * 卡住了，不要再自動重新整理（不然每 5 分鐘重新整理一次），只提示。resumedId 是重新整理前記下的要更新到的版本號
+ */
+export function isStuck(buildId: string, resumedId: string | null): boolean {
+  return !!buildId && !!resumedId && buildId !== resumedId;
+}
+
 /** 孩子可以倒數自動更新的畫面（再加上狀態的條件） */
 const AUTO_SCREENS: readonly Screen[] = ['island', 'zone', 'badges', 'shop', 'title', 'profiles'];
 /** 大人的頁面（只提示，不自動重新整理：可能正在打字或設定） */

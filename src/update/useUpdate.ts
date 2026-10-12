@@ -8,7 +8,7 @@
  */
 import { create } from 'zustand';
 import type { Screen } from '../store/useUi';
-import { isNewVersion, resumeScreenOf } from './updateRules';
+import { isNewVersion, isStuck, resumeScreenOf } from './updateRules';
 
 /** 網頁裡的版本號（vite.config.ts 的 define；單元測試沒有 define 時是空的） */
 export const BUILD_ID: string = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : '';
@@ -21,9 +21,13 @@ const RESUME_KEY = 'learning-island-resume';
 interface UpdateStore {
   /** 有新版了（version.json 的版本號和網頁裡的不一樣） */
   available: boolean;
+  /** 讀到的新版的版本號（重新整理前記下來，重新載入後看有沒有真的換成它） */
+  remote: string | null;
+  /** 這次載入是更新後的重新整理，但版本還是舊的（CDN 還沒換完）：只提示、不再自動重新整理 */
+  stuck: boolean;
 }
 
-export const useUpdate = create<UpdateStore>(() => ({ available: false }));
+export const useUpdate = create<UpdateStore>(() => ({ available: false, remote: null, stuck: false }));
 
 /** 讀一次 version.json 比對（加時間參數、不用快取）；有新版回傳 true。讀不到不算（離線、伺服器更新中） */
 export async function checkForUpdate(): Promise<boolean> {
@@ -31,8 +35,9 @@ export async function checkForUpdate(): Promise<boolean> {
   try {
     const res = await fetch(`${import.meta.env.BASE_URL}version.json?t=${Date.now()}`, { cache: 'no-store' });
     if (!res.ok) return false;
-    const fresh = isNewVersion(BUILD_ID, await res.json());
-    if (fresh) useUpdate.setState({ available: true });
+    const body: unknown = await res.json();
+    const fresh = isNewVersion(BUILD_ID, body);
+    if (fresh) useUpdate.setState({ available: true, remote: (body as { id: string }).id });
     return fresh;
   } catch {
     return false;
@@ -64,24 +69,31 @@ export function startUpdateWatch(): () => void {
   };
 }
 
-/** 更新：記下重新整理後要回到哪個畫面，重新整理（存檔與待上傳的操作都在裝置上，不會掉） */
+/**
+ * 更新：記下重新整理後要回到哪個畫面、要更新到哪一版，重新整理（存檔與待上傳的操作都在裝置上，不會掉）
+ */
 export function applyUpdate(screen: Screen): void {
   const target = resumeScreenOf(screen);
   try {
-    if (target) sessionStorage.setItem(RESUME_KEY, target);
-    else sessionStorage.removeItem(RESUME_KEY);
+    sessionStorage.setItem(RESUME_KEY, JSON.stringify({ screen: target, id: useUpdate.getState().remote }));
   } catch {
     // 存不了就照平常從標題畫面開始
   }
   window.location.reload();
 }
 
-/** 重新載入後：拿走重新整理前記下的畫面（只拿一次） */
+/**
+ * 重新載入後：拿走重新整理前記下的畫面（只拿一次）。如果是更新後的重新整理、版本卻還是舊的（CDN 還沒換完），
+ * 記下 stuck：這次只提示、不再自動重新整理
+ */
 export function takeResume(): Screen | null {
   try {
-    const s = sessionStorage.getItem(RESUME_KEY);
+    const raw = sessionStorage.getItem(RESUME_KEY);
     sessionStorage.removeItem(RESUME_KEY);
-    return (s as Screen | null) ?? null;
+    if (!raw) return null;
+    const saved = JSON.parse(raw) as { screen?: Screen | null; id?: string | null };
+    if (isStuck(BUILD_ID, saved.id ?? null)) useUpdate.setState({ stuck: true });
+    return saved.screen ?? null;
   } catch {
     return null;
   }

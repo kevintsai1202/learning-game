@@ -5,7 +5,7 @@
  * - 重新整理後回到哪個畫面。
  */
 import { describe, expect, it } from 'vitest';
-import { isNewVersion, resumeScreenOf, updateMode } from '../../src/update/updateRules';
+import { isNewVersion, isStuck, resumeScreenOf, updateMode } from '../../src/update/updateRules';
 
 const CALM = { acting: false, duel: false, picking: false };
 
@@ -56,5 +56,15 @@ describe('resumeScreenOf', () => {
     expect(resumeScreenOf('parent')).toBeNull();
     expect(resumeScreenOf('title')).toBeNull();
     expect(resumeScreenOf('profiles')).toBe('profiles');
+  });
+});
+
+describe('isStuck', () => {
+  it('更新後重新載入，網頁的版本號還不是要更新到的那個（CDN 還沒換完、代理伺服器快取）：卡住了，不要再自動重新整理', () => {
+    expect(isStuck('old', 'new')).toBe(true);
+    expect(isStuck('new', 'new')).toBe(false);
+    // 沒有記下要更新到哪一版（一般的重新載入）、開發模式：不算
+    expect(isStuck('old', null)).toBe(false);
+    expect(isStuck('', 'new')).toBe(false);
   });
 });

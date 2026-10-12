@@ -32,4 +32,5 @@
 - **檢查與套用**（`src/update/useUpdate.ts`）：`checkForUpdate`（加時間參數、`no-store`）、`startUpdateWatch`（5 分鐘、切回分頁）、`onServerWelcome`（孩子與熊熊老師的連線收到第二次以後的 welcome）、`applyUpdate`（記下要回到的畫面在 sessionStorage，重新整理）、`takeResume`（`App` 在網址參數處理完之後，還在標題畫面才回去；要回島上但沒有角色時回選角色）。e2e 用 `window.__game.update`（`check()`、`buildId`）。
 - **提示**（`src/ui/UpdateBanner.tsx`，每個畫面都有）：「🎉 遊戲更新了！」、說明（`update-note`：N 秒後自動更新／做完回到島上就會更新／按「立即更新」換成新版）、「立即更新」（`update-now`）。安全時每秒倒數，變成不安全倒數重來。手機版排在上方一行下面。
 - **測試**：`tests/update/updateRules.test.ts`；`tests/server/static.test.ts` 加 `version.json`；e2e `e2e/update-notice.spec.ts`（版本一樣不提示；島上倒數後自動重新整理回到島上、同一個角色；手機版提示不壓到上方的按鈕；答題中只提示不重新整理、回島上才倒數；帳號頁只提示、按了才重新整理回帳號頁）。
+- **避免一直重新整理**：更新前把要更新到的版本號一起記在 sessionStorage；重新載入後網頁的版本還不是那一版（GitHub Pages 的 CDN 剛部署完約 10 分鐘還沒換完、學校的代理伺服器快取了舊網頁）就記成卡住（`isStuck`），這次載入只提示「新版還在傳過來，請過幾分鐘再按『立即更新』」，不再自動重新整理。
 - **已知**：這個功能是這一版才有的，還開著舊版（沒有檢查功能）的人這一次收不到通知，要自己重新整理一次；之後的每一次更新都會通知。同一個提交在 Zeabur 重新建置（版本號是建置時間）也會提示一次。重新整理後要先點一下畫面才有聲音。
