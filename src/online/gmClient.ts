@@ -12,14 +12,15 @@ import { applyHostYard, clearHostYard } from './useHostYard';
 import { create } from 'zustand';
 import { applyServerMessage, wsUrlOf, type SelfInfo } from './realtimeClient';
 import { TEACHER_AVATAR, TEACHER_NAME, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
-import { actCodeNow, canSendMove } from './realtimeClient';
+import { canSendMove, movePayload } from './realtimeClient';
+import { setServerNow } from '../store/clockSync';
 import type { ActCode } from '../store/actCodes';
 import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { BUBBLE_MS, expireBubbles } from './presence';
 import { usePresence } from './usePresence';
 import { useAccount } from './useAccount';
 import { useUi } from '../store/useUi';
-import { player, teleport } from '../world/input';
+import { teleport } from '../world/input';
 import { SPAWN, TEACHER_POS } from '../world/layout';
 
 /** 熊熊老師連線的狀態（GM 畫面顯示用） */
@@ -33,9 +34,11 @@ interface GmStore {
   notice: { id: number; text: string } | null;
   /** 在班上某個孩子的島上（島嶼互訪 I2）：島主 */
   visiting: { id: string; name: string } | null;
+  /** 伺服器支援班級島大型設施（welcome 的 caps 有 grand；docs/plans/grand-rides.md） */
+  grand: boolean;
 }
 
-export const useGm = create<GmStore>(() => ({ status: 'off', error: null, flags: { chatOpen: true, giftsOpen: true }, notice: null, visiting: null }));
+export const useGm = create<GmStore>(() => ({ status: 'off', error: null, flags: { chatOpen: true, giftsOpen: true }, notice: null, visiting: null, grand: false }));
 
 /** 給老師的短訊息流水號 */
 let noticeSeq = 0;
@@ -102,11 +105,9 @@ export function startGm(code: string): () => void {
 
   /** 送出目前的位置（熊熊老師也能坐、溜滑梯：帶動作代碼，第 9 節優化） */
   const sendMove = () => {
-    const { x, z } = player.pos;
-    const h = player.heading;
-    const a = actCodeNow(caps.includes('ride'));
-    last = { x, z, h, at: Date.now(), a };
-    sendGm({ t: 'move', x, z, h, ...(a ? { a } : {}) });
+    const m = movePayload(caps);
+    last = { x: m.x, z: m.z, h: m.h, at: Date.now(), a: m.a };
+    sendGm({ t: 'move', ...m });
   };
 
   const connect = () => {
@@ -130,13 +131,15 @@ export function startGm(code: string): () => void {
           retry = 0;
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
           caps = msg.caps ?? [];
+          // 對時（班級島的器材與大型設施的班次各台裝置一致）
+          setServerNow(msg.now);
           // 同一個孩子的屋子裡重新連上：留在屋裡（重新回報在屋裡）；換了島就出來（自己的家第二期）
           const stay = !!msg.host && isInsideHome() && useHome.getState().houseKey === msg.host.id;
           setHouseKey(msg.host ? msg.host.id : null, { teacher: true });
           // 到孩子的島從上岸處開始；回班級島站回廣場上 NPC 的位置（和伺服器一致）
           if (msg.host && !stay) teleport(SPAWN);
           else if (!msg.host && useGm.getState().visiting) teleport(TEACHER_POS);
-          useGm.setState({ status: 'online', error: null, flags: msg.room, visiting: msg.host ?? null });
+          useGm.setState({ status: 'online', error: null, flags: msg.room, visiting: msg.host ?? null, grand: caps.includes('grand') });
           sendWhere(true);
           break;
         }
@@ -178,9 +181,8 @@ export function startGm(code: string): () => void {
     if (useGm.getState().status !== 'online' || useUi.getState().screen !== 'gm') return;
     if (!canSendMove(isInsideHome(), caps)) return;
     const now = Date.now();
-    const { x, z } = player.pos;
-    const h = player.heading;
-    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow(caps.includes('ride')) !== last.a;
+    const { x, z, h, a } = movePayload(caps);
+    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || a !== last.a;
     if (moved || now - last.at > 2000) sendMove();
   }, 100);
 
@@ -204,6 +206,6 @@ export function startGm(code: string): () => void {
     s?.close();
     usePresence.getState().clear();
     clearHostYard();
-    useGm.setState({ status: 'off', error: null, notice: null, visiting: null });
+    useGm.setState({ status: 'off', error: null, notice: null, visiting: null, grand: false });
   };
 }

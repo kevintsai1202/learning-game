@@ -16,4 +16,6 @@ export const sceneDebug = {
   buildingLook: null as null | ((id: string) => { visible: boolean; opacity: number } | null),
   /** 自己的角色現在的姿勢、抬高、縮放、傾斜（第 10.3 節：按「起來」後要站著、原比例；角色掛上） */
   playerLift: null as null | (() => { pose: string; y: number; scale: number; tiltX: number; pivotY: number }),
+  /** 大型設施：自己的角色離地多高、有沒有跟著車廂翻轉（docs/plans/grand-rides.md） */
+  playerWorld: null as null | (() => { y: number; quat: readonly [number, number, number, number] | null }),
 };

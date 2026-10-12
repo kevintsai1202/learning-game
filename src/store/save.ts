@@ -482,6 +482,14 @@ export function secondsPlayedOn(p: Profile, day: Date): number {
   return p.playLog[dateKey(day)] ?? 0;
 }
 
+/** 玩班級島的大型設施（docs/plans/grand-rides.md）：扣 price 金幣，不夠丟出錯誤 */
+export function payGrand(save: SaveData, profileId: string, price: number): SaveData {
+  return updateProfile(save, profileId, (p) => {
+    if (p.coins < price) throw new Error('金幣不夠');
+    return { ...p, coins: p.coins - price };
+  });
+}
+
 /**
  * 購買商店物品；已擁有（含靠獎章擁有）則不重複扣款，金幣不足丟出錯誤。
  * 家具可以重複買（自己的家），每種最多 DECOR_MAX_OWNED 個，滿了不扣款

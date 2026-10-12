@@ -14,7 +14,7 @@ import { actCodeNow } from '../../src/online/realtimeClient';
 import { player, type PlayerAct } from '../../src/world/input';
 import { pickAction, type ActionState } from '../../src/ui/actionKeyRules';
 
-const NONE: ActionState = { picking: null, acting: null, zone: null, houseDoor: null, onMat: false, near: null, ride: null };
+const NONE: ActionState = { picking: null, acting: null, zone: null, houseDoor: null, onMat: false, near: null, ride: null, grand: null };
 
 describe('frameOf：家具與遊樂器材同一個入口', () => {
   it('家具照開始後幾秒（和 actFrame 一樣）', () => {
@@ -33,12 +33,12 @@ describe('frameOf：家具與遊樂器材同一個入口', () => {
 describe('actCodeNow：送出的動作代碼', () => {
   it('玩遊樂器材送 rideN；伺服器不支援時送 sit；家具照舊；站著沒有', () => {
     player.act = { kind: 'ride', ride: 'carousel', slot: 0, seat: 4, t0: 0 };
-    expect(actCodeNow(true)).toBe('ride4');
-    expect(actCodeNow(false)).toBe('sit');
+    expect(actCodeNow(['ride'])).toBe('ride4');
+    expect(actCodeNow([])).toBe('sit');
     player.act = { kind: 'swing', item: { id: 'decor.swing', gx: 1, gz: 1, rot: 0 }, place: 'yard', t0: 0 };
-    expect(actCodeNow(true)).toBe('swing');
+    expect(actCodeNow(['ride'])).toBe('swing');
     player.act = null;
-    expect(actCodeNow(true)).toBeUndefined();
+    expect(actCodeNow(['ride'])).toBeUndefined();
   });
 });
 

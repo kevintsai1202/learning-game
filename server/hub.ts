@@ -108,7 +108,7 @@ const MAX_ISLAND_KIDS = 8;
 /** 熊熊老師的公告：每條連線至少隔多久（毫秒） */
 const ANNOUNCE_GAP_MS = 10_000;
 /** 這個伺服器支援的新訊息（welcome 帶給裝置，見 ServerCap） */
-const CAPS: ServerCap[] = ['gm', 'duel', 'home', 'ride'];
+const CAPS: ServerCap[] = ['gm', 'duel', 'home', 'ride', 'grand'];
 /** 一局對戰最多轉送幾則動作（島嶼互訪 I4；正常一局不到 200 則） */
 const DUEL_MAX_MOVES = 2000;
 
@@ -282,6 +282,7 @@ export class Hub {
       members: others,
       chat: [...island.chat],
       caps: CAPS,
+      now: this.now(),
       ...(host ? { host } : {}),
       ...(yard ? { yard } : {}),
       ...(home ? { home } : {}),

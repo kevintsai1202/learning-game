@@ -13,6 +13,8 @@ import { mkdirSync } from 'node:fs';
 import { SERVER, createClassViaApi, flushDeviceLogs, loginAndEnter, openDevice, pageErrors } from './onlineDevice';
 import { FURNITURE_USE } from '../src/store/furnitureUse';
 import { ZONES } from '../src/world/layout';
+import { RIDES } from '../src/store/playground';
+import { GRAND_LOOK } from '../src/store/grandRides';
 
 const OUT = 'e2e/screenshots/hud-mobile';
 mkdirSync(OUT, { recursive: true });
@@ -30,7 +32,10 @@ const overlaps = (a: Box, b: Box) => a.x < b.x + b.width && b.x < a.x + a.width 
 
 test.afterEach(async ({}, testInfo) => flushDeviceLogs(testInfo));
 
-/** 大動作鍵上會出現的所有字（src/ui/actionKeyRules.ts：佈置、正在用、門口、腳踏墊、旁邊家具的用法） */
+/**
+ * 大動作鍵上會出現的所有字（src/ui/actionKeyRules.ts：佈置、正在用、門口、腳踏墊、旁邊家具的用法、
+ * 班級島的遊樂器材與大型設施）
+ */
 const ACTION_LABELS = [
   '放下',
   '⬆️ 起來',
@@ -40,6 +45,8 @@ const ACTION_LABELS = [
   '🚪 出去',
   ...ZONES.map((z) => `${z.icon} 進去`),
   ...Object.values(FURNITURE_USE).flatMap((s) => (s.offLabel ? [s.label, s.offLabel] : [s.label])),
+  ...Object.values(RIDES).map((r) => r.label),
+  ...Object.values(GRAND_LOOK).map((g) => g.label),
 ];
 
 /**

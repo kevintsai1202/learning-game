@@ -10,6 +10,9 @@ import { useUi } from '../store/useUi';
 import { useDecor, frontProblem, pickUpNear, placeFront, rotateGhost, rotateNear } from '../store/useDecor';
 import { actingLook, cellKey, stopUse, useFurnitureUse, type Place } from '../store/useFurnitureUse';
 import { rideFull, startRide, useRides } from '../store/useRides';
+import { grandBlock, grandWait, startGrand, useGrand } from '../store/useGrand';
+import { GRAND_LOOK } from '../store/grandRides';
+import { useSecondTick } from './useSecondTick';
 import { RIDES } from '../store/playground';
 import { enterHome, isInsideHome, leaveHome, useHome } from '../store/useHome';
 import { useSpecOf } from '../store/furnitureUse';
@@ -31,6 +34,7 @@ const MAIN_TESTID: Record<MainAction, string> = {
   rotate: 'decor-near-rotate',
   view: 'cam-view',
   ride: 'ride-start',
+  grand: 'grand-start',
 };
 
 /** 小圓鈕：圖示、說明、data-testid */
@@ -67,6 +71,11 @@ export function ActionKey() {
   const rideKind = useRides((s) => (s.near === null ? null : s.playground[s.near]));
   // 別人上下車時重算坐滿了沒
   useRides((s) => s.riders);
+  /** 旁邊的班級島大型設施（docs/plans/grand-rides.md）；別人上下車時重算坐滿了沒 */
+  const grandNear = useGrand((s) => s.near);
+  useGrand((s) => s.riders);
+  // 班次的倒數每半秒重畫（旁邊有大型設施、正在等出發時）
+  useSecondTick(grandNear !== null || acting?.kind === 'grand');
 
   // 旁邊的家具：自己能佈置的地方的家具優先（可以轉方向、收起來），不然是旁邊可以用的家具
   const place: Place = isInsideHome() ? 'home' : 'yard';
@@ -79,8 +88,9 @@ export function ActionKey() {
 
   const view = pickAction({
     picking: picking ? { name: findItem(picking)?.name ?? '', problem: frontProblem() } : null,
-    acting: acting && actingLooks ? { kind: acting.kind, name: actingLooks.name, emoji: actingLooks.emoji, locked: actingLooks.locked } : null,
+    acting: acting && actingLooks ? { kind: acting.kind, name: actingLooks.name, emoji: actingLooks.emoji, locked: actingLooks.locked, wait: grandWait() } : null,
     ride: rideSlot !== null && rideKind ? { name: RIDES[rideKind].name, emoji: RIDES[rideKind].emoji, label: RIDES[rideKind].label, full: rideFull(rideSlot) } : null,
+    grand: grandNear ? { ...GRAND_LOOK[grandNear], blocked: grandBlock(grandNear, { free: false }) } : null,
     zone: zone ? { name: zone.name, icon: zone.icon } : null,
     houseDoor: nearDoor && !inside ? { name: houseName ?? '' } : null,
     onMat: inside && onMat,
@@ -131,6 +141,9 @@ export function ActionKey() {
         return;
       case 'ride':
         if (rideSlot !== null && startRide(rideSlot)) sfx.tap();
+        return;
+      case 'grand':
+        if (grandNear && startGrand(grandNear, { free: false })) sfx.tap();
         return;
     }
   };

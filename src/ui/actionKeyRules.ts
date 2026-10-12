@@ -9,8 +9,11 @@ import type { UseKind } from '../store/furnitureUse';
 export interface ActionState {
   /** 佈置中選著的家具與面前不能放的原因（可以放是 null） */
   picking: { name: string; problem: string | null } | null;
-  /** 正在用的家具或班級島的遊樂器材（ride）；locked 是途中不能起來（溜滑梯城堡） */
-  acting: { kind: UseKind | 'ride'; name: string; emoji: string; locked?: boolean } | null;
+  /**
+   * 正在用的家具、班級島的遊樂器材（ride）或大型設施（grand）；locked 是途中不能起來（溜滑梯城堡、大型設施），
+   * wait 是等出發的倒數（大型設施，例如「⏳ 12 秒後出發」）
+   */
+  acting: { kind: UseKind | 'ride' | 'grand'; name: string; emoji: string; locked?: boolean; wait?: string | null } | null;
   /** 站在建築門口 */
   zone: { name: string; icon: string } | null;
   /** 站在島主的小屋門口（還沒進屋） */
@@ -21,10 +24,12 @@ export interface ActionState {
   near: { name: string; emoji: string; use: string | null; decor: boolean; notice?: string | null } | null;
   /** 旁邊的班級島遊樂器材（docs/plans/playground.md）：按鈕的字、坐滿了沒 */
   ride: { name: string; emoji: string; label: string; full: boolean } | null;
+  /** 旁邊的班級島大型設施（docs/plans/grand-rides.md）：按鈕的字（含價錢）、不能上的原因（可以上是 null） */
+  grand: { name: string; emoji: string; label: string; blocked: string | null } | null;
 }
 
 /** 主要動作 */
-export type MainAction = 'place' | 'stop' | 'enterZone' | 'enterHome' | 'leaveHome' | 'use' | 'rotate' | 'view' | 'ride';
+export type MainAction = 'place' | 'stop' | 'enterZone' | 'enterHome' | 'leaveHome' | 'use' | 'rotate' | 'view' | 'ride' | 'grand';
 /** 旁邊的小圓鈕（view 是用家具時換視角，第 10.5 節） */
 export type SecondaryAction = 'ghostRotate' | 'rotate' | 'pickup' | 'view';
 
@@ -57,8 +62,12 @@ export function pickAction(s: ActionState): ActionKeyView | null {
     };
   if (s.acting) {
     const caption = `${s.acting.emoji} ${s.acting.name}`;
-    // 溜滑梯（含溜滑梯城堡）途中不能起來（溜完自己站起來）：大鍵是換視角（第 10.5 節）
-    if (s.acting.kind === 'slide' || s.acting.locked) return { main: 'view', label: '🎥 換視角', caption, showCaption: false, container: 'use-card', disabled: false, secondary: [] };
+    // 溜滑梯（含溜滑梯城堡、大型設施）途中不能起來（溜完自己站起來）：大鍵是換視角（第 10.5 節）；
+    // 大型設施等出發時上面寫倒數
+    if (s.acting.kind === 'slide' || s.acting.locked) {
+      const wait = s.acting.wait ?? null;
+      return { main: 'view', label: '🎥 換視角', caption: wait ?? caption, showCaption: wait !== null, container: 'use-card', disabled: false, secondary: [] };
+    }
     return { main: 'stop', label: '⬆️ 起來', caption, showCaption: false, container: 'use-card', disabled: false, secondary: ['view'] };
   }
   if (s.zone)
@@ -70,6 +79,12 @@ export function pickAction(s: ActionState): ActionKeyView | null {
     // 班級島的遊樂器材：坐滿了不能按，上面說坐滿了
     const caption = s.ride.full ? `${s.ride.emoji} ${s.ride.name}坐滿了` : `${s.ride.emoji} ${s.ride.name}`;
     return { main: 'ride', label: s.ride.label, caption, showCaption: s.ride.full, container: 'ride-card', disabled: s.ride.full, secondary: [] };
+  }
+  if (s.grand) {
+    // 班級島的大型設施：不能上時（開走了、金幣不夠、坐滿了）上面寫原因、不能按
+    const blocked = s.grand.blocked;
+    const caption = `${s.grand.emoji} ${blocked ?? s.grand.name}`;
+    return { main: 'grand', label: s.grand.label, caption, showCaption: blocked !== null, container: 'grand-card', disabled: blocked !== null, secondary: [] };
   }
   if (s.near) {
     // 轉不過去的提示（第 10.3 節）是警告：顯示在大鍵上面

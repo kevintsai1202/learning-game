@@ -32,6 +32,8 @@ import { DECOR_LINES } from './lines';
 import { speak } from '../audio/speech';
 import { sfx } from '../audio/sfx';
 import { CamViewButton } from './CamButtons';
+import { grandWait } from '../store/useGrand';
+import { useSecondTick } from './useSecondTick';
 
 /** 家具包；compact（手機）：「放下」「轉方向」在右下的大動作鍵，條上只放家具與關上 */
 export function DecorBag({ compact = false }: { compact?: boolean }) {
@@ -228,14 +230,22 @@ export function DecorNear() {
   const acting = useFurnitureUse((s) => s.acting);
   const toggles = useFurnitureUse((s) => s.toggles);
   useHome((s) => s.inside);
+  // 大型設施等出發的倒數每半秒重畫（docs/plans/grand-rides.md）
+  useSecondTick(acting?.kind === 'grand');
   if (acting) {
-    // 家具或班級島的遊樂器材（docs/plans/playground.md）
+    // 家具、班級島的遊樂器材（docs/plans/playground.md）或大型設施（等出發時寫倒數）
     const look = actingLook(acting);
+    const wait = grandWait();
     return (
       <div className="decor-near card" role="group" aria-label="正在用的家具" data-testid="use-card">
         <span className="decor-near-name">
           {look.emoji} {look.name}
         </span>
+        {wait && (
+          <span className="decor-near-notice" role="status" data-testid="grand-wait">
+            {wait}
+          </span>
+        )}
         {!look.locked && (
           <button
             className="btn small"

@@ -17,6 +17,7 @@ import { PlaygroundPicker } from '../PlaygroundPicker';
 import { useAccount } from '../../online/useAccount';
 import type { Playground } from '../../store/rideKinds';
 import { RideCard } from '../RideCard';
+import { GrandCard } from '../GrandCard';
 
 /** 連線狀態的文字 */
 const STATUS_TEXT = { off: '', connecting: '連線中…', online: '🟢 在島上', error: '' } as const;
@@ -180,6 +181,7 @@ export function GmHud() {
       <DecorNear />
       {/* 班級島的遊樂器材（熊熊老師也能玩；docs/plans/playground.md） */}
       <RideCard />
+      <GrandCard free />
       {touch && <Joystick />}
     </>
   );

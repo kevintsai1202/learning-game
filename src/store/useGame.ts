@@ -13,12 +13,14 @@ import type { YardItem } from './yard';
 import type { HomeState } from './home';
 import { newlyEarned } from './badges';
 import { withIsland, type IslandTarget } from './island';
+import { GRAND_PRICE, type GrandRide } from './grandKinds';
 import {
   addPlayTime,
   addProfile,
   buyItem,
   createEmptySave,
   isValidSave,
+  payGrand,
   loadSave,
   recordPuzzle,
   recordSession,
@@ -94,6 +96,12 @@ interface GameStore {
   /** 結束目前角色的休息（休息時間到、家長 PIN 解鎖） */
   endRest: () => void;
   purchase: (itemId: string, price: number) => boolean;
+  /**
+   * 玩班級島的大型設施，扣 5 金幣（docs/plans/grand-rides.md）。serverOk 是伺服器支援 grand（welcome 的 caps）：
+   * 雲端角色在伺服器不支援時一定不扣、不排進同步佇列（舊伺服器不認得新操作會回 400，同步迴圈會把整批確認掉，
+   * 同一批的答題紀錄也會跟著丟掉）。成功回傳 true
+   */
+  payGrand: (ride: GrandRide, serverOk: boolean) => boolean;
   updateSettings: (patch: Partial<Settings>) => void;
   setParentPin: (pin: string) => void;
   checkParentPin: (pin: string) => boolean;
@@ -188,6 +196,17 @@ export const useGame = create<GameStore>((set, get) => {
       if (cloud !== null) return cloud;
       try {
         commit(buyItem(get().save, activeId(), itemId, price));
+        return true;
+      } catch {
+        return false;
+      }
+    },
+    payGrand: (ride, serverOk) => {
+      const p = get().profile();
+      if (!p || p.coins < GRAND_PRICE) return false;
+      if (p.cloud) return serverOk ? cloudAct(p.id, { kind: 'grand', ride }) === true : false;
+      try {
+        commit(payGrand(get().save, p.id, GRAND_PRICE));
         return true;
       } catch {
         return false;

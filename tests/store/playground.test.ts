@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { FOUNTAIN, SPAWN, WALK_RADIUS, ZONES, doorOf } from '../../src/world/layout';
 import { PLAZA, pathSegments } from '../../src/world/scenery';
-import { DEFAULT_PLAYGROUND, PLAYGROUND_SLOTS, RIDE_KINDS, emptyPlayground, playgroundSchema, type RideKind } from '../../src/store/rideKinds';
+import { DEFAULT_PLAYGROUND, PICKABLE_RIDES, PLAYGROUND_SLOTS, RIDE_KINDS, emptyPlayground, playgroundSchema, type RideKind } from '../../src/store/rideKinds';
 import { ACT_CODES, rideSeatOf, rideSeatCode } from '../../src/store/actCodes';
 import {
   PLAYGROUND_SPOTS,
@@ -41,6 +41,9 @@ describe('器材種類與資料格式（伺服器共用）', () => {
     // 老師還沒設定過的班級先放好的 4 座（使用者 2026-10-12）：旋轉木馬、翹翹板、大鞦韆組、彈跳床（對平板最輕的一組）
     expect(DEFAULT_PLAYGROUND).toEqual(['carousel', 'seesaw', 'swingset', 'trampoline']);
     expect(playgroundSchema.safeParse(DEFAULT_PLAYGROUND).success).toBe(true);
+    // 老師的選單拿掉小摩天輪（班級島有固定的巨大摩天輪）；資料格式照樣收（已經選了的班級不會被清掉）
+    expect(PICKABLE_RIDES).toEqual(['carousel', 'seesaw', 'swingset', 'trampoline', 'slidecastle', 'teacups', 'train']);
+    expect(playgroundSchema.safeParse(['ferris', null, null, null]).success).toBe(true);
     expect(playgroundSchema.safeParse(['carousel', null, 'seesaw', 'train']).success).toBe(true);
     expect(playgroundSchema.safeParse(['carousel', null, 'seesaw']).success).toBe(false);
     expect(playgroundSchema.safeParse(['rocket', null, null, null]).success).toBe(false);

@@ -14,6 +14,7 @@ import type { Vec2 } from './movement';
 import { inputDirection, player } from './input';
 import { camZoom, setZoom, zoomByPinch } from './cameraZoom';
 import { actFrame, type ActFrame, type UseKind } from '../store/furnitureUse';
+import { rotateByQuat } from '../store/coasterTrack';
 import type { DecorSpace, YardItem } from '../store/yard';
 
 /** 用家具時的視角：跟拍（平常的鏡頭）、近拍、第一人稱 */
@@ -142,6 +143,11 @@ export function followCamera(pos: Vec2, yaw: number, zoom: number, portrait: boo
 
 /** 角色的頭在世界的位置：照 PoseWrap 的轉法（樞軸在 pivotY、繞 x 轉 tiltX、內層在 y − pivotY 並縮放），再轉朝向 */
 function headOf(f: ActFrame): Vec3 {
+  // 雲霄飛車：角色跟著車廂翻轉，頭在角色的「上」那一側（docs/plans/grand-rides.md 第 5 節）
+  if (f.quat) {
+    const h = rotateByQuat(f.quat, { x: 0, y: HEAD_Y * f.scale, z: 0 });
+    return { x: f.x + h.x, y: f.y + h.y, z: f.z + h.z };
+  }
   const Y = f.y - f.pivotY + HEAD_Y * f.scale;
   const up = f.pivotY + Y * Math.cos(f.tiltX);
   const fwd = Y * Math.sin(f.tiltX);
@@ -150,6 +156,7 @@ function headOf(f: ActFrame): Vec3 {
 
 /** 臉朝的方向（局部 +z 繞 x 轉 tiltX 再轉朝向） */
 function faceOf(f: ActFrame): Vec3 {
+  if (f.quat) return rotateByQuat(f.quat, { x: 0, y: 0, z: 1 });
   const c = Math.cos(f.tiltX);
   return { x: Math.sin(f.heading) * c, y: -Math.sin(f.tiltX), z: Math.cos(f.heading) * c };
 }
@@ -160,8 +167,12 @@ function unit(v: Vec3): Vec3 | null {
   return l < 1e-6 ? null : { x: v.x / l, y: v.y / l, z: v.z / l };
 }
 
-/** 第一人稱看哪裡：slide 看接下來要去的地方、lie 看床尾、swing 看臉朝的方向、sit 看臉朝的方向稍微往下 */
-export type CamStyle = 'slide' | 'lie' | 'swing' | 'sit';
+/**
+ * 第一人稱看哪裡：slide 看接下來要去的地方、lie 看床尾、swing 看臉朝的方向、sit 看臉朝的方向稍微往下；
+ * 班級島大型設施（docs/plans/grand-rides.md）：coaster 看軌道前方、畫面跟著車廂翻轉（鏡頭的上是車廂的上）、
+ * wheel 看南邊（整座島）、ship 看角色面向的方向（水平）
+ */
+export type CamStyle = 'slide' | 'lie' | 'swing' | 'sit' | 'coaster' | 'wheel' | 'ship';
 
 /**
  * 用家具時的鏡頭（t 是開始用之後幾秒）：跟拍回傳 null（用平常的鏡頭）。家具的入口，算法在 camFor
@@ -177,7 +188,7 @@ export function actCamera(item: YardItem, space: DecorSpace, kind: UseKind, t: n
  * - 第一人稱：鏡頭在角色的頭（臉前面一點），直接跳到定位（snap，不然盪鞦韆時會晃）；
  *   溜滑梯看接下來要去的地方（沿著滑道往下看）、躺著看床尾、其他看臉朝的方向（坐著稍微往下）
  */
-export function camFor(frameAt: (dt: number) => ActFrame, style: CamStyle, view: CamView, yaw: number, zoom: number): (CamPose & { snap: boolean }) | null {
+export function camFor(frameAt: (dt: number) => ActFrame, style: CamStyle, view: CamView, yaw: number, zoom: number): (CamPose & { snap: boolean; up?: Vec3 }) | null {
   if (view === 'follow') return null;
   const f = frameAt(0);
   const head = headOf(f);
@@ -193,9 +204,13 @@ export function camFor(frameAt: (dt: number) => ActFrame, style: CamStyle, view:
     const h2 = headOf(frameAt(0.3));
     dir = unit({ x: h2.x - head.x, y: h2.y - head.y, z: h2.z - head.z });
   } else if (style === 'lie') dir = unit({ x: Math.sin(f.heading), y: -0.35, z: Math.cos(f.heading) });
+  else if (style === 'wheel') dir = unit({ x: 0, y: -0.3, z: 1 });
+  else if (style === 'ship') dir = unit({ x: Math.sin(f.heading), y: -0.12, z: Math.cos(f.heading) });
+  else if (style === 'coaster') dir = face;
   else if (style !== 'swing') dir = unit({ x: face.x, y: face.y - 0.25, z: face.z });
   const d = dir ?? face;
-  return { position: eye, target: { x: eye.x + d.x * 4, y: eye.y + d.y * 4, z: eye.z + d.z * 4 }, snap: true };
+  const up = style === 'coaster' && f.quat ? rotateByQuat(f.quat, { x: 0, y: 1, z: 0 }) : undefined;
+  return { position: eye, target: { x: eye.x + d.x * 4, y: eye.y + d.y * 4, z: eye.z + d.z * 4 }, snap: true, ...(up ? { up } : {}) };
 }
 
 // ---------- 拖曳、捏合、點一下 ----------

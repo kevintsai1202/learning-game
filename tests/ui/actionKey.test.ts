@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { pickAction, type ActionState } from '../../src/ui/actionKeyRules';
 
 /** 什麼都沒有的狀態 */
-const NONE: ActionState = { picking: null, acting: null, zone: null, houseDoor: null, onMat: false, near: null, ride: null };
+const NONE: ActionState = { picking: null, acting: null, zone: null, houseDoor: null, onMat: false, near: null, ride: null, grand: null };
 
 describe('pickAction', () => {
   it('什麼都沒有：不顯示', () => {
@@ -77,6 +77,7 @@ describe('pickAction', () => {
       onMat: true,
       near: { name: '長椅', emoji: '🪑', use: '🪑 坐下', decor: true },
       ride: null,
+      grand: null,
     };
     expect(pickAction(all)?.main).toBe('place');
     expect(pickAction({ ...all, picking: null })?.main).toBe('stop');

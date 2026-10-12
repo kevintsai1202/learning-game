@@ -40,6 +40,8 @@ import { HOUSE_DOOR_RANGE, houseDoor } from './room';
 import { useHome } from '../store/useHome';
 import { isTap, resetYaw } from './cameraOrbit';
 import { PlaygroundLayer } from './Playground';
+import { GrandRidesLayer } from './GrandRides';
+import { GRAND_CLEAR, grandObstacles } from '../store/grandRides';
 import { PLAYGROUND_SPOTS, SPOT_RADIUS, rideObstacles } from '../store/playground';
 import { emptyPlayground } from '../store/rideKinds';
 import { setPlayground } from '../store/useRides';
@@ -205,8 +207,9 @@ export function IslandScene({
   useEffect(() => setPlayground(playground), [playground]);
   /** 自己的島空出小屋周圍（自己的家，docs/plans/home.md；其他島的樹一棵不動；擺家具的格子用同一個半徑）；班級島空出遊樂場的 4 個位置 */
   const yardClear = HOUSE_TREE_CLEAR;
-  /** 是不是在班級島的遊樂場位置上（樹和花拿掉） */
-  const inPlayground = (p: { x: number; z: number }) => classIsland && PLAYGROUND_SPOTS.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < SPOT_RADIUS + 1.2);
+  /** 是不是在班級島的遊樂場位置、大型設施的月台與繫留塔附近（樹和花拿掉；docs/plans/grand-rides.md） */
+  const inPlayground = (p: { x: number; z: number }) =>
+    classIsland && (PLAYGROUND_SPOTS.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < SPOT_RADIUS + 1.2) || GRAND_CLEAR.some((c) => Math.hypot(p.x - c.x, p.z - c.z) < c.r));
   const trees = useMemo(
     () => (hasHome ? treesAway(allTrees, HOUSE, yardClear) : allTrees.filter((t) => !inPlayground(t))),
     [allTrees, hasHome, yardClear, classIsland], // eslint-disable-line react-hooks/exhaustive-deps
@@ -237,10 +240,11 @@ export function IslandScene({
       ...(hasFlag ? [{ x: FLAGPOLE.x, z: FLAGPOLE.z, r: 0.5 }] : []),
       // 院子裡擋路的家具（別人的院子也擋，不會走進島主的鞦韆）
       ...yardObstacles(yard ?? []),
-      // 班級島的遊樂器材
+      // 班級島的遊樂器材與大型設施（摩天輪的前腳、繫留塔）
       ...rideObstacles(playground),
+      ...(classIsland ? grandObstacles() : []),
     ],
-    [trees, hasHome, hasFlag, yard, playground],
+    [trees, hasHome, hasFlag, yard, playground, classIsland],
   );
   const sky = SKY[look.sky];
   const interactive = mode === 'play';
@@ -320,6 +324,7 @@ export function IslandScene({
       {yard && mode !== 'attract' && <UseProbe items={yard} place="yard" active={interactive} />}
       {canDeco && <DecorLayer space={YARD_SPACE} />}
       {classIsland && <PlaygroundLayer playground={playground} active={interactive} />}
+      {classIsland && <GrandRidesLayer active={interactive} />}
       {mode !== 'attract' && <OcclusionHider hasHome={hasHome} onChange={(h) => setHouseHidden(h.includes('house'))} />}
       {ZONES.map((z) => {
         const B = BUILDINGS[z.id];
@@ -356,7 +361,7 @@ export function IslandScene({
         <AttractCamera />
       ) : (
         <>
-          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} />
+          <Player avatar={avatar ?? DEFAULT_AVATAR} obstacles={obstacles} active={interactive} teacher={gm} tall={classIsland} />
           <TargetMarker />
           {/* 同房間的其他玩家（沒有人在線上時什麼都不畫） */}
           <RemotePlayers items={yard ?? []} />

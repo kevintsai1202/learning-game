@@ -16,6 +16,8 @@ import { useHome } from './useHome';
 import { findItem } from './catalog';
 import { PLAYGROUND_SPOTS, RIDES, rideExit } from './playground';
 import type { RideKind } from './rideKinds';
+import { GRAND_LOOK, grandExit } from './grandRides';
+import type { GrandRide } from './grandKinds';
 import { player } from '../world/input';
 
 /** 家具在島上還是屋裡 */
@@ -36,11 +38,16 @@ export function nowSec(): number {
   return performance.now() / 1000;
 }
 
-/** 正在用的家具或遊樂器材（player.act 的鏡像） */
-export type Acting = { kind: UseKind; item: YardItem; place: Place } | { kind: 'ride'; ride: RideKind; slot: number; seat: number };
+/** 正在用的家具、遊樂器材或大型設施（player.act 的鏡像；大型設施 run 是第幾班） */
+export type Acting =
+  | { kind: UseKind; item: YardItem; place: Place }
+  | { kind: 'ride'; ride: RideKind; slot: number; seat: number }
+  | { kind: 'grand'; ride: GrandRide; seat: number; run: number };
 
 /** 正在用的東西的名字與圖示、途中能不能起來（畫面的卡片與大動作鍵用） */
 export function actingLook(a: Acting): { name: string; emoji: string; locked: boolean } {
+  // 大型設施途中不能下來（跑完自己下來）
+  if (a.kind === 'grand') return { name: GRAND_LOOK[a.ride].name, emoji: GRAND_LOOK[a.ride].emoji, locked: true };
   if (a.kind === 'ride') {
     const r = RIDES[a.ride];
     return { name: r.name, emoji: r.emoji, locked: !!r.locked };
@@ -98,6 +105,14 @@ export function startUse(item: YardItem, place: Place): UseKind | null {
 export function stopUse(done = false): void {
   const act = player.act;
   if (!act) return;
+  if (act.kind === 'grand') {
+    // 大型設施：跑完（或被迫，例如傳送）才下來，站到下車站
+    if (!done) return;
+    player.pos = { ...grandExit(act.ride) };
+    player.act = null;
+    syncActMirror();
+    return;
+  }
   if (act.kind === 'ride') {
     if (RIDES[act.ride].locked && !done) return;
     player.pos = rideExit(act.ride, act.seat, PLAYGROUND_SPOTS[act.slot], player.pos);
@@ -116,6 +131,8 @@ export function syncActMirror(): void {
   const cur = s.acting;
   let same: boolean;
   if (cur === null || act === null) same = cur === act;
+  else if (cur.kind === 'grand' || act.kind === 'grand')
+    same = cur.kind === 'grand' && act.kind === 'grand' && cur.ride === act.ride && cur.seat === act.seat && cur.run === act.run;
   else if (cur.kind === 'ride' || act.kind === 'ride')
     same = cur.kind === 'ride' && act.kind === 'ride' && cur.ride === act.ride && cur.slot === act.slot && cur.seat === act.seat;
   else same = cur.item === act.item && cur.kind === act.kind && cur.place === act.place;
@@ -123,7 +140,13 @@ export function syncActMirror(): void {
   const swingers = { ...s.swingers };
   if (act?.kind === 'swing') swingers.self = { cell: cellKey(act.place, act.item), t0: act.t0 };
   else delete swingers.self;
-  const acting: Acting | null = !act ? null : act.kind === 'ride' ? { kind: 'ride', ride: act.ride, slot: act.slot, seat: act.seat } : { kind: act.kind, item: act.item, place: act.place };
+  const acting: Acting | null = !act
+    ? null
+    : act.kind === 'grand'
+      ? { kind: 'grand', ride: act.ride, seat: act.seat, run: act.run }
+      : act.kind === 'ride'
+        ? { kind: 'ride', ride: act.ride, slot: act.slot, seat: act.seat }
+        : { kind: act.kind, item: act.item, place: act.place };
   useFurnitureUse.setState({ acting, swingers });
 }
 

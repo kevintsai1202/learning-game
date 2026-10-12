@@ -12,11 +12,13 @@ import { badgeById } from '../store/badges';
 import { PUZZLE_GAME_IDS, type PuzzleGameId } from '../store/puzzle';
 import { DECOR_MAX_OWNED, YARD_MAX_ITEMS, isDecor, ownedCount, yardItemSchema, type YardItem } from '../store/yard';
 import { homeSchema, type HomeState } from '../store/home';
+import { GRAND_PRICE, GRAND_RIDES, type GrandRide } from '../store/grandKinds';
 import {
   ANIMAL_IDS,
   addPlayTime,
   buyItem,
   createEmptySave,
+  payGrand,
   recordPuzzle,
   recordSession,
   setAvatar,
@@ -58,7 +60,9 @@ export type Op =
   | (OpBase & { kind: 'curriculum'; curriculum: CurriculumChoice })
   | (OpBase & { kind: 'title'; badge: string | null })
   /** 益智遊戲的一局：金幣由套用端依星數與每日上限算；answers 只有益智搶答會帶 */
-  | (OpBase & { kind: 'puzzle'; game: PuzzleGameId; stars: number; answers?: AnswerRecord[] });
+  | (OpBase & { kind: 'puzzle'; game: PuzzleGameId; stars: number; answers?: AnswerRecord[] })
+  /** 玩班級島的大型設施（docs/plans/grand-rides.md）：價錢查共用常數 GRAND_PRICE（操作裡沒有價錢欄位） */
+  | (OpBase & { kind: 'grand'; ride: GrandRide });
 
 /** 操作的內容（不含 id 與時間，產生操作時再補上） */
 export type OpBody = Op extends infer T ? (T extends Op ? Omit<T, 'id' | 'at'> : never) : never;
@@ -107,6 +111,7 @@ export const opSchema = z.discriminatedUnion('kind', [
   }),
   z.object({ ...base, kind: z.literal('playTime'), seconds: z.number().positive().max(24 * 3600), puzzle: z.boolean().optional() }),
   z.object({ ...base, kind: z.literal('buy'), itemId: z.string().min(1).max(40) }),
+  z.object({ ...base, kind: z.literal('grand'), ride: z.enum(GRAND_RIDES) }),
   z.object({ ...base, kind: z.literal('yard'), items: z.array(yardItemSchema).max(YARD_MAX_ITEMS) }),
   z.object({ ...base, kind: z.literal('home'), home: homeSchema }),
   z.object({ ...base, kind: z.literal('avatar'), avatar: avatarSchema }),
@@ -182,6 +187,9 @@ export function applyOp(profile: Profile, op: Op, now: Date): ApplyResult {
       } else if (!owns(profile, item.id) && profile.coins < price) return { ok: false, reason: '金幣不夠' };
       return { ok: true, profile: onProfile(profile, (s, id) => buyItem(s, id, item.id, price)) };
     }
+    case 'grand':
+      if (profile.coins < GRAND_PRICE) return { ok: false, reason: '金幣不夠' };
+      return { ok: true, profile: onProfile(profile, (s, id) => payGrand(s, id, GRAND_PRICE)) };
     case 'yard':
       return { ok: true, profile: onProfile(profile, (s, id) => setYard(s, id, op.items)) };
     case 'home':

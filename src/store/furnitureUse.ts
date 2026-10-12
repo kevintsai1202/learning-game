@@ -121,6 +121,11 @@ export interface ActFrame {
   /** 樞軸的高度（鞦韆是橫桿；其他是 0） */
   pivotY: number;
   done: boolean;
+  /**
+   * 角色在世界的方向（四元數 [x, y, z, w]；雲霄飛車跟著車廂翻轉，docs/plans/grand-rides.md 第 5 節）。
+   * 有的話角色的外層群組直接設位置（含高度 y）與這個方向，不抬高、不傾斜（heading、tiltX 不用）
+   */
+  quat?: readonly [number, number, number, number];
 }
 
 /** 兩個數之間依比例取值（比例夾在 0～1） */

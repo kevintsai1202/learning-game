@@ -27,7 +27,9 @@ import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
 import { actFrame, anchorFor, useSpecOf } from '../store/furnitureUse';
 import { cellKey, nowSec, setRemoteSwing, spaceOf, type Place } from '../store/useFurnitureUse';
 import type { YardItem } from '../store/yard';
-import { rideSeatOf, type ActCode } from '../store/actCodes';
+import { grandSeatOf, rideSeatOf, type ActCode } from '../store/actCodes';
+import { grandRemoteFrame } from '../store/grandRides';
+import { setRemoteGrand } from '../store/useGrand';
 import { PLAYGROUND_SPOTS, rideFrame, slotNear } from '../store/playground';
 import { occupiedOf, setRemoteRider, useRides } from '../store/useRides';
 import { wallSec } from '../store/actFrame';
@@ -72,12 +74,24 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
    * 他正在用的家具：動作代碼、找到的那一件（找不到是 null，只擺姿勢）、看到動作開始的時間；
    * 玩班級島的遊樂器材時 ride 是哪一座的哪個座位（docs/plans/playground.md）
    */
-  const acting = useRef<{ act: ActCode; anchor: YardItem | null; t0: number; ride?: { slot: number; seat: number } } | null>(null);
+  const acting = useRef<{
+    act: ActCode;
+    anchor: YardItem | null;
+    t0: number;
+    ride?: { slot: number; seat: number };
+    /** 班級島的大型設施（docs/plans/grand-rides.md）：哪一樣、座位 */
+    grand?: { ride: 'coaster' | 'wheel' | 'ship'; seat: number };
+  } | null>(null);
+  /** 飛船甲板上畫面目前的位置（局部座標，往他送來的位置內插） */
+  const deck = useRef<{ x: number; z: number } | null>(null);
+  /** 腳下的圓形影子（在設施上離地時藏起來） */
+  const shadow = useRef<THREE.Mesh>(null);
   // 離開畫面時，他盪的鞦韆停下來、他坐的遊樂器材座位空出來
   useEffect(
     () => () => {
       setRemoteSwing(id, null);
       setRemoteRider(id, null);
+      setRemoteGrand(id, null);
     },
     [id],
   );
@@ -111,9 +125,46 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
     const dt = Math.min(rawDt, 0.05);
     // 用家具（第 9 節優化）：動作一變就用他當下的位置找附近同類的家具，之後照時間軸播（不照收到的座標）。
     // 遊樂器材的座位代碼 rideN：找他位置附近的那一座，照本機的時鐘把他擺在那個座位上（大家在這台裝置上一起動）
+    if (shadow.current) shadow.current.visible = true;
+    // 班級島的大型設施（docs/plans/grand-rides.md）：照本機的時鐘擺在列車、車廂的座位上；飛船上照他送來的甲板座標
+    const grand = m.act ? grandSeatOf(m.act) : null;
+    if (m.act && grand) {
+      if (acting.current?.act !== m.act) {
+        acting.current = { act: m.act, anchor: null, t0: nowSec(), grand };
+        setRemoteGrand(id, grand.ride === 'ship' ? null : grand);
+        setRemoteRider(id, null);
+        setRemoteSwing(id, null);
+        deck.current = null;
+      }
+      let speed = 0;
+      if (grand.ride === 'ship') {
+        const want = { x: m.x, z: m.z };
+        if (!deck.current || Math.hypot(want.x - deck.current.x, want.z - deck.current.z) > 4) deck.current = want;
+        const r = stepToward(deck.current, want, WALK_SPEED, dt);
+        speed = Math.hypot(r.pos.x - deck.current.x, r.pos.z - deck.current.z) / Math.max(dt, 1e-3);
+        deck.current = r.pos;
+      }
+      const f = grandRemoteFrame(grand.ride, grand.seat, wallSec(), { x: deck.current?.x ?? m.x, z: deck.current?.z ?? m.z, h: m.heading });
+      pos.current = { x: f.x, z: f.z };
+      heading.current = f.heading;
+      motion.current.speed = speed;
+      motion.current.pose = f.pose;
+      if (f.quat) {
+        lift.current = STANDING;
+        group.current.position.set(f.x, f.y, f.z);
+        group.current.quaternion.set(f.quat[0], f.quat[1], f.quat[2], f.quat[3]);
+      } else {
+        lift.current = f;
+        group.current.position.set(f.x, 0, f.z);
+        group.current.rotation.set(0, f.heading, 0);
+      }
+      if (shadow.current) shadow.current.visible = f.y < 0.3;
+      return;
+    }
     if (m.act) {
       if (acting.current?.act !== m.act) {
         const t0 = nowSec();
+        setRemoteGrand(id, null);
         const seat = rideSeatOf(m.act);
         const slot = seat === null ? null : slotNear(useRides.getState().playground, { x: m.x, z: m.z });
         if (seat !== null && slot !== null) {
@@ -137,7 +188,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
         motion.current.pose = f.pose;
         lift.current = f;
         group.current.position.set(f.x, 0, f.z);
-        group.current.rotation.y = f.heading;
+        group.current.rotation.set(0, f.heading, 0);
         return;
       }
       if (a.anchor) {
@@ -148,7 +199,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
         motion.current.pose = f.pose;
         lift.current = f;
         group.current.position.set(f.x, 0, f.z);
-        group.current.rotation.y = f.heading;
+        group.current.rotation.set(0, f.heading, 0);
         return;
       }
       // 找不到家具（例如他的版本比較新）：只擺姿勢
@@ -158,6 +209,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
       acting.current = null;
       setRemoteSwing(id, null);
       setRemoteRider(id, null);
+      setRemoteGrand(id, null);
       motion.current.pose = 'stand';
       lift.current = STANDING;
     }
@@ -175,7 +227,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
     heading.current = lerpAngle(heading.current, moved > 1e-4 ? Math.atan2(dx, dz) : m.heading, Math.min(1, dt * 10));
     pos.current = r.pos;
     group.current.position.set(r.pos.x, 0, r.pos.z);
-    group.current.rotation.y = heading.current;
+    group.current.rotation.set(0, heading.current, 0);
   });
 
   if (!look.avatar) return null;
@@ -188,7 +240,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
       {!look.teacher && look.avatar.pet && <PetFollower pet={look.avatar.pet} getPos={getPos} getHeading={() => heading.current} getSpeed={getSpeed} />}
       <group ref={group} position={start}>
         <PoseWrap lift={lift}>{look.teacher ? <Teacher waving={false} /> : <Avatar config={look.avatar} motion={motion} />}</PoseWrap>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+        <mesh ref={shadow} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
         </mesh>

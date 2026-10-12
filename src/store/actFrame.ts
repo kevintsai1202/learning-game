@@ -7,6 +7,8 @@
  */
 import { actFrame, type ActFrame } from './furnitureUse';
 import { PLAYGROUND_SPOTS, rideFrame } from './playground';
+import { grandFrame } from './grandRides';
+import { wallSec } from './clockSync';
 import { HOME_SPACE } from './home';
 import { YARD_SPACE } from './yard';
 import type { PlayerAct } from '../world/input';
@@ -17,14 +19,13 @@ export interface FrameClock {
   wall: number;
 }
 
-/** 牆上的時間（秒；一直在動的遊樂器材用，各台裝置差不多） */
-export function wallSec(): number {
-  return Date.now() / 1000;
-}
+/** 牆上的時間（秒；校正過，一直在動的遊樂器材與大型設施用；src/store/clockSync.ts） */
+export { wallSec };
 
 /** 某一刻正在用的家具或遊樂器材的樣子；occupied(slot) 是那一座的每個座位有沒有人（翹翹板用） */
 export function frameOf(act: PlayerAct, clock: FrameClock, occupied: (slot: number) => readonly boolean[]): ActFrame {
   const since = clock.now - act.t0;
+  if (act.kind === 'grand') return grandFrame(act, clock.wall);
   if (act.kind === 'ride') return rideFrame(act.ride, act.seat, PLAYGROUND_SPOTS[act.slot], { wall: clock.wall, since }, occupied(act.slot));
   return actFrame(act.item, act.place === 'home' ? HOME_SPACE : YARD_SPACE, act.kind, since);
 }

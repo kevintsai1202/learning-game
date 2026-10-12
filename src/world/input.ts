@@ -8,6 +8,7 @@ import type { Vec2 } from './movement';
 import type { YardItem } from '../store/yard';
 import type { UseKind } from '../store/furnitureUse';
 import type { RideKind } from '../store/rideKinds';
+import type { GrandRide } from '../store/grandKinds';
 
 /**
  * 正在用的家具（第 9 節優化）：哪一種用法、哪一件、在島上還是屋裡、開始的時間（performance.now 秒）。
@@ -29,8 +30,24 @@ export interface RideAct {
   t0: number;
 }
 
-/** 正在用的家具或遊樂器材（角色的樣子都照 src/store/actFrame.ts 的 frameOf 算） */
-export type PlayerAct = FurnitureAct | RideAct;
+/**
+ * 正在玩的班級島大型設施（docs/plans/grand-rides.md）：哪一樣、座位（雲霄飛車 0～23、摩天輪 0～47；飛船 0）、
+ * 第幾班（雲霄飛車與飛船；摩天輪 0）、上車那一刻校正過的牆上時間 w0、開始的時間 t0（performance.now 秒，音效用）、
+ * 飛船甲板上的位置與面向（局部座標；其他是 null）、點甲板要走去的地方（局部座標）
+ */
+export interface GrandAct {
+  kind: 'grand';
+  ride: GrandRide;
+  seat: number;
+  run: number;
+  w0: number;
+  t0: number;
+  deck: { x: number; z: number; h: number } | null;
+  target: Vec2 | null;
+}
+
+/** 正在用的家具、遊樂器材或大型設施（角色的樣子都照 src/store/actFrame.ts 的 frameOf 算） */
+export type PlayerAct = FurnitureAct | RideAct | GrandAct;
 
 /** 角色即時狀態 */
 export const player = {

@@ -32,30 +32,80 @@ import { sceneDebug } from './sceneDebug';
 import { nowSec, stopUse } from '../store/useFurnitureUse';
 import { frameOf, wallSec } from '../store/actFrame';
 import { RIDES } from '../store/playground';
+import { clampDeck, shipState, tallView } from '../store/grandRides';
 import { occupiedOf } from '../store/useRides';
 import type { PlayerAct } from './input';
 import type { CamStyle } from './cameraOrbit';
 import type { UseKind } from '../store/furnitureUse';
 
-/** 用家具或玩遊樂器材的途中能不能起來（溜滑梯、溜滑梯城堡不行，溜完自己起來） */
+/** 用家具或玩遊樂器材的途中能不能起來（溜滑梯、溜滑梯城堡、大型設施不行，玩完自己起來） */
 function lockedOf(act: PlayerAct): boolean {
+  if (act.kind === 'grand') return true;
   return act.kind === 'ride' ? !!RIDES[act.ride].locked : act.kind === 'slide';
 }
 
 /** 音效照哪一種用法放（遊樂器材：鞦韆組當成鞦韆，其他坐上去噗一聲） */
 function soundKindOf(act: PlayerAct): UseKind {
+  // 大型設施：坐上去（踏上甲板）噗一聲
+  if (act.kind === 'grand') return 'sit';
   if (act.kind !== 'ride') return act.kind;
   return act.ride === 'swingset' ? 'swing' : 'sit';
 }
 
 /** 第一人稱看哪裡（遊樂器材：溜滑梯城堡看接下來要去的地方、鞦韆組看臉朝的方向） */
 function camStyleOf(act: PlayerAct): CamStyle {
+  if (act.kind === 'grand') return act.ride;
   if (act.kind === 'ride') return act.ride === 'slidecastle' ? 'slide' : act.ride === 'swingset' ? 'swing' : 'sit';
   return act.kind === 'slide' ? 'slide' : act.kind === 'lie' ? 'lie' : act.kind === 'swing' ? 'swing' : 'sit';
 }
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
+/** 在飛船甲板上走路的速度（甲板小，走慢一點） */
+const DECK_SPEED = 3.2;
+
+/**
+ * 在飛船的甲板上走一步（docs/plans/grand-rides.md 第 2.3 節）：方向鍵與搖桿（鏡頭的方向，換成甲板的局部方向）
+ * 或點甲板設的目標；走到欄杆、舵輪停住。回傳這一步走了多遠（走路的動作用）
+ */
+function walkDeck(deck: { x: number; z: number; h: number }, act: { target: { x: number; z: number } | null }, dt: number): number {
+  const ship = shipState(wallSec());
+  const c = Math.cos(ship.heading);
+  const s = Math.sin(ship.heading);
+  const dir = moveInput();
+  let lx = 0;
+  let lz = 0;
+  if (Math.hypot(dir.x, dir.z) > 0.05) {
+    act.target = null;
+    // 世界的方向換成甲板上的方向（和 worldToDeck 一樣的轉法，不加位移）
+    lx = dir.x * c - dir.z * s;
+    lz = dir.x * s + dir.z * c;
+    const len = Math.hypot(lx, lz);
+    if (len > 1) {
+      lx /= len;
+      lz /= len;
+    }
+  } else if (act.target) {
+    const dx = act.target.x - deck.x;
+    const dz = act.target.z - deck.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.1) act.target = null;
+    else {
+      lx = dx / d;
+      lz = dz / d;
+    }
+  }
+  if (lx === 0 && lz === 0) return 0;
+  const step = DECK_SPEED * dt;
+  const next = clampDeck(deck.x + lx * step, deck.z + lz * step);
+  const moved = Math.hypot(next.x - deck.x, next.z - deck.z);
+  // 被欄杆擋住、幾乎走不動時放棄目標
+  if (act.target && moved < step * 0.05) act.target = null;
+  if (moved > 1e-4) deck.h = lerpAngle(deck.h, Math.atan2(next.x - deck.x, next.z - deck.z), Math.min(1, dt * 12));
+  deck.x = next.x;
+  deck.z = next.z;
+  return moved;
+}
 /** 靠近門口多少公尺內算「在門口」 */
 const DOOR_RANGE = 1.9;
 
@@ -74,10 +124,16 @@ interface PlayerProps {
   doors?: { id: ZoneId; x: number; z: number }[];
   /** 屋裡：鏡頭在房間裡跟著角色（比島上近，不會跑出房間） */
   roomView?: boolean;
+  /** 班級島：靠近巨大摩天輪、飛船繫留塔時鏡頭拉遠、往上看（docs/plans/grand-rides.md 第 5 節） */
+  tall?: boolean;
 }
 
-export function Player({ avatar, obstacles, active, teacher = false, bounds = WALK_RADIUS, doors = DOORS, roomView = false }: PlayerProps) {
+export function Player({ avatar, obstacles, active, teacher = false, bounds = WALK_RADIUS, doors = DOORS, roomView = false, tall = false }: PlayerProps) {
   const group = useRef<THREE.Group>(null);
+  /** 腳下的圓形影子（在設施上、離地時藏起來） */
+  const shadow = useRef<THREE.Mesh>(null);
+  /** 這一格角色在世界的高度與方向（大型設施：雲霄飛車跟著車廂翻轉；其他是 null，照朝向轉） */
+  const world = useRef<{ y: number; quat: readonly [number, number, number, number] | null }>({ y: 0, quat: null });
   const motion = useRef<MotionState>({ speed: 0 });
   /** 用家具時的抬高、縮放、傾斜（PoseWrap 每格讀） */
   const lift = useRef<PoseLift>(STANDING);
@@ -100,8 +156,11 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
   // e2e 讀自己的角色的姿勢與縮放（第 10.3 節：按「起來」後要站著、原比例）
   useEffect(() => {
     sceneDebug.playerLift = () => ({ pose: motion.current.pose ?? 'stand', ...lift.current });
+    // 大型設施：角色離地多高、有沒有跟著車廂翻轉（docs/plans/grand-rides.md）
+    sceneDebug.playerWorld = () => ({ y: world.current.y, quat: world.current.quat });
     return () => {
       sceneDebug.playerLift = null;
+      sceneDebug.playerWorld = null;
     };
   }, []);
   const shadowTex = useMemo(() => blobShadowTexture(), []);
@@ -112,11 +171,14 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     const dt = Math.min(rawDt, 0.05);
     let next = player.pos;
     let moving = false;
+    world.current = { y: 0, quat: null };
     // 用家具（第 9 節優化）與班級島的遊樂器材（docs/plans/playground.md）：照時間軸擺在上面；按鈕、方向鍵、
     // 點地面都會起來（溜滑梯、溜滑梯城堡途中不行，溜完自己起來）
     if (player.act) {
       const act = player.act;
       const t = nowSec() - act.t0;
+      // 飛船的甲板上可以走動（先走這一步，再照飛船的位置換成世界座標）
+      const deckMoved = active && act.kind === 'grand' && act.deck ? walkDeck(act.deck, act, dt) : 0;
       const f = frameOf(act, { now: nowSec(), wall: wallSec() }, occupiedOf);
       // 音效（第 10 節第 ① 批）：坐下噗、爬梯子、咻、咚、鞦韆嘎
       if (lastActT.current.act !== act) lastActT.current = { act, t: -1 };
@@ -131,9 +193,12 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
         // 位置設成座位的世界座標（位置訊息送出去才是座位）；移動與碰撞整段跳過
         player.pos = { x: f.x, z: f.z };
         player.heading = f.heading;
-        motion.current.speed = 0;
+        motion.current.speed = deckMoved / Math.max(dt, 1e-3);
         motion.current.pose = f.pose;
-        lift.current = f;
+        // 雲霄飛車：外層群組直接設高度與方向（跟著車廂翻轉），不抬高、不傾斜
+        lift.current = f.quat ? STANDING : f;
+        // 大型設施：鏡頭跟著抬高、腳下的影子藏起來（家具照舊）
+        if (act.kind === 'grand') world.current = { y: f.y, quat: f.quat ?? null };
       }
       next = player.pos;
     }
@@ -183,9 +248,17 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     player.pos = next;
 
     if (group.current) {
-      group.current.position.set(next.x, 0, next.z);
-      group.current.rotation.y = player.heading;
+      const q = world.current.quat;
+      if (q) {
+        group.current.position.set(next.x, world.current.y, next.z);
+        group.current.quaternion.set(q[0], q[1], q[2], q[3]);
+      } else {
+        group.current.position.set(next.x, 0, next.z);
+        group.current.rotation.set(0, player.heading, 0);
+      }
     }
+    // 在設施上離地時藏起腳下的影子（不然影子跟著飛到半空）
+    if (shadow.current) shadow.current.visible = world.current.y < 0.3;
 
     // 門口偵測：變更時才寫入 store
     const near = active && !teacher && !player.act ? nearestDoor(next, doors, DOOR_RANGE) : null;
@@ -218,6 +291,10 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     const act = player.act;
     const clock = { now: nowSec(), wall: wallSec() };
     const ac = act ? camFor((dt) => frameOf(act, { now: clock.now + dt, wall: clock.wall + dt }, occupiedOf), camStyleOf(act), view, yaw, zoom) : null;
+    // 第一人稱在雲霄飛車上：鏡頭的上是車廂的上（迴圈時畫面翻過去）；其他時候是世界的上
+    const up = ac?.up;
+    if (up) camera.up.set(up.x, up.y, up.z);
+    else if (camera.up.y !== 1) camera.up.set(0, 1, 0);
     if (body.current) body.current.visible = !(ac && view === 'first');
     if (camNear.current !== !!ac) {
       camNear.current = !!ac;
@@ -238,11 +315,14 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
       camera.lookAt(lookAt.current);
       return;
     }
-    // 鏡頭跟隨：直式螢幕拉遠一點，才看得到左右兩邊的建築；繞角色轉 yaw（yaw 0 和以前一樣）
+    // 鏡頭跟隨：直式螢幕拉遠一點，才看得到左右兩邊的建築；繞角色轉 yaw（yaw 0 和以前一樣）。
+    // 在大型設施上整個抬高角色離地的高度；班級島上靠近巨大摩天輪、繫留塔時拉遠、看的點抬高（docs/plans/grand-rides.md 第 5 節）
     const portrait = size.height > size.width * 1.1;
-    const c = followCamera(next, yaw, zoom, portrait);
-    camera.position.lerp(new THREE.Vector3(c.position.x, c.position.y, c.position.z), k);
-    lookAt.current.lerp(new THREE.Vector3(c.target.x, c.target.y, c.target.z), k);
+    const tv = tall && !act ? tallView(next) : { zoom: 1, lift: 0 };
+    const c = followCamera(next, yaw, zoom * tv.zoom, portrait);
+    const riseY = world.current.y;
+    camera.position.lerp(new THREE.Vector3(c.position.x, c.position.y + riseY, c.position.z), k);
+    lookAt.current.lerp(new THREE.Vector3(c.target.x, c.target.y + riseY + tv.lift, c.target.z), k);
     camera.lookAt(lookAt.current);
   });
 
@@ -255,7 +335,7 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
         <group ref={body}>
           <PoseWrap lift={lift}>{teacher ? <Teacher waving={false} /> : <Avatar config={avatar} motion={motion} />}</PoseWrap>
         </group>
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
+        <mesh ref={shadow} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />
         </mesh>

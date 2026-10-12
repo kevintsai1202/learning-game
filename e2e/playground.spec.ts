@@ -184,20 +184,21 @@ test('老師在班級管理頁選器材、熊熊老師進島用面板換器材�
   await expect(kid.page.getByTestId('use-stop')).toBeVisible();
   await expect(kid.page.getByTestId('cam-view')).toBeVisible();
   await kid.page.screenshot({ path: `${OUT}/06-phone-riding.png` });
-  // 熊熊老師進島，用上方的「🎡 遊樂場」把第二個位置換成摩天輪
+  // 熊熊老師進島，用上方的「🎡 遊樂場」把第二個位置換成咖啡杯（選單上沒有小摩天輪：班級島有固定的巨大摩天輪）
   await t.page.getByTestId('gm-enter').click();
   await expect.poll(() => t.page.evaluate(() => (window as any).__game.gm.getState().status)).toBe('online');
   await expect.poll(() => pgOf(t.page)).toEqual(['carousel', null, null, null]);
   await t.page.getByTestId('gm-playground-toggle').click();
-  await t.page.getByTestId('pg-1-ferris').click();
-  await expect.poll(() => pgOf(kid.page)).toEqual(['carousel', 'ferris', null, null]);
-  await expect.poll(() => pgOf(t.page)).toEqual(['carousel', 'ferris', null, null]);
+  await expect(t.page.getByTestId('pg-1-ferris')).toHaveCount(0);
+  await t.page.getByTestId('pg-1-teacups').click();
+  await expect.poll(() => pgOf(kid.page)).toEqual(['carousel', 'teacups', null, null]);
+  await expect.poll(() => pgOf(t.page)).toEqual(['carousel', 'teacups', null, null]);
   await t.page.screenshot({ path: `${OUT}/07-gm-panel.png` });
   await t.page.getByTestId('gm-playground-close').click();
-  // 熊熊老師也能玩：坐摩天輪
+  // 熊熊老師也能玩：坐咖啡杯
   await standBy(t.page, 1);
   await t.page.getByTestId('ride-start').click();
-  await expect.poll(() => rideOf(t.page)).toMatchObject({ ride: 'ferris', slot: 1 });
+  await expect.poll(() => rideOf(t.page)).toMatchObject({ ride: 'teacups', slot: 1 });
   await expect.poll(() => kid.page.evaluate(() => (window as any).__game.rides.occupied(1).filter(Boolean).length)).toBe(1);
   expect(pageErrors(kid.page)).toEqual([]);
   expect(pageErrors(t.page)).toEqual([]);

@@ -15,18 +15,34 @@ import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, remov
 import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
 import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { ACT_OF_KIND } from '../store/furnitureUse';
-import { rideSeatCode, type ActCode } from '../store/actCodes';
+import { grandSeatCode, rideSeatCode, type ActCode } from '../store/actCodes';
+import { setServerNow } from '../store/clockSync';
 
 /**
  * 自己現在的動作代碼（坐、躺、溜滑梯、盪鞦韆；開關類不算；站著是 undefined）。
- * 玩班級島的遊樂器材送座位代碼 rideN；伺服器還不支援（rideOk 是 false，welcome 的 caps 沒有 ride）時送 sit，
- * 舊伺服器的格式驗證不會因為不認得的代碼斷線
+ * 玩班級島的遊樂器材送座位代碼 rideN、大型設施送 coN、whN、sh（docs/plans/grand-rides.md）；
+ * 伺服器還不支援（welcome 的 caps 沒有 ride、grand）時送 sit，舊伺服器的格式驗證不會因為不認得的代碼斷線
  */
-export function actCodeNow(rideOk: boolean): ActCode | undefined {
+export function actCodeNow(caps: readonly ServerCap[]): ActCode | undefined {
   const act = player.act;
   if (!act) return undefined;
-  if (act.kind === 'ride') return rideOk ? rideSeatCode(act.seat) : 'sit';
+  if (act.kind === 'grand') {
+    if (!caps.includes('grand')) return 'sit';
+    return act.ride === 'ship' ? 'sh' : grandSeatCode(act.ride, act.seat);
+  }
+  if (act.kind === 'ride') return caps.includes('ride') ? rideSeatCode(act.seat) : 'sit';
   return ACT_OF_KIND[act.kind];
+}
+
+/**
+ * 要送出的位置訊息內容：平常是角色的世界座標與朝向；在飛船上（代碼 sh）送甲板上的局部座標與面向，
+ * 收到的裝置照自己時鐘的飛船位置換成世界座標，大家在每台裝置上都站在甲板上
+ */
+export function movePayload(caps: readonly ServerCap[]): { x: number; z: number; h: number; a?: ActCode } {
+  const a = actCodeNow(caps);
+  const act = player.act;
+  if (a === 'sh' && act?.kind === 'grand' && act.deck) return { x: act.deck.x, z: act.deck.z, h: act.deck.h, a };
+  return { x: player.pos.x, z: player.pos.z, h: player.heading, ...(a ? { a } : {}) };
 }
 import { doingLabel } from './doing';
 import { findActivity } from '../activities/resolve';
@@ -238,9 +254,20 @@ interface RealtimeStore {
   open: boolean;
   /** 伺服器支援和朋友益智對戰（welcome 的 caps 有 duel，島嶼互訪 I4；舊伺服器收到對戰訊息會斷線） */
   duel: boolean;
+  /** 伺服器支援班級島大型設施（welcome 的 caps 有 grand；舊伺服器不認得扣金幣的操作與新的座位代碼） */
+  grand: boolean;
 }
 
-export const useRealtime = create<RealtimeStore>(() => ({ status: 'off', flags: { chatOpen: true, giftsOpen: true }, notice: null, island: null, visiting: null, open: false, duel: false }));
+export const useRealtime = create<RealtimeStore>(() => ({
+  status: 'off',
+  flags: { chatOpen: true, giftsOpen: true },
+  notice: null,
+  island: null,
+  visiting: null,
+  open: false,
+  duel: false,
+  grand: false,
+}));
 
 /** 目前的連線（說短句用） */
 let socket: WebSocket | null = null;
@@ -345,7 +372,7 @@ export function startRealtime(): () => void {
     useFriends.getState().clear();
     duelConnectionLost();
     clearHostYard();
-    useRealtime.setState({ island: null, visiting: null, open: false, duel: false });
+    useRealtime.setState({ island: null, visiting: null, open: false, duel: false, grand: false });
     if (useRealtime.getState().status !== 'kicked') useRealtime.setState({ status: 'off' });
   };
 
@@ -371,10 +398,20 @@ export function startRealtime(): () => void {
           retry = 0;
           visitPending = false;
           caps = msg.caps ?? [];
+          // 對時：班級島的器材與大型設施的班次各台裝置一致（舊伺服器沒有 now 就照本機時間）
+          setServerNow(msg.now);
           // 進了別座島（或別人的島）：原本在屋裡的話先出來，才不會在新的島上回報在屋裡（自己的家第二期；
           // 畫面那邊的 GameCanvas 也會做，這裡先做是為了 sendWhere 送對）。舊版伺服器沒有 island，不動
           if (msg.island) setHouseKey(msg.island === 'own' ? (msg.host?.id ?? 'mine') : null);
-          useRealtime.setState({ status: 'online', flags: msg.room, island: msg.island ?? null, visiting: msg.host ?? null, open: false, duel: caps.includes('duel') });
+          useRealtime.setState({
+            status: 'online',
+            flags: msg.room,
+            island: msg.island ?? null,
+            visiting: msg.host ?? null,
+            open: false,
+            duel: caps.includes('duel'),
+            grand: caps.includes('grand'),
+          });
           last = { x: NaN, z: NaN, h: NaN, at: 0 };
           // 進了一座島（剛連上、重新連線、換島）：伺服器那邊之前的對戰已經結束、邀請作廢（島嶼互訪 I4）
           duelConnectionLost();
@@ -482,7 +519,7 @@ export function startRealtime(): () => void {
       usePresence.getState().clear();
       duelConnectionLost();
       clearHostYard();
-      useRealtime.setState({ duel: false });
+      useRealtime.setState({ duel: false, grand: false });
       if (useRealtime.getState().status === 'kicked') return;
       // 換了班級（家長掃 QR code 讓孩子加入班級）：不算斷線，同步一次拿到新的班級後馬上重新上線
       if (ev.code === CLOSE_RECONNECT) {
@@ -548,11 +585,9 @@ export function startRealtime(): () => void {
 
   /** 送出目前的位置（用家具時帶動作代碼，第 9 節優化） */
   const sendMove = () => {
-    const { x, z } = player.pos;
-    const h = player.heading;
-    const a = actCodeNow(caps.includes('ride'));
-    last = { x, z, h, at: Date.now(), a };
-    send({ t: 'move', x, z, h, ...(a ? { a } : {}) });
+    const m = movePayload(caps);
+    last = { x: m.x, z: m.z, h: m.h, at: Date.now(), a: m.a };
+    send({ t: 'move', ...m });
   };
 
   // 位置：有變才送（最多每秒 10 次），靜止時每 2 秒送一次；在屋裡而伺服器不支援進屋時不送
@@ -560,10 +595,9 @@ export function startRealtime(): () => void {
     if (useRealtime.getState().status !== 'online' || useUi.getState().screen !== 'island') return;
     if (!canSendMove(isInsideHome(), caps)) return;
     const now = Date.now();
-    const { x, z } = player.pos;
-    const h = player.heading;
+    const { x, z, h, a } = movePayload(caps);
     // 坐下、起來（動作變了）也算有變，立刻送
-    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow(caps.includes('ride')) !== last.a;
+    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || a !== last.a;
     if (moved || now - last.at > 2000) sendMove();
   }, 100);
 

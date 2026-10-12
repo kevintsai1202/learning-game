@@ -57,9 +57,10 @@ export const teacherFriendId = (code: string): string => `teacher:${code}`;
 /**
  * 新伺服器在 welcome 告訴裝置支援哪些新訊息（部署途中新網頁可能連到舊伺服器，舊伺服器收到不認得的訊息會斷線）：
  * gm 是老師 GM 的 G2＋G3（孩子回報在做什麼等）；duel 是和朋友益智對戰（島嶼互訪 I4）；
- * home 是進屋（where home，自己的家第二期）
+ * home 是進屋（where home，自己的家第二期）；ride 是遊樂場的座位代碼；grand 是班級島大型設施（座位代碼 co、wh、sh 與扣金幣的操作 grand，
+ * docs/plans/grand-rides.md）
  */
-export type ServerCap = 'gm' | 'duel' | 'home' | 'ride';
+export type ServerCap = 'gm' | 'duel' | 'home' | 'ride' | 'grand';
 
 /** 對戰的難度（益智搶答不分難度，照樣帶一個） */
 const duelLevel = z.union([z.literal(1), z.literal(2), z.literal(3)]);
@@ -188,6 +189,8 @@ export type ServerMessage =
       members: MemberState[];
       chat: ChatLine[];
       caps?: ServerCap[];
+      /** 伺服器的時間（毫秒；裝置對時，班級島的器材與大型設施的班次各台一致；舊版伺服器沒有） */
+      now?: number;
       /** 在別人的島上時：島主（name 照自己看到的；島嶼互訪 I2） */
       host?: { id: string; name: string };
       /** 自己的島（不管是誰的）：島主的院子（自己的家，docs/plans/home.md；班級島沒有這個欄位） */

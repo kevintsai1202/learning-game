@@ -8,6 +8,11 @@ import { z } from 'zod';
 export const RIDE_KINDS = ['carousel', 'seesaw', 'swingset', 'trampoline', 'slidecastle', 'ferris', 'teacups', 'train'] as const;
 /** 一種器材 */
 export type RideKind = (typeof RIDE_KINDS)[number];
+/**
+ * 老師的選單上可以選的器材：小摩天輪拿掉（班級島有固定的巨大摩天輪，docs/plans/grand-rides.md）。
+ * ferris 還留在 RIDE_KINDS（資料格式）：已經選了的班級照樣畫、選單上那一格照樣顯示，老師換掉就不再出現
+ */
+export const PICKABLE_RIDES: readonly RideKind[] = RIDE_KINDS.filter((k) => k !== 'ferris');
 /** 班級島上的遊樂場位置數 */
 export const PLAYGROUND_SLOTS = 4;
 /** 班級島的遊樂場：每個位置一種器材或空的 */

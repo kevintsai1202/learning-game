@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { RIDES } from '../store/playground';
-import { RIDE_KINDS, emptyPlayground, type Playground } from '../store/rideKinds';
+import { PICKABLE_RIDES, emptyPlayground, type Playground } from '../store/rideKinds';
 import { createLatestSaver } from './latestSaver';
 import { sfx } from '../audio/sfx';
 
@@ -42,7 +42,8 @@ export function PlaygroundPicker({ value, onSave }: { value: Playground | undefi
         <div key={slot} className="playground-slot" role="group" aria-label={SLOT_NAMES[slot]}>
           <b className="playground-slot-name">{SLOT_NAMES[slot]}</b>
           <div className="playground-chips">
-            {RIDE_KINDS.map((k) => (
+            {/* 小摩天輪只在已經選了時顯示（班級島有固定的巨大摩天輪） */}
+            {(cur === 'ferris' ? [...PICKABLE_RIDES, 'ferris' as const] : PICKABLE_RIDES).map((k) => (
               <button
                 key={k}
                 className={`btn small ${cur === k ? 'green' : 'white'}`}
