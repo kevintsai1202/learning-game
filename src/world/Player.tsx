@@ -333,7 +333,7 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     <>
       <group ref={group}>
         <group ref={body}>
-          <PoseWrap lift={lift}>{teacher ? <Teacher waving={false} /> : <Avatar config={avatar} motion={motion} />}</PoseWrap>
+          <PoseWrap lift={lift}>{teacher ? <Teacher waving={false} motion={motion} /> : <Avatar config={avatar} motion={motion} />}</PoseWrap>
         </group>
         <mesh ref={shadow} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />

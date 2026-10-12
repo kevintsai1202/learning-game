@@ -34,6 +34,13 @@ const coinsOf = (page: Page) => page.evaluate(() => (window as any).__game.game.
 const teleport = (page: Page, p: { x: number; z: number }) => page.evaluate((q) => (window as any).__game.teleport(q), p);
 /** 把兩台裝置的牆上時間往前撥一樣多 */
 const warp = (pages: Page[], sec: number) => Promise.all(pages.map((p) => p.evaluate((s) => (window as any).__game.grand.warp(s), sec)));
+/** 把每台裝置的牆上時間各自撥到同一刻 target（秒） */
+async function warpTo(pages: Page[], target: number): Promise<void> {
+  for (const p of pages) {
+    const w = await p.evaluate(() => (window as any).__game.grand.wall() as number);
+    await p.evaluate((d) => (window as any).__game.grand.warp(d), target - w);
+  }
+}
 /** 這台裝置的牆上時間（秒） */
 const wallOf = (page: Page) => page.evaluate(() => (window as any).__game.grand.wall() as number);
 /** 自己的角色離地多高與方向 */
@@ -70,6 +77,18 @@ test('大型設施：截圖、雲霄飛車（扣金幣、翻轉、第一人稱�
   }
   const pages = [a.page, b.page];
   const start = await coinsOf(a.page);
+
+  // 音效（docs/plans/grand-rides.md 第 11 節）：進班級島就開始，22 個音檔下載好、6 個循環的聲音在播；
+  // 循環的音檔解碼後長度對（MP3 編碼補的靜音不會讓接縫頓一下：跳過頭尾靜音後的範圍和原本的長度差不到 0.06 秒）
+  await expect.poll(() => a.page.evaluate(() => (window as any).__game.rideAudio.active())).toBe(true);
+  await expect.poll(() => a.page.evaluate(() => (window as any).__game.rideAudio.loaded().length), { timeout: 30_000 }).toBe(22);
+  await expect.poll(() => a.page.evaluate(() => (window as any).__game.rideAudio.loops().length)).toBe(6);
+  const durs = await a.page.evaluate(() => (window as any).__game.rideAudio.durations());
+  for (const [name, len] of Object.entries({ 'coaster-chain': 12, 'coaster-roll': 4.4, 'coaster-wind': 14, 'wheel-wind': 24, 'ship-propeller': 16, 'sea-waves': 30 })) {
+    const d = durs[name];
+    console.log(`循環 ${name}：解碼 ${d.duration.toFixed(3)} 秒，跳過頭尾靜音 ${d.start.toFixed(3)}～${d.end.toFixed(3)}`);
+    expect(Math.abs(d.end - d.start - len)).toBeLessThan(0.06);
+  }
 
   // ---------- 截圖：全島、摩天輪月台前（鏡頭拉遠往上看）、車站、繫留塔 ----------
   await teleport(a.page, { x: 0, z: 4 });
@@ -114,11 +133,13 @@ test('大型設施：截圖、雲霄飛車（扣金幣、翻轉、第一人稱�
   let top = 0;
   for (let i = 0; i < track.up.length; i++) if (track.up[i].y < track.up[top].y) top = i;
   const run = (await grandOf(a.page))!.run;
-  const now = await wallOf(a.page);
-  await warp(pages, run * cycle + COASTER_BOARD + timeline.time[top] - now);
+  const loopTop = run * cycle + COASTER_BOARD + timeline.time[top];
   await a.page.evaluate(() => (window as any).__game.orbit.setView('first'));
+  // 每次讀之前都撥回迴圈頂端（軟體算圖很慢，等到讀的時候列車可能已經過了頂端）
   await expect
     .poll(async () => {
+      await warpTo(pages, loopTop);
+      await a.page.waitForTimeout(250);
       const w = await worldOf(a.page);
       return w.quat ? rotateByQuat(w.quat, { x: 0, y: 1, z: 0 }).y : 1;
     })
@@ -131,7 +152,7 @@ test('大型設施：截圖、雲霄飛車（扣金幣、翻轉、第一人稱�
   await a.page.screenshot({ path: `${OUT}/06-coaster-loop-follow.png` });
   await b.page.screenshot({ path: `${OUT}/07-coaster-loop-other.png` });
   // 撥到這一班結束：自己下車、站到月台，鏡頭的上回到世界的上
-  await warp(pages, timeline.duration - timeline.time[top] + 1);
+  await warpTo(pages, (run + 1) * cycle + 1);
   await expect.poll(() => grandOf(a.page)).toBeNull();
   await expect.poll(() => grandOf(b.page)).toBeNull();
   const off = await a.page.evaluate(() => ({ ...(window as any).__game.player.pos }));
@@ -198,6 +219,11 @@ test('大型設施：截圖、雲霄飛車（扣金幣、翻轉、第一人稱�
   await expect.poll(() => grandOf(a.page)).toBeNull();
   const down = await a.page.evaluate(() => ({ ...(window as any).__game.player.pos }));
   expect(Math.hypot(down.x - MAST.exit.x, down.z - MAST.exit.z)).toBeLessThan(0.5);
+
+  // 回自己的島：大型設施的音效停掉
+  await a.page.getByTestId('hud-island').click();
+  await expect.poll(() => a.page.evaluate(() => (window as any).__game.realtime.getState().island)).toBe('own');
+  await expect.poll(() => a.page.evaluate(() => (window as any).__game.rideAudio.active())).toBe(false);
 
   for (const p of pages) expect(pageErrors(p)).toEqual([]);
 });

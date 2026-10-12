@@ -119,6 +119,20 @@ export const SOURCES: SourceEntry[] = [
     note: 'Music by Cleyton Kauffman - https://soundcloud.com/cleytonkauffman（作者自願附的署名，CC0 不要求）。',
   },
   {
+    use: '班級島大型設施的音效（雲霄飛車、摩天輪、飛船、海浪、海鷗、尖叫）',
+    name: 'Freesound.org 上作者標為 CC0 的真實錄音（多位作者）',
+    url: 'https://freesound.org/',
+    license: 'CC0（公眾領域）',
+    note: '下載時逐頁查證授權欄只有 CC0；剪段、統一響度、做成無縫循環。每個檔的原頁、作者、剪的段落詳見 public/audio/sfx/rides/CREDITS.md（scripts/audio/build-ride-sfx.mjs 產生）。',
+  },
+  {
+    use: '班級島雲霄飛車與摩天輪上孩子的喊聲（「好高喔」「好好玩」「呀啊啊」）：AI 語音合成',
+    name: 'Fish Audio 公開聲音「詩涵 Shihan」「承翰 Chenghan（台灣）」（作者 Fish Official），模型 s2.1-pro-free',
+    url: 'https://fish.audio/',
+    license: 'Fish Audio 服務條款（免費方案；條款寫明免費使用者限個人、非商業使用，由專案維護者評估後採用）',
+    note: 'AI 合成語音，不是真人錄音；再以 ffmpeg rubberband 升調讓聲音像孩子，使用者試聽後同意。產生方式見 scripts/audio/screams.mjs，條款說明見 public/licenses/AI-VOICES.txt。',
+  },
+  {
     use: '預錄語音（介面句子、生活與健康、英語）：AI 語音合成',
     name: 'Fish Audio 公開聲音「詩涵 Shihan（台灣）」（作者 Fish Official），模型 s2.1-pro-free',
     url: 'https://fish.audio/',

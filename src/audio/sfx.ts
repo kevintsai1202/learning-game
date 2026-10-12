@@ -35,6 +35,17 @@ export function setSfxEnabled(on: boolean): void {
   enabled = on;
 }
 
+/** 音效開著嗎（設定的音效開關；班級島大型設施的錄音音效也看這個，src/audio/rideAudio.ts） */
+export function sfxEnabled(): boolean {
+  return enabled;
+}
+
+/** 音效的主音量節點（接音檔播放的音效用；還沒有 AudioContext 時是 null） */
+export function sfxOutput(): GainNode | null {
+  audio();
+  return master;
+}
+
 /** 播一個音：頻率、開始時間（相對現在，秒）、長度、波形、音量 */
 function tone(freq: number, at: number, dur: number, type: OscillatorType = 'sine', vol = 0.6): void {
   const a = audio();

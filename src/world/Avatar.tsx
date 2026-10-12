@@ -13,6 +13,7 @@ import type { StageMood } from '../store/useUi';
 import { Hat } from './Hats';
 import { BackItem, Glasses, HandItem } from './Accessories';
 import type { Pose } from '../store/furnitureUse';
+import { WALK_STEP_RATE, walkPose } from './walkPose';
 
 /** 角色的即時移動狀態（由控制器每幀寫入，避免 React 重新渲染） */
 export interface MotionState {
@@ -129,18 +130,19 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
     }
     const speed = motion?.current.speed ?? 0;
     const walking = speed > 0.1;
-    a.phase += dt * (walking ? 9 + speed : 2);
-    const swing = walking ? Math.sin(a.phase) * 0.6 : 0;
-    if (legL.current && legR.current) {
-      legL.current.rotation.x = swing;
-      legR.current.rotation.x = -swing;
-    }
-    if (armL.current && armR.current) {
-      armL.current.rotation.x = -swing * 0.8;
-      armR.current.rotation.x = swing * 0.8;
-    }
+    a.phase += dt * (walking ? WALK_STEP_RATE(speed) : 2);
     // 用家具的姿勢（第 9 節優化）：坐腳往前伸；躺下腳伸直（第 10.3 節原比例，腳往前會朝天）；爬梯子手輪流往上、腳輪流踩
     const pose = motion?.current.pose ?? 'stand';
+    // 走路動作（docs/plans/grand-rides.md 第 11.3 節）：一蹦一蹦、左右搖擺、前傾、落地壓扁、手腳擺大；站著輕輕呼吸
+    const w = walkPose(a.phase, walking && pose === 'stand', t);
+    if (legL.current && legR.current) {
+      legL.current.rotation.x = w.leg;
+      legR.current.rotation.x = -w.leg;
+    }
+    if (armL.current && armR.current) {
+      armL.current.rotation.x = -w.arm;
+      armR.current.rotation.x = w.arm;
+    }
     if (pose === 'sit') {
       if (legL.current && legR.current) legL.current.rotation.x = legR.current.rotation.x = -1.35;
     } else if (pose === 'lie') {
@@ -158,8 +160,10 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
     }
     if (tail.current) tail.current.rotation.z = Math.sin(t * (animal === 'dog' ? 14 : 3)) * 0.35;
     if (!body.current || !root.current) return;
-    // 走路時上下晃，站著時輕輕呼吸
-    body.current.position.y = walking && pose === 'stand' ? Math.abs(Math.sin(a.phase)) * 0.12 : Math.sin(t * 2) * 0.02;
+    // 走路時一蹦一蹦（落地壓扁一點、左右搖擺、前傾），站著時輕輕呼吸
+    body.current.position.y = w.bob;
+    body.current.rotation.x = w.lean;
+    body.current.scale.set(1 + (1 - w.squash) * 0.5, w.squash, 1 + (1 - w.squash) * 0.5);
     // mood 動畫：答對跳一下、答錯歪頭、慶祝連跳
     const since = t - a.moodStart;
     let jump = 0;
@@ -170,7 +174,7 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
       if (mood === 'oops' && since < 1.2) tilt = Math.sin((since / 1.2) * Math.PI) * 0.35;
     }
     root.current.position.y = jump;
-    body.current.rotation.z = tilt;
+    body.current.rotation.z = tilt + w.sway;
   });
 
   const accent = toon(config.color);

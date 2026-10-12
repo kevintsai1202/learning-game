@@ -13,3 +13,4 @@ dist-*/
 server-dist/
 # 子代理的 git worktree（Claude Code 自動建立）
 .claude/worktrees/
+video-out/

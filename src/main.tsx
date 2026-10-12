@@ -27,6 +27,7 @@ import { useFurnitureUse } from './store/useFurnitureUse';
 import { orbitDebug } from './world/cameraOrbit';
 import { ridesDebug } from './store/useRides';
 import { grandDebug } from './store/useGrand';
+import { rideAudioState } from './audio/rideAudio';
 import './styles/global.css';
 
 declare global {
@@ -73,6 +74,7 @@ declare global {
       /** 班級島遊樂場（docs/plans/playground.md）：遊樂場、旁邊的器材、別人坐在哪裡、坐上去 */
       rides: typeof ridesDebug;
       grand: typeof grandDebug;
+      rideAudio: typeof rideAudioState;
     };
   }
 }
@@ -102,6 +104,7 @@ window.__game = {
   orbit: orbitDebug,
   rides: ridesDebug,
   grand: grandDebug,
+  rideAudio: rideAudioState,
 };
 
 createRoot(document.getElementById('root')!).render(

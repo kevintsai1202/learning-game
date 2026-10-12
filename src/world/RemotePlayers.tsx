@@ -239,7 +239,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
       {!look.teacher && look.avatar.trail && <Trail kind={look.avatar.trail} getPos={getPos} getSpeed={getSpeed} />}
       {!look.teacher && look.avatar.pet && <PetFollower pet={look.avatar.pet} getPos={getPos} getHeading={() => heading.current} getSpeed={getSpeed} />}
       <group ref={group} position={start}>
-        <PoseWrap lift={lift}>{look.teacher ? <Teacher waving={false} /> : <Avatar config={look.avatar} motion={motion} />}</PoseWrap>
+        <PoseWrap lift={lift}>{look.teacher ? <Teacher waving={false} motion={motion} /> : <Avatar config={look.avatar} motion={motion} />}</PoseWrap>
         <mesh ref={shadow} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
           <planeGeometry args={[1.6, 1.6]} />
           <meshBasicMaterial map={shadowTex} transparent depthWrite={false} />

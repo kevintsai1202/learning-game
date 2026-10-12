@@ -30,6 +30,7 @@ import {
   carPose,
   coaster,
   coasterRun,
+  grandFrame,
   grandNear,
   resolveGrandSeat,
   shipState,
@@ -38,7 +39,9 @@ import {
 } from '../store/grandRides';
 import { wallSec } from '../store/clockSync';
 import { stopUse, syncActMirror } from '../store/useFurnitureUse';
-import { setGrandNear, useGrand } from '../store/useGrand';
+import { grandTaken, setGrandNear, useGrand } from '../store/useGrand';
+import { ridePlan } from '../store/rideSound';
+import { applyRidePlan, logRidePlan, startRideAudio, stopRideAudio } from '../audio/rideAudio';
 import { usePresence } from '../online/usePresence';
 
 /** 共用的暫存物件（每一格更新 InstancedMesh 用，不要每格 new） */
@@ -774,7 +777,30 @@ function GrandProbe({ active }: { active: boolean }) {
   return null;
 }
 
-/** 班級島的大型設施：雲霄飛車、巨大摩天輪、飛船與繫留塔、海裡的動物，加上每一格的偵測 */
+/**
+ * 大型設施的音效（docs/plans/grand-rides.md 第 11 節）：每一格照自己的位置、正在玩的設施、牆上時間算排程（rideSound.ts）再播
+ * （rideAudio.ts）。聽的位置是自己的角色（在設施上用座位、甲板的高度）；雲霄飛車上有沒有人看自己與別人的座位
+ */
+function RideAudioProbe() {
+  const prev = useRef<number | null>(null);
+  useEffect(() => {
+    startRideAudio();
+    return () => stopRideAudio();
+  }, []);
+  useFrame(() => {
+    const wall = wallSec();
+    const act = player.act;
+    const own = act?.kind === 'grand' ? { ride: act.ride, run: act.run, w0: act.w0 } : null;
+    const y = act?.kind === 'grand' ? grandFrame(act, wall).y : 0;
+    const plan = ridePlan({ listener: { x: player.pos.x, y, z: player.pos.z }, prevWall: prev.current ?? wall, wall, own, coasterRiders: grandTaken('coaster').size > 0 });
+    prev.current = wall;
+    applyRidePlan(plan);
+    logRidePlan(wall, plan);
+  });
+  return null;
+}
+
+/** 班級島的大型設施：雲霄飛車、巨大摩天輪、飛船與繫留塔、海裡的動物，加上每一格的偵測與音效 */
 export function GrandRidesLayer({ active }: { active: boolean }) {
   return (
     <>
@@ -786,6 +812,7 @@ export function GrandRidesLayer({ active }: { active: boolean }) {
       <Airship />
       <SeaLife />
       <GrandProbe active={active} />
+      <RideAudioProbe />
     </>
   );
 }

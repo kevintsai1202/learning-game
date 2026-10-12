@@ -1,18 +1,22 @@
 /**
  * 熊熊老師：台灣黑熊造型的嚮導（胸前白色 V 字、圓眼鏡），站在中央廣場，
- * 在活動舞台上會依答題結果做出反應。
+ * 在活動舞台上會依答題結果做出反應。老師以熊熊老師進島走路時有走路的動作（motion；和孩子的角色同一套 walkPose）。
  */
-import { useRef } from 'react';
+import { useRef, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { toon } from './materials';
 import type { StageMood } from '../store/useUi';
+import type { MotionState } from './Avatar';
+import { WALK_STEP_RATE, walkPose } from './walkPose';
 
 interface TeacherProps {
   mood?: StageMood;
   moodTick?: number;
   /** 揮手打招呼 */
   waving?: boolean;
+  /** 移動狀態（老師以熊熊老師進島時：走路速度；沒給是站著） */
+  motion?: RefObject<MotionState>;
 }
 
 /** 胸前 V 字（台灣黑熊的月牙斑）用兩根扁長方體拼成 */
@@ -30,19 +34,25 @@ function ChestV() {
   );
 }
 
-export function Teacher({ mood = 'idle', moodTick = 0, waving = true }: TeacherProps) {
+export function Teacher({ mood = 'idle', moodTick = 0, waving = true, motion }: TeacherProps) {
   const root = useRef<THREE.Group>(null);
   const arm = useRef<THREE.Group>(null);
   const head = useRef<THREE.Group>(null);
-  const anim = useRef({ start: -1, tick: -1 });
+  /** 兩隻腳（走路時前後交替） */
+  const feet = useRef<(THREE.Mesh | null)[]>([]);
+  const anim = useRef({ start: -1, tick: -1, phase: 0 });
   const black = toon('#26262e');
   const muzzle = toon('#c9a27a');
   const white = toon('#ffffff');
   const glass = toon('#ffc93c');
 
-  useFrame((state) => {
+  useFrame((state, dt) => {
     const t = state.clock.elapsedTime;
     const a = anim.current;
+    const speed = motion?.current?.speed ?? 0;
+    const walking = speed > 0.1 && (motion?.current?.pose ?? 'stand') === 'stand';
+    a.phase += dt * (walking ? WALK_STEP_RATE(speed) : 2);
+    const w = walkPose(a.phase, walking, t);
     if (moodTick !== a.tick) {
       a.tick = moodTick;
       a.start = t;
@@ -51,12 +61,24 @@ export function Teacher({ mood = 'idle', moodTick = 0, waving = true }: TeacherP
     if (arm.current) {
       const wave = waving || (mood === 'cheer' && since < 2.5) || (mood === 'happy' && since < 1);
       arm.current.rotation.z = wave ? 2.4 + Math.sin(t * 8) * 0.35 : 0.5;
+      // 走路時沒在揮手的手前後擺
+      arm.current.rotation.x = wave ? 0 : -w.arm * 0.7;
     }
+    // 兩隻腳前後交替、抬起來的那隻離地一點
+    feet.current.forEach((f, i) => {
+      if (!f) return;
+      const s = Math.sin(a.phase) * (i === 0 ? 1 : -1);
+      f.position.z = 0.04 + (walking ? s * 0.14 : 0);
+      f.position.y = 0.18 + (walking ? Math.max(0, s) * 0.07 : 0);
+    });
     if (head.current) {
       head.current.rotation.z = mood === 'oops' && since < 1.5 ? Math.sin(since * 6) * 0.15 : Math.sin(t * 1.3) * 0.04;
     }
     if (root.current) {
-      root.current.position.y = mood === 'cheer' && since < 2.4 ? Math.abs(Math.sin(since * Math.PI * 2)) * 0.3 : 0;
+      // 慶祝時連跳；走路時一蹦一蹦、左右搖擺、往前傾
+      root.current.position.y = (mood === 'cheer' && since < 2.4 ? Math.abs(Math.sin(since * Math.PI * 2)) * 0.3 : 0) + (walking ? w.bob : 0);
+      root.current.rotation.x = w.lean;
+      root.current.rotation.z = w.sway;
     }
   });
 
@@ -114,8 +136,8 @@ export function Teacher({ mood = 'idle', moodTick = 0, waving = true }: TeacherP
           <sphereGeometry args={[0.05, 8, 6]} />
         </mesh>
       </group>
-      {[-0.2, 0.2].map((x) => (
-        <mesh key={x} material={black} position={[x, 0.18, 0.04]}>
+      {[-0.2, 0.2].map((x, i) => (
+        <mesh key={x} ref={(m) => (feet.current[i] = m)} material={black} position={[x, 0.18, 0.04]}>
           <capsuleGeometry args={[0.15, 0.16, 4, 8]} />
         </mesh>
       ))}
