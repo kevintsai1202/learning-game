@@ -30,6 +30,7 @@ import { HomeDoorBubble } from '../HomeDoorBubble';
 import { useHome } from '../../store/useHome';
 import { ActionKey } from '../ActionKey';
 import { CamResetButton } from '../CamButtons';
+import { RideCard } from '../RideCard';
 import { usePhoneLayout } from '../phoneLayout';
 
 /** 同步狀態的圖示（手機的上方一行只放圖示，第 10.2 節） */
@@ -620,6 +621,8 @@ export function IslandHud() {
       <DecorBag />
       <SurfacePanel />
       <DecorNear />
+      {/* 班級島的遊樂器材（docs/plans/playground.md） */}
+      <RideCard />
       <ChatPanel />
       {/* 禮物卡片與送禮視窗：只在島上（不打斷答題） */}
       <GiftInbox />

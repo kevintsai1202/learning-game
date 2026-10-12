@@ -7,17 +7,30 @@ import { SPAWN } from './layout';
 import type { Vec2 } from './movement';
 import type { YardItem } from '../store/yard';
 import type { UseKind } from '../store/furnitureUse';
+import type { RideKind } from '../store/rideKinds';
 
 /**
  * 正在用的家具（第 9 節優化）：哪一種用法、哪一件、在島上還是屋裡、開始的時間（performance.now 秒）。
  * 坐、躺、盪、溜滑梯時有值；角色的位置與姿勢照 actFrame 算
  */
-export interface PlayerAct {
+export interface FurnitureAct {
   kind: UseKind;
   item: YardItem;
   place: 'yard' | 'home';
   t0: number;
 }
+
+/** 正在玩的班級島遊樂器材（docs/plans/playground.md）：哪一種、第幾個位置、第幾個座位、開始的時間 */
+export interface RideAct {
+  kind: 'ride';
+  ride: RideKind;
+  slot: number;
+  seat: number;
+  t0: number;
+}
+
+/** 正在用的家具或遊樂器材（角色的樣子都照 src/store/actFrame.ts 的 frameOf 算） */
+export type PlayerAct = FurnitureAct | RideAct;
 
 /** 角色即時狀態 */
 export const player = {

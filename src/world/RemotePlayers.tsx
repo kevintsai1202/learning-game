@@ -27,7 +27,10 @@ import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
 import { actFrame, anchorFor, useSpecOf } from '../store/furnitureUse';
 import { cellKey, nowSec, setRemoteSwing, spaceOf, type Place } from '../store/useFurnitureUse';
 import type { YardItem } from '../store/yard';
-import type { ActCode } from '../store/actCodes';
+import { rideSeatOf, type ActCode } from '../store/actCodes';
+import { PLAYGROUND_SPOTS, rideFrame, slotNear } from '../store/playground';
+import { occupiedOf, setRemoteRider, useRides } from '../store/useRides';
+import { wallSec } from '../store/actFrame';
 
 /** 內插的走路速度（公尺／秒），比自己的角色稍慢，看起來比較從容 */
 const WALK_SPEED = 4.2;
@@ -65,10 +68,19 @@ export function RemotePlayers({ place = null, items = [] }: { place?: 'home' | n
 function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: THREE.Texture; place: Place; items: { current: readonly YardItem[] } }) {
   /** 用家具時的抬高、縮放、傾斜（PoseWrap 每格讀） */
   const lift = useRef<PoseLift>(STANDING);
-  /** 他正在用的家具：動作代碼、找到的那一件（找不到是 null，只擺姿勢）、看到動作開始的時間 */
-  const acting = useRef<{ act: ActCode; anchor: YardItem | null; t0: number } | null>(null);
-  // 離開畫面時，他盪的鞦韆停下來
-  useEffect(() => () => setRemoteSwing(id, null), [id]);
+  /**
+   * 他正在用的家具：動作代碼、找到的那一件（找不到是 null，只擺姿勢）、看到動作開始的時間；
+   * 玩班級島的遊樂器材時 ride 是哪一座的哪個座位（docs/plans/playground.md）
+   */
+  const acting = useRef<{ act: ActCode; anchor: YardItem | null; t0: number; ride?: { slot: number; seat: number } } | null>(null);
+  // 離開畫面時，他盪的鞦韆停下來、他坐的遊樂器材座位空出來
+  useEffect(
+    () => () => {
+      setRemoteSwing(id, null);
+      setRemoteRider(id, null);
+    },
+    [id],
+  );
   // 只在外觀、暱稱改變時重畫（移動時外觀物件沿用同一個，見 presence.ts 的 moveMember）
   const look = usePresence(
     useShallow((s) => ({ nickname: s.members[id]?.nickname ?? '', avatar: s.members[id]?.avatar, title: s.members[id]?.title ?? null, teacher: s.members[id]?.role === 'teacher' })),
@@ -97,16 +109,37 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
     const m = usePresence.getState().members[id];
     if (!m || !group.current) return;
     const dt = Math.min(rawDt, 0.05);
-    // 用家具（第 9 節優化）：動作一變就用他當下的位置找附近同類的家具，之後照時間軸播（不照收到的座標）
+    // 用家具（第 9 節優化）：動作一變就用他當下的位置找附近同類的家具，之後照時間軸播（不照收到的座標）。
+    // 遊樂器材的座位代碼 rideN：找他位置附近的那一座，照本機的時鐘把他擺在那個座位上（大家在這台裝置上一起動）
     if (m.act) {
       if (acting.current?.act !== m.act) {
-        const space = spaceOf(place);
-        const anchor = anchorFor(items.current, space, m.act, { x: m.x, z: m.z });
         const t0 = nowSec();
-        acting.current = { act: m.act, anchor, t0 };
-        setRemoteSwing(id, m.act === 'swing' && anchor ? { cell: cellKey(place, anchor), t0 } : null);
+        const seat = rideSeatOf(m.act);
+        const slot = seat === null ? null : slotNear(useRides.getState().playground, { x: m.x, z: m.z });
+        if (seat !== null && slot !== null) {
+          acting.current = { act: m.act, anchor: null, t0, ride: { slot, seat } };
+          setRemoteRider(id, { slot, seat, t0 });
+        } else {
+          const space = spaceOf(place);
+          const anchor = seat === null ? anchorFor(items.current, space, m.act, { x: m.x, z: m.z }) : null;
+          acting.current = { act: m.act, anchor, t0 };
+          setRemoteRider(id, null);
+        }
+        setRemoteSwing(id, m.act === 'swing' && acting.current.anchor ? { cell: cellKey(place, acting.current.anchor), t0 } : null);
       }
       const a = acting.current;
+      const kind = a.ride ? useRides.getState().playground[a.ride.slot] : null;
+      if (a.ride && kind) {
+        const f = rideFrame(kind, a.ride.seat, PLAYGROUND_SPOTS[a.ride.slot], { wall: wallSec(), since: nowSec() - a.t0 }, occupiedOf(a.ride.slot));
+        pos.current = { x: f.x, z: f.z };
+        heading.current = f.heading;
+        motion.current.speed = 0;
+        motion.current.pose = f.pose;
+        lift.current = f;
+        group.current.position.set(f.x, 0, f.z);
+        group.current.rotation.y = f.heading;
+        return;
+      }
       if (a.anchor) {
         const f = actFrame(a.anchor, spaceOf(place), useSpecOf(a.anchor.id)?.kind ?? 'sit', nowSec() - a.t0);
         pos.current = { x: f.x, z: f.z };
@@ -124,6 +157,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
     } else if (acting.current) {
       acting.current = null;
       setRemoteSwing(id, null);
+      setRemoteRider(id, null);
       motion.current.pose = 'stand';
       lift.current = STANDING;
     }

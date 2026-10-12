@@ -25,6 +25,7 @@ import { yardDebug } from './store/useDecor';
 import { homeDebug } from './store/useHome';
 import { useFurnitureUse } from './store/useFurnitureUse';
 import { orbitDebug } from './world/cameraOrbit';
+import { ridesDebug } from './store/useRides';
 import './styles/global.css';
 
 declare global {
@@ -68,6 +69,8 @@ declare global {
       furniture: typeof useFurnitureUse;
       /** 第 10.5 節：轉視角的角度、用家具時的視角模式 */
       orbit: typeof orbitDebug;
+      /** 班級島遊樂場（docs/plans/playground.md）：遊樂場、旁邊的器材、別人坐在哪裡、坐上去 */
+      rides: typeof ridesDebug;
     };
   }
 }
@@ -95,6 +98,7 @@ window.__game = {
   home: homeDebug,
   furniture: useFurnitureUse,
   orbit: orbitDebug,
+  rides: ridesDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

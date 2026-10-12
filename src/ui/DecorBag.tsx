@@ -25,7 +25,7 @@ import {
   useDecor,
 } from '../store/useDecor';
 import { isInsideHome, useHome } from '../store/useHome';
-import { cellKey, startUse, stopUse, useFurnitureUse, type Place } from '../store/useFurnitureUse';
+import { actingLook, cellKey, startUse, stopUse, useFurnitureUse, type Place } from '../store/useFurnitureUse';
 import { useSpecOf } from '../store/furnitureUse';
 import { resetDecor } from '../store/useDecor';
 import { DECOR_LINES } from './lines';
@@ -229,13 +229,14 @@ export function DecorNear() {
   const toggles = useFurnitureUse((s) => s.toggles);
   useHome((s) => s.inside);
   if (acting) {
-    const it = findItem(acting.item.id);
+    // 家具或班級島的遊樂器材（docs/plans/playground.md）
+    const look = actingLook(acting);
     return (
       <div className="decor-near card" role="group" aria-label="正在用的家具" data-testid="use-card">
         <span className="decor-near-name">
-          {it?.emoji} {it?.name}
+          {look.emoji} {look.name}
         </span>
-        {acting.kind !== 'slide' && (
+        {!look.locked && (
           <button
             className="btn small"
             onClick={() => {

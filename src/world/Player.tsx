@@ -21,7 +21,7 @@ import { LABEL_DISTANCE_FACTOR } from './RemotePlayers';
 import { Teacher } from './Teacher';
 import { enterHome } from '../store/useHome';
 import { roomCamera } from './room';
-import { actCamera, followCamera, moveInput, normalizeYaw, orbit, useOrbit } from './cameraOrbit';
+import { camFor, followCamera, moveInput, normalizeYaw, orbit, useOrbit } from './cameraOrbit';
 import { camZoom } from './cameraZoom';
 import { decorViewShift } from './decorViewShift';
 import { actSoundEvents } from './actSounds';
@@ -29,8 +29,30 @@ import { ACT_SFX } from './actSfx';
 import { useDecor } from '../store/useDecor';
 import { PoseWrap, STANDING, type PoseLift } from './PoseWrap';
 import { sceneDebug } from './sceneDebug';
-import { actFrame } from '../store/furnitureUse';
-import { nowSec, spaceOf, stopUse } from '../store/useFurnitureUse';
+import { nowSec, stopUse } from '../store/useFurnitureUse';
+import { frameOf, wallSec } from '../store/actFrame';
+import { RIDES } from '../store/playground';
+import { occupiedOf } from '../store/useRides';
+import type { PlayerAct } from './input';
+import type { CamStyle } from './cameraOrbit';
+import type { UseKind } from '../store/furnitureUse';
+
+/** 用家具或玩遊樂器材的途中能不能起來（溜滑梯、溜滑梯城堡不行，溜完自己起來） */
+function lockedOf(act: PlayerAct): boolean {
+  return act.kind === 'ride' ? !!RIDES[act.ride].locked : act.kind === 'slide';
+}
+
+/** 音效照哪一種用法放（遊樂器材：鞦韆組當成鞦韆，其他坐上去噗一聲） */
+function soundKindOf(act: PlayerAct): UseKind {
+  if (act.kind !== 'ride') return act.kind;
+  return act.ride === 'swingset' ? 'swing' : 'sit';
+}
+
+/** 第一人稱看哪裡（遊樂器材：溜滑梯城堡看接下來要去的地方、鞦韆組看臉朝的方向） */
+function camStyleOf(act: PlayerAct): CamStyle {
+  if (act.kind === 'ride') return act.ride === 'slidecastle' ? 'slide' : act.ride === 'swingset' ? 'swing' : 'sit';
+  return act.kind === 'slide' ? 'slide' : act.kind === 'lie' ? 'lie' : act.kind === 'swing' ? 'swing' : 'sit';
+}
 
 /** 走路速度（公尺／秒） */
 const SPEED = 5.2;
@@ -90,19 +112,21 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     const dt = Math.min(rawDt, 0.05);
     let next = player.pos;
     let moving = false;
-    // 用家具（第 9 節優化）：照時間軸擺在家具上；按鈕、方向鍵、點地面都會起來（溜滑梯途中不行，溜完自己起來）
+    // 用家具（第 9 節優化）與班級島的遊樂器材（docs/plans/playground.md）：照時間軸擺在上面；按鈕、方向鍵、
+    // 點地面都會起來（溜滑梯、溜滑梯城堡途中不行，溜完自己起來）
     if (player.act) {
       const act = player.act;
       const t = nowSec() - act.t0;
-      const f = actFrame(act.item, spaceOf(act.place), act.kind, t);
+      const f = frameOf(act, { now: nowSec(), wall: wallSec() }, occupiedOf);
       // 音效（第 10 節第 ① 批）：坐下噗、爬梯子、咻、咚、鞦韆嘎
       if (lastActT.current.act !== act) lastActT.current = { act, t: -1 };
-      for (const s of actSoundEvents(act.kind, lastActT.current.t, t)) ACT_SFX[s]();
+      for (const s of actSoundEvents(soundKindOf(act), lastActT.current.t, t)) ACT_SFX[s]();
       lastActT.current.t = t;
-      if (act.kind === 'slide') player.target = null;
+      const locked = lockedOf(act);
+      if (locked) player.target = null;
       const dir = moveInput();
       if (f.done) stopUse(true);
-      else if (active && act.kind !== 'slide' && (Math.hypot(dir.x, dir.z) > 0.05 || player.target)) stopUse();
+      else if (active && !locked && (Math.hypot(dir.x, dir.z) > 0.05 || player.target)) stopUse();
       if (player.act) {
         // 位置設成座位的世界座標（位置訊息送出去才是座位）；移動與碰撞整段跳過
         player.pos = { x: f.x, z: f.z };
@@ -192,7 +216,8 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
     // 用家具時換視角（第 10.5 節）：近拍、第一人稱照用家具的時間軸算；第一人稱藏起自己的角色、鏡頭直接跳到定位
     const view = useOrbit.getState().view;
     const act = player.act;
-    const ac = act ? actCamera(act.item, spaceOf(act.place), act.kind, nowSec() - act.t0, view, yaw, zoom) : null;
+    const clock = { now: nowSec(), wall: wallSec() };
+    const ac = act ? camFor((dt) => frameOf(act, { now: clock.now + dt, wall: clock.wall + dt }, occupiedOf), camStyleOf(act), view, yaw, zoom) : null;
     if (body.current) body.current.visible = !(ac && view === 'first');
     if (camNear.current !== !!ac) {
       camNear.current = !!ac;

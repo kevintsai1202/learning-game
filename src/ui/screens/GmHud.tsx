@@ -13,6 +13,7 @@ import { GmRoster } from './GmRoster';
 import { HomeDoorBubble } from '../HomeDoorBubble';
 import { DecorNear } from '../DecorBag';
 import { CamResetButton } from '../CamButtons';
+import { RideCard } from '../RideCard';
 
 /** 連線狀態的文字 */
 const STATUS_TEXT = { off: '', connecting: '連線中…', online: '🟢 在島上', error: '' } as const;
@@ -145,6 +146,8 @@ export function GmHud() {
       <HomeDoorBubble touch={touch} />
       {/* 旁邊可以用的家具（熊熊老師也能坐、溜滑梯；第 9 節優化） */}
       <DecorNear />
+      {/* 班級島的遊樂器材（熊熊老師也能玩；docs/plans/playground.md） */}
+      <RideCard />
       {touch && <Joystick />}
     </>
   );

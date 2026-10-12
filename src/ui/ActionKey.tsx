@@ -8,7 +8,9 @@
 import { useGame } from '../store/useGame';
 import { useUi } from '../store/useUi';
 import { useDecor, frontProblem, pickUpNear, placeFront, rotateGhost, rotateNear } from '../store/useDecor';
-import { cellKey, stopUse, useFurnitureUse, type Place } from '../store/useFurnitureUse';
+import { actingLook, cellKey, stopUse, useFurnitureUse, type Place } from '../store/useFurnitureUse';
+import { rideFull, startRide, useRides } from '../store/useRides';
+import { RIDES } from '../store/playground';
 import { enterHome, isInsideHome, leaveHome, useHome } from '../store/useHome';
 import { useSpecOf } from '../store/furnitureUse';
 import { findItem } from '../store/catalog';
@@ -28,6 +30,7 @@ const MAIN_TESTID: Record<MainAction, string> = {
   use: 'use-furniture',
   rotate: 'decor-near-rotate',
   view: 'cam-view',
+  ride: 'ride-start',
 };
 
 /** 小圓鈕：圖示、說明、data-testid */
@@ -59,6 +62,11 @@ export function ActionKey() {
   const onMat = useHome((s) => s.onMat);
   const inside = useHome((s) => s.inside !== null && s.inside === s.houseKey);
   const houseName = useHome((s) => s.houseName);
+  /** 旁邊的班級島遊樂器材（docs/plans/playground.md） */
+  const rideSlot = useRides((s) => s.near);
+  const rideKind = useRides((s) => (s.near === null ? null : s.playground[s.near]));
+  // 別人上下車時重算坐滿了沒
+  useRides((s) => s.riders);
 
   // 旁邊的家具：自己能佈置的地方的家具優先（可以轉方向、收起來），不然是旁邊可以用的家具
   const place: Place = isInsideHome() ? 'home' : 'yard';
@@ -66,12 +74,13 @@ export function ActionKey() {
   const nearItem = nearTarget ? findItem(nearTarget.item.id) : undefined;
   const nearSpec = nearTarget ? useSpecOf(nearTarget.item.id) : undefined;
   const nearOn = nearTarget ? !!toggles[cellKey(nearTarget.place, nearTarget.item)] : false;
-  const actingItem = acting ? findItem(acting.item.id) : undefined;
+  const actingLooks = acting ? actingLook(acting) : null;
   const zone = nearZone ? zoneById(nearZone) : null;
 
   const view = pickAction({
     picking: picking ? { name: findItem(picking)?.name ?? '', problem: frontProblem() } : null,
-    acting: acting ? { kind: acting.kind, name: actingItem?.name ?? '', emoji: actingItem?.emoji ?? '' } : null,
+    acting: acting && actingLooks ? { kind: acting.kind, name: actingLooks.name, emoji: actingLooks.emoji, locked: actingLooks.locked } : null,
+    ride: rideSlot !== null && rideKind ? { name: RIDES[rideKind].name, emoji: RIDES[rideKind].emoji, label: RIDES[rideKind].label, full: rideFull(rideSlot) } : null,
     zone: zone ? { name: zone.name, icon: zone.icon } : null,
     houseDoor: nearDoor && !inside ? { name: houseName ?? '' } : null,
     onMat: inside && onMat,
@@ -119,6 +128,9 @@ export function ActionKey() {
         return;
       case 'view':
         nextCamView();
+        return;
+      case 'ride':
+        if (rideSlot !== null && startRide(rideSlot)) sfx.tap();
         return;
     }
   };

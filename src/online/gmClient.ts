@@ -104,7 +104,7 @@ export function startGm(code: string): () => void {
   const sendMove = () => {
     const { x, z } = player.pos;
     const h = player.heading;
-    const a = actCodeNow();
+    const a = actCodeNow(caps.includes('ride'));
     last = { x, z, h, at: Date.now(), a };
     sendGm({ t: 'move', x, z, h, ...(a ? { a } : {}) });
   };
@@ -180,7 +180,7 @@ export function startGm(code: string): () => void {
     const now = Date.now();
     const { x, z } = player.pos;
     const h = player.heading;
-    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow() !== last.a;
+    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow(caps.includes('ride')) !== last.a;
     if (moved || now - last.at > 2000) sendMove();
   }, 100);
 

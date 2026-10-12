@@ -138,8 +138,10 @@ export function spiralPoint(k: number): { x: number; z: number; h: number; headi
   return { x: s.x + s.r * Math.sin(a), z: s.z + s.r * Math.cos(a), h: CASTLE.top + (CASTLE.bottom - CASTLE.top) * k, heading: a - Math.PI / 2 };
 }
 
-/** 摩天輪：輪軸的 z 與高度、輪子半徑、轉的快慢、車廂吊在下面多深 */
-export const FERRIS = { hubZ: -0.2, hubH: 3.7, wheelR: 2.3, spin: 0.22, cabinDrop: 1.05, seatZ: 0.1 };
+/**
+ * 摩天輪：輪軸的 z 與高度、輪子半徑、轉的快慢、車廂吊在下面多深（車廂比坐著的角色高：座位到頭頂約 1.9 公尺）
+ */
+export const FERRIS = { hubZ: -0.2, hubH: 4.8, wheelR: 2.4, spin: 0.22, cabinDrop: 2.3, seatZ: 0.15 };
 /** 第 i 個車廂的吊點角度（0 在最下面，照轉的方向變大） */
 export function ferrisAngle(wall: number, i: number): number {
   return FERRIS.spin * wall + (i * Math.PI) / 3;
@@ -151,7 +153,7 @@ export function ferrisHang(wall: number, i: number): { x: number; y: number } {
 }
 
 /** 咖啡杯：平台半徑、杯子繞中心的半徑與快慢、杯子自己轉的快慢、座位離杯子中心多遠 */
-export const TEACUPS = { platformR: 2.35, orbitR: 1.3, orbit: 0.5, spin: 1.4, seatR: 0.38, cupR: 0.75, floor: 0.3 };
+export const TEACUPS = { platformR: 2.35, orbitR: 1.3, orbit: 0.5, spin: 1.4, seatR: 0.42, cupR: 0.85, floor: 0.3 };
 /** 第 i 個杯子的中心與自己轉到的角度 */
 export function teacupPose(wall: number, i: number): { x: number; z: number; spin: number } {
   const a = TEACUPS.orbit * wall + (i * 2 * Math.PI) / 3;
@@ -372,6 +374,21 @@ export function takenSeats(m: SeatMap, slot: number): Set<number> {
     if (s === slot) out.add(seat);
   }
   return out;
+}
+
+/**
+ * 自己的座位要不要換（每一格畫面算）：別人也坐同一個位子時 id 小的留著；自己被擠掉就換到最近的空位，
+ * 沒有空位是 null（起來）。others 是別人（同一座或別座都可以，只看同一座的）
+ */
+export function resolveSeat(kind: RideKind, self: Rider, others: readonly Rider[]): { seat: number | null } {
+  const same = others.filter((r) => r.slot === self.slot);
+  const m = seatMap([...same, self]);
+  if (!m.bumped.includes(self.id)) return { seat: self.seat };
+  const taken = new Set(same.map((r) => r.seat));
+  const c = PLAYGROUND_SPOTS[self.slot];
+  // 被擠掉：換到離原本座位最近的空位
+  const at = rideFrame(kind, self.seat, c, { wall: 0, since: 0 }, NONE);
+  return { seat: freeSeat(kind, taken, c, at, { wall: 0, since: 0 }) };
 }
 
 /** 角色旁邊（器材外圍 max 公尺內）最近的那一座器材的位置編號；空的位置不算；沒有是 null */

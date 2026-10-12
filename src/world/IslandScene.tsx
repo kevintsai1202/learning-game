@@ -39,6 +39,10 @@ import { shownYard, useHostYard } from '../online/useHostYard';
 import { HOUSE_DOOR_RANGE, houseDoor } from './room';
 import { useHome } from '../store/useHome';
 import { isTap, resetYaw } from './cameraOrbit';
+import { PlaygroundLayer } from './Playground';
+import { PLAYGROUND_SPOTS, SPOT_RADIUS, rideObstacles } from '../store/playground';
+import { emptyPlayground } from '../store/rideKinds';
+import { setPlayground } from '../store/useRides';
 
 /** 天空與燈光（L5）：白天是原本的樣子；黃昏是暖橘的地平線、偏紫的天頂、低而偏橘的太陽 */
 const SKY = {
@@ -191,11 +195,27 @@ export function IslandScene({
   const allTrees = useMemo(() => placeTrees(), []);
   const hasHome = look.home !== null;
   const hasFlag = look.flag !== null;
-  /** 自己的島空出小屋周圍（自己的家，docs/plans/home.md；其他島的樹一棵不動；擺家具的格子用同一個半徑） */
+  /** 班級島（有班級旗子、沒有小屋）：有遊樂場（docs/plans/playground.md） */
+  const classIsland = hasFlag && !hasHome && mode !== 'attract';
+  /** 班級島的遊樂場：伺服器給的（孩子的連線或熊熊老師的連線）；其他島全空 */
+  const kidPlayground = useRealtime((s) => s.flags.playground);
+  const gmPlayground = useGm((s) => s.flags.playground);
+  const pgKey = (classIsland ? ((gm ? gmPlayground : kidPlayground) ?? emptyPlayground()) : emptyPlayground()).join(',');
+  const playground = useMemo(() => pgKey.split(',').map((k) => (k ? k : null)) as ReturnType<typeof emptyPlayground>, [pgKey]);
+  useEffect(() => setPlayground(playground), [playground]);
+  /** 自己的島空出小屋周圍（自己的家，docs/plans/home.md；其他島的樹一棵不動；擺家具的格子用同一個半徑）；班級島空出遊樂場的 4 個位置 */
   const yardClear = HOUSE_TREE_CLEAR;
-  const trees = useMemo(() => (hasHome ? treesAway(allTrees, HOUSE, yardClear) : allTrees), [allTrees, hasHome, yardClear]);
+  /** 是不是在班級島的遊樂場位置上（樹和花拿掉） */
+  const inPlayground = (p: { x: number; z: number }) => classIsland && PLAYGROUND_SPOTS.some((s) => Math.hypot(p.x - s.x, p.z - s.z) < SPOT_RADIUS + 1.2);
+  const trees = useMemo(
+    () => (hasHome ? treesAway(allTrees, HOUSE, yardClear) : allTrees.filter((t) => !inPlayground(t))),
+    [allTrees, hasHome, yardClear, classIsland], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   const allFlowers = useMemo(() => placeFlowers(), []);
-  const flowers = useMemo(() => (hasHome ? allFlowers.filter((f) => Math.hypot(f.x - HOUSE.x, f.z - HOUSE.z) > yardClear) : allFlowers), [allFlowers, hasHome, yardClear]);
+  const flowers = useMemo(
+    () => (hasHome ? allFlowers.filter((f) => Math.hypot(f.x - HOUSE.x, f.z - HOUSE.z) > yardClear) : allFlowers.filter((f) => !inPlayground(f))),
+    [allFlowers, hasHome, yardClear, classIsland], // eslint-disable-line react-hooks/exhaustive-deps
+  );
   /** 島上的擺設：自己的島畫本機存檔的，別人的島（拜訪朋友、熊熊老師去孩子的島）畫伺服器給的；班級島沒有 */
   const localYard = useGame((s) => s.profile()?.yard);
   const hostYard = useHostYard((s) => s.items);
@@ -217,8 +237,10 @@ export function IslandScene({
       ...(hasFlag ? [{ x: FLAGPOLE.x, z: FLAGPOLE.z, r: 0.5 }] : []),
       // 院子裡擋路的家具（別人的院子也擋，不會走進島主的鞦韆）
       ...yardObstacles(yard ?? []),
+      // 班級島的遊樂器材
+      ...rideObstacles(playground),
     ],
-    [trees, hasHome, hasFlag, yard],
+    [trees, hasHome, hasFlag, yard, playground],
   );
   const sky = SKY[look.sky];
   const interactive = mode === 'play';
@@ -297,6 +319,7 @@ export function IslandScene({
       {yard && <YardDecor items={yard} live={liveYard} />}
       {yard && mode !== 'attract' && <UseProbe items={yard} place="yard" active={interactive} />}
       {canDeco && <DecorLayer space={YARD_SPACE} />}
+      {classIsland && <PlaygroundLayer playground={playground} active={interactive} />}
       {mode !== 'attract' && <OcclusionHider hasHome={hasHome} onChange={(h) => setHouseHidden(h.includes('house'))} />}
       {ZONES.map((z) => {
         const B = BUILDINGS[z.id];

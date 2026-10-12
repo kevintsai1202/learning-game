@@ -15,11 +15,18 @@ import { BUBBLE_MS, emptyPresence, expireBubbles, moveMember, receiveChat, remov
 import { CLOSE_NO_CLASS, CLOSE_RECONNECT, type IslandKind, type MemberState, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
 import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { ACT_OF_KIND } from '../store/furnitureUse';
-import type { ActCode } from '../store/actCodes';
+import { rideSeatCode, type ActCode } from '../store/actCodes';
 
-/** 自己現在用家具的動作代碼（坐、躺、溜滑梯、盪鞦韆；開關類不算）；站著是 undefined */
-export function actCodeNow(): ActCode | undefined {
-  return player.act ? ACT_OF_KIND[player.act.kind] : undefined;
+/**
+ * 自己現在的動作代碼（坐、躺、溜滑梯、盪鞦韆；開關類不算；站著是 undefined）。
+ * 玩班級島的遊樂器材送座位代碼 rideN；伺服器還不支援（rideOk 是 false，welcome 的 caps 沒有 ride）時送 sit，
+ * 舊伺服器的格式驗證不會因為不認得的代碼斷線
+ */
+export function actCodeNow(rideOk: boolean): ActCode | undefined {
+  const act = player.act;
+  if (!act) return undefined;
+  if (act.kind === 'ride') return rideOk ? rideSeatCode(act.seat) : 'sit';
+  return ACT_OF_KIND[act.kind];
 }
 import { doingLabel } from './doing';
 import { findActivity } from '../activities/resolve';
@@ -543,7 +550,7 @@ export function startRealtime(): () => void {
   const sendMove = () => {
     const { x, z } = player.pos;
     const h = player.heading;
-    const a = actCodeNow();
+    const a = actCodeNow(caps.includes('ride'));
     last = { x, z, h, at: Date.now(), a };
     send({ t: 'move', x, z, h, ...(a ? { a } : {}) });
   };
@@ -556,7 +563,7 @@ export function startRealtime(): () => void {
     const { x, z } = player.pos;
     const h = player.heading;
     // 坐下、起來（動作變了）也算有變，立刻送
-    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow() !== last.a;
+    const moved = Math.abs(x - last.x) > 0.02 || Math.abs(z - last.z) > 0.02 || Math.abs(h - last.h) > 0.05 || actCodeNow(caps.includes('ride')) !== last.a;
     if (moved || now - last.at > 2000) sendMove();
   }, 100);
 

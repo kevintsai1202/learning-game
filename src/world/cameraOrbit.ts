@@ -160,15 +160,26 @@ function unit(v: Vec3): Vec3 | null {
   return l < 1e-6 ? null : { x: v.x / l, y: v.y / l, z: v.z / l };
 }
 
+/** 第一人稱看哪裡：slide 看接下來要去的地方、lie 看床尾、swing 看臉朝的方向、sit 看臉朝的方向稍微往下 */
+export type CamStyle = 'slide' | 'lie' | 'swing' | 'sit';
+
 /**
- * 用家具時的鏡頭（t 是開始用之後幾秒）：跟拍回傳 null（用平常的鏡頭）。
+ * 用家具時的鏡頭（t 是開始用之後幾秒）：跟拍回傳 null（用平常的鏡頭）。家具的入口，算法在 camFor
+ */
+export function actCamera(item: YardItem, space: DecorSpace, kind: UseKind, t: number, view: CamView, yaw: number, zoom: number): (CamPose & { snap: boolean }) | null {
+  const style: CamStyle = kind === 'slide' ? 'slide' : kind === 'lie' ? 'lie' : kind === 'swing' ? 'swing' : 'sit';
+  return camFor((dt) => actFrame(item, space, kind, t + dt), style, view, yaw, zoom);
+}
+
+/**
+ * 用家具或玩遊樂器材時的鏡頭（frameAt(dt) 是現在之後 dt 秒角色的樣子）：跟拍回傳 null（用平常的鏡頭）。
  * - 近拍：看角色身體的中間，鏡頭在後上方近一點、照 yaw 轉（可以拖曳）；慢慢跟上。
  * - 第一人稱：鏡頭在角色的頭（臉前面一點），直接跳到定位（snap，不然盪鞦韆時會晃）；
  *   溜滑梯看接下來要去的地方（沿著滑道往下看）、躺著看床尾、其他看臉朝的方向（坐著稍微往下）
  */
-export function actCamera(item: YardItem, space: DecorSpace, kind: UseKind, t: number, view: CamView, yaw: number, zoom: number): (CamPose & { snap: boolean }) | null {
+export function camFor(frameAt: (dt: number) => ActFrame, style: CamStyle, view: CamView, yaw: number, zoom: number): (CamPose & { snap: boolean }) | null {
   if (view === 'follow') return null;
-  const f = actFrame(item, space, kind, t);
+  const f = frameAt(0);
   const head = headOf(f);
   if (view === 'close') {
     const target = { x: (f.x + head.x) / 2, y: (f.y + head.y) / 2, z: (f.z + head.z) / 2 };
@@ -178,11 +189,11 @@ export function actCamera(item: YardItem, space: DecorSpace, kind: UseKind, t: n
   const face = faceOf(f);
   const eye = { x: head.x + face.x * 0.25, y: head.y + face.y * 0.25, z: head.z + face.z * 0.25 };
   let dir: Vec3 | null = null;
-  if (kind === 'slide') {
-    const h2 = headOf(actFrame(item, space, kind, t + 0.3));
+  if (style === 'slide') {
+    const h2 = headOf(frameAt(0.3));
     dir = unit({ x: h2.x - head.x, y: h2.y - head.y, z: h2.z - head.z });
-  } else if (kind === 'lie') dir = unit({ x: Math.sin(f.heading), y: -0.35, z: Math.cos(f.heading) });
-  else if (kind !== 'swing') dir = unit({ x: face.x, y: face.y - 0.25, z: face.z });
+  } else if (style === 'lie') dir = unit({ x: Math.sin(f.heading), y: -0.35, z: Math.cos(f.heading) });
+  else if (style !== 'swing') dir = unit({ x: face.x, y: face.y - 0.25, z: face.z });
   const d = dir ?? face;
   return { position: eye, target: { x: eye.x + d.x * 4, y: eye.y + d.y * 4, z: eye.z + d.z * 4 }, snap: true };
 }
