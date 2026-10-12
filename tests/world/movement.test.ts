@@ -101,4 +101,16 @@ describe('lerpAngle 轉身', () => {
     const b = (-170 * Math.PI) / 180;
     expect(lerpAngle(a, b, 1) - a).toBeCloseTo((20 * Math.PI) / 180);
   });
+
+  it('角度很大（旋轉木馬下車時朝向約 8 億弧度）也一下子算完、照樣走最短方向，結果夾在 (−π, π]（使用者 2026-10-12：坐完旋轉木馬走路異常緩慢）', () => {
+    const big = 0.45 * 1.76e9 + Math.PI / 2;
+    const t0 = performance.now();
+    const r = lerpAngle(big, 0, 0.5);
+    expect(performance.now() - t0).toBeLessThan(20);
+    expect(r).toBeGreaterThan(-Math.PI);
+    expect(r).toBeLessThanOrEqual(Math.PI);
+    // 從 big 轉到 0 的一半：big 換算到 (−π, π] 是 a0，結果是 a0 往 0 走一半
+    const a0 = Math.atan2(Math.sin(big), Math.cos(big));
+    expect(r).toBeCloseTo(a0 / 2, 6);
+  });
 });

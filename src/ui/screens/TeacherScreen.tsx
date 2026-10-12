@@ -1347,10 +1347,11 @@ function ClassList({ onOpen }: { onOpen: (code: string, created: boolean) => voi
 
 /** 以熊熊老師進這一班的班級島（老師 GM 的 G2）：站在廣場上 NPC 熊熊老師平常站的地方，GM 畫面離開時回到這一班的班級頁 */
 function GmEnter({ code, name }: { code: string; name: string }) {
+  // 放在班級頁最上面（班級代碼下面）、用大的綠色按鈕：放在開關下面時老師不容易發現（使用者 2026-10-12）
   return (
     <div style={{ margin: '12px 0' }}>
       <button
-        className="btn small"
+        className="btn green"
         onClick={() => {
           teleport(TEACHER_POS);
           player.heading = 0;
@@ -1457,6 +1458,7 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
             </strong>
             <ClassName name={room.name} onSave={(name) => act(() => call('PATCH', base, { name }), `班級名稱改成「${name}」`)} />
           </div>
+          <GmEnter code={room.code} name={room.name} />
           <ClassPassword has={!!room.hasClassPassword} onSave={(classPassword) => act(() => call('PATCH', base, { classPassword }), '教室密碼設定好了。已經解鎖的平板要重新輸入。')} />
           <Check checked={flagOf('joinOpen')} onChange={(v) => toggle('joinOpen', v, v ? '已開放加入' : '已停止加入')} testId="toggle-join">
             允許新的孩子加入（全班都加入後可以關掉，避免代碼外流後有陌生人加入）
@@ -1467,7 +1469,6 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
           <Check checked={flagOf('giftsOpen')} onChange={(v) => toggle('giftsOpen', v, v ? '已開放送禮' : '已關閉送禮')} testId="toggle-gifts">
             允許送禮物（用金幣買貼紙或外觀送同學；關掉後不能送新的，已送出的還是可以收下）
           </Check>
-          <GmEnter code={room.code} name={room.name} />
           <JoinQr code={room.code} name={room.name} joinOpen={flagOf('joinOpen')} />
           <ClassCurriculum
             value={room.curriculum}

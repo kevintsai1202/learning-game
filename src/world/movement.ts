@@ -89,8 +89,13 @@ export function nearestDoor<T extends string>(pos: Vec2, doors: { id: T; x: numb
 
 /** 角度插值（走最短的方向轉身）；t=1 直接轉到 b。玩家與其他玩家的角色共用 */
 export function lerpAngle(a: number, b: number, t: number): number {
-  let d = b - a;
-  while (d > Math.PI) d -= Math.PI * 2;
-  while (d < -Math.PI) d += Math.PI * 2;
-  return a + d * t;
+  // 先把起點換算到 (−π, π]、差距也換算到 (−π, π]（一步算完）：以前用 while 一次減一圈，
+  // 坐完旋轉木馬時朝向約 8 億弧度，每一格要跑上億次，走路變得異常緩慢（使用者 2026-10-12 回報）
+  const a0 = wrapAngle(a);
+  return a0 + wrapAngle(b - a0) * t;
+}
+
+/** 角度換算到 (−π, π]（任何大小都一步算完） */
+export function wrapAngle(a: number): number {
+  return Math.atan2(Math.sin(a), Math.cos(a));
 }

@@ -105,6 +105,15 @@ test('老師設定遊樂場、兩個孩子一起坐旋轉木馬與翹翹板、�
   await b.page.getByTestId('use-stop').click();
   await expect.poll(() => rideOf(a.page)).toBeNull();
   await expect.poll(() => rideOf(b.page)).toBeNull();
+  // 坐完旋轉木馬：朝向是一般的角度（以前是幾億弧度，轉身時每一格算上億次、走路異常緩慢；使用者 2026-10-12）
+  for (const p of [a.page, b.page]) expect(Math.abs(await p.evaluate(() => (window as any).__game.player.heading))).toBeLessThanOrEqual(2 * Math.PI);
+  // 走得動：推方向鍵一秒走超過 1 公尺
+  const before = await a.page.evaluate(() => ({ ...(window as any).__game.player.pos }));
+  await a.page.keyboard.down('ArrowDown');
+  await a.page.waitForTimeout(1000);
+  await a.page.keyboard.up('ArrowDown');
+  const after = await a.page.evaluate(() => ({ ...(window as any).__game.player.pos }));
+  expect(Math.hypot(after.x - before.x, after.z - before.z)).toBeGreaterThan(1);
   // 站在第一座的左右兩端旁邊，最近的空位就是那一端
   const s1 = PLAYGROUND_SPOTS[1];
   await a.page.evaluate((p) => (window as any).__game.teleport(p), { x: s1.x - 2.6, z: s1.z - 0.7 });
@@ -153,6 +162,10 @@ test('老師在班級管理頁選器材、熊熊老師進島用面板換器材�
   contexts.push(t.context);
   await loginTeacher(t.page, room.username);
   await t.page.getByTestId(`class-${room.code}`).click();
+  // 「以熊熊老師進島」在班級頁上方（班級代碼下面、開關上面；使用者 2026-10-12：放下面不容易發現）
+  const gmBox = (await t.page.getByTestId('gm-enter').boundingBox())!;
+  const toggleBox = (await t.page.getByTestId('toggle-join').boundingBox())!;
+  expect(gmBox.y).toBeLessThan(toggleBox.y);
   // 老師還沒設定過：預設的 4 座（孩子一進班級島就看得到）
   await expect(t.page.getByTestId('playground-picker')).toBeVisible();
   await expect(t.page.getByTestId('pg-0-carousel')).toHaveAttribute('aria-pressed', 'true');

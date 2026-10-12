@@ -192,9 +192,12 @@ const SOLIDS: Record<RideKind, Circle[]> = {
 /** 坐著時角色抬多高：座位表面高 top（身體底部約在 0.17） */
 const sitY = (top: number) => Math.max(0, top - 0.17);
 
-/** 坐、站在器材上的 ActFrame（沒有傾斜、原比例） */
+/**
+ * 坐、站在器材上的 ActFrame（沒有傾斜、原比例）。朝向換算到 (−π, π]：一直轉的器材照牆上的時間算，
+ * 角度會到幾億弧度，送給別人、轉身時不能是這麼大的數
+ */
 function frame(c: { x: number; z: number }, lx: number, lz: number, y: number, heading: number, pose: ActFrame['pose'], done = false): ActFrame {
-  return { x: c.x + lx, z: c.z + lz, y, heading, pose, scale: 1, tiltX: 0, pivotY: 0, done };
+  return { x: c.x + lx, z: c.z + lz, y, heading: Math.atan2(Math.sin(heading), Math.cos(heading)), pose, scale: 1, tiltX: 0, pivotY: 0, done };
 }
 
 /** 兩個數之間依比例取值（比例夾在 0～1） */

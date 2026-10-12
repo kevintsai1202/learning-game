@@ -112,6 +112,16 @@ describe('八種器材', () => {
         }
   });
 
+  it('牆上的時間很大（真的 Date.now 秒，約 17 億）時，每一種器材的朝向都夾在 (−π, π]（送給別人、轉身都不會算到很大的數）', () => {
+    const c = { x: 0, z: 0 };
+    for (const k of RIDE_KINDS)
+      for (let seat = 0; seat < RIDES[k].seats; seat++) {
+        const f = rideFrame(k, seat, c, clock(1.76e9 + seat * 0.37, 0.8), ALL_FREE);
+        expect(f.heading, `${k} 座位 ${seat}`).toBeGreaterThan(-Math.PI - 1e-9);
+        expect(f.heading, `${k} 座位 ${seat}`).toBeLessThanOrEqual(Math.PI + 1e-9);
+      }
+  });
+
   it('旋轉木馬：同一個座位隔幾秒位置不一樣（在轉）、離中心的距離不變；坐著', () => {
     const c = { x: 0, z: 0 };
     const a = rideFrame('carousel', 2, c, clock(1), ALL_FREE);
