@@ -98,7 +98,7 @@ test.describe('動物角色', () => {
     expect(errors).toEqual([]);
   });
 
-  test('戴帽子時 12 種動物都能正常顯示（截圖檢查帽子位置）', async ({ page }) => {
+  test('戴帽子與眼鏡時 12 種動物都能正常顯示（截圖檢查帽子、眼鏡和放大的眼睛對不對得上）', async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', (e) => errors.push(e.message));
 
@@ -114,8 +114,9 @@ test.describe('動物角色', () => {
           const game = (window as any).__game.game.getState();
           // 畫面只畫真的擁有的道具：先擁有派對帽（本機角色用 0 金幣買）
           game.purchase('hat.party', 0);
+          game.purchase('face.round', 0);
           const avatar = game.profile().avatar;
-          game.updateAvatar({ ...avatar, animal: id, hat: 'hat.party' });
+          game.updateAvatar({ ...avatar, animal: id, hat: 'hat.party', face: 'face.round' });
         },
         { id: a.id },
       );

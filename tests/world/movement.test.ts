@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moveByInput, nearestDoor, resolveCollisions, stepToward, lerpAngle } from '../../src/world/movement';
+import { blockByOthers, moveByInput, nearestDoor, resolveCollisions, stepToward, lerpAngle } from '../../src/world/movement';
 import { ZONES, doorOf, WALK_RADIUS, zoneName } from '../../src/world/layout';
 import type { ZoneId } from '../../src/store/useUi';
 
@@ -112,5 +112,32 @@ describe('lerpAngle 轉身', () => {
     // 從 big 轉到 0 的一半：big 換算到 (−π, π] 是 a0，結果是 a0 往 0 走一半
     const a0 = Math.atan2(Math.sin(big), Math.cos(big));
     expect(r).toBeCloseTo(a0 / 2, 6);
+  });
+});
+
+describe('blockByOthers 被其他角色擋住（動森的做法）', () => {
+  const R = 0.45;
+  const other = { x: 0, z: 0, r: 0.4 };
+  it('走進別人身上會停在外面（推到兩人半徑加總）', () => {
+    const p = blockByOthers({ x: -1, z: 0 }, { x: -0.5, z: 0 }, [other], R);
+    expect(p.x).toBeCloseTo(-0.85);
+    expect(p.z).toBeCloseTo(0);
+  });
+  it('斜斜擦過時沿著邊滑開，不會整個卡住', () => {
+    const p = blockByOthers({ x: -1, z: 0.6 }, { x: -0.6, z: 0.6 }, [other], R);
+    expect(Math.hypot(p.x, p.z)).toBeCloseTo(0.85);
+    expect(p.x).toBeGreaterThan(-1);
+  });
+  it('離得遠不受影響', () => {
+    expect(blockByOthers({ x: -3, z: 0 }, { x: -2.5, z: 0 }, [other], R)).toEqual({ x: -2.5, z: 0 });
+  });
+  it('本來就疊在一起（集合、剛傳送過來）：往外走得開，往裡走不會更近', () => {
+    const out = blockByOthers({ x: 0.3, z: 0 }, { x: 0.4, z: 0 }, [other], R);
+    expect(out).toEqual({ x: 0.4, z: 0 });
+    const inward = blockByOthers({ x: 0.3, z: 0 }, { x: 0.2, z: 0 }, [other], R);
+    expect(Math.hypot(inward.x, inward.z)).toBeCloseTo(0.3);
+  });
+  it('站著不動、疊在一起時不會被推走（避免兩台裝置互推抖動）', () => {
+    expect(blockByOthers({ x: 0.3, z: 0 }, { x: 0.3, z: 0 }, [other], R)).toEqual({ x: 0.3, z: 0 });
   });
 });

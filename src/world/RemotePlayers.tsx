@@ -13,6 +13,7 @@ import { useShallow } from 'zustand/react/shallow';
 import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { lerpAngle, stepToward, type Vec2 } from './movement';
+import { clearRemoteBody, setRemoteBody } from './remoteBodies';
 import { usePresence } from '../online/usePresence';
 import { inPlace } from '../online/presence';
 import { Trail } from './Trail';
@@ -92,6 +93,7 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
       setRemoteSwing(id, null);
       setRemoteRider(id, null);
       setRemoteGrand(id, null);
+      clearRemoteBody(id);
     },
     [id],
   );
@@ -121,6 +123,8 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
 
   useFrame((_, rawDt) => {
     const m = usePresence.getState().members[id];
+    // 坐在家具、遊樂器材、大型設施上的人不擋路（站著走路的才在下面記下位置）
+    if (!m || m.act) clearRemoteBody(id);
     if (!m || !group.current) return;
     const dt = Math.min(rawDt, 0.05);
     // 用家具（第 9 節優化）：動作一變就用他當下的位置找附近同類的家具，之後照時間軸播（不照收到的座標）。
@@ -226,6 +230,8 @@ function RemotePlayer({ id, shadowTex, place, items }: { id: string; shadowTex: 
     // 走路時面向前進方向；停下來後轉向對方送來的朝向
     heading.current = lerpAngle(heading.current, moved > 1e-4 ? Math.atan2(dx, dz) : m.heading, Math.min(1, dt * 10));
     pos.current = r.pos;
+    // 站著或走路：擋住自己的角色（src/world/remoteBodies.ts）
+    if (!m.act) setRemoteBody(id, r.pos.x, r.pos.z);
     group.current.position.set(r.pos.x, 0, r.pos.z);
     group.current.rotation.set(0, heading.current, 0);
   });

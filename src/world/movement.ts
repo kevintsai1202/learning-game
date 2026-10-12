@@ -73,6 +73,31 @@ export function resolveCollisions(pos: Vec2, obstacles: Obstacle[], bounds: numb
   return { x, z };
 }
 
+/**
+ * 被其他角色擋住（動森的做法；只擋自己、不推別人，別人的位置以伺服器為準）：
+ * - 本來沒碰到：走進對方的圓就推回圓外（兩人半徑加總），斜斜擦過會沿著邊滑開。
+ * - 本來就疊在一起（集合、剛傳送過來）：往外走不擋，往裡走停在原本的距離，站著不動不推（兩台裝置不會互推抖動）。
+ * prev 是這一幀走之前的位置，next 是想走到的位置；others 的 r 是對方的身體半徑
+ */
+export function blockByOthers(prev: Vec2, next: Vec2, others: readonly Obstacle[], bodyR: number): Vec2 {
+  let { x, z } = next;
+  for (const o of others) {
+    const min = o.r + bodyR;
+    const dPrev = Math.hypot(prev.x - o.x, prev.z - o.z);
+    const dx = x - o.x;
+    const dz = z - o.z;
+    const d = Math.hypot(dx, dz);
+    /** 至少要離這麼遠：本來沒碰到是半徑加總，本來就疊在一起是原本的距離 */
+    const keep = dPrev < min ? dPrev : min;
+    if (d >= keep || d >= min) continue;
+    const nx = d > 1e-6 ? dx / d : 0;
+    const nz = d > 1e-6 ? dz / d : 1;
+    x = o.x + nx * keep;
+    z = o.z + nz * keep;
+  }
+  return { x, z };
+}
+
 /** 回傳距離在 maxDist 以內、最近的門口 id；都太遠時回傳 null */
 export function nearestDoor<T extends string>(pos: Vec2, doors: { id: T; x: number; z: number }[], maxDist: number): T | null {
   let best: T | null = null;

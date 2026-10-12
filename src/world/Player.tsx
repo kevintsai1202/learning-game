@@ -8,7 +8,8 @@ import * as THREE from 'three';
 import { Avatar, type MotionState } from './Avatar';
 import { blobShadowTexture } from './materials';
 import { WALK_RADIUS, ZONES, doorOf } from './layout';
-import { lerpAngle, moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle, type RoomRect } from './movement';
+import { blockByOthers, lerpAngle, moveByInput, nearestDoor, resolveCollisions, stepToward, type Obstacle, type RoomRect } from './movement';
+import { remoteBodies } from './remoteBodies';
 import { player } from './input';
 import { useUi, type ZoneId } from '../store/useUi';
 import type { AvatarConfig } from '../store/save';
@@ -232,6 +233,8 @@ export function Player({ avatar, obstacles, active, teacher = false, bounds = WA
           }
         }
       }
+      // 先被其他小朋友、進島的熊熊老師擋住（動森的做法），再推出建築與家具（建築優先）
+      next = blockByOthers(player.pos, next, remoteBodies(), 0.45);
       next = resolveCollisions(next, obstacles, bounds, 0.45);
       // 被障礙物擋住、幾乎走不動時放棄目標，避免原地踏步
       if (player.target && Math.hypot(next.x - player.pos.x, next.z - player.pos.z) < SPEED * dt * 0.05) {

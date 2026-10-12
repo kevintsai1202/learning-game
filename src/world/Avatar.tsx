@@ -2,7 +2,7 @@
  * 小動物角色（熊、兔、貓、狗、卡皮巴拉、熊貓、企鵝、狐狸、無尾熊、小豬、老鷹、大象）：
  * 全部用基本幾何體組成，不需要外部模型檔。
  * 走路時腳與手會擺動、身體上下晃；mood 改變時會跳一下或歪頭。
- * 每隻動物的網格數量控制在 45 個以內（多人連線時會同時顯示很多角色）。
+ * 每隻動物的網格數量控制在 50 個以內（多人連線時會同時顯示很多角色）；精緻化加的小零件共用 SHARED 的幾何體。
  */
 import { useRef, type ReactNode, type RefObject } from 'react';
 import { useFrame } from '@react-three/fiber';
@@ -75,6 +75,25 @@ function roundedBox(w: number, h: number, d: number, r: number): THREE.ExtrudeGe
   }
   return g;
 }
+
+/**
+ * 精緻化（2026-10-13）加上的小零件共用的幾何體：多人連線時同一個畫面有很多角色，
+ * 共用一份幾何體不必每個角色各建一份
+ */
+const SHARED = {
+  /** 眼睛的高光、鼻子的反光（單位球，用 scale 調大小） */
+  dot: new THREE.SphereGeometry(1, 10, 8),
+  /** ω 嘴巴的半圓弧（轉 180 度變成往下彎） */
+  mouthArc: new THREE.TorusGeometry(0.034, 0.011, 6, 12, Math.PI),
+  /** 手掌（圓球，接在手臂末端） */
+  paw: new THREE.SphereGeometry(0.115, 14, 10),
+  /** 腳掌（壓扁往前伸的圓球，像動森的圓頭鞋） */
+  foot: new THREE.SphereGeometry(0.14, 14, 10),
+  /** 貓的鬍鬚 */
+  whisker: new THREE.BoxGeometry(0.2, 0.012, 0.012),
+  /** 兔子的門牙 */
+  tooth: new THREE.BoxGeometry(0.045, 0.06, 0.02),
+};
 
 /** 一隻角色會用到的材質組 */
 interface Palette {
@@ -202,7 +221,7 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
       <group ref={body}>
         {/* 身體與肚子 */}
         <mesh material={animal === 'panda' ? white : accent} position={[0, 0.78, 0]} scale={bodyScale} castShadow>
-          <capsuleGeometry args={[0.4, 0.42, 6, 16]} />
+          <capsuleGeometry args={[0.4, 0.42, 8, 24]} />
         </mesh>
         <mesh
           material={bellyMat}
@@ -218,7 +237,7 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
             <mesh key="capy-head" material={headMat} geometry={roundedBox(1.0, 0.64, 0.66, 0.18)} position={[0, -0.02, 0]} castShadow />
           ) : (
             <mesh key="round-head" material={headMat} scale={headScale} castShadow>
-              <sphereGeometry args={[0.5, 24, 18]} />
+              <sphereGeometry args={[0.5, 32, 24]} />
             </mesh>
           )}
           <Face animal={animal} pal={pal} color={config.color} />
@@ -248,22 +267,37 @@ export function Avatar({ config, motion, mood = 'idle', moodTick = 0 }: AvatarPr
   );
 }
 
-/** 一對眼睛（含反光），位置與大小可調 */
-function Eyes({ pal, x = 0.18, y = 0.08, z = 0.43, r = 0.065 }: { pal: Palette; x?: number; y?: number; z?: number; r?: number }) {
+/** 一對眼睛（動森那樣直長的黑眼睛，右上一個大高光、左下一個小高光），位置與大小可調 */
+function Eyes({ pal, x = 0.18, y = 0.08, z = 0.43, r = 0.072 }: { pal: Palette; x?: number; y?: number; z?: number; r?: number }) {
   return (
     <>
       {[-1, 1].map((s) => (
-        <group key={s} position={[s * x, y, z]}>
+        <group key={s} position={[s * x, y, z]} scale={[1, 1.3, 1]}>
           <mesh material={pal.dark}>
-            <sphereGeometry args={[r, 12, 10]} />
+            <sphereGeometry args={[r, 16, 12]} />
           </mesh>
-          <mesh material={pal.white} position={[r * 0.3, r * 0.4, r * 0.75]}>
-            <sphereGeometry args={[r * 0.31, 8, 6]} />
-          </mesh>
+          <mesh material={pal.white} geometry={SHARED.dot} position={[r * 0.32, r * 0.36, r * 0.78]} scale={r * 0.34} />
+          <mesh material={pal.white} geometry={SHARED.dot} position={[-r * 0.3, -r * 0.38, r * 0.82]} scale={r * 0.15} />
         </group>
       ))}
     </>
   );
+}
+
+/** ω 形的小嘴巴（兩個往下彎的半圓弧），放在口鼻下緣 */
+function Mouth({ pal, y, z }: { pal: Palette; y: number; z: number }) {
+  return (
+    <>
+      {[-1, 1].map((s) => (
+        <mesh key={s} material={pal.dark} geometry={SHARED.mouthArc} position={[s * 0.034, y, z]} rotation={[0, 0, Math.PI]} />
+      ))}
+    </>
+  );
+}
+
+/** 鼻子上的反光（讓鼻子看起來濕濕亮亮的） */
+function NoseShine({ pal, x = 0.018, y, z, r = 0.017 }: { pal: Palette; x?: number; y: number; z: number; r?: number }) {
+  return <mesh material={pal.white} geometry={SHARED.dot} position={[x, y, z]} scale={r} />;
 }
 
 /** 腮紅 */
@@ -295,17 +329,20 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
               <mesh material={white} position={[0, 0, 0.045]}>
                 <sphereGeometry args={[0.05, 10, 8]} />
               </mesh>
-              <mesh material={dark} position={[0, 0, 0.075]}>
-                <sphereGeometry args={[0.028, 8, 6]} />
+              <mesh material={dark} position={[0, 0, 0.075]} scale={[1, 1.2, 1]}>
+                <sphereGeometry args={[0.03, 10, 8]} />
               </mesh>
+              <mesh material={white} geometry={SHARED.dot} position={[0.01, 0.014, 0.1]} scale={0.01} />
             </group>
           ))}
           <mesh material={white} position={[0, -0.1, 0.42]} scale={[1.1, 0.8, 0.7]}>
             <sphereGeometry args={[0.17, 16, 12]} />
           </mesh>
           <mesh material={dark} position={[0, -0.04, 0.55]} scale={[1.3, 0.9, 1]}>
-            <sphereGeometry args={[0.055, 10, 8]} />
+            <sphereGeometry args={[0.055, 12, 10]} />
           </mesh>
+          <NoseShine pal={pal} x={0.025} y={-0.02} z={0.598} />
+          <Mouth pal={pal} y={-0.125} z={0.525} />
           <Blush pal={pal} x={0.32} y={-0.12} z={0.33} />
         </>
       );
@@ -355,7 +392,7 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
     case 'elephant':
       return (
         <>
-          <Eyes pal={pal} x={0.2} y={0.1} z={0.42} r={0.06} />
+          <Eyes pal={pal} x={0.2} y={0.1} z={0.42} r={0.066} />
           <Blush pal={pal} x={0.32} y={-0.08} z={0.33} />
           <Trunk pal={pal} />
           {/* 小象牙 */}
@@ -420,9 +457,10 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
             <coneGeometry args={[0.23, 0.46, 14]} />
           </mesh>
           <mesh material={dark} position={[0, -0.06, 0.79]}>
-            <sphereGeometry args={[0.055, 10, 8]} />
+            <sphereGeometry args={[0.055, 12, 10]} />
           </mesh>
-          <Eyes pal={pal} x={0.2} y={0.1} z={0.42} r={0.055} />
+          <NoseShine pal={pal} y={-0.04} z={0.838} />
+          <Eyes pal={pal} x={0.2} y={0.1} z={0.42} r={0.062} />
         </>
       );
     case 'koala':
@@ -430,9 +468,11 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
         <>
           {/* 大大的深色橢圓鼻子 */}
           <mesh material={dark} position={[0, -0.02, 0.5]} scale={[1, 1.5, 0.8]}>
-            <sphereGeometry args={[0.1, 14, 10]} />
+            <sphereGeometry args={[0.1, 16, 12]} />
           </mesh>
-          <Eyes pal={pal} x={0.22} y={0.1} z={0.41} r={0.055} />
+          <NoseShine pal={pal} x={0.03} y={0.05} z={0.575} r={0.022} />
+          <Mouth pal={pal} y={-0.21} z={0.448} />
+          <Eyes pal={pal} x={0.22} y={0.1} z={0.41} r={0.062} />
           <Blush pal={pal} x={0.34} y={-0.1} z={0.3} />
         </>
       );
@@ -449,25 +489,39 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
               <sphereGeometry args={[0.032, 8, 6]} />
             </mesh>
           ))}
+          <Mouth pal={pal} y={-0.25} z={0.43} />
           <Eyes pal={pal} />
           <Blush pal={pal} />
         </>
       );
     }
-    default:
-      // 熊、兔、貓、狗：原本的臉
+    default: {
+      // 熊、兔、貓、狗：淺色口鼻、ω 嘴巴；貓和兔子是粉紅小鼻子，狗是大黑鼻子；貓有鬍鬚、兔子有門牙
+      const pinkNose = animal === 'cat' || animal === 'rabbit';
+      /** 鼻子的大小（狗的鼻子大一點） */
+      const noseScale: [number, number, number] = pinkNose ? [1, 0.75, 0.9] : animal === 'dog' ? [1.35, 1.05, 1.1] : [1.15, 0.9, 1];
       return (
         <>
           <mesh material={pale} position={[0, -0.1, 0.42]} scale={[1.1, 0.8, 0.7]}>
-            <sphereGeometry args={[0.17, 16, 12]} />
+            <sphereGeometry args={[0.17, 20, 14]} />
           </mesh>
-          <mesh material={dark} position={[0, -0.04, 0.55]}>
-            <sphereGeometry args={[0.055, 10, 8]} />
+          <mesh material={pinkNose ? toon('#ff7f9a') : dark} position={[0, -0.04, 0.55]} scale={noseScale}>
+            <sphereGeometry args={[0.055, 12, 10]} />
           </mesh>
+          <NoseShine pal={pal} y={-0.025} z={0.6} r={pinkNose ? 0.013 : 0.017} />
+          <Mouth pal={pal} y={-0.13} z={0.52} />
+          {animal === 'rabbit' && <mesh material={white} geometry={SHARED.tooth} position={[0, -0.185, 0.505]} />}
+          {animal === 'cat' &&
+            [-1, 1].map((s) =>
+              [-1, 0, 1].map((k) => (
+                <mesh key={`${s}${k}`} material={dark} geometry={SHARED.whisker} position={[s * 0.27, -0.08 + k * 0.035, 0.44]} rotation={[0, s * 0.35, s * k * 0.18]} />
+              )),
+            )}
           <Eyes pal={pal} />
           <Blush pal={pal} />
         </>
       );
+    }
   }
 }
 
@@ -506,12 +560,13 @@ function Arms({ animal, pal, armL, armR }: { animal: Animal; pal: Palette; armL:
   const mat = animal === 'panda' ? pal.accent : pal.fur;
   return (
     <>
-      <mesh ref={armL} material={mat} position={[-0.45, 0.95, 0]} rotation={[0, 0, 0.5]} castShadow>
-        <capsuleGeometry args={[0.1, 0.3, 4, 8]} />
-      </mesh>
-      <mesh ref={armR} material={mat} position={[0.45, 0.95, 0]} rotation={[0, 0, -0.5]} castShadow>
-        <capsuleGeometry args={[0.1, 0.3, 4, 8]} />
-      </mesh>
+      {([-1, 1] as const).map((s) => (
+        <mesh key={s} ref={s === -1 ? armL : armR} material={mat} position={[s * 0.45, 0.95, 0]} rotation={[0, 0, -s * 0.5]} castShadow>
+          <capsuleGeometry args={[0.1, 0.3, 6, 12]} />
+          {/* 圓圓的手掌（淺色），接在手臂末端 */}
+          <mesh material={pal.pale} geometry={SHARED.paw} position={[0, -0.22, 0.01]} />
+        </mesh>
+      ))}
     </>
   );
 }
@@ -581,7 +636,9 @@ function Legs({ animal, pal, legL, legR }: { animal: Animal; pal: Palette; legL:
     <>
       {([-1, 1] as const).map((s) => (
         <mesh key={s} ref={s === -1 ? legL : legR} material={mat} position={[s * 0.18, animal === 'capybara' ? 0.15 : 0.18, 0.02]} scale={[thick, legY, thick]} castShadow>
-          <capsuleGeometry args={[0.13, 0.16, 4, 8]} />
+          <capsuleGeometry args={[0.13, 0.16, 6, 12]} />
+          {/* 腳掌：往前凸的圓頭（狐狸是黑襪子） */}
+          <mesh material={animal === 'fox' ? pal.dark : mat} geometry={SHARED.foot} position={[0, -0.15, 0.05]} scale={[1, 0.55, 1.3]} />
           {animal === 'fox' && (
             <mesh material={pal.dark} position={[0, -0.13, 0.01]} scale={[1, 0.7, 1.1]}>
               <sphereGeometry args={[0.135, 10, 8]} />
@@ -617,9 +674,15 @@ function Ears({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
     return (
       <>
         {[-1, 1].map((s) => (
-          <mesh key={s} material={fur} position={[s * 0.3, 0.42, 0]} rotation={[0, 0, -s * 0.35]}>
-            <coneGeometry args={[0.17, 0.32, 4]} />
-          </mesh>
+          <group key={s} position={[s * 0.3, 0.42, 0]} rotation={[0, 0, -s * 0.35]}>
+            <mesh material={fur}>
+              <coneGeometry args={[0.17, 0.32, 4]} />
+            </mesh>
+            {/* 耳朵內側粉紅色 */}
+            <mesh material={inner} position={[0, -0.03, 0.06]} scale={[0.55, 0.7, 0.4]}>
+              <coneGeometry args={[0.17, 0.32, 4]} />
+            </mesh>
+          </group>
         ))}
       </>
     );
