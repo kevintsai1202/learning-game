@@ -489,7 +489,7 @@ function Face({ animal, pal, color }: { animal: Animal; pal: Palette; color: str
               <sphereGeometry args={[0.032, 8, 6]} />
             </mesh>
           ))}
-          <Mouth pal={pal} y={-0.25} z={0.43} />
+          <Mouth pal={pal} y={-0.3} z={0.395} />
           <Eyes pal={pal} />
           <Blush pal={pal} />
         </>
