@@ -3097,6 +3097,29 @@ button {
   /* drei 的 Html 會在元素上直接寫 display，要蓋過去 */
   display: none !important;
 }
+/* 老師選班級島遊樂場的器材（docs/plans/playground.md）：每個位置一排小卡片 */
+.playground-slot {
+  display: grid;
+  gap: 4px;
+  margin: 8px 0;
+}
+.playground-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* 熊熊老師進島時的遊樂場面板：畫面上方，可以捲動 */
+.gm-playground {
+  position: absolute;
+  top: 70px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  pointer-events: auto;
+  z-index: 30;
+}
 /* 旁邊的家具轉不過去的提示（第 10.3 節；只顯示，不唸） */
 .decor-near-notice {
   font-size: 14px;

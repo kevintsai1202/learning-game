@@ -9,7 +9,7 @@
  */
 import { expect, test, type BrowserContext, type Page } from '@playwright/test';
 import { mkdirSync } from 'node:fs';
-import { SERVER, createClassViaApi, flushDeviceLogs, loginAndEnter, openDevice, pageErrors } from './onlineDevice';
+import { SERVER, createClassViaApi, flushDeviceLogs, loginAndEnter, loginTeacher, openDevice, pageErrors } from './onlineDevice';
 import { PLAYGROUND_SPOTS, SPOT_RADIUS } from '../src/store/playground';
 
 const OUT = 'e2e/screenshots/playground';
@@ -136,4 +136,51 @@ test('老師設定遊樂場、兩個孩子一起坐旋轉木馬與翹翹板、�
   await a.page.screenshot({ path: `${OUT}/05-four-b.png` });
   expect(pageErrors(a.page)).toEqual([]);
   expect(pageErrors(b.page)).toEqual([]);
+});
+
+test('老師在班級管理頁選器材、熊熊老師進島用面板換器材；手機上的孩子大動作鍵「上去玩」', async ({ browser, baseURL, request }) => {
+  test.setTimeout(400_000);
+  const room = await createClassViaApi(request, '二年七班');
+  const res = await request.post(`${SERVER}/api/join`, { data: { code: room.code, nickname: '小安', pin: '3333', avatar: { animal: 'bear', color: '#8b5a2b', hat: null } } });
+  expect(res.ok()).toBe(true);
+  // 孩子用手機（觸控、直式）
+  const kid = await openDevice(browser, baseURL!, { touch: true });
+  contexts.push(kid.context);
+  await loginAndEnter(kid.page, room.code, '小安', '3333');
+  await kid.page.setViewportSize({ width: 390, height: 844 });
+  // 老師在班級管理頁選：第一個位置旋轉木馬
+  const t = await openDevice(browser, baseURL!);
+  contexts.push(t.context);
+  await loginTeacher(t.page, room.username);
+  await t.page.getByTestId(`class-${room.code}`).click();
+  await expect(t.page.getByTestId('playground-picker')).toBeVisible();
+  await expect(t.page.getByTestId('pg-0-empty')).toHaveAttribute('aria-pressed', 'true');
+  await t.page.getByTestId('pg-0-carousel').click();
+  await expect(t.page.getByTestId('pg-0-carousel')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => pgOf(kid.page)).toEqual(['carousel', null, null, null]);
+  // 手機上：走到旋轉木馬旁邊，右下大動作鍵是「🎠 騎木馬」，按了坐上去
+  await standBy(kid.page, 0);
+  await expect(kid.page.getByTestId('ride-start')).toContainText('騎木馬');
+  await kid.page.getByTestId('ride-start').click();
+  await expect.poll(() => rideOf(kid.page)).toMatchObject({ ride: 'carousel', slot: 0 });
+  await expect(kid.page.getByTestId('use-stop')).toBeVisible();
+  await expect(kid.page.getByTestId('cam-view')).toBeVisible();
+  await kid.page.screenshot({ path: `${OUT}/06-phone-riding.png` });
+  // 熊熊老師進島，用上方的「🎡 遊樂場」把第二個位置換成摩天輪
+  await t.page.getByTestId('gm-enter').click();
+  await expect.poll(() => t.page.evaluate(() => (window as any).__game.gm.getState().status)).toBe('online');
+  await expect.poll(() => pgOf(t.page)).toEqual(['carousel', null, null, null]);
+  await t.page.getByTestId('gm-playground-toggle').click();
+  await t.page.getByTestId('pg-1-ferris').click();
+  await expect.poll(() => pgOf(kid.page)).toEqual(['carousel', 'ferris', null, null]);
+  await expect.poll(() => pgOf(t.page)).toEqual(['carousel', 'ferris', null, null]);
+  await t.page.screenshot({ path: `${OUT}/07-gm-panel.png` });
+  await t.page.getByTestId('gm-playground-close').click();
+  // 熊熊老師也能玩：坐摩天輪
+  await standBy(t.page, 1);
+  await t.page.getByTestId('ride-start').click();
+  await expect.poll(() => rideOf(t.page)).toMatchObject({ ride: 'ferris', slot: 1 });
+  await expect.poll(() => kid.page.evaluate(() => (window as any).__game.rides.occupied(1).filter(Boolean).length)).toBe(1);
+  expect(pageErrors(kid.page)).toEqual([]);
+  expect(pageErrors(t.page)).toEqual([]);
 });

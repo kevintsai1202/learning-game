@@ -1,6 +1,6 @@
 # 班級島遊樂場（大型遊樂器材，大家一起玩）
 
-> 狀態：**規格確認中（2026-10-12）**。使用者需求：「教師島上放一些能大家一起玩的遊樂器材（佔格大，可多人一起玩），例如旋轉木馬、翹翹板，老師可指定要放哪個大型遊樂器材，規劃最少五種；學生玩時也要有第一視角」。
+> 狀態：**完成（2026-10-12）**，實作紀錄見第 9 節。使用者需求：「教師島上放一些能大家一起玩的遊樂器材（佔格大，可多人一起玩），例如旋轉木馬、翹翹板，老師可指定要放哪個大型遊樂器材，規劃最少五種；學生玩時也要有第一視角」。
 
 ## 1. 使用者的決定（2026-10-12）
 
@@ -66,3 +66,17 @@
 
 - Zeabur 換版的那一兩分鐘，新網頁送 `rideN` 給還沒換版的舊伺服器會被斷線（格式驗證不收）；換版完成重新連線就好。
 - 各台裝置的時鐘不同，旋轉木馬轉到的角度在不同裝置上會差一點（每台裝置自己看是一致的）。
+
+## 9. 實作紀錄（2026-10-12 完成）
+
+- **4 個位置**（`src/store/playground.ts` 的 `PLAYGROUND_SPOTS`）：規格寫的 (±4.5, 6.5) 會壓到通往百寶屋、益智館的步道，掃描班級島（不碰到建築、門口、步道、廣場、出生點、噴水池，半徑 2.6）後改成廣場西邊 (−9.5, −1)、廣場東邊 (10, −1.5)、西南海灘 (−14, 10)、東南海灘 (14, 10)（數學城堡比文字森林大，左右不完全對稱）。班級島上這 4 個位置周圍的樹與花拿掉。
+- **規則**（純函式）：`src/store/rideKinds.ts`（八種、`playgroundSchema`、伺服器共用）、`src/store/actCodes.ts`（`ride0`～`ride7`、`rideSeatCode`／`rideSeatOf`）、`src/store/playground.ts`（`RIDES` 名字與按鈕的字、每種器材的尺寸與動法常數——模型也用、`rideFrame`、`rideExit`、`freeSeat`、`seatMap`／`takenSeats`、`resolveSeat`、`slotNear`、`rideObstacles`）。摩天輪的車廂比坐著的角色高（輪子半徑 2.4、輪軸 4.8 公尺，最高處座位約 5.1 公尺）。
+- **正在用的東西**：`player.act` 改成 `FurnitureAct | RideAct`（`src/world/input.ts`），角色的樣子一律走 `src/store/actFrame.ts` 的 `frameOf`（家具照開始後幾秒、器材照牆上的時間與坐上去之後幾秒、翹翹板看座位有沒有人）。用家具的鏡像 `acting` 也是聯合型別，畫面用 `actingLook` 拿名字、圖示、能不能起來。起來：`stopUse` 站到下車點；溜滑梯城堡途中不能起來（`RIDES.slidecastle.locked`）。
+- **遊樂場的狀態**（`src/store/useRides.ts`）：遊樂場（島嶼場景放進來）、旁邊的器材、別人坐在哪裡（別人的角色登記）、`occupiedOf`、`rideFull`、`startRide`（最近的空位、立刻站到座位上）。e2e 用 `window.__game.rides`。
+- **伺服器**：資料表第 14 版 `rooms.playground`（jsonb，null 當成全空）；`PATCH /api/teacher/rooms/:code` 多 `playground`；`RoomFlags.playground`（`welcome.room` 與 `{t:'room'}` 帶上，`flagsOf`／`playgroundOf` 把 null 或格式不對的當成全空）；能力宣告 `caps` 多 `ride`：裝置在伺服器支援時才送 `rideN`，不支援時送 `sit`（`actCodeNow(rideOk)`），部署途中舊伺服器不會斷線。
+- **畫面**：`src/world/Playground.tsx`（八種器材的模型，一直在動，不合併網格；`RideProbe` 每一格同步鏡像、器材被換掉就起來、被擠掉換座位、找旁邊的器材）；島嶼場景只有班級島畫遊樂場、加碰撞；別人的角色看到 `rideN` 時用他位置附近的那一座、照本機的時鐘擺在座位上（`RemotePlayers`）。電腦版卡片 `src/ui/RideCard.tsx`（`ride-card`、`ride-start`），手機大動作鍵 `pickAction` 的 `ride`（坐滿了停用、上面寫坐滿了）。玩的時候「⬆️ 起來」「🎥 換視角」和家具一樣；第一人稱走 `camFor`（鏡頭吃時間軸，溜滑梯城堡看接下來要去的地方、鞦韆組看臉朝的方向）。
+- **老師**：`src/ui/PlaygroundPicker.tsx`（4 個位置各一排：八種器材加空地，點了就存；只送最新的一筆）；班級管理頁在教材版本下面，熊熊老師的上方晶片列多「🎡 遊樂場」打開面板（`gm-playground-toggle`，用老師帳號的權杖 PATCH）。
+- **隱私權政策**：同一班的同學看得到正在玩的遊樂器材（坐在哪個位子）；老師可以選班級島上的遊樂器材（中英文，更新日期 2026-10-12）。
+- **注音字型子集**重產（騎、翹、摩、輪、咖、啡等新字）。
+- **測試**：`tests/store/playground.test.ts`（位置、器材、座位動法、下車點、選座位、搶位子、資料格式、座位代碼）、`tests/store/rideAct.test.ts`（`frameOf`、`actCodeNow`、`resolveSeat`、大動作鍵）、`tests/server/playground.test.ts`（第 14 版、PATCH、通知、歡迎訊息、room 訊息、caps、座位代碼轉送）；舊測試寫死的整包內容補上 `playground` 與 `ride`。e2e `e2e/playground.spec.ts`（老師用 API 設定、兩個孩子一起坐旋轉木馬與翹翹板、第一人稱、器材被換掉時起來、八種器材截圖；老師在班級管理頁選、熊熊老師用面板換、手機大動作鍵、熊熊老師坐摩天輪）。
+- **已知**：各台裝置的時鐘不同，旋轉木馬轉到的角度在不同裝置上會差一點；別人的鞦韆組、溜滑梯城堡照本機看到動作那一刻開始播，和他自己的畫面差一點時間；舊網頁看到 `rideN` 把那個人畫成坐在原地。

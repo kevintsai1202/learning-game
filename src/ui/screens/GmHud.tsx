@@ -13,6 +13,9 @@ import { GmRoster } from './GmRoster';
 import { HomeDoorBubble } from '../HomeDoorBubble';
 import { DecorNear } from '../DecorBag';
 import { CamResetButton } from '../CamButtons';
+import { PlaygroundPicker } from '../PlaygroundPicker';
+import { useAccount } from '../../online/useAccount';
+import type { Playground } from '../../store/rideKinds';
 import { RideCard } from '../RideCard';
 
 /** 連線狀態的文字 */
@@ -30,6 +33,10 @@ export function GmHud() {
   const [text, setText] = useState('');
   /** 全班清單打開了沒 */
   const [rosterOpen, setRosterOpen] = useState(false);
+  /** 遊樂場面板打開了沒（docs/plans/playground.md） */
+  const [playgroundOpen, setPlaygroundOpen] = useState(false);
+  /** 班級島現在的遊樂場（伺服器給的；老師改了之後島上的人收到新的） */
+  const playground = useGm((s) => s.flags.playground);
   const touch = typeof window !== 'undefined' && (navigator.maxTouchPoints > 0 || 'ontouchstart' in window);
   // 給老師的短訊息 4 秒後收起
   useEffect(() => {
@@ -79,6 +86,18 @@ export function GmHud() {
           >
             📋 全班
           </button>
+          <button
+            className="hud-chip"
+            style={{ paddingLeft: 14 }}
+            aria-expanded={playgroundOpen}
+            onClick={() => {
+              sfx.tap();
+              setPlaygroundOpen((v) => !v);
+            }}
+            data-testid="gm-playground-toggle"
+          >
+            🎡 遊樂場
+          </button>
           {/* 轉過視角才出現（第 10.5 節） */}
           <CamResetButton variant="chip" />
         </div>
@@ -95,6 +114,19 @@ export function GmHud() {
         </button>
       </div>
       {rosterOpen && room && <GmRoster code={room.code} onClose={() => setRosterOpen(false)} />}
+      {playgroundOpen && room && (
+        <div className="gm-playground card" data-testid="gm-playground">
+          <PlaygroundPicker
+            value={playground}
+            onSave={async (pg: Playground) => {
+              await useAccount.getState().call('PATCH', `/api/teacher/rooms/${room.code}`, { playground: pg });
+            }}
+          />
+          <button className="btn small white" onClick={() => setPlaygroundOpen(false)} data-testid="gm-playground-close">
+            關上
+          </button>
+        </div>
+      )}
       {error && (
         <p className="notice gm-error" role="alert" data-testid="gm-error">
           {error}

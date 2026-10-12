@@ -24,6 +24,7 @@ import { ClaimPanel } from './ClaimPanel';
 import { ClaimCard } from './ClaimCard';
 import { JoinQr } from './JoinQr';
 import { createLatestSaver } from '../latestSaver';
+import { PlaygroundPicker } from '../PlaygroundPicker';
 import { CLASS_PASSWORD_MIN, MAX_CLASSES, kidRooms } from '../../online/protocol';
 import { addDeclined, profilesToOffer, readDeclined } from '../../online/uploadOffer';
 import type { ClaimIssueResponse, KidSummary, MemberSummary, ParentKidsResponse, RoomSettings, TeacherRoomResponse, TeacherRoomSummary, TeacherRoomsResponse, UserGoogleLink } from '../../online/protocol';
@@ -1477,6 +1478,8 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
               )
             }
           />
+          {/* 班級島遊樂場（docs/plans/playground.md） */}
+          <PlaygroundPicker value={room.playground} onSave={(pg) => act(() => call('PATCH', base, { playground: pg }), '班級島的遊樂場已更新')} />
         </>
       )}
       <ErrorNote text={error} testId="teacher-error" />
