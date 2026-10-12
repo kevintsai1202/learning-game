@@ -1,7 +1,9 @@
 /**
  * 班級島遊樂場的 3D（docs/plans/playground.md）：八種大型遊樂器材的模型（原創低多邊形，程式畫），
  * 以及每一格畫面的偵測（旁邊的器材、搶位子換座位、器材被老師換掉時起來、同步正在玩的鏡像）。
- * - 器材一直在動，不放進 StaticMerge；角度、尺寸都用 src/store/playground.ts 的同一組函式，坐在上面的角色和器材一起動。
+ * - 不會動的部分（底座、塔、軌道、支架）用 StaticMerge 合併網格（材質用 toon 共用快取才合併得到），會動的部分
+ *   （轉盤、板子、座椅、車廂、杯子、火車）標 userData.dynamic 不合併；平板才跑得動（4 座時 draw call 從約 +170 降下來）。
+ * - 角度、尺寸都用 src/store/playground.ts 的同一組函式，坐在上面的角色和器材一起動。
  * - 一直在動的器材照牆上的時間（wallSec）；鞦韆組照坐上去的人開始的時間；翹翹板看兩邊有沒有人。
  */
 import { useEffect, useRef, type ReactNode } from 'react';
@@ -34,6 +36,8 @@ import { nowSec, stopUse, syncActMirror } from '../store/useFurnitureUse';
 import { occupiedOf, othersRiding, setRideNear, useRides } from '../store/useRides';
 import { usePresence } from '../online/usePresence';
 import { player } from './input';
+import { StaticMerge } from './StaticMerge';
+import { toon } from './materials';
 
 /** 器材的顏色 */
 const RED = '#e8455a';
@@ -51,7 +55,7 @@ function Box({ p, s, c, r }: { p: [number, number, number]; s: [number, number, 
   return (
     <mesh position={p} rotation={r} castShadow receiveShadow>
       <boxGeometry args={s} />
-      <meshToonMaterial color={c} />
+      <primitive object={toon(c)} attach="material" />
     </mesh>
   );
 }
@@ -61,7 +65,7 @@ function Cyl({ p, rt, rb, h, c, n = 16 }: { p: [number, number, number]; rt: num
   return (
     <mesh position={p} castShadow receiveShadow>
       <cylinderGeometry args={[rt, rb, h, n]} />
-      <meshToonMaterial color={c} />
+      <primitive object={toon(c)} attach="material" />
     </mesh>
   );
 }
@@ -90,12 +94,12 @@ function Carousel() {
   return (
     <>
       <Cyl p={[0, 0.08, 0]} rt={CAROUSEL.platformR + 0.1} rb={CAROUSEL.platformR + 0.15} h={0.16} c={DARK} n={24} />
-      <group ref={spin}>
+      <group ref={spin} userData={{ dynamic: true }}>
         <Cyl p={[0, CAROUSEL.platformTop / 2 + 0.08, 0]} rt={CAROUSEL.platformR} rb={CAROUSEL.platformR} h={CAROUSEL.platformTop - 0.08} c={WHITE} n={24} />
         <Cyl p={[0, 1.9, 0]} rt={0.18} rb={0.22} h={3.2} c={YELLOW} />
         <mesh position={[0, 3.75, 0]} castShadow>
           <coneGeometry args={[CAROUSEL.platformR + 0.25, 0.9, 12]} />
-          <meshToonMaterial color={RED} />
+          <primitive object={toon(RED)} attach="material" />
         </mesh>
         <Box p={[0, 3.6, 0]} s={[0.4, 0.4, 0.4]} c={YELLOW} />
         {Array.from({ length: 6 }, (_, i) => {
@@ -149,6 +153,7 @@ function Seesaw({ slot }: { slot: number }) {
               boards.current[i] = g;
             }}
             position={[0, SEESAW.pivotH, z]}
+            userData={{ dynamic: true }}
           >
             <Box p={[0, 0, 0]} s={[SEESAW.half * 2, 0.08, 0.35]} c={i === 0 ? RED : BLUE} />
             {[-1, 1].map((s) => (
@@ -174,7 +179,7 @@ function SwingsetSeat({ slot, seat }: { slot: number; seat: number }) {
   const seatY = 0.42;
   const rope = SWING_PIVOT - seatY;
   return (
-    <group ref={g} position={[SWINGSET.seatX[seat], SWING_PIVOT, 0]}>
+    <group ref={g} position={[SWINGSET.seatX[seat], SWING_PIVOT, 0]} userData={{ dynamic: true }}>
       {[-0.46, 0.46].map((x) => (
         <Box key={x} p={[x, -rope / 2, 0]} s={[0.025, rope, 0.025]} c="#555" />
       ))}
@@ -212,13 +217,13 @@ function Trampoline() {
       })}
       <mesh position={[0, TRAMPOLINE.bedH - 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
         <torusGeometry args={[TRAMPOLINE.bedR - 0.05, 0.14, 8, 32]} />
-        <meshToonMaterial color={BLUE} />
+        <primitive object={toon(BLUE)} attach="material" />
       </mesh>
       {/* 床面：藍色加一圈黃色的圓（太暗會看起來像一個洞） */}
       <Cyl p={[0, TRAMPOLINE.bedH - 0.04, 0]} rt={TRAMPOLINE.bedR - 0.15} rb={TRAMPOLINE.bedR - 0.15} h={0.04} c="#5aa0f0" n={32} />
       <mesh position={[0, TRAMPOLINE.bedH - 0.015, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <ringGeometry args={[0.6, 0.75, 32]} />
-        <meshToonMaterial color={YELLOW} />
+        <primitive object={toon(YELLOW)} attach="material" />
       </mesh>
     </>
   );
@@ -294,17 +299,17 @@ function Ferris() {
           return <Box key={`${sx},${sz}`} p={[bx / 2, hubH / 2, hubZ + sz * 0.45]} s={[0.12, len, 0.12]} r={[0, 0, Math.atan2(bx, hubH)]} c={DARK} />;
         }),
       )}
-      <group ref={wheel} position={[0, hubH, hubZ]}>
+      <group ref={wheel} position={[0, hubH, hubZ]} userData={{ dynamic: true }}>
         <mesh>
           <torusGeometry args={[wheelR, 0.07, 6, 36]} />
-          <meshToonMaterial color={WHITE} />
+          <primitive object={toon(WHITE)} attach="material" />
         </mesh>
         {Array.from({ length: 6 }, (_, i) => (
           <Box key={i} p={[0, 0, 0]} s={[0.06, wheelR * 2, 0.06]} r={[0, 0, (i * Math.PI) / 6]} c={WHITE} />
         ))}
         <Cyl p={[0, 0, 0]} rt={0.25} rb={0.25} h={1.0} c={RED} />
       </group>
-      <group position={[0, 0, hubZ]}>
+      <group position={[0, 0, hubZ]} userData={{ dynamic: true }}>
         {Array.from({ length: 6 }, (_, i) => (
           <group
             key={i}
@@ -351,7 +356,7 @@ function Teacups() {
       <Cyl p={[0, TEACUPS.floor + 0.4, 0]} rt={0.35} rb={0.45} h={0.8} c={WHITE} />
       <mesh position={[0, TEACUPS.floor + 0.95, 0]} castShadow>
         <sphereGeometry args={[0.32, 12, 8]} />
-        <meshToonMaterial color={RED} />
+        <primitive object={toon(RED)} attach="material" />
       </mesh>
       {Array.from({ length: 3 }, (_, i) => (
         <group
@@ -359,12 +364,13 @@ function Teacups() {
           ref={(g) => {
             cups.current[i] = g;
           }}
+          userData={{ dynamic: true }}
         >
           <Cyl p={[0, 0.3, 0]} rt={TEACUPS.cupR} rb={TEACUPS.cupR - 0.2} h={0.6} c={PALETTE[i * 2]} />
           <Cyl p={[0, 0.62, 0]} rt={TEACUPS.cupR + 0.04} rb={TEACUPS.cupR + 0.04} h={0.05} c={WHITE} />
           <mesh position={[TEACUPS.cupR + 0.12, 0.35, 0]} rotation={[0, 0, Math.PI / 2]}>
             <torusGeometry args={[0.15, 0.04, 6, 12]} />
-            <meshToonMaterial color={PALETTE[i * 2]} />
+            <primitive object={toon(PALETTE[i * 2])} attach="material" />
           </mesh>
         </group>
       ))}
@@ -394,7 +400,7 @@ function Train() {
     <>
       <mesh position={[0, 0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <ringGeometry args={[TRAIN.trackR - 0.35, TRAIN.trackR + 0.35, 40]} />
-        <meshToonMaterial color="#9a7b5a" />
+        <primitive object={toon('#9a7b5a')} attach="material" />
       </mesh>
       {Array.from({ length: 24 }, (_, i) => {
         const a = (i / 24) * Math.PI * 2;
@@ -402,9 +408,9 @@ function Train() {
       })}
       <mesh position={[0, 0.3, 0]} castShadow>
         <sphereGeometry args={[0.9, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshToonMaterial color={GREEN} />
+        <primitive object={toon(GREEN)} attach="material" />
       </mesh>
-      <group ref={engine}>
+      <group ref={engine} userData={{ dynamic: true }}>
         <Box p={[0, 0.5, 0]} s={[0.7, 0.6, 1.0]} c={RED} />
         <Cyl p={[0, 1.0, 0.25]} rt={0.12} rb={0.1} h={0.4} c={DARK} n={8} />
         <Box p={[0, 0.95, -0.25]} s={[0.6, 0.5, 0.45]} c={RED} />
@@ -415,6 +421,7 @@ function Train() {
           ref={(g) => {
             cars.current[k] = g;
           }}
+          userData={{ dynamic: true }}
         >
           <Box p={[0, 0.3, 0]} s={[0.75, 0.3, 1.0]} c={PALETTE[k * 2 + 1]} />
           {[-0.36, 0.36].map((x) => (
@@ -486,7 +493,9 @@ export function PlaygroundLayer({ playground, active }: { playground: Playground
       {playground.map((kind, i) =>
         kind ? (
           <group key={`${i}:${kind}`} position={[PLAYGROUND_SPOTS[i].x, 0, PLAYGROUND_SPOTS[i].z]}>
-            <RideModel kind={kind} slot={i} />
+            <StaticMerge>
+              <RideModel kind={kind} slot={i} />
+            </StaticMerge>
           </group>
         ) : null,
       )}
