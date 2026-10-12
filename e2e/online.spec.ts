@@ -68,6 +68,8 @@ test('班級：建立房間、帶進度加入、換裝置登入、離線同步�
   expect(await a.page.evaluate(() => (window as any).__game.game.getState().save.profiles.length)).toBe(1);
   await waitSynced(a.page);
   await expect(a.page.getByTestId('hud-cloud')).toHaveAttribute('data-status', 'synced');
+  /** 同步狀態的大小：狀態變了也不能變（使用者 2026-10-12：字一直變，後面的按鈕一直跳） */
+  const cloudBox = (await a.page.getByTestId('hud-cloud').boundingBox())!;
   await a.page.screenshot({ path: `${SHOTS}/03-kid-island-synced.png` });
 
   // 再玩一回合：自動上傳
@@ -102,7 +104,10 @@ test('班級：建立房間、帶進度加入、換裝置登入、離線同步�
   await playRoundWithMistake(a.page);
   await expect.poll(() => cloudState(a.page), { timeout: 20_000 }).toMatchObject({ status: 'offline' });
   expect((await cloudState(a.page)).pending).toBeGreaterThan(0);
-  await expect(a.page.getByTestId('hud-cloud')).toContainText('離線');
+  await expect(a.page.getByTestId('hud-cloud')).toHaveAttribute('aria-label', /離線/);
+  const offlineBox = (await a.page.getByTestId('hud-cloud').boundingBox())!;
+  expect(offlineBox.width).toBeCloseTo(cloudBox.width, 0);
+  expect(offlineBox.x).toBeCloseTo(cloudBox.x, 0);
   await a.page.screenshot({ path: `${SHOTS}/05-kid-offline.png` });
   await a.context.setOffline(false);
   await waitSynced(a.page);

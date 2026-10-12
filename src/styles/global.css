@@ -3207,9 +3207,18 @@ button {
   gap: 8px;
   white-space: nowrap;
 }
+/* 同步狀態（電腦與手機）：固定大小的圖示，狀態變了後面的按鈕不會跳 */
+.cloud-chip {
+  position: relative;
+  width: 56px;
+  justify-content: center;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
 :root.phone .phone-cloud {
   position: relative;
-  padding: 3px 8px;
+  width: auto;
+  padding: 3px 8px !important;
 }
 .phone-cloud .cloud-ok {
   position: absolute;

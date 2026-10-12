@@ -57,7 +57,12 @@ const CLOUD_LABEL: Record<CloudStatus, string> = {
  * 雲端角色才顯示：進度有沒有存到班級（家長名下、沒有班級的角色寫「雲端」）；
  * 需要重新登入時點一下去登入：班級角色到班級畫面，沒有班級的到帳號頁（家長登入找回）
  */
-function CloudChip({ compact = false }: { compact?: boolean }) {
+/**
+ * 同步狀態：固定大小的圖示（存好了打勾），說明在滑鼠提示與朗讀器；點了熊熊老師說明，要登入時去登入。
+ * 電腦和手機一樣（使用者 2026-10-12：以前電腦寫一整句「同步中・1 筆待上傳」，每 30 秒記一次遊玩時間就同步一次，
+ * 字一直變長變短，後面的按鈕一直跳）
+ */
+function CloudChip() {
   const status = useCloud((s) => s.status);
   const pending = useCloud((s) => s.pending);
   const goto = useUi((s) => s.goto);
@@ -65,31 +70,17 @@ function CloudChip({ compact = false }: { compact?: boolean }) {
   const inClass = useGame((s) => classesOf(s.profile()).length > 0);
   const base = status === 'synced' && !inClass ? '☁️ 已存到雲端' : CLOUD_LABEL[status];
   const label = base + (pending > 0 && status !== 'synced' ? `・${pending} 筆待上傳` : '');
-  if (compact)
-    // 手機：只放圖示（存好了打勾）；點了熊熊老師說明，要登入時去登入
-    return (
-      <button
-        className={`hud-chip phone-cloud ${status}`}
-        onClick={() => (status === 'needLogin' ? goto(inClass ? 'class' : 'teacher') : useUi.getState().say(label))}
-        aria-label={`同步狀態：${label}`}
-        title={label}
-        data-testid="hud-cloud"
-        data-status={status}
-      >
-        {CLOUD_ICON[status]}
-        {status === 'synced' && <span className="cloud-ok">✓</span>}
-      </button>
-    );
   return (
     <button
-      className="hud-chip"
-      style={{ paddingLeft: 14 }}
-      onClick={() => status === 'needLogin' && goto(inClass ? 'class' : 'teacher')}
+      className={`hud-chip cloud-chip phone-cloud ${status}`}
+      onClick={() => (status === 'needLogin' ? goto(inClass ? 'class' : 'teacher') : useUi.getState().say(label))}
       aria-label={`同步狀態：${label}`}
+      title={label}
       data-testid="hud-cloud"
       data-status={status}
     >
-      {label}
+      {CLOUD_ICON[status]}
+      {status === 'synced' && <span className="cloud-ok">✓</span>}
     </button>
   );
 }
@@ -235,7 +226,7 @@ function PhoneHud({ touch }: { touch: boolean }) {
             <span data-testid="hud-coins">🪙 {profile?.coins ?? 0}</span>
             <span>⭐ {totalStars}</span>
           </span>
-          {profile?.cloud && <CloudChip compact />}
+          {profile?.cloud && <CloudChip />}
         </div>
         <HudMenu />
       </div>

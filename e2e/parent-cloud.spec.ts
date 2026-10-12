@@ -103,7 +103,7 @@ test('家長的雲端角色：存到雲端、新平板在這台裝置玩、加�
     .poll(() => tablet.page.evaluate(() => [(window as any).__game.realtime.getState().status, (window as any).__game.realtime.getState().island]), { timeout: 20_000 })
     .toEqual(['online', 'own']);
   // 沒有班級了：同步狀態寫「已存到雲端」，不是「已存到班級」
-  await expect(tablet.page.getByTestId('hud-cloud')).toHaveText('☁️ 已存到雲端');
+  await expect(tablet.page.getByTestId('hud-cloud')).toHaveAttribute('aria-label', '同步狀態：☁️ 已存到雲端');
   await tablet.page.screenshot({ path: `${SHOTS}/03-tablet-after-removed.png` });
 
   // ---------- 權杖過期（模擬：這台裝置的權杖不見了）：點同步狀態到帳號頁，家長「在這台裝置玩」找回，進度不丟 ----------
