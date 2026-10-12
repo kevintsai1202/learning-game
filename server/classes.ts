@@ -12,7 +12,7 @@ import type { Queryable } from './db';
 import type { ClassInfo } from '../src/online/protocol';
 import type { CurriculumChoice } from '../src/store/save';
 import type { RoomFlags } from '../src/online/realtime';
-import { emptyPlayground, playgroundSchema, type Playground } from '../src/store/rideKinds';
+import { DEFAULT_PLAYGROUND, playgroundSchema, type Playground } from '../src/store/rideKinds';
 
 /** 一個孩子最多幾個班級（使用者決定，第 8 節第 2 點；和畫面共用 protocol.ts 的） */
 export { MAX_CLASSES } from '../src/online/protocol';
@@ -68,7 +68,7 @@ export interface MembershipRow {
   curriculum: CurriculumChoice | null;
   chat_open: boolean;
   gifts_open: boolean;
-  /** 班級島的遊樂場（第 14 版；null 或格式不對當成全空） */
+  /** 班級島的遊樂場（第 14 版；null 是老師還沒設定過，用預設的 4 座） */
   playground: unknown;
   room_created_at: Date;
 }
@@ -93,10 +93,10 @@ export function flagsOf(m: Pick<MembershipRow, 'chat_open' | 'gifts_open' | 'pla
   return { chatOpen: m.chat_open, giftsOpen: m.gifts_open, playground: playgroundOf(m.playground) };
 }
 
-/** 資料表裡的遊樂場（null 或格式不對當成全空） */
+/** 資料表裡的遊樂場：老師還沒設定過（null）或格式不對是預設的 4 座；老師設定過就照存的（全空也是） */
 export function playgroundOf(v: unknown): Playground {
   const r = playgroundSchema.safeParse(v);
-  return r.success ? r.data : emptyPlayground();
+  return r.success ? r.data : [...DEFAULT_PLAYGROUND];
 }
 
 /**

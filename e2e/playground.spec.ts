@@ -153,10 +153,15 @@ test('老師在班級管理頁選器材、熊熊老師進島用面板換器材�
   contexts.push(t.context);
   await loginTeacher(t.page, room.username);
   await t.page.getByTestId(`class-${room.code}`).click();
+  // 老師還沒設定過：預設的 4 座（孩子一進班級島就看得到）
   await expect(t.page.getByTestId('playground-picker')).toBeVisible();
-  await expect(t.page.getByTestId('pg-0-empty')).toHaveAttribute('aria-pressed', 'true');
-  await t.page.getByTestId('pg-0-carousel').click();
   await expect(t.page.getByTestId('pg-0-carousel')).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(() => pgOf(kid.page)).toEqual(['carousel', 'seesaw', 'swingset', 'trampoline']);
+  // 老師把後面三個改成空地，只留旋轉木馬
+  for (const slot of [1, 2, 3]) {
+    await t.page.getByTestId(`pg-${slot}-empty`).click();
+    await expect(t.page.getByTestId(`pg-${slot}-empty`)).toHaveAttribute('aria-pressed', 'true');
+  }
   await expect.poll(() => pgOf(kid.page)).toEqual(['carousel', null, null, null]);
   // 手機上：走到旋轉木馬旁邊，右下大動作鍵是「🎠 騎木馬」，按了坐上去
   await standBy(kid.page, 0);

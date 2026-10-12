@@ -16,6 +16,8 @@ import type { Playground } from '../../src/store/rideKinds';
 
 const PG: Playground = ['carousel', null, 'seesaw', 'ferris'];
 const EMPTY: Playground = [null, null, null, null];
+/** 老師還沒設定過的班級：先放好的 4 座（使用者 2026-10-12） */
+const DEFAULT: Playground = ['carousel', 'seesaw', 'swingset', 'trampoline'];
 
 describe('資料表第 14 版', () => {
   it('v13 → v14：班級多一欄遊樂場，既有班級是 null；可以存', async () => {
@@ -34,10 +36,11 @@ describe('資料表第 14 版', () => {
     }
   });
 
-  it('flagsOf：遊樂場是 null 或格式不對時當成全空', () => {
-    expect(flagsOf({ chat_open: true, gifts_open: false, playground: null }).playground).toEqual(EMPTY);
+  it('flagsOf：老師還沒設定過（null）或格式不對是預設的 4 座；老師設定成全空就是全空', () => {
+    expect(flagsOf({ chat_open: true, gifts_open: false, playground: null }).playground).toEqual(DEFAULT);
     expect(flagsOf({ chat_open: true, gifts_open: false, playground: PG }).playground).toEqual(PG);
-    expect(flagsOf({ chat_open: true, gifts_open: false, playground: ['rocket'] }).playground).toEqual(EMPTY);
+    expect(flagsOf({ chat_open: true, gifts_open: false, playground: ['rocket'] }).playground).toEqual(DEFAULT);
+    expect(flagsOf({ chat_open: true, gifts_open: false, playground: EMPTY }).playground).toEqual(EMPTY);
   });
 });
 
@@ -53,11 +56,11 @@ describe('老師改遊樂場', () => {
     await resetDb(db);
   });
 
-  it('新班級全空；PATCH 改了存起來、通知即時中樞；格式不對是 400', async () => {
+  it('新班級是預設的 4 座；PATCH 改了存起來、通知即時中樞；可以改成全空；格式不對是 400', async () => {
     const onRoomChanged = vi.fn();
     const { call } = makeClient(db, { onRoomChanged });
     const { code, token } = await createRoom(call);
-    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room.playground).toEqual(EMPTY);
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room.playground).toEqual(DEFAULT);
     const set = await call('PATCH', `/api/teacher/rooms/${code}`, { playground: PG }, token);
     expect(set.status).toBe(200);
     expect(set.body.room.playground).toEqual(PG);
@@ -66,6 +69,9 @@ describe('老師改遊樂場', () => {
     // 只改開關：遊樂場照舊
     await call('PATCH', `/api/teacher/rooms/${code}`, { chatOpen: false }, token);
     expect(onRoomChanged).toHaveBeenLastCalledWith(code, { chatOpen: false, giftsOpen: true, playground: PG });
+    // 老師全部改成空地：就是全空（不會變回預設）
+    expect((await call('PATCH', `/api/teacher/rooms/${code}`, { playground: EMPTY }, token)).body.room.playground).toEqual(EMPTY);
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room.playground).toEqual(EMPTY);
     expect((await call('PATCH', `/api/teacher/rooms/${code}`, { playground: ['carousel', null, null] }, token)).status).toBe(400);
     expect((await call('PATCH', `/api/teacher/rooms/${code}`, { playground: ['rocket', null, null, null] }, token)).status).toBe(400);
   });

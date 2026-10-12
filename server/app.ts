@@ -136,7 +136,7 @@ interface RoomRow {
   curriculum: CurriculumChoice | null;
   /** 教室密碼的雜湊（L3，第 11 版新增）；null 是老師還沒設定，學校平板不能解鎖 */
   class_password_hash: string | null;
-  /** 班級島的遊樂場（第 14 版；null 是全空） */
+  /** 班級島的遊樂場（第 14 版；null 是老師還沒設定過，用預設的 4 座） */
   playground: unknown;
 }
 

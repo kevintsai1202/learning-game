@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { FOUNTAIN, SPAWN, WALK_RADIUS, ZONES, doorOf } from '../../src/world/layout';
 import { PLAZA, pathSegments } from '../../src/world/scenery';
-import { PLAYGROUND_SLOTS, RIDE_KINDS, emptyPlayground, playgroundSchema, type RideKind } from '../../src/store/rideKinds';
+import { DEFAULT_PLAYGROUND, PLAYGROUND_SLOTS, RIDE_KINDS, emptyPlayground, playgroundSchema, type RideKind } from '../../src/store/rideKinds';
 import { ACT_CODES, rideSeatOf, rideSeatCode } from '../../src/store/actCodes';
 import {
   PLAYGROUND_SPOTS,
@@ -34,10 +34,13 @@ const clock = (wall: number, since = wall) => ({ wall, since });
 const ALL_FREE = Array(8).fill(false);
 
 describe('器材種類與資料格式（伺服器共用）', () => {
-  it('八種器材；4 個位置，每個位置一種或空的；預設全空', () => {
+  it('八種器材；4 個位置，每個位置一種或空的；空的遊樂場、老師還沒設定過的預設 4 座', () => {
     expect([...RIDE_KINDS]).toEqual(['carousel', 'seesaw', 'swingset', 'trampoline', 'slidecastle', 'ferris', 'teacups', 'train']);
     expect(PLAYGROUND_SLOTS).toBe(4);
     expect(emptyPlayground()).toEqual([null, null, null, null]);
+    // 老師還沒設定過的班級先放好的 4 座（使用者 2026-10-12）：旋轉木馬、翹翹板、大鞦韆組、彈跳床（對平板最輕的一組）
+    expect(DEFAULT_PLAYGROUND).toEqual(['carousel', 'seesaw', 'swingset', 'trampoline']);
+    expect(playgroundSchema.safeParse(DEFAULT_PLAYGROUND).success).toBe(true);
     expect(playgroundSchema.safeParse(['carousel', null, 'seesaw', 'train']).success).toBe(true);
     expect(playgroundSchema.safeParse(['carousel', null, 'seesaw']).success).toBe(false);
     expect(playgroundSchema.safeParse(['rocket', null, null, null]).success).toBe(false);
