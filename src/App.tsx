@@ -35,6 +35,8 @@ import { readJoinCode, stripJoinCode } from './online/joinLink';
 import { readClaimCode, stripClaimCode } from './online/claimLink';
 import { islandLook } from './store/island';
 import { usePhoneLayout } from './ui/phoneLayout';
+import { UpdateBanner } from './ui/UpdateBanner';
+import { startUpdateWatch, takeResume } from './update/useUpdate';
 
 /** 不顯示熊熊老師公告與集合卡片的畫面（不在遊戲裡，或是老師自己） */
 const NO_TEACHER_CALLS: Screen[] = ['title', 'profiles', 'class', 'classroom', 'teacher', 'gm'];
@@ -113,6 +115,16 @@ export function App() {
     useUi.getState().goto('teacher');
   }, []);
 
+  // 更新通知（docs/plans/update-notice.md）：定時檢查有沒有新版
+  useEffect(() => startUpdateWatch(), []);
+  // 更新後重新載入：回到更新前的畫面（網址上的加入班級、家長連結卡、信裡的連結已經先處理、換了畫面時不回）
+  useEffect(() => {
+    const target = takeResume();
+    if (!target || useUi.getState().screen !== 'title') return;
+    const needKid = target === 'island' || target === 'profiles';
+    useUi.getState().goto(needKid && !useGame.getState().profile() ? 'profiles' : target);
+  }, []);
+
   // 換畫面、換島就換配樂
   useEffect(() => playMusic(onOwnIsland && ON_ISLAND.includes(screen) ? 'home' : SCREEN_MUSIC[screen]), [screen, onOwnIsland]);
 
@@ -155,6 +167,8 @@ export function App() {
           </>
         )}
         <RestGuard />
+        {/* 更新通知：每個畫面都有（docs/plans/update-notice.md） */}
+        <UpdateBanner />
       </div>
     </>
   );

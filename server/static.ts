@@ -19,7 +19,8 @@ const ONE_DAY = 'public, max-age=86400';
  */
 export function cacheControlOf(filePath: string): string {
   const p = filePath.replace(/\\/g, '/');
-  if (p.endsWith('.html') || p.endsWith('/audio/voice/manifest.json')) return 'no-cache';
+  // 網頁、語音對照表、更新通知的版本號（docs/plans/update-notice.md）不快取
+  if (p.endsWith('.html') || p.endsWith('/audio/voice/manifest.json') || p.endsWith('/version.json')) return 'no-cache';
   if (p.includes('/assets/') || /\/audio\/voice\/[0-9a-f]{16}\.mp3$/.test(p)) return IMMUTABLE;
   return ONE_DAY;
 }

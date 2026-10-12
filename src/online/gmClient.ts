@@ -14,6 +14,7 @@ import { applyServerMessage, wsUrlOf, type SelfInfo } from './realtimeClient';
 import { TEACHER_AVATAR, TEACHER_NAME, type MemberZone, type RoomFlags, type ServerCap, type ServerMessage } from './realtime';
 import { canSendMove, movePayload } from './realtimeClient';
 import { setServerNow } from '../store/clockSync';
+import { onServerWelcome } from '../update/useUpdate';
 import type { ActCode } from '../store/actCodes';
 import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { BUBBLE_MS, expireBubbles } from './presence';
@@ -133,6 +134,8 @@ export function startGm(code: string): () => void {
           caps = msg.caps ?? [];
           // 對時（班級島的器材與大型設施的班次各台裝置一致）
           setServerNow(msg.now);
+          // 更新通知：重新接上時看看有沒有新版
+          onServerWelcome();
           // 同一個孩子的屋子裡重新連上：留在屋裡（重新回報在屋裡）；換了島就出來（自己的家第二期）
           const stay = !!msg.host && isInsideHome() && useHome.getState().houseKey === msg.host.id;
           setHouseKey(msg.host ? msg.host.id : null, { teacher: true });

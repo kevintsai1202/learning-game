@@ -43,6 +43,9 @@ describe('快取規則', () => {
     expect(cacheControlOf('/app/dist/index.html')).toBe('no-cache');
     expect(cacheControlOf('C:\\app\\dist\\privacy.html')).toBe('no-cache');
     expect(cacheControlOf('/app/dist/audio/voice/manifest.json')).toBe('no-cache');
+    // 更新通知（docs/plans/update-notice.md）：網頁定時讀的版本號不能快取
+    expect(cacheControlOf('/app/dist/version.json')).toBe('no-cache');
+    expect(cacheControlOf('C:\\app\\dist\\version.json')).toBe('no-cache');
     expect(cacheControlOf('/app/dist/assets/index-CZX5ndkw.js')).toBe(immutable);
     expect(cacheControlOf('D:\\x\\dist\\assets\\lg-bopomofo-round-DQIZsV5j.woff2')).toBe(immutable);
     expect(cacheControlOf('/app/dist/audio/voice/000122dc8201d1ab.mp3')).toBe(immutable);

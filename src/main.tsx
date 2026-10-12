@@ -28,6 +28,7 @@ import { orbitDebug } from './world/cameraOrbit';
 import { ridesDebug } from './store/useRides';
 import { grandDebug } from './store/useGrand';
 import { rideAudioState } from './audio/rideAudio';
+import { updateDebug } from './update/useUpdate';
 import './styles/global.css';
 
 declare global {
@@ -75,6 +76,7 @@ declare global {
       rides: typeof ridesDebug;
       grand: typeof grandDebug;
       rideAudio: typeof rideAudioState;
+      update: typeof updateDebug;
     };
   }
 }
@@ -105,6 +107,7 @@ window.__game = {
   rides: ridesDebug,
   grand: grandDebug,
   rideAudio: rideAudioState,
+  update: updateDebug,
 };
 
 createRoot(document.getElementById('root')!).render(

@@ -17,6 +17,7 @@ import { isInsideHome, setHouseKey, useHome } from '../store/useHome';
 import { ACT_OF_KIND } from '../store/furnitureUse';
 import { grandSeatCode, rideSeatCode, type ActCode } from '../store/actCodes';
 import { setServerNow } from '../store/clockSync';
+import { onServerWelcome } from '../update/useUpdate';
 
 /**
  * 自己現在的動作代碼（坐、躺、溜滑梯、盪鞦韆；開關類不算；站著是 undefined）。
@@ -400,6 +401,8 @@ export function startRealtime(): () => void {
           caps = msg.caps ?? [];
           // 對時：班級島的器材與大型設施的班次各台裝置一致（舊伺服器沒有 now 就照本機時間）
           setServerNow(msg.now);
+          // 更新通知：重新接上（伺服器部署完會斷線重連）時看看有沒有新版（docs/plans/update-notice.md）
+          onServerWelcome();
           // 進了別座島（或別人的島）：原本在屋裡的話先出來，才不會在新的島上回報在屋裡（自己的家第二期；
           // 畫面那邊的 GameCanvas 也會做，這裡先做是為了 sendWhere 送對）。舊版伺服器沒有 island，不動
           if (msg.island) setHouseKey(msg.island === 'own' ? (msg.host?.id ?? 'mine') : null);
