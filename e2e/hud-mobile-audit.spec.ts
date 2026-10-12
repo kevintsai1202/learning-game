@@ -119,8 +119,11 @@ test('手機的島上介面：上方一行、右側直排圖示、右下大動�
     const reward = await request.post(`${SERVER}/api/teacher/rooms/${room.code}/rewards`, { data: { to: 'all', coins: 50 }, headers: { authorization: `Bearer ${room.token}` } });
     expect(reward.ok()).toBe(true);
     await expect.poll(() => page.evaluate(() => (window as any).__game.game.getState().profile().coins)).toBeGreaterThanOrEqual(50);
+    // 獎勵卡片比金幣晚一點出來：等它出來再關掉（不然之後會蓋住畫面）
     const rewardOk = page.getByTestId('reward-ok');
-    if (await rewardOk.isVisible()) await rewardOk.click();
+    await expect(rewardOk).toBeVisible({ timeout: 15_000 });
+    await rewardOk.click();
+    await expect(page.getByTestId('reward-card')).toHaveCount(0);
     for (const [w, h] of SIZES) {
       const where = `${w}x${h}`;
       await page.setViewportSize({ width: w, height: h });
