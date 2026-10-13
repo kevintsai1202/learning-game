@@ -94,6 +94,8 @@ describe('analysisSchema 與提示', () => {
     expect(p.user).not.toContain('小美');
     const t = buildAnalysisPrompt({ kind: 'teacherStudent', student: studentInput(PROFILE, NOW, label), classAreas: classInput([INDICATORS], label).areas });
     expect(t.system).toContain('老師');
+    // 正式環境實測老師的分析出現簡體字（巩固），提示要寫明正體字
+    expect(t.system).toContain('正體');
     expect(t.user).toContain('全班平均');
   });
 });
