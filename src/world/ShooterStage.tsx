@@ -9,6 +9,7 @@ import { useFrame, useThree, type ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { KID_FONT, textTexture, toon } from './materials';
 import { useStageQuiz } from '../quiz/stageBus';
+import { optionShowsEmoji } from '../quiz/hints';
 import { quizDebug } from '../quiz/debug';
 import { useUi } from '../store/useUi';
 import { hashString } from '../core/rng';
@@ -41,6 +42,8 @@ export function ShooterStage() {
   const question = useStageQuiz((s) => s.question);
   const pick = useStageQuiz((s) => s.pick);
   const mode = useStageQuiz((s) => s.mode);
+  /** 這一題按過「💡 提示」了（氣球才畫有文字選項的 emoji） */
+  const hintShown = useStageQuiz((s) => s.hintShown);
   const mood = useUi((s) => s.mood);
   const moodTick = useUi((s) => s.moodTick);
   const { size } = useThree();
@@ -142,7 +145,8 @@ export function ShooterStage() {
     <group>
       {options.map((o, i) => {
         const color = BALLOON_COLORS[i % BALLOON_COLORS.length];
-        const label = [o.emoji, o.text].filter(Boolean).join(' ');
+        // 有文字的選項按過提示才畫 emoji（和下面的答案小籤一致，src/quiz/hints.ts）
+        const label = [optionShowsEmoji(o, hintShown) ? o.emoji : null, o.text].filter(Boolean).join(' ');
         const tex = textTexture(label, {
           width: 384,
           height: 176,

@@ -11,6 +11,8 @@ interface StageQuiz {
   mode: 'quiz' | 'shooter';
   /** 舞台上選了第 index 個選項（不在作答階段時答題器會忽略） */
   pick: ((index: number) => void) | null;
+  /** 這一題按過「💡 提示」了：有文字的選項才顯示 emoji（射擊模式的氣球跟著，docs/decisions.md「選項的 emoji 改成提示」） */
+  hintShown: boolean;
 }
 
-export const useStageQuiz = create<StageQuiz>(() => ({ question: null, pick: null, mode: 'quiz' }));
+export const useStageQuiz = create<StageQuiz>(() => ({ question: null, pick: null, mode: 'quiz', hintShown: false }));

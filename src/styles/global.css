@@ -3727,3 +3727,10 @@ button {
     padding: 10px;
   }
 }
+
+/* 選項的 emoji 改成提示（docs/decisions.md「選項的 emoji 改成提示」）：題目下方的「💡 提示」按鈕 */
+.hint-btn {
+  background: var(--sun);
+  align-self: center;
+  margin: 2px 0;
+}

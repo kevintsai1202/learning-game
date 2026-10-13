@@ -20,6 +20,8 @@ import { hitPoints } from './arcade';
 import { needsPlainText } from './annotation';
 import { answerLine, answerText, optionSpeech, questionSpeech } from './spoken';
 import { PRAISE, RETRY_LINE } from '../ui/lines';
+import { hasEmojiHint, hintsAllowed } from './hints';
+import { HintButton } from './HintButton';
 
 /** 描寫元件（含 Hanzi Writer）較大，用到時才載入 */
 const WriteInput = lazy(() => import('../writing/WriteInput'));
@@ -57,6 +59,9 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
   /** 本題已經答錯的單選選項（標紅、不能再點） */
   const wrongPicks = useRef<Record<number, 'correct' | 'wrong'>>({});
   const praise = useMemo(() => PRAISE[(s.index * 7 + s.records.length) % PRAISE.length], [s.index, s.records.length]);
+  /** 這一題按過「💡 提示」了（換題就重來；挑戰塔沒有提示，見 src/quiz/hints.ts） */
+  const [hintShown, setHintShown] = useState(false);
+  useEffect(() => setHintShown(false), [s.index]);
 
   // 換題時朗讀題目、清掉標記
   useEffect(() => {
@@ -75,14 +80,15 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
     useStageQuiz.setState({
       question: q ?? null,
       mode,
+      hintShown,
       pick: (index) => {
         if (q?.type !== 'choice') return;
         if (index !== q.answer) wrongPicks.current = { ...wrongPicks.current, [index]: 'wrong' };
         dispatch({ type: 'answer', r: { type: 'choice', index } });
       },
     });
-  }, [q, mode]);
-  useEffect(() => () => useStageQuiz.setState({ question: null, pick: null, mode: 'quiz' }), []);
+  }, [q, mode, hintShown]);
+  useEffect(() => () => useStageQuiz.setState({ question: null, pick: null, mode: 'quiz', hintShown: false }), []);
 
   // 答題結果的回饋：音效、朗讀、舞台動畫
   useEffect(() => {
@@ -124,6 +130,8 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
     if (r.type === 'choice' && q.type === 'choice' && r.index !== q.answer) wrongPicks.current = { ...wrongPicks.current, [r.index]: 'wrong' };
     dispatch({ type: 'answer', r });
   };
+  /** 現在能按提示：不是考試、這一題有「文字＋emoji」的選項、還沒按過、還在作答 */
+  const canHint = hintsAllowed(activity) && hasEmojiHint(q) && !hintShown && (s.phase === 'answering' || s.phase === 'retry');
   const marks: Record<number, 'correct' | 'wrong'> =
     q.type === 'choice' && (s.phase === 'correct' || s.phase === 'reveal') ? { ...wrongPicks.current, [q.answer]: 'correct' } : wrongPicks.current;
 
@@ -159,6 +167,7 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
             <VisualView v={q.visual} />
           </div>
         )}
+        {canHint && <HintButton onClick={() => setHintShown(true)} />}
         {s.phase === 'retry' && <div className="feedback retry wiggle">再想想看！還有一次機會 💪</div>}
         {s.phase === 'correct' && (
           <div className="feedback good pop-in" data-testid="feedback-good">
@@ -180,9 +189,9 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
         {s.phase !== 'reveal' &&
           (shooter && q.type === 'choice' ? (
             // 射擊模式：主要在 3D 舞台點氣球；這排小籤是替代操作（也讓輔助科技可用）
-            <ChoiceInput key={q.id} q={q} disabled={busy} marks={marks} compact onPick={(index) => submit({ type: 'choice', index })} />
+            <ChoiceInput key={q.id} q={q} disabled={busy} marks={marks} compact revealEmoji={hintShown} onPick={(index) => submit({ type: 'choice', index })} />
           ) : (
-            <Answer q={q} disabled={busy} marks={marks} onSubmit={submit} />
+            <Answer q={q} disabled={busy} marks={marks} revealEmoji={hintShown} onSubmit={submit} />
           ))}
         {shooter && s.phase === 'answering' && <div className="shooter-hint">👇 點下面飄著的氣球，射中正確答案！</div>}
       </div>
@@ -191,10 +200,23 @@ export function QuizRunner({ activity, questions, onFinish, onExit, mode = 'quiz
 }
 
 /** 依題型挑作答元件；換題時用 key 重設內部狀態 */
-function Answer({ q, disabled, marks, onSubmit }: { q: Question; disabled: boolean; marks: Record<number, 'correct' | 'wrong'>; onSubmit: (r: Response) => void }) {
+function Answer({
+  q,
+  disabled,
+  marks,
+  revealEmoji,
+  onSubmit,
+}: {
+  q: Question;
+  disabled: boolean;
+  marks: Record<number, 'correct' | 'wrong'>;
+  /** 有文字的選項要不要顯示 emoji（按過提示） */
+  revealEmoji: boolean;
+  onSubmit: (r: Response) => void;
+}) {
   switch (q.type) {
     case 'choice':
-      return <ChoiceInput key={q.id} q={q} disabled={disabled} marks={marks} onPick={(index) => onSubmit({ type: 'choice', index })} />;
+      return <ChoiceInput key={q.id} q={q} disabled={disabled} marks={marks} revealEmoji={revealEmoji} onPick={(index) => onSubmit({ type: 'choice', index })} />;
     case 'number':
       return <NumberInput key={q.id} unit={q.unit} disabled={disabled} onSubmit={(value) => onSubmit({ type: 'number', value })} />;
     case 'order':

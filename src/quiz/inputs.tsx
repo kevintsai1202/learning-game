@@ -9,6 +9,7 @@ import { speak } from '../audio/speech';
 import { optionSpeech } from './spoken';
 import { sfx } from '../audio/sfx';
 import { KidText } from '../ui/KidText';
+import { optionShowsEmoji } from './hints';
 
 /** 選項上的文字：「1/4」這類分數畫成上下排的分數 */
 function OptionText({ text }: { text: string }) {
@@ -35,6 +36,7 @@ export function ChoiceInput({
   marks,
   onPick,
   compact = false,
+  revealEmoji = true,
 }: {
   q: ChoiceQuestion;
   disabled: boolean;
@@ -43,6 +45,8 @@ export function ChoiceInput({
   onPick: (index: number) => void;
   /** 小籤樣式（射擊模式的替代操作） */
   compact?: boolean;
+  /** 有文字的選項要不要顯示 emoji（答題時按「💡 提示」才顯示；老師預覽一律顯示）；只有 emoji 的選項一律顯示 */
+  revealEmoji?: boolean;
 }) {
   const say = (o: ChoiceOption) => {
     const s = optionSpeech(q, o);
@@ -63,7 +67,7 @@ export function ChoiceInput({
           data-testid={`choice-${i}`}
         >
           {o.shape && <ShapeIcon shape={o.shape} size={64} />}
-          {o.emoji && <span className="emoji">{o.emoji}</span>}
+          {optionShowsEmoji(o, revealEmoji) && <span className="emoji">{o.emoji}</span>}
           {o.text && <OptionText text={o.text} />}
           {(o.text || o.speak) && (
             <span

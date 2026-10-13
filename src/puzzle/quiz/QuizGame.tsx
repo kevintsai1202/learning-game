@@ -29,6 +29,8 @@ import {
   type BotLevel,
 } from '../../engine/puzzle/quizBattle';
 import { ChoiceInput } from '../../quiz/inputs';
+import { hasEmojiHint } from '../../quiz/hints';
+import { HintButton } from '../../quiz/HintButton';
 import { VisualView } from '../../quiz/visuals';
 import { needsPlainText } from '../../quiz/annotation';
 import { answerLine, answerText, optionSpeech, questionSpeech } from '../../quiz/spoken';
@@ -108,8 +110,11 @@ function useAsk(q: ChoiceQuestion) {
   }, [q]);
 }
 
-/** 題目、附圖與四個選項 */
+/** 題目、附圖與四個選項；有文字＋emoji 的選項按「💡 提示」才顯示 emoji（docs/decisions.md「選項的 emoji 改成提示」） */
 function QuestionView({ q, marks, disabled, onPick }: { q: ChoiceQuestion; marks: Record<number, 'correct' | 'wrong'>; disabled: boolean; onPick: (i: number) => void }) {
+  /** 這一題按過提示了（換題就重來） */
+  const [hint, setHint] = useState(false);
+  useEffect(() => setHint(false), [q.id]);
   return (
     <div className={`puzzle-body ${needsPlainText(q) ? 'no-annot' : ''}`} key={q.id}>
       <div className="prompt pop-in" data-testid="prompt">
@@ -120,7 +125,8 @@ function QuestionView({ q, marks, disabled, onPick }: { q: ChoiceQuestion; marks
           <VisualView v={q.visual} />
         </div>
       )}
-      <ChoiceInput key={q.id} q={q} disabled={disabled} marks={marks} onPick={onPick} />
+      {hasEmojiHint(q) && !hint && !disabled && <HintButton onClick={() => setHint(true)} />}
+      <ChoiceInput key={q.id} q={q} disabled={disabled} marks={marks} revealEmoji={hint} onPick={onPick} />
     </div>
   );
 }
