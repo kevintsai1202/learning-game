@@ -2,7 +2,7 @@
  * 建築選單：列出這棟建築裡的活動（依單元分組）、最佳星數，以及錯題複習。
  * 點活動後選難度（簡單／普通／挑戰）就開始。
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useUi } from '../../store/useUi';
 import { useGame } from '../../store/useGame';
 import { activitiesInZone } from '../../activities/registry';
@@ -14,9 +14,11 @@ import { speak } from '../../audio/speech';
 import { sfx } from '../../audio/sfx';
 import { usePacks } from '../../store/usePacks';
 import { useEditions } from '../../store/useEditions';
-import { curriculumActivities, currentBook } from '../../activities/resolve';
+import { curriculumActivities, currentBook, rememberActivity } from '../../activities/resolve';
 import { DEFAULT_CURRICULUM } from '../../store/save';
-import { activeCurriculum, devicePacksVisible } from '../../store/island';
+import { activeCurriculum, currentClass, devicePacksVisible } from '../../store/island';
+import { useClassContent } from '../../online/useClassContent';
+import { classPackActivity } from '../../store/classPacks';
 
 const LEVELS = [
   { level: 1 as const, name: '簡單', stars: '⭐', color: 'green' },
@@ -38,6 +40,20 @@ export function ZoneMenu() {
   const curriculum = profile ? activeCurriculum(profile) : DEFAULT_CURRICULUM;
   const showPacks = devicePacksVisible(profile);
   const packs = useMemo(() => (showPacks ? allPacks : []), [showPacks, allPacks]);
+  // 班級題庫（docs/plans/ai-questions.md）：只在班級島的挑戰塔，用那一班老師發佈的題庫
+  const classCode = profile?.cloud ? (currentClass(profile)?.code ?? null) : null;
+  const classCache = useClassContent((s) => s.cache);
+  const classPacks = useMemo(() => {
+    if (zoneId !== 'tower' || !classCode) return [];
+    const list = (classCache[classCode]?.packs ?? []).map(classPackActivity);
+    // 記住活動，答題畫面與結算才找得到標題與科目
+    list.forEach(rememberActivity);
+    return list;
+  }, [zoneId, classCode, classCache]);
+  // 打開挑戰塔時檢查一次（上次沒抓到、或剛發佈的題庫）
+  useEffect(() => {
+    if (zoneId === 'tower' && classCode) void useClassContent.getState().refresh();
+  }, [zoneId, classCode]);
   const [picking, setPicking] = useState<ActivityDef | null>(null);
   const zone = zoneId ? zoneById(zoneId) : null;
 
@@ -46,8 +62,9 @@ export function ZoneMenu() {
     const base = activitiesInZone(zoneId);
     // 課本單元放最前面，挑戰塔的期中期末模擬放在一般段考模擬後面
     const book = curriculumActivities(zoneId, editions, curriculum);
-    return zoneId === 'tower' ? [...base, ...book, ...packs] : [...book, ...base];
-  }, [zoneId, packs, editions, curriculum]);
+    // 挑戰塔：老師發佈的班級題庫放最前面
+    return zoneId === 'tower' ? [...classPacks, ...base, ...book, ...packs] : [...book, ...base];
+  }, [zoneId, packs, classPacks, editions, curriculum]);
   /** 目前跟的課本（顯示在標題列） */
   const bookLabel = useMemo(() => {
     if (zoneId !== 'zh' && zoneId !== 'math') return '';

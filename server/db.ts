@@ -355,6 +355,32 @@ const MIGRATIONS: Migration[] = [
     version: 14,
     statements: [`ALTER TABLE rooms ADD COLUMN IF NOT EXISTS playground jsonb`],
   },
+  {
+    // 班級題庫（G4）與老師 AI 出題（docs/plans/ai-questions.md）：
+    // - rooms.content_rev：班級內容（題庫等）的版本號，改了就加一，孩子的裝置看到版本變了才重新抓
+    // - class_packs：老師上傳、編輯或用 AI 出的題庫包（pack 是 contentPackSchema 格式），停用的不給孩子；班級刪除時跟著刪
+    // - ai_usage：每位老師每天（台灣日期）用 AI 出了幾題，伺服器重啟也算數；帳號刪除時跟著刪
+    version: 15,
+    statements: [
+      `ALTER TABLE rooms ADD COLUMN IF NOT EXISTS content_rev integer NOT NULL DEFAULT 0`,
+      `CREATE TABLE IF NOT EXISTS class_packs (
+        id text PRIMARY KEY,
+        room_code text NOT NULL REFERENCES rooms(code) ON DELETE CASCADE,
+        title text NOT NULL,
+        pack jsonb NOT NULL,
+        enabled boolean NOT NULL DEFAULT true,
+        created_at timestamptz NOT NULL,
+        updated_at timestamptz NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS class_packs_room ON class_packs (room_code, created_at)`,
+      `CREATE TABLE IF NOT EXISTS ai_usage (
+        user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        day date NOT NULL,
+        count integer NOT NULL DEFAULT 0,
+        PRIMARY KEY (user_id, day)
+      )`,
+    ],
+  },
 ];
 
 /**

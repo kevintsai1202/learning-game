@@ -59,7 +59,9 @@ interface CloudStore {
   refresh: () => void;
   /** 伺服器的 Google 登入 Client ID（沒開 Google 登入或還沒讀到時是 null；帳號頁的 Google 按鈕用） */
   googleClientId: string | null;
-  /** 向伺服器讀設定（決定要不要顯示 Google 按鈕）；讀不到就當作沒開 */
+  /** 伺服器有沒有開老師 AI 出題（docs/plans/ai-questions.md；還沒讀到、讀不到、舊版伺服器都是 false） */
+  aiQuestions: boolean;
+  /** 向伺服器讀設定（決定要不要顯示 Google 按鈕、AI 出題）；讀不到就當作沒開 */
   loadConfig: () => Promise<void>;
   /** 家長把這台裝置上的角色存到雲端（server、userToken 是家長帳號的登入狀態；docs/plans/accounts.md 第 6 節） */
   uploadToCloud: (profileId: string, server: string, userToken: string) => Promise<Profile>;
@@ -159,14 +161,15 @@ export const useCloud = create<CloudStore>((set, get) => ({
   },
 
   googleClientId: null,
+  aiQuestions: false,
 
   loadConfig: async () => {
-    if (!serverUrl()) return set({ googleClientId: null });
+    if (!serverUrl()) return set({ googleClientId: null, aiQuestions: false });
     try {
       const config = await api<ServerConfig>('GET', '/api/config');
-      set({ googleClientId: config.googleClientId });
+      set({ googleClientId: config.googleClientId, aiQuestions: config.aiQuestions === true });
     } catch {
-      set({ googleClientId: null });
+      set({ googleClientId: null, aiQuestions: false });
     }
   },
 

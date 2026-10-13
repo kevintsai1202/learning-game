@@ -75,7 +75,7 @@ describe('提供前端', () => {
     const { app, call } = makeClient(db, { staticDir: dist });
     const config = await call('GET', '/api/config');
     expect(config.status).toBe(200);
-    expect(config.body).toEqual({ googleClientId: null });
+    expect(config.body).toEqual({ googleClientId: null, aiQuestions: false });
     expect((await call('GET', '/healthz')).body).toEqual({ ok: true });
     expect((await app.request('/missing.txt')).status).toBe(404);
     expect((await app.request('/api/nothing-here')).status).toBe(404);

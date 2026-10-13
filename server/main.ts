@@ -18,6 +18,8 @@ import { expireGifts } from './gifts';
 import { googleFromEnv } from './google';
 import { Hub } from './hub';
 import { createMailer } from './mail';
+import { generatorFromEnv } from './ai';
+import { pruneAiUsage } from './classContent';
 import { attachRealtime } from './ws';
 import { retryConnect } from './startup';
 
@@ -38,11 +40,20 @@ async function main(): Promise<void> {
   for (const w of mailWarnings) console.warn(`⚠️ ${w}`);
   if (mailer.kind === 'outbox') console.warn('⚠️ 測試信箱模式：信放在記憶體、GET /api/test/mails 讀得到，只能用在 e2e，正式環境絕不能開。');
   if (mailer.kind === 'disabled') console.warn('寄信停用（沒有設定 MAIL_SMTP_USERNAME／MAIL_SMTP_PASSWORD）：註冊照常，驗證信與重設密碼信不會寄出。');
+  // 老師 AI 出題（docs/plans/ai-questions.md）：假出題器的變數設錯同樣拒絕啟動；沒有 LLM_API_KEY 就不開
+  const ai = generatorFromEnv(process.env);
+  if (ai && process.env.TEST_AI_FAKE === '1') console.warn('⚠️ 假出題器模式：AI 出題回固定的測試題目，只能用在 e2e，正式環境絕不能開。');
+  if (!ai) console.warn('AI 出題停用（沒有設定 LLM_API_KEY）：班級題庫照常，老師頁面不顯示 AI 出題。');
   const db = await openDb({ url: process.env.DATABASE_URL, pgliteDir: process.env.PGLITE_DIR });
   // 第一次碰資料庫：平台重建時資料庫常比伺服器晚好，連線錯誤每 3 秒再試、最多約 1 分鐘（server/startup.ts）
   await retryConnect(() => migrate(db), { tries: 20, delayMs: 3000 });
   await pruneAppliedOps(db, new Date());
-  const pruneTimer = setInterval(() => void pruneAppliedOps(db, new Date()).catch(console.error), DAY_MS);
+  await pruneAiUsage(db, new Date());
+  // 每天清一次：同步去重紀錄（30 天）、AI 出題數紀錄（7 天）
+  const pruneTimer = setInterval(() => {
+    void pruneAppliedOps(db, new Date()).catch(console.error);
+    void pruneAiUsage(db, new Date()).catch(console.error);
+  }, DAY_MS);
 
   const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? DEFAULT_ORIGINS)
     .split(',')
@@ -66,6 +77,7 @@ async function main(): Promise<void> {
     onGift: (id) => hub.notify(id, { t: 'gift' }),
     onReward: (id) => hub.notify(id, { t: 'reward' }),
     staticDir: process.env.STATIC_DIR || undefined,
+    ai,
   });
   // 過期的禮物：啟動時與每小時退款給送禮人（退款一樣通知送禮人的裝置）
   const sweepGifts = () =>

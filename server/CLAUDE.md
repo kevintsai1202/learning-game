@@ -6,14 +6,15 @@
 
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
-- 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/store/puzzle.ts`（益智遊戲的金幣與每日上限）、`src/engine/check.ts`（計分）
-- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「老師移出成員」的共用函式）；多班級的成員資格（第一個班級的定義、離開某一班、撤銷某一班的權杖、好友名單的名字）在 `classes.ts`；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
+- 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/store/puzzle.ts`（益智遊戲的金幣與每日上限）、`src/engine/check.ts`（計分）、`src/content/aiQuestions.ts`（AI 出題的請求格式、提示與檢查）、`src/content/schema.ts`（題庫格式）、`src/content/zhuyinCharset.ts`（注音字型收錄的字）
+- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「老師移出成員」的共用函式）；多班級的成員資格（第一個班級的定義、離開某一班、撤銷某一班的權杖、好友名單的名字）在 `classes.ts`；班級題庫與老師 AI 出題的路由在 `classContent.ts`、出題器（Muse 用戶端與假出題器）在 `ai.ts`；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
 ```powershell
 npm run server:build                     # 打包到 server-dist/
 npm run server:start                     # 啟動（預設 port 8787，PGlite 記憶體資料庫）
+node --env-file=.env server-dist/main.js # 本機啟動並開真的 AI 出題（讀 .env 的 LLM_ 變數；npm run server:start 不讀 .env）
 npx vitest run tests/server tests/online # 伺服器與同步測試（PGlite）
 
 # 用真正的 PostgreSQL 跑同一套測試（驗證 pg 轉接層與交易鎖定；每期收尾要跑一次）
@@ -35,6 +36,9 @@ docker rm -f li-pg-test
 | `MAIL_SMTP_USERNAME`＋`MAIL_SMTP_PASSWORD` | 用 Gmail SMTP（`smtp.gmail.com:465`，TLS）寄驗證信與重設密碼信；`MAIL_SMTP_PASSWORD` 是應用程式密碼（空白會去掉）。只設一個或都沒設：不寄信（只設一個會警告） |
 | `MAIL_FROM` | 寄件人的顯示；沒設是 `"知識島大冒險" <MAIL_SMTP_USERNAME>` |
 | `TEST_MAIL_OUTBOX`＋`ALLOW_TEST_MAIL=1` | **只給 e2e 用**的測試信箱：信放在記憶體，`GET /api/test/mails` 讀得到。只設其中一個、或和 `MAIL_SMTP_USERNAME` 同時設會拒絕啟動；正式環境絕不能設 |
+| `LLM_API_KEY`＋`LLM_BASE_URL`＋`LLM_MODEL` | 老師 AI 出題（`docs/plans/ai-questions.md`）：Meta Muse 的 OpenAI 相容 API（`https://api.meta.ai/v1`、`muse-spark-1.3-contributor`）。沒有 `LLM_API_KEY` 就不開（`/api/config` 的 `aiQuestions` 是 false）；有金鑰但缺網址或模型會拒絕啟動 |
+| `LLM_REASONING_EFFORT` | 推理強度（`minimal`／`low`／`medium`／`high`／`xhigh`），可省略；目前用 `low` |
+| `TEST_AI_FAKE`＋`ALLOW_TEST_AI=1` | **只給 e2e 用**的假出題器：回固定的測試題目、不連網。只設其中一個、或和 `LLM_API_KEY` 同時設會拒絕啟動；正式環境絕不能設 |
 | `STATIC_DIR` | 前端建置產物（`dist/`）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 `/app/dist`）。本機開發與 e2e 不設 |
 
 ## 規則
@@ -78,6 +82,12 @@ docker rm -f li-pg-test
   - 會同時鎖帳號與連結權杖時，先鎖 `users` 再鎖 `email_tokens`（和刪除帳號時外鍵 CASCADE 的順序一樣）。
 - **老師的 API**（`/api/teacher/rooms…`）：大人權杖＋老師身分（只有家長身分回 403 `not_teacher`）＋這個班級是他的；別人的班級和不存在的代碼一樣回 404 `no_room`，不透露代碼存在。改版前用管理密碼建的房間沒有擁有者（`owner_id` 是 null），目前沒有登入方式，上線前要看正式環境有沒有這種房間（`docs/plans/accounts.md` 的 A5）。
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
+- **班級題庫與老師 AI 出題**（`classContent.ts`、`ai.ts`；資料表第 15 版；`docs/plans/ai-questions.md`）：
+  - 題庫包用 `contentPackSchema` 檢查（錯誤列出哪一題哪一欄，400 `bad_pack`）；每班最多 `CLASS_PACKS_MAX`（30）包，新增時先 `SELECT … FROM rooms … FOR UPDATE` 再數。題庫的新增與修改放寬請求大小到 4 MB（`app.ts` 的 `bodyLimit` 依路徑分兩種）。
+  - 班級內容改了，`rooms.content_rev` 在同一個交易裡加一，交易結束後 `onRoomContent`；孩子的 `RoomInfo` 帶 `contentRev`，裝置看到版本變了才抓 `GET /api/rooms/:code/content`（只給這一班的成員、只回啟用中的題庫）。不要用 `/api/class/…` 開頭：那是教室權杖專用的路徑。
+  - AI 出題分兩步：`POST …/ai-questions` 檢查、預扣額度後在背景出題，回工作編號；`GET …/ai-questions/:job` 查結果（只給出題的老師、同一班；拿到結果就刪掉，10 分鐘沒人拿也刪）。工作只放記憶體，伺服器重啟就沒了（畫面會顯示失敗、老師重出）。每位老師同時最多 2 個工作（429 `ai_busy`）。
+  - 每日額度（`AI_DAILY_QUESTIONS`，台灣日期）在同一句 `INSERT … ON CONFLICT DO UPDATE … WHERE` 裡預扣，超過就不回傳列（429 `ai_quota`）；出題失敗全部退回、題目被丟掉的部分退回。`ai_usage` 7 天後由 `pruneAiUsage` 刪除（隱私權政策第 2 節寫了）。
+  - 模型的回應一律經過 `convertAiOutput`：指標與題型限定老師選的、id／科目／技能／出處由伺服器填、選項與詞卡由伺服器打亂、數字題的算式重算；上游的錯誤訊息只寫進記錄（截短），回給老師的是固定的「AI 出題失敗，請再試一次」。送給模型的只有老師的出題條件，不送孩子的資料或老師的帳號資料。
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。中樞以「島」為單位（班級島 `class:<代碼>`、自己的島 `kid:<帳號 id>`，`docs/plans/islands.md`）：移動、聊天、外觀只送同島的人；好友的在線狀態（只有在哪座島）送給朋友；全班的通知（`roomContent`、`roomSettings`）照帳號的班級送，不管在哪座島。
 - 伺服器只保證位置在島的圓形範圍內，不做障礙物碰撞（信任模型，見 `docs/plans/online.md` 第 5 節）。
 - HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onRoomContent`／`onClassChanged`（加入班級，中樞以 4005 讓那個帳號重新上線）／`onLeftClass`（離開某一班）／`onKick` 通知即時中樞；老師成員表的在線與在哪裡來自 `isOnline`／`whereOf(id, 班級)`（`main.ts` 串接；`onKick` 的第三、四個參數是只踢哪種權杖來源、用哪一班代碼登入的連線；`whereOf` 在別班的班級島時回 `otherClass`）。

@@ -70,13 +70,15 @@ export interface MembershipRow {
   gifts_open: boolean;
   /** 班級島的遊樂場（第 14 版；null 是老師還沒設定過，用預設的 4 座） */
   playground: unknown;
+  /** 班級內容（班級題庫等）的版本號（第 15 版） */
+  content_rev: number;
   room_created_at: Date;
 }
 
 /** 一個孩子的所有班級，第一個班級在前面（最早加入的） */
 export async function membershipsOf(q: Queryable, accountId: string): Promise<MembershipRow[]> {
   return q.query<MembershipRow>(
-    `SELECT m.room_code, m.nickname, m.nickname_key, m.pin_hash, m.joined_at, r.name, r.curriculum, r.chat_open, r.gifts_open, r.playground, r.created_at AS room_created_at
+    `SELECT m.room_code, m.nickname, m.nickname_key, m.pin_hash, m.joined_at, r.name, r.curriculum, r.chat_open, r.gifts_open, r.playground, r.content_rev, r.created_at AS room_created_at
      FROM class_members m JOIN rooms r ON r.code = m.room_code
      WHERE m.account_id = $1 ORDER BY m.joined_at, m.room_code`,
     [accountId],
@@ -85,7 +87,7 @@ export async function membershipsOf(q: Queryable, accountId: string): Promise<Me
 
 /** 回應給孩子裝置的班級清單（代碼、名稱、班級教材、這一班的暱稱），第一個班級在前面 */
 export function classInfos(rows: MembershipRow[]): ClassInfo[] {
-  return rows.map((m) => ({ code: m.room_code, name: m.name, curriculum: m.curriculum ?? null, nickname: m.nickname }));
+  return rows.map((m) => ({ code: m.room_code, name: m.name, curriculum: m.curriculum ?? null, contentRev: m.content_rev ?? 0, nickname: m.nickname }));
 }
 
 /** 班級的開關（即時連線用） */

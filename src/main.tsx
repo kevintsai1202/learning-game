@@ -9,6 +9,7 @@ import { useGame } from './store/useGame';
 import { player, teleport } from './world/input';
 import { quizDebug } from './quiz/debug';
 import { usePacks } from './store/usePacks';
+import { useClassContent } from './online/useClassContent';
 import { speechDebug } from './audio/speech';
 import { useCloud } from './online/useCloud';
 import { usePresence } from './online/usePresence';
@@ -40,6 +41,8 @@ declare global {
       teleport: typeof teleport;
       quiz: typeof quizDebug;
       packs: typeof usePacks;
+      /** 班級題庫在這台裝置的快取（班級代碼 → 版本號與啟用中的題庫） */
+      classContent: typeof useClassContent;
       /** 最近的朗讀紀錄（預錄語音或裝置語音） */
       speech: typeof speechDebug;
       /** 雲端同步狀態 */
@@ -88,6 +91,7 @@ window.__game = {
   teleport,
   quiz: quizDebug,
   packs: usePacks,
+  classContent: useClassContent,
   speech: speechDebug,
   cloud: useCloud,
   presence: usePresence,

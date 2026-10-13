@@ -17,6 +17,9 @@ import { registerParentRoutes } from './parents';
 import { registerRewardRoutes } from './rewards';
 import { registerEmailRoutes } from './email';
 import { registerUserGoogleRoutes } from './userGoogle';
+import { registerClassContentRoutes } from './classContent';
+import type { QuestionGenerator } from './ai';
+import { AI_DAILY_QUESTIONS } from '../src/content/aiQuestions';
 import { createMailer, type Mailer } from './mail';
 import { MAX_CLASSES, classInfos, membershipsOf, playgroundOf, revokeClassTokens, revokeClassroomTokens } from './classes';
 import type { RoomFlags } from '../src/online/realtime';
@@ -95,6 +98,10 @@ export interface AppOptions {
   mailer?: Mailer;
   /** 前端建置產物（dist/）的目錄：設定時伺服器同時提供前端（Zeabur 的 Docker 映像檔）；沒設定時不提供 */
   staticDir?: string;
+  /** 老師 AI 出題的出題器（server/ai.ts 的 generatorFromEnv）；沒有時不開 AI 出題 */
+  ai?: QuestionGenerator | null;
+  /** 每位老師每天最多用 AI 出幾題（測試可以調小）；預設 AI_DAILY_QUESTIONS */
+  aiDailyQuestions?: number;
 }
 
 /** 權杖有效天數 */
@@ -138,6 +145,8 @@ interface RoomRow {
   class_password_hash: string | null;
   /** 班級島的遊樂場（第 14 版；null 是老師還沒設定過，用預設的 4 座） */
   playground: unknown;
+  /** 班級內容（班級題庫等）的版本號（第 15 版） */
+  content_rev: number;
 }
 
 /**
@@ -153,7 +162,7 @@ function clientIp(c: Context): string {
 
 /** 回應給孩子裝置的班級資訊（代碼、名稱、班級教材版本） */
 function roomInfo(r: RoomRow): RoomInfo {
-  return { code: r.code, name: r.name, curriculum: r.curriculum ?? null };
+  return { code: r.code, name: r.name, curriculum: r.curriculum ?? null, contentRev: r.content_rev ?? 0 };
 }
 
 /** 房間設定的回應格式 */
@@ -245,7 +254,7 @@ export function createApp(opts: AppOptions) {
   const classesOf = async (q: Queryable, accountId: string): Promise<{ room: RoomInfo | null; rooms: ClassInfo[] }> => {
     const rooms = classInfos(await membershipsOf(q, accountId));
     const first = rooms[0];
-    return { room: first ? { code: first.code, name: first.name, curriculum: first.curriculum } : null, rooms };
+    return { room: first ? { code: first.code, name: first.name, curriculum: first.curriculum, contentRev: first.contentRev } : null, rooms };
   };
 
   /** 讀房間；不存在回 404 */
@@ -294,7 +303,10 @@ export function createApp(opts: AppOptions) {
       maxAge: 600,
     }),
   );
-  app.use('/api/*', bodyLimit({ maxSize: 1024 * 1024, onError: () => Promise.reject(new ApiError(413, 'too_large', '資料太大')) }));
+  // 請求大小：一般 1 MB；班級題庫的新增與修改放寬到 4 MB（每包最多 2000 題，docs/plans/teacher-gm.md 第 7 節）
+  const smallBody = bodyLimit({ maxSize: 1024 * 1024, onError: () => Promise.reject(new ApiError(413, 'too_large', '資料太大')) });
+  const packBody = bodyLimit({ maxSize: 4 * 1024 * 1024, onError: () => Promise.reject(new ApiError(413, 'too_large', '題庫太大（最多 4 MB）')) });
+  app.use('/api/*', (c, next) => (/^\/api\/teacher\/rooms\/[^/]+\/packs(\/[^/]+)?$/.test(c.req.path) ? packBody(c, next) : smallBody(c, next)));
 
   app.onError((err, c) => {
     if (err instanceof ApiError) {
@@ -306,7 +318,7 @@ export function createApp(opts: AppOptions) {
 
   app.get('/healthz', (c) => c.json({ ok: true }));
 
-  app.get('/api/config', (c) => c.json<ServerConfig>({ googleClientId: opts.google?.clientId ?? null }));
+  app.get('/api/config', (c) => c.json<ServerConfig>({ googleClientId: opts.google?.clientId ?? null, aiQuestions: !!opts.ai }));
 
   // ---------- 大人帳號（家長、老師） ----------
   registerUserRoutes(app, {
@@ -817,6 +829,18 @@ export function createApp(opts: AppOptions) {
   // ---------- 送禮物（P3） ----------
   registerGiftRoutes(app, { db, now, authenticate, isOnline, onProfileChanged: opts.onProfileChanged, onGift: opts.onGift });
   registerRewardRoutes(app, { db, now, authenticate, authenticateTeacher, loadOwnRoom, onProfileChanged: opts.onProfileChanged, onReward: opts.onReward });
+
+  // ---------- 班級題庫（G4）與老師 AI 出題（docs/plans/ai-questions.md） ----------
+  registerClassContentRoutes(app, {
+    db,
+    now,
+    authenticate,
+    authenticateTeacher,
+    loadOwnRoom,
+    generator: opts.ai ?? null,
+    aiDailyQuestions: opts.aiDailyQuestions ?? AI_DAILY_QUESTIONS,
+    onRoomContent: opts.onRoomContent,
+  });
 
   // ---------- 前端靜態檔（最後註冊，不蓋掉上面的路由） ----------
   if (opts.staticDir) registerStatic(app, opts.staticDir);

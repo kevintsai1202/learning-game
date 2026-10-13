@@ -103,7 +103,8 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   await expect.poll(() => memberByName(b.page, '阿寶')).not.toBeNull();
   expect(await mathBook(a.page)).toContain('翰林 二上');
 
-  // 手機直式：切換按鈕完整在畫面內、不壓到右上角的按鈕；切換的提示泡泡也完整在畫面內
+  // 手機直式：切換按鈕完整在畫面內、不壓到上方一行的按鈕；切換的提示泡泡也完整在畫面內
+  // （2026-10-11 起手機的獎章簿、家長專區收進「☰」選單，右上角只剩 hud-menu，所在地標籤在它下面，見 docs/plans/home.md 第 10.2 節）
   await a.page.setViewportSize({ width: 390, height: 844 });
   await a.page.getByTestId('hud-island').click();
   const bubble = a.page.locator('.speech');
@@ -112,7 +113,7 @@ test('老師統一班級版本、孩子切換班級島與我的島', async ({ br
   await a.page.waitForTimeout(500);
   const sw = (await a.page.getByTestId('hud-island').boundingBox())!;
   const sp = (await bubble.boundingBox())!;
-  for (const id of ['hud-badges', 'hud-parent']) {
+  for (const id of ['hud-menu', 'hud-location']) {
     const other = (await a.page.getByTestId(id).boundingBox())!;
     expect(overlaps(sw, other), `切換按鈕壓到 ${id}`).toBe(false);
   }

@@ -59,10 +59,10 @@ describe('加入第二個班級', () => {
     const kid = (await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0];
     expect(kid.name).toBe('安安');
     expect(kid.rooms).toEqual([
-      { code: school.code, name: '二年三班', curriculum: null, nickname: '小安' },
-      { code: after.code, name: '安親班', curriculum: null, nickname: '安安' },
+      { code: school.code, name: '二年三班', curriculum: null, contentRev: 0, nickname: '小安' },
+      { code: after.code, name: '安親班', curriculum: null, contentRev: 0, nickname: '安安' },
     ]);
-    expect(kid.room).toEqual({ code: school.code, name: '二年三班', curriculum: null });
+    expect(kid.room).toEqual({ code: school.code, name: '二年三班', curriculum: null, contentRev: 0 });
     const me = (await call('GET', '/api/me', undefined, an.token)).body;
     expect(me.profile.name).toBe('安安');
     expect(me.room.code).toBe(school.code);

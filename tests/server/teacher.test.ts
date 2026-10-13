@@ -24,7 +24,7 @@ describe('建立與列出班級', () => {
     const t = await createUser(call);
     const a = await call('POST', '/api/teacher/rooms', { name: ' 二年一班 ' }, t.token);
     expect(a.status).toBe(200);
-    expect(a.body.room).toEqual({ code: expect.stringMatching(/^[1-9]\d{5}$/), name: '二年一班', joinOpen: true, chatOpen: true, giftsOpen: true, curriculum: null, hasClassPassword: false, playground: ['carousel', 'seesaw', 'swingset', 'trampoline'] });
+    expect(a.body.room).toEqual({ code: expect.stringMatching(/^[1-9]\d{5}$/), name: '二年一班', joinOpen: true, chatOpen: true, giftsOpen: true, curriculum: null, contentRev: 0, hasClassPassword: false, playground: ['carousel', 'seesaw', 'swingset', 'trampoline'] });
     await call('POST', '/api/teacher/rooms', { name: '安親班' }, t.token);
     await joinRoom(call, a.body.room.code, '小安');
     const list = await call('GET', '/api/teacher/rooms', undefined, t.token);
@@ -119,17 +119,17 @@ describe('班級教材版本（老師 GM 的 G0，docs/plans/teacher-gm.md 第 4
     const { code, token } = await createRoom(call);
     expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room.curriculum).toBeNull();
     const kid = await joinRoom(call, code);
-    expect(kid.room).toEqual({ code, name: '二年一班', curriculum: null });
+    expect(kid.room).toEqual({ code, name: '二年一班', curriculum: null, contentRev: 0 });
 
     const set = await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: CLASS }, token);
     expect(set.status).toBe(200);
     expect(set.body.room.curriculum).toEqual(CLASS);
-    expect((await call('POST', '/api/ops', { ops: [] }, kid.token)).body.room).toEqual({ code, name: '二年一班', curriculum: CLASS });
+    expect((await call('POST', '/api/ops', { ops: [] }, kid.token)).body.room).toEqual({ code, name: '二年一班', curriculum: CLASS, contentRev: 0 });
     expect((await call('POST', '/api/login', { code, nickname: '小安', pin: '1234' })).body.room.curriculum).toEqual(CLASS);
 
     // 只改開關時版本不變
     await call('PATCH', `/api/teacher/rooms/${code}`, { chatOpen: false }, token);
-    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room).toMatchObject({ chatOpen: false, curriculum: CLASS });
+    expect((await call('GET', `/api/teacher/rooms/${code}`, undefined, token)).body.room).toMatchObject({ chatOpen: false, curriculum: CLASS, contentRev: 0 });
 
     const cleared = await call('PATCH', `/api/teacher/rooms/${code}`, { curriculum: null }, token);
     expect(cleared.body.room.curriculum).toBeNull();
@@ -168,8 +168,8 @@ describe('班級教材版本（老師 GM 的 G0，docs/plans/teacher-gm.md 第 4
     expect(up.status).toBe(200);
     const attach = await call('POST', '/api/join', { code, nickname: '小美', pin: '5678' }, up.body.token);
     expect(attach.status, JSON.stringify(attach.body)).toBe(200);
-    expect(attach.body.room).toEqual({ code, name: '二年一班', curriculum: CLASS });
-    expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0].room).toEqual({ code, name: '二年一班', curriculum: CLASS });
+    expect(attach.body.room).toEqual({ code, name: '二年一班', curriculum: CLASS, contentRev: 0 });
+    expect((await call('GET', '/api/parent/kids', undefined, mom.token)).body.kids[0].room).toEqual({ code, name: '二年一班', curriculum: CLASS, contentRev: 0 });
   });
 });
 

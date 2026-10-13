@@ -281,7 +281,7 @@ describe('班級教材版本與我的島（老師 GM 的 G0＋G1）', () => {
     expect(p.cloud!.rooms![0].curriculum).toBeUndefined();
     expect((await patchRoom(app, code, { curriculum: CLASS })).status).toBe(200);
     await syncProfile(d.deps, p.id);
-    expect(d.profiles.get(p.id)!.cloud!.rooms).toEqual([{ code, name: '二年一班', nickname: '小安', curriculum: CLASS }]);
+    expect(d.profiles.get(p.id)!.cloud!.rooms).toEqual([{ code, name: '二年一班', nickname: '小安', curriculum: CLASS, contentRev: 0 }]);
     // 孩子自己的設定沒有被改
     expect(d.profiles.get(p.id)!.curriculum).toEqual(p.curriculum);
     await patchRoom(app, code, { curriculum: null });
@@ -304,6 +304,12 @@ describe('班級教材版本與我的島（老師 GM 的 G0＋G1）', () => {
     expect(again.cloud!.rooms![0].curriculum).toEqual(CLASS);
     // 用哪一班的代碼登入，就在那一班的班級島（2026-10-09；多班級時不再一律回到第一個班級）
     expect(again.cloud!.island).toBe(code);
+  });
+
+  it('withRooms：記住班級內容的版本號（班級題庫變了才重新抓，docs/plans/ai-questions.md）', () => {
+    const base = { server: SERVER, accountId: 'a_1' };
+    const res = { room: null, rooms: [{ code: '123456', name: '二年一班', curriculum: null, contentRev: 3, nickname: '小安' }] };
+    expect(withRooms(base, res).rooms).toEqual([{ code: '123456', name: '二年一班', nickname: '小安', contentRev: 3 }]);
   });
 
   it('withRooms（多班級）：班級清單換成伺服器的（暱稱、班級版本；沒有統一版本時拿掉）；我的島保留，選的班級還在才保留，沒有班級時都拿掉', () => {

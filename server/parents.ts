@@ -87,22 +87,22 @@ export function registerParentRoutes(app: Hono, deps: ParentRouteDeps): void {
   const kidSummaries = async (where: string, params: unknown[]): Promise<KidSummary[]> => {
     const rows = await db.query<AccountRow>(`SELECT a.* FROM accounts a WHERE ${where} ORDER BY a.created_at, a.id`, params);
     if (!rows.length) return [];
-    const members = await db.query<{ account_id: string; room_code: string; nickname: string; name: string; curriculum: CurriculumChoice | null }>(
-      `SELECT m.account_id, m.room_code, m.nickname, r.name, r.curriculum FROM class_members m JOIN rooms r ON r.code = m.room_code
+    const members = await db.query<{ account_id: string; room_code: string; nickname: string; name: string; curriculum: CurriculumChoice | null; content_rev: number }>(
+      `SELECT m.account_id, m.room_code, m.nickname, r.name, r.curriculum, r.content_rev FROM class_members m JOIN rooms r ON r.code = m.room_code
        WHERE m.account_id = ANY($1) ORDER BY m.joined_at, m.room_code`,
       [rows.map((a) => a.id)],
     );
     return rows.map((a) => {
       const rooms: ClassInfo[] = members
         .filter((m) => m.account_id === a.id)
-        .map((m) => ({ code: m.room_code, name: m.name, curriculum: m.curriculum ?? null, nickname: m.nickname }));
+        .map((m) => ({ code: m.room_code, name: m.name, curriculum: m.curriculum ?? null, contentRev: m.content_rev ?? 0, nickname: m.nickname }));
       const first = rooms[0];
       return {
         id: a.id,
         profileId: a.profile.id,
         name: a.profile.name,
         avatar: a.profile.avatar,
-        room: first ? { code: first.code, name: first.name, curriculum: first.curriculum } : null,
+        room: first ? { code: first.code, name: first.name, curriculum: first.curriculum, contentRev: first.contentRev } : null,
         rooms,
         coins: a.profile.coins,
         stars: Object.values(a.profile.bestStars).reduce((s, v) => s + v, 0),

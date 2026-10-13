@@ -7,6 +7,7 @@ import { ackBatch, emptyOutbox, rebase, takeBatch, type Outbox } from './sync';
 import type {
   AcceptGiftResponse,
   AttachResponse,
+  ClassContentResponse,
   ClassInfo,
   Classmate,
   ClassmatesResponse,
@@ -85,6 +86,7 @@ export function withRooms(cloud: CloudLink, res: RoomsInResponse): CloudLink {
     name: r.name,
     ...(r.nickname ? { nickname: r.nickname } : {}),
     ...(r.curriculum ? { curriculum: r.curriculum } : {}),
+    ...(typeof r.contentRev === 'number' ? { contentRev: r.contentRev } : {}),
   }));
   if (!rooms.length) return rest;
   const keep = island === 'mine' || (island !== undefined && rooms.some((r) => r.code === island));
@@ -327,6 +329,11 @@ export async function ackGiftNotices(deps: CloudDeps, profileId: string, ids: st
 /** 還沒看過的老師獎勵（老師 GM 的 G3） */
 export async function fetchRewards(deps: CloudDeps, profileId: string): Promise<RewardInfo[]> {
   return (await authed<RewardsResponse>(deps, profileId, 'GET', '/api/rewards')).rewards;
+}
+
+/** 讀某一班的班級內容（啟用中的班級題庫與版本號；docs/plans/ai-questions.md） */
+export async function fetchClassContent(deps: CloudDeps, profileId: string, room: string): Promise<ClassContentResponse> {
+  return authed<ClassContentResponse>(deps, profileId, 'GET', `/api/rooms/${encodeURIComponent(room)}/content`);
 }
 
 /** 老師的獎勵看過了 */

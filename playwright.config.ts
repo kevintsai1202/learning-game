@@ -47,6 +47,9 @@ export default defineConfig({
             // 測試信箱（A3）：驗證信與重設信放在記憶體，e2e 從 GET /api/test/mails 讀；兩個都要設，正式環境絕不能設
             TEST_MAIL_OUTBOX: '1',
             ALLOW_TEST_MAIL: '1',
+            // 假出題器（老師 AI 出題，docs/plans/ai-questions.md）：回固定的測試題目、不連網；兩個都要設，正式環境絕不能設
+            TEST_AI_FAKE: '1',
+            ALLOW_TEST_AI: '1',
           },
         },
       ],

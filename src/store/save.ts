@@ -127,6 +127,8 @@ export interface CloudRoom {
   nickname?: string;
   /** 老師設定的班級教材版本（這一班的班級島用）；沒有表示老師沒有統一（老師 GM 的 G0） */
   curriculum?: CurriculumChoice;
+  /** 班級內容（班級題庫等）的版本號；和這台裝置的快取不同就重新抓（docs/plans/ai-questions.md）；舊版伺服器沒有 */
+  contentRev?: number;
 }
 
 export interface CloudLink {
@@ -601,7 +603,7 @@ export const profileSchema = z.object({
       server: z.string(),
       accountId: z.string(),
       rooms: z
-        .array(z.object({ code: z.string(), name: z.string(), nickname: z.string().optional(), curriculum: curriculumShape.optional() }))
+        .array(z.object({ code: z.string(), name: z.string(), nickname: z.string().optional(), curriculum: curriculumShape.optional(), contentRev: int.min(0).optional() }))
         .optional(),
       island: z.union([z.literal('mine'), z.string().regex(/^\d{6}$/)]).optional(),
       room: z.string().optional(),

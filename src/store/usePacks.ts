@@ -3,9 +3,9 @@
  */
 import { create } from 'zustand';
 import { createRng, hashString } from '../core/rng';
-import type { SubjectId } from '../core/types';
 import { contentPackSchema, formatIssues, type ContentPack } from '../content/schema';
 import type { ActivityDef } from '../activities/types';
+import { mainSubject } from './classPacks';
 
 const PACKS_KEY = 'learning-island-packs';
 
@@ -37,13 +37,6 @@ function writePacks(packs: StoredPack[]): void {
   } catch {
     /* 空間不足：只留在記憶體 */
   }
-}
-
-/** 題庫裡最多的科目（決定錯題與報表歸類） */
-function mainSubject(p: ContentPack): SubjectId {
-  const count: Record<string, number> = {};
-  for (const q of p.questions) count[q.subject] = (count[q.subject] ?? 0) + 1;
-  return (Object.entries(count).sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'math') as SubjectId;
 }
 
 /** 把題庫包轉成挑戰塔的活動 */

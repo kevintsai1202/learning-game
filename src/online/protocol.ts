@@ -6,6 +6,8 @@ import type { AvatarConfig, CurriculumChoice, Profile } from '../store/save';
 import { avatarSchema, curriculumSchema } from './ops';
 import { REWARD_COINS_MAX, isRewardSticker } from '../store/rewards';
 import { playgroundSchema, type Playground } from '../store/rideKinds';
+import type { ContentPack } from '../content/schema';
+import type { AiDraft } from '../content/aiQuestions';
 
 /** 房間代碼：6 位數字 */
 export const roomCodeSchema = z.string().regex(/^\d{6}$/);
@@ -228,6 +230,8 @@ export interface RoomInfo {
   name: string;
   /** 老師設定的班級教材版本（班級島用）；null 是沒有統一，班級島照各孩子自己的設定（老師 GM 的 G0） */
   curriculum: CurriculumChoice | null;
+  /** 班級內容（班級題庫等）的版本號，變了就重新抓 GET /api/rooms/:code/content（docs/plans/ai-questions.md）；舊版伺服器沒有 */
+  contentRev?: number;
 }
 
 /** 孩子所在的一個班級：班級資訊＋他在那一班的暱稱（多班級，每一班各自的暱稱） */
@@ -377,10 +381,63 @@ export interface UserGoogleLinksResponse {
   google: UserGoogleLink[];
 }
 
-/** 伺服器設定（前端決定要不要顯示 Google 按鈕） */
+/** 伺服器設定（前端決定要不要顯示 Google 按鈕、AI 出題） */
 export interface ServerConfig {
   googleClientId: string | null;
+  /** 有沒有開老師 AI 出題（伺服器設了 LLM_API_KEY）；舊版伺服器沒有 */
+  aiQuestions?: boolean;
 }
+
+// ---------- 班級題庫（G4）與老師 AI 出題（docs/plans/ai-questions.md） ----------
+
+/** 每班最多幾包班級題庫 */
+export const CLASS_PACKS_MAX = 30;
+
+/** 老師清單上的一包班級題庫 */
+export interface ClassPackSummary {
+  id: string;
+  title: string;
+  /** 停用的不會出現在孩子的挑戰塔 */
+  enabled: boolean;
+  /** 題數 */
+  count: number;
+  updatedAt: string;
+}
+
+/** 一包班級題庫的完整內容（老師編輯用） */
+export interface ClassPackDetail extends ClassPackSummary {
+  pack: ContentPack;
+}
+
+/** 新增班級題庫：pack 由伺服器用 contentPackSchema 檢查（錯誤列出哪一題哪一欄） */
+export const packCreateRequest = z.object({ pack: z.unknown(), enabled: z.boolean().optional() });
+/** 修改班級題庫：改名、停用或啟用、換掉整包內容（都可以省略） */
+export const packPatchRequest = z.object({
+  title: z.string().trim().min(1).max(60).optional(),
+  enabled: z.boolean().optional(),
+  pack: z.unknown().optional(),
+});
+
+/** 孩子抓班級內容的回應：版本號與啟用中的題庫 */
+export interface ClassContentResponse {
+  rev: number;
+  packs: { id: string; title: string; pack: ContentPack }[];
+}
+
+/** 老師 AI 出題的結果：草稿（不存）、丟掉的題目與原因、今天還能出幾題 */
+export interface AiQuestionsResponse {
+  drafts: AiDraft[];
+  dropped: string[];
+  remaining: number;
+}
+
+/** 送出 AI 出題：回工作編號，再用 GET …/ai-questions/:job 查結果（出題可能要一分鐘以上） */
+export interface AiJobResponse {
+  job: string;
+}
+
+/** 查 AI 出題的結果 */
+export type AiJobStatus = { status: 'running' } | ({ status: 'done' } & AiQuestionsResponse) | { status: 'failed'; error: string };
 
 /** 同步的回應 */
 export interface OpsResponse {

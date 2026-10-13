@@ -29,7 +29,7 @@ describe('資料表第 14 版', () => {
       expect((await d.query("SELECT playground FROM rooms WHERE code = '888888'"))[0].playground).toBeNull();
       await d.query("UPDATE rooms SET playground = $1::jsonb WHERE code = '888888'", [JSON.stringify(PG)]);
       expect((await d.query("SELECT playground FROM rooms WHERE code = '888888'"))[0].playground).toEqual(PG);
-      expect((await d.query('SELECT max(version)::int AS v FROM schema_migrations'))[0].v).toBe(14);
+      expect((await d.query('SELECT max(version)::int AS v FROM schema_migrations'))[0].v).toBeGreaterThanOrEqual(14);
       await migrate(d);
     } finally {
       await d.close();

@@ -3466,3 +3466,264 @@ button {
     top: 52px;
   }
 }
+
+/* ---------- 班級題庫與老師 AI 出題（docs/plans/ai-questions.md） ---------- */
+.small-note {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.class-packs {
+  margin-top: 12px;
+}
+/* 編輯器：全螢幕的彈出卡片，卡片裡捲動 */
+.pack-editor-layer {
+  z-index: 4;
+  place-items: start center;
+}
+.pack-editor {
+  width: min(1040px, 100%);
+  padding: 14px 16px 18px;
+  font-family: var(--font-plain);
+}
+.pack-editor-head,
+.ai-panel-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.q-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  font-weight: 700;
+}
+.q-field input:not([type='checkbox']):not([type='radio']),
+.q-field textarea,
+.q-field select,
+.q-add-row select {
+  font: inherit;
+  font-weight: 400;
+  padding: 6px 8px;
+  border: 2px solid var(--ink-soft);
+  border-radius: 10px;
+  min-width: 0;
+  max-width: 100%;
+}
+.q-inline {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.q-inline label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.q-check {
+  flex-direction: row !important;
+  align-items: center;
+  font-weight: 400;
+}
+.q-option-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 400;
+}
+.q-option-text {
+  flex: 1;
+}
+.q-option-emoji {
+  width: 80px;
+}
+.q-order-no {
+  width: 22px;
+  text-align: right;
+  color: var(--ink-soft);
+}
+.q-problems,
+.q-problems-line {
+  color: #c0392b;
+  font-weight: 700;
+  margin: 6px 0;
+}
+.q-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.q-card {
+  border: 3px solid var(--ink);
+  border-radius: 18px;
+  background: #fff;
+  padding: 10px 12px;
+}
+.q-card.ai {
+  border-color: var(--sun);
+  background: #fffbea;
+}
+.q-card-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.q-card-no {
+  font-weight: 800;
+}
+.q-tag {
+  font-size: 13px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  padding: 0 8px;
+  background: var(--cream);
+}
+.q-tag.soft {
+  border-color: var(--ink-soft);
+  background: #fff;
+}
+.q-tag.ai {
+  background: var(--sun);
+}
+.q-warnings {
+  margin: 6px 0;
+  padding-left: 18px;
+  color: #9a6400;
+  font-size: 14px;
+}
+.q-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  margin-top: 8px;
+}
+.q-form-preview {
+  border-left: 2px dashed var(--ink-soft);
+  padding-left: 12px;
+}
+.q-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+}
+.q-preview-prompt {
+  font-size: 22px;
+}
+.q-preview-answer {
+  margin: 0;
+  font-size: 18px;
+}
+.q-preview-target {
+  font-size: 36px;
+  font-family: var(--font-kai);
+}
+.q-preview-tokens {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.q-preview-token {
+  border: 2px solid var(--ink);
+  border-radius: 12px;
+  padding: 2px 10px;
+  background: var(--cream);
+  font-size: 20px;
+}
+.q-preview-explain {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink-soft);
+}
+.q-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+/* 課綱指標勾選 */
+.indicator-picker {
+  font-weight: 400;
+}
+.indicator-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.indicator-chip {
+  font: inherit;
+  font-size: 13px;
+  border: 2px solid var(--blue);
+  border-radius: 999px;
+  background: #eef4ff;
+  padding: 2px 8px;
+  cursor: pointer;
+  text-align: left;
+}
+.indicator-search {
+  width: 100%;
+}
+.indicator-groups {
+  max-height: 260px;
+  overflow-y: auto;
+  border: 2px solid var(--ink-soft);
+  border-radius: 10px;
+  padding: 4px 8px;
+  margin-top: 4px;
+  background: #fff;
+}
+.indicator-groups summary {
+  font-weight: 800;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.indicator-item {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 3px 0 3px 8px;
+  font-size: 14px;
+}
+/* AI 出題面板 */
+.ai-panel {
+  padding: 12px 14px;
+  margin: 10px 0;
+  border-color: var(--grape);
+}
+.ai-panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.ai-privacy {
+  font-weight: 400;
+}
+.ai-dropped {
+  font-size: 14px;
+  margin-top: 6px;
+}
+/* 手機：編輯表單與預覽改成上下排 */
+@media (max-width: 760px) {
+  .q-form {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .q-form-preview {
+    border-left: none;
+    border-top: 2px dashed var(--ink-soft);
+    padding: 8px 0 0;
+  }
+  .pack-editor {
+    padding: 10px;
+  }
+}

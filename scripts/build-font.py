@@ -37,6 +37,8 @@ RELEASE_URL = "https://github.com/ButTaiwan/bpmfvs/releases/download/v1.500/Bpmf
 OUT_FONT = ROOT / "src" / "assets" / "fonts" / "lg-bopomofo-round.woff2"
 OUT_LICENSE = ROOT / "public" / "licenses" / "OFL-LG-Bopomofo-Round.txt"
 EXTRA_CHARSET = ROOT / "data-src" / "charset-extra.txt"
+# 字型收錄的國字清單（老師 AI 出題與編題時，提醒用到字型沒有的字）；收集字元時要跳過它，否則清單只會變長不會變短
+OUT_CHARSET = ROOT / "src" / "content" / "zhuyinCharset.ts"
 
 # 新字型名稱（不含原字型名稱，避免使用者誤以為是完整原版）
 FAMILY = "LG Bopomofo Round"
@@ -80,6 +82,8 @@ def collect_chars() -> set[str]:
             continue
         for g in globs:
             for f in base.rglob(g):
+                if f == OUT_CHARSET:
+                    continue
                 chars.update(CJK_RE.findall(f.read_text(encoding="utf-8")))
     if EXTRA_CHARSET.exists():
         chars.update(CJK_RE.findall(EXTRA_CHARSET.read_text(encoding="utf-8")))
@@ -105,6 +109,32 @@ def rename(font: TTFont) -> None:
     for nid, text in records.items():
         name.setName(text, nid, 3, 1, 0x409)
         name.setName(text, nid, 1, 0, 0)
+
+
+def write_charset(font: TTFont) -> None:
+    """把子集字型實際收錄的國字寫成 TypeScript 模組（伺服器與畫面共用）。"""
+    han = sorted(
+        chr(cp)
+        for cp in font.getBestCmap()
+        if 0x3400 <= cp <= 0x4DBF or 0x4E00 <= cp <= 0x9FFF or 0xF900 <= cp <= 0xFAFF or cp >= 0x20000
+    )
+    header = [
+        "/**",
+        " * 注音字型（LG Bopomofo Round）收錄的國字。由 scripts/build-font.py 產生，不要手動修改。",
+        " * 用途：老師 AI 出題、編題時，提醒用到字型沒有的字（孩子看到時那些字沒有注音）。",
+        " */",
+        f"export const ZHUYIN_CHARS = '{''.join(han)}';",
+        "",
+        "const CHAR_SET = new Set(ZHUYIN_CHARS);",
+        "",
+        "/** 這個字在注音字型裡嗎 */",
+        "export function hasZhuyin(ch: string): boolean {",
+        "  return CHAR_SET.has(ch);",
+        "}",
+        "",
+    ]
+    OUT_CHARSET.write_text("\n".join(header), encoding="utf-8", newline="\n")
+    print(f"輸出 {OUT_CHARSET.relative_to(ROOT)}（{len(han)} 個國字）")
 
 
 def main() -> None:
@@ -137,6 +167,8 @@ def main() -> None:
     font.flavor = "woff2"
     font.save(OUT_FONT)
     print(f"輸出 {OUT_FONT.relative_to(ROOT)}（{OUT_FONT.stat().st_size:,} bytes，IVS 選擇子 {len(cmap14[0].uvsDict)} 組）")
+
+    write_charset(font)
 
     OUT_LICENSE.parent.mkdir(parents=True, exist_ok=True)
     note = (
