@@ -86,6 +86,9 @@ describe('buildAiPrompt', () => {
     expect(p.system).toContain('二年級');
     expect(p.system).toContain('正體');
     expect(p.system).toContain('每份數量');
+    // 正式驗收發現的兩個問題（2026-10-13）：數學選項的 emoji 洩漏答案、排序題的先後可以互換
+    expect(p.system).toContain('數學題的選項不要附 emoji');
+    expect(p.system).toContain('只有一種合理的順序');
     expect(p.user).toContain('math:N-2-7');
     expect(p.user).toContain('十十乘法');
     expect(p.user).toContain('life:Ba-Ⅰ-1');
