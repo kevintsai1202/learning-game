@@ -18,6 +18,7 @@ import { registerRewardRoutes } from './rewards';
 import { registerEmailRoutes } from './email';
 import { registerUserGoogleRoutes } from './userGoogle';
 import { registerClassContentRoutes } from './classContent';
+import { ANALYSIS_DAILY, registerAnalysisRoutes, type AnalysisLimits } from './analysis';
 import type { QuestionGenerator } from './ai';
 import { AI_DAILY_QUESTIONS } from '../src/content/aiQuestions';
 import { createMailer, type Mailer } from './mail';
@@ -102,6 +103,8 @@ export interface AppOptions {
   ai?: QuestionGenerator | null;
   /** 每位老師每天最多用 AI 出幾題（測試可以調小）；預設 AI_DAILY_QUESTIONS */
   aiDailyQuestions?: number;
+  /** AI 學習分析每天的次數上限（老師、孩子各自；測試可以調小）；預設 ANALYSIS_DAILY */
+  aiAnalysisDaily?: AnalysisLimits;
 }
 
 /** 權杖有效天數 */
@@ -840,6 +843,21 @@ export function createApp(opts: AppOptions) {
     generator: opts.ai ?? null,
     aiDailyQuestions: opts.aiDailyQuestions ?? AI_DAILY_QUESTIONS,
     onRoomContent: opts.onRoomContent,
+  });
+
+  // ---------- 學習報告的 AI 分析（docs/plans/learning-report.md） ----------
+  registerAnalysisRoutes(app, {
+    db,
+    now,
+    authenticateKid: async (c) => {
+      const who = await authenticateKidAny(c);
+      if (!who.accountId) throw new ApiError(401, 'unauthorized', '請重新登入');
+      return who.accountId;
+    },
+    authenticateTeacher,
+    loadOwnRoom,
+    generator: opts.ai ?? null,
+    limits: opts.aiAnalysisDaily ?? ANALYSIS_DAILY,
   });
 
   // ---------- 前端靜態檔（最後註冊，不蓋掉上面的路由） ----------

@@ -135,6 +135,9 @@ test('盤點 A 期預錄語音', { timeout: 30 * 60_000 }, () => {
   Object.values(LINES.DUEL_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:duel'));
   // 自己的家：佈置院子（docs/plans/home.md）
   Object.values(LINES.DECOR_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:decor'));
+  // 學習報告（docs/plans/learning-report.md）：開場與規則建議
+  Object.values(LINES.REPORT_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:report'));
+  Object.values(LINES.REPORT_TIPS).forEach((t) => addSpoken(t, 'zh-TW', 'ui:report'));
   // 自己的家第二期：進屋（小屋門口、歡迎、腳踏墊）
   Object.values(LINES.HOME_LINES).forEach((t) => addSpoken(t, 'zh-TW', 'ui:home'));
   PUZZLE_GAMES.forEach((g) => addSpoken(g.title, 'zh-TW', 'ui:puzzle'));

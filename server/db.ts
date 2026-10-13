@@ -381,6 +381,27 @@ const MIGRATIONS: Migration[] = [
       )`,
     ],
   },
+  {
+    // 學習報告的 AI 分析（docs/plans/learning-report.md）：每次真的呼叫 AI 的結果存一列，當快取（同一個對象、指紋一樣就直接用）
+    // 也拿來數每天的次數（快取命中不新增）。kind 是 kid／teacherStudent／teacherClass；room_code 是老師分析的那一班、
+    // account_id 是被分析的孩子、user_id 是要求分析的老師（孩子自己分析時是 null）。30 天後由 pruneAiReports 刪；
+    // 班級、孩子或老師的帳號刪除時跟著刪
+    version: 16,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS ai_reports (
+        id text PRIMARY KEY,
+        kind text NOT NULL,
+        room_code text REFERENCES rooms(code) ON DELETE CASCADE,
+        account_id text REFERENCES accounts(id) ON DELETE CASCADE,
+        user_id text REFERENCES users(id) ON DELETE CASCADE,
+        fingerprint text NOT NULL,
+        result jsonb NOT NULL,
+        created_at timestamptz NOT NULL
+      )`,
+      `CREATE INDEX IF NOT EXISTS ai_reports_lookup ON ai_reports (kind, fingerprint)`,
+      `CREATE INDEX IF NOT EXISTS ai_reports_created ON ai_reports (created_at)`,
+    ],
+  },
 ];
 
 /**

@@ -5,13 +5,17 @@
  * 用 Node 內建 fetch 寫薄的用戶端，不加 SDK 依賴。
  */
 import type { AiRequest } from '../src/content/aiQuestions';
+import type { AnalysisInput } from '../src/content/aiAnalysis';
 
-/** 出題器收到的東西：提示、給模型的 JSON Schema、原始請求（假出題器用） */
+/** 出題器收到的東西：提示、給模型的 JSON Schema，以及原始請求（假出題器依它產生；出題給 req、學習分析給 analysis） */
 export interface GenerateInput {
   system: string;
   user: string;
   schema: Record<string, unknown>;
-  req: AiRequest;
+  /** JSON Schema 的名稱（預設 questions） */
+  name?: string;
+  req?: AiRequest;
+  analysis?: AnalysisInput;
 }
 
 /** 出題器：回傳模型輸出的 JSON（已解析，格式還沒檢查） */
@@ -116,7 +120,7 @@ export function createMuseGenerator(cfg: MuseConfig): QuestionGenerator {
               { role: 'system', content: input.system },
               { role: 'user', content: input.user },
             ],
-            response_format: { type: 'json_schema', json_schema: { name: 'questions', strict: true, schema: input.schema } },
+            response_format: { type: 'json_schema', json_schema: { name: input.name ?? 'questions', strict: true, schema: input.schema } },
           }),
           signal: AbortSignal.timeout(cfg.timeoutMs ?? 120_000),
         });
@@ -172,10 +176,35 @@ function fakeItem(indicator: string, type: string, n: number) {
   };
 }
 
-/** 假出題器（e2e 與伺服器測試用）：指標與題型輪流用，題目內容固定、一定合格 */
+/** 假的學習分析（固定的句子；孩子的建議指到有資料、答對率最低的面向，老師的重點用前兩個弱項指標） */
+function fakeAnalysis(input: AnalysisInput) {
+  if (input.kind === 'kid') {
+    const areas = input.student.areas
+      .filter((a) => a.rate !== null)
+      .sort((a, b) => a.rate! - b.rate!)
+      .slice(0, 2);
+    return {
+      cheer: '你每天都很認真，好棒！',
+      tips: areas.map((a) => ({ area: a.id, text: `測試建議：多練習${a.label}喔！` })),
+      parentSummary: '測試摘要：孩子練習得很認真。',
+      parentTips: ['測試：每天陪孩子練習十分鐘'],
+    };
+  }
+  const weak = input.kind === 'teacherClass' ? input.class.weak : input.student.weak;
+  return {
+    summary: '測試摘要：整體表現穩定。',
+    strengths: ['測試強項'],
+    focus: weak.slice(0, 2).map((w) => ({ indicator: w.key, reason: `測試：一次答對率 ${Math.round(w.rate * 100)}%` })),
+    tips: ['測試教學建議'],
+  };
+}
+
+/** 假出題器（e2e 與伺服器測試用）：出題時指標與題型輪流用，題目內容固定、一定合格；學習分析回固定的句子 */
 export function createFakeGenerator(): QuestionGenerator {
   return {
-    async generate({ req }) {
+    async generate({ req, analysis }) {
+      if (analysis) return fakeAnalysis(analysis);
+      if (!req) throw new Error('假出題器沒有收到請求');
       const offset = (req.avoid?.length ?? 0) + 1;
       const questions = Array.from({ length: req.count }, (_, i) =>
         fakeItem(req.indicators[i % req.indicators.length], req.types[i % req.types.length], offset + i),

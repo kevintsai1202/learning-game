@@ -209,3 +209,23 @@ export const giftRefundLine = (price: number): string => `有一份禮物沒送�
 
 /** 送禮前的確認：「要把一張 🌷 鬱金香貼紙（5 金幣）送給小美嗎？」 */
 export const giftConfirmLine = (to: string, itemId: string, price: number): string => `要把${afterVerb(itemId)}（${price} 金幣）送給${to}嗎？`;
+
+/** 學習報告（docs/plans/learning-report.md）：孩子打開報告時唸的句子 */
+export const REPORT_LINES = {
+  intro: '這是你在知識島學到的本領！',
+  noData: '再多玩幾回合，報告就會出來囉！',
+  allGood: '每一項都很棒，繼續加油喔！',
+};
+
+/** 學習報告的規則建議（沒有 AI 時）：每個學習面向一句（鍵是 src/content/learningAreas.ts 的面向 id） */
+export const REPORT_TIPS: Record<string, string> = {
+  zhuyin: '去文字森林練習注音拼讀吧！',
+  chars: '去文字森林練習認字和寫字吧！',
+  reading: '去文字森林讀短文、排句子吧！',
+  number: '去數學城堡練習加減和乘法吧！',
+  measure: '去數學城堡練習時鐘、錢幣和長度吧！',
+  shape: '去數學城堡認識圖形和統計圖吧！',
+  letters: '去 ABC 海灘練習英文字母吧！',
+  words: '去 ABC 海灘認識英文單字吧！',
+  life: '去生活村學學生活小知識吧！',
+};

@@ -8,7 +8,7 @@ import type { SessionResult } from '../core/types';
  * 畫面（class：孩子用班級代碼登入；classroom：學校平板用教室密碼看班上名單進島（L3）；teacher：老師的班級管理；
  * badges：獎章簿；puzzle：益智遊戲館，選單與遊戲都在這個畫面）
  */
-export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'classroom' | 'teacher' | 'badges' | 'puzzle' | 'gm';
+export type Screen = 'title' | 'profiles' | 'island' | 'zone' | 'activity' | 'result' | 'parent' | 'shop' | 'class' | 'classroom' | 'teacher' | 'badges' | 'puzzle' | 'gm' | 'report';
 
 /** 島上的區域（建築） */
 export type ZoneId = 'math' | 'zh' | 'en' | 'life' | 'tower' | 'shop' | 'puzzle';

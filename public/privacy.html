@@ -265,6 +265,12 @@
               <td>老師刪除或班級刪除時刪除；老師停用或刪除後，孩子裝置上的副本在下一次同步時移除</td>
             </tr>
             <tr>
+              <td>AI 學習分析的結果：送給 AI 的匿名學習統計算出的指紋，以及 AI 寫的鼓勵與建議（孩子與家長看的）、教學建議（老師看的）</td>
+              <td>孩子打開學習報告、家長打開學習分析、老師按「AI 分析」時（作答統計和上次差不多時用上次的結果，不再送出）</td>
+              <td>班級伺服器的資料庫</td>
+              <td>30 天後自動刪除；班級、孩子的角色或老師的帳號刪除時一併刪除</td>
+            </tr>
+            <tr>
               <td>老師每天用 AI 出了幾題（用來限制每天的題數）</td>
               <td>老師用 AI 出題時</td>
               <td>班級伺服器的資料庫</td>
@@ -287,10 +293,11 @@
         <li>提供班級功能：多人同島、短句聊天、送禮物；老師以熊熊老師進島帶活動（全班公告、集合）與發獎勵。</li>
         <li>讓老師管理班級、查看學習摘要與孩子目前在做什麼。</li>
         <li>讓老師建立班級題庫：自己編寫題目，或用 AI 依課綱產生題目草稿再檢查修改（見第 6 節）。</li>
+        <li>學習報告：依孩子作答的課綱指標畫出學習面向的雷達圖，並由 AI 依匿名的學習統計寫鼓勵與建議（孩子、家長看的）與教學建議（老師看的，見第 6 節）。</li>
         <li>登入與帳號安全：辨識登入的人，防止猜密碼與大量請求。</li>
         <li>電子郵件地址只用來寄送驗證信與重設密碼的信（見第 6 節），不寄廣告或電子報。</li>
       </ul>
-      <p>我們不會把資料用於廣告、行銷、使用者分析或剖析，不會出售資料，自己也不會用資料訓練人工智慧模型。老師使用 AI 出題時送出的出題條件，Meta 可能依其條款用來訓練模型（見第 6 節）；這些內容不包含孩子的資料。</p>
+      <p>我們不會把資料用於廣告、行銷、使用者分析或剖析，不會出售資料，自己也不會用資料訓練人工智慧模型。老師使用 AI 出題時送出的出題條件，以及學習報告送出的匿名學習統計，Meta 可能依其條款用來訓練模型（見第 6 節）；送出的內容不包含孩子的名字、暱稱或帳號。</p>
 
       <h2>4. Google 使用者資料（使用 Google 帳號登入）</h2>
       <p>家長或老師可以選擇用 Google 帳號註冊，或在帳號設定把 Google 帳號綁定到自己的帳號，之後在帳號頁按 Google 的「透過 Google 帳戶繼續操作」按鈕快速登入。這是選用功能：用帳號名稱與密碼註冊的帳號，一直可以用帳號名稱與密碼登入；用 Google 註冊的帳號不用另外設定帳號名稱與密碼，之後可以在帳號設定加上密碼。孩子的角色不會綁定 Google 帳號。</p>
@@ -314,6 +321,7 @@
         <li><strong>老師：</strong>班上每個孩子在這一班的暱稱、星星、金幣、錯題數、完成回合數（學習進度是孩子整個角色的，包括在其他班級島與自己的島上玩的）、加入這一班的時間、最後上線時間，以及現在在哪裡（是否上線、在這一班的班級島、別的班級島（不顯示是哪一班）或自己的島、在哪棟建築）與在做什麼（正在玩的活動或遊戲名稱）。老師可以重設孩子在這一班的密碼、把孩子移出這一班、開關加入、聊天與送禮功能、選班級島上的遊樂器材，以及以熊熊老師進入這一班的班級島、發全班公告、請大家集合、給孩子金幣或貼紙（孩子看到的是「熊熊老師」送的）。老師看不到孩子還在哪些其他班級，也看不到家長的帳號資料與電子郵件地址。</li>
         <li><strong>家長：</strong>用家長帳號登入後，看得到自己名下雲端角色的摘要（名字、外觀、所在班級、星星、金幣、最後上線時間），可以把角色下載到這台裝置、讓角色退出班級或刪除角色；裝置上的家長專區看得到這台裝置上角色的完整進度與錯題本。</li>
         <li><strong>班級題庫：</strong>老師編寫或用 AI 出題後儲存的題目，只有這個班級的老師，以及這一班的孩子在班級島的挑戰塔看得到。</li>
+        <li><strong>學習報告：</strong>孩子與家長看得到自己的雷達圖與建議；老師看得到全班平均與班上每個孩子在這些學習面向的一次答對率、弱項指標，以及 AI 寫的分析。同學之間看不到彼此的學習報告。</li>
         <li><strong>帳號本人：</strong>帳號設定看得到自己的帳號名稱、電子郵件地址、身分與綁定的 Google 帳號。</li>
         <li>班級以外的人看不到班級裡的任何資料（兄弟姊妹只看得到上面列的好友名單資料）。</li>
       </ul>
@@ -324,7 +332,12 @@
         <li><strong>Zeabur：</strong>用來部署與管理班級伺服器和資料庫。伺服器與資料庫位於台灣；網際網路連線經由位於日本東京的閘道伺服器轉送。</li>
         <li><strong>Google（登入）：</strong>只有畫面出現「使用 Google 帳戶登入」按鈕時，才會載入 Google 的登入程式；使用時適用 <a href="https://policies.google.com/privacy" rel="noopener">Google 隱私權政策</a>。</li>
         <li><strong>Google（寄信）：</strong>驗證信與重設密碼的信透過 Google 的 Gmail 寄送，所以收件人的電子郵件地址與信件內容（帳號名稱與連結）會經過 Google 的郵件伺服器，適用 Google 隱私權政策。寄件人是我們的 Gmail 帳號。</li>
-        <li><strong>Meta（老師 AI 出題）：</strong>老師在班級頁用「AI 出題」時，伺服器會把老師勾選的課綱指標、題數、題型、難度、補充說明，以及已經出過的題目文字，送到 Meta 的 Model API（Muse 模型）產生題目草稿；不會送出任何孩子的資料，也不會送出老師的帳號資料或電子郵件地址。我們目前使用的方案（Contributor），Meta 可以保存並用送出的內容訓練模型，所以補充說明請不要寫學生的姓名或個人資料。AI 產生的是草稿，老師檢查、修改並儲存後，孩子才看得到。適用 Meta 的開發者條款與隱私權政策。</li>
+        <li><strong>Meta（老師 AI 出題、AI 學習分析）：</strong>伺服器會把下列內容送到 Meta 的 Model API（Muse 模型）：
+          <ul>
+            <li>老師在班級頁用「AI 出題」時：老師勾選的課綱指標、題數、題型、難度、補充說明，以及已經出過的題目文字。AI 產生的是草稿，老師檢查、修改並儲存後，孩子才看得到。</li>
+            <li>學習報告（孩子打開學習報告、家長打開學習分析、老師按「AI 分析」）：<strong>匿名的學習統計</strong>，也就是各學習面向的一次答對率與作答題數、最弱的幾個課綱指標的答對率、玩過幾回合與最近 14 天玩了幾天；老師分析單一孩子時另附全班平均。不送出孩子的名字、暱稱、帳號、作答內容或任何聯絡資料，也不送出老師的帳號資料或電子郵件地址。給孩子看的句子會先經過伺服器檢查，拿掉比較或貼標籤的話。</li>
+          </ul>
+          我們目前使用的方案（Contributor），Meta 可以保存並用送出的內容訓練模型，所以 AI 出題的補充說明請不要寫學生的姓名或個人資料。適用 Meta 的開發者條款與隱私權政策。</li>
         <li>除此之外，不使用廣告、分析、追蹤或其他第三方服務。我們不會把資料提供給第三方，法律要求時除外。</li>
       </ul>
 
@@ -345,6 +358,7 @@
         <li><strong>孩子在班級裡的資料：</strong>老師移出成員時，只會離開那一班（那一班的暱稱、密碼與用那一班代碼登入的權杖會刪除）；沒有家長帳號、也沒有其他班級的角色會刪除進度、收藏與登入權杖；家長名下的角色進度留在家長帳號。同學已經收到的禮物紀錄裡，仍會留著送禮人的暱稱。</li>
         <li><strong>Google 綁定：</strong>在帳號設定按「解除」即刪除。</li>
         <li><strong>班級題庫：</strong>老師可以在班級頁隨時停用或刪除；班級刪除時一併刪除。</li>
+        <li><strong>AI 學習分析的結果：</strong>30 天後自動刪除；班級、孩子的角色或老師的帳號刪除時一併刪除。</li>
         <li><strong>熊熊老師的獎勵紀錄：</strong>班級刪除或孩子的角色刪除時一併刪除；已經加進孩子學習進度的金幣與貼紙，跟著孩子的角色保存與刪除。</li>
         <li><strong>整個班級或其他資料：</strong>透過第 13 節的聯絡方式提出刪除要求；確認是該班的老師或孩子的家長後，我們會盡快刪除。</li>
       </ul>
@@ -493,6 +507,12 @@
                 <td>Deleted when the teacher deletes it or the class is deleted; after the teacher disables or deletes a bank, the copy on children's devices is removed at the next sync</td>
               </tr>
               <tr>
+                <td>AI learning analysis results: a fingerprint of the anonymized learning statistics sent to AI, and the encouragement and suggestions AI wrote (for children and parents) or teaching suggestions (for teachers)</td>
+                <td>When a child opens the learning report, a parent opens the learning analysis, or a teacher taps "AI analysis" (if the statistics are about the same as last time, the previous result is reused and nothing is sent)</td>
+                <td>Class server database</td>
+                <td>Deleted automatically after 30 days, and when the class, the child's character, or the teacher's account is deleted</td>
+              </tr>
+              <tr>
                 <td>How many questions a teacher generated with AI each day (used to enforce the daily limit)</td>
                 <td>When a teacher generates questions with AI</td>
                 <td>Class server database</td>
@@ -515,10 +535,11 @@
           <li>Provide class features: a shared island, chat phrases, and gifts; teachers can lead the class on the island as Bear Teacher (announcements, gathering the class) and give rewards.</li>
           <li>Let teachers manage their classes and see learning summaries.</li>
           <li>Let teachers build class question banks: write questions themselves, or have AI draft questions from curriculum indicators and then check and edit them (see Section 6).</li>
+          <li>Learning reports: draw a radar chart of learning areas from the curriculum indicators a child has answered, and have AI write encouragement and suggestions (for children and parents) and teaching suggestions (for teachers) from anonymized learning statistics (see Section 6).</li>
           <li>Sign-in and account security: identify who is signed in and prevent password guessing and request floods.</li>
           <li>Email addresses are used only to send verification and password-reset emails (see Section 6); we never send ads or newsletters.</li>
         </ul>
-        <p>We never use data for advertising, marketing, user analytics, or profiling, never sell it, and do not use it to train AI models ourselves. When a teacher uses AI question generation, Meta may use the submitted generation settings to train its models under its terms (see Section 6); this content contains no children's data.</p>
+        <p>We never use data for advertising, marketing, user analytics, or profiling, never sell it, and do not use it to train AI models ourselves. Meta may use the generation settings a teacher submits for AI question generation, and the anonymized learning statistics submitted for learning reports, to train its models under its terms (see Section 6); the submitted content contains no child's name, nickname, or account.</p>
 
         <h2>4. Google user data (Sign in with Google)</h2>
         <p>Parents and teachers can choose to register with their Google account, or link a Google account to their own account in account settings, and then sign in quickly with the Google button on the account page ("Continue with Google", shown in Chinese as 「透過 Google 帳戶繼續操作」). This is optional: an account registered with a username and password can always sign in with them; an account registered with Google needs no separate username or password, and a password can be added later in account settings. Children's characters are never linked to Google accounts.</p>
@@ -542,6 +563,7 @@
           <li><strong>Teachers:</strong> for each child in their class, the nickname used in that class, stars, coins, number of mistakes, completed rounds (learning progress belongs to the whole character, including play on other class islands and their own island), when the child joined that class, last online time, and where the child is now (online status, this class's island, another class's island without saying which, or their own island, and which building), and what the child is doing (the name of the activity or game). Teachers can reset a child's PIN for their class, remove the child from their class, turn joining, chat, and gifts on or off, choose the playground rides on the class island, and enter their class island as Bear Teacher to post announcements, gather the class, and give children coins or stickers (children see them as coming from "Bear Teacher"). Teachers cannot see which other classes a child is in, or parents' account details or email addresses.</li>
           <li><strong>Parents:</strong> after signing in with a parent account, a summary of their own cloud characters (name, appearance, class, stars, coins, last online time); they can download a character to the current device, take it out of a class, or delete it. The parent area on a device shows the full progress and mistake notebook of the characters on that device.</li>
           <li><strong>Class question banks:</strong> questions a teacher writes or saves after AI generation can be seen only by that class's teacher and, in the challenge tower on the class island, by that class's children.</li>
+          <li><strong>Learning reports:</strong> children and parents see their own radar chart and suggestions; teachers see the class average and, for each child in their class, the first-try correct rate in these learning areas, the weakest indicators, and the AI analysis. Classmates cannot see each other's learning reports.</li>
           <li><strong>Account owners:</strong> account settings show your own username, email address, roles, and linked Google accounts.</li>
           <li>People outside a class cannot see any data in that class (siblings only see the friends-list data listed above).</li>
         </ul>
@@ -552,7 +574,12 @@
           <li><strong>Zeabur:</strong> used to deploy and manage the class server and database. The server and database are located in Taiwan; internet traffic is relayed through a gateway server in Tokyo, Japan.</li>
           <li><strong>Google (sign-in):</strong> Google's sign-in script is loaded only when a "Sign in with Google" button appears on screen; its use is governed by the <a href="https://policies.google.com/privacy" rel="noopener">Google Privacy Policy</a>.</li>
           <li><strong>Google (email):</strong> verification and password-reset emails are sent through Google's Gmail, so the recipient's email address and the message content (username and link) pass through Google's mail servers and are governed by the Google Privacy Policy. Emails are sent from our Gmail account.</li>
-          <li><strong>Meta (teacher AI question generation):</strong> when a teacher uses "AI 出題" (AI question generation) on the class page, the server sends the teacher's selected curriculum indicators, number of questions, question types, difficulty, notes, and the text of questions already generated to Meta's Model API (Muse model) to draft questions. No children's data is sent, and neither are the teacher's account details or email address. Under the plan we currently use (Contributor), Meta may store the submitted content and use it to train its models, so teachers should not include students' names or personal data in the notes. AI output is only a draft; children see it only after the teacher checks, edits, and saves it. Meta's developer terms and privacy policy apply.</li>
+          <li><strong>Meta (teacher AI question generation and AI learning analysis):</strong> the server sends the following to Meta's Model API (Muse model):
+            <ul>
+              <li>When a teacher uses "AI 出題" (AI question generation) on the class page: the selected curriculum indicators, number of questions, question types, difficulty, notes, and the text of questions already generated. AI output is only a draft; children see it only after the teacher checks, edits, and saves it.</li>
+              <li>For learning reports (a child opens the learning report, a parent opens the learning analysis, or a teacher taps "AI analysis"): <strong>anonymized learning statistics</strong>, namely the first-try correct rate and number of answers in each learning area, the correct rates of the weakest curriculum indicators, the number of rounds played, and how many of the last 14 days were played; when a teacher analyzes one child, the class average is added. No child's name, nickname, account, answers, or contact details are sent, nor the teacher's account details or email address. Sentences shown to children are checked by the server first to remove comparisons or labels.</li>
+            </ul>
+            Under the plan we currently use (Contributor), Meta may store the submitted content and use it to train its models, so teachers should not include students' names or personal data in the notes for AI question generation. Meta's developer terms and privacy policy apply.</li>
           <li>Otherwise we use no advertising, analytics, tracking, or other third-party services. We never provide data to third parties except as required by law.</li>
         </ul>
 
@@ -573,6 +600,7 @@
           <li><strong>A child's class membership:</strong> when a teacher removes a member, the child only leaves that class (the nickname, PIN, and sign-in tokens from that class's code are deleted); characters without a parent account and without other classes are deleted together with their progress, collections, and sign-in tokens; parent-owned characters keep their progress under the parent account. Gifts already received by classmates still show the sender's nickname.</li>
           <li><strong>Google links:</strong> choose "Unlink" in account settings.</li>
           <li><strong>Class question banks:</strong> teachers can disable or delete them on the class page at any time; they are deleted together with the class.</li>
+          <li><strong>AI learning analysis results:</strong> deleted automatically after 30 days, and together with the class, the child's character, or the teacher's account.</li>
           <li><strong>Bear Teacher reward records:</strong> deleted together with the class or the child's character; coins and stickers already added to a child's learning progress are kept and deleted with the child's character.</li>
           <li><strong>Whole classes or other data:</strong> request deletion through the contact in Section 13; once we confirm you are the class teacher or the child's parent, we will delete it promptly.</li>
         </ul>

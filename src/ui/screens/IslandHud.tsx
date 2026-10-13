@@ -182,6 +182,9 @@ function HudMenu() {
           <button role="menuitem" className="btn small white" onClick={() => goto('badges')} data-testid="hud-badges">
             🏅 獎章簿
           </button>
+          <button role="menuitem" className="btn small white" onClick={() => goto('report')} data-testid="hud-report">
+            📊 學習報告
+          </button>
           <button
             role="menuitem"
             className="btn small white"
@@ -571,6 +574,9 @@ export function IslandHud() {
           <CamResetButton variant="round" />
           <button className="btn round white" onClick={() => goto('badges')} aria-label="獎章簿" data-testid="hud-badges">
             🏅
+          </button>
+          <button className="btn round white" onClick={() => goto('report')} aria-label="學習報告" data-testid="hud-report">
+            📊
           </button>
           <button className="btn round white" onClick={teacherTalk} aria-label="問熊熊老師">
             🐻

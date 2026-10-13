@@ -33,6 +33,7 @@ export function PackEditor({
   packId,
   initial,
   startWithAi,
+  aiIndicators,
   onClose,
 }: {
   code: string;
@@ -41,6 +42,8 @@ export function PackEditor({
   initial: ContentPack | null;
   /** 打開就展開 AI 出題 */
   startWithAi: boolean;
+  /** AI 出題預先勾好的指標（從學習分析跳過來時） */
+  aiIndicators?: string[];
   /** 關掉：saved 是存好後的訊息，沒存是 null */
   onClose: (saved: string | null) => void;
 }) {
@@ -152,7 +155,7 @@ export function PackEditor({
             🤖 AI 出題
           </button>
         )}
-        {showAi && <AiPanel code={code} avoid={prompts} onDrafts={addAi} onClose={() => setShowAi(false)} />}
+        {showAi && <AiPanel code={code} avoid={prompts} initialIndicators={aiIndicators} onDrafts={addAi} onClose={() => setShowAi(false)} />}
         {aiCount > 0 && <p className="notice">有 {aiCount} 題是 AI 草稿（黃色框），請逐題看過；改過的題目就不再標草稿。</p>}
         {redoError && <p className="gift-error">{redoError}</p>}
 

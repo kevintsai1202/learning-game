@@ -22,7 +22,7 @@ export function isStuck(buildId: string, resumedId: string | null): boolean {
 }
 
 /** 孩子可以倒數自動更新的畫面（再加上狀態的條件） */
-const AUTO_SCREENS: readonly Screen[] = ['island', 'zone', 'badges', 'shop', 'title', 'profiles'];
+const AUTO_SCREENS: readonly Screen[] = ['island', 'zone', 'badges', 'report', 'shop', 'title', 'profiles'];
 /** 大人的頁面（只提示，不自動重新整理：可能正在打字或設定） */
 const ADULT_SCREENS: readonly Screen[] = ['teacher', 'class', 'parent', 'gm', 'classroom'];
 
@@ -47,6 +47,7 @@ export function resumeScreenOf(screen: Screen): Screen | null {
     case 'zone':
     case 'shop':
     case 'badges':
+    case 'report':
     case 'activity':
     case 'result':
     case 'puzzle':

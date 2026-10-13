@@ -8,6 +8,8 @@ import { REWARD_COINS_MAX, isRewardSticker } from '../store/rewards';
 import { playgroundSchema, type Playground } from '../store/rideKinds';
 import type { ContentPack } from '../content/schema';
 import type { AiDraft } from '../content/aiQuestions';
+import type { AreaStat, ClassAreaStat, IndicatorStat } from '../content/learningAreas';
+import type { AnalysisReport } from '../content/aiAnalysis';
 
 /** 房間代碼：6 位數字 */
 export const roomCodeSchema = z.string().regex(/^\d{6}$/);
@@ -509,3 +511,20 @@ export interface ErrorResponse {
   /** 鎖定時還要等幾秒 */
   retryAfter?: number;
 }
+
+// ---------- 學習報告（docs/plans/learning-report.md） ----------
+
+/** 老師的學習分析：全班的面向統計與弱項指標、每個孩子的面向統計（不呼叫 AI） */
+export interface TeacherAnalysisResponse {
+  class: { students: number; areas: ClassAreaStat[]; weak: (IndicatorStat & { students: number })[] };
+  members: { id: string; nickname: string; areas: AreaStat[]; weak: IndicatorStat[]; sessions: number }[];
+}
+
+/** 老師的 AI 分析：給 member 是單一孩子，沒給是全班 */
+export const aiAnalysisRequest = z.object({ member: z.string().max(100).optional() });
+
+/** AI 分析的結果：AI 新寫的、快取的，或（孩子的）AI 句子不合格時改用規則建議 */
+export type AnalysisResult = { source: 'ai' | 'cache'; report: AnalysisReport } | { source: 'rules' };
+
+/** 查 AI 分析的結果 */
+export type AnalysisJobStatus = { status: 'running' } | { status: 'done'; result: AnalysisResult } | { status: 'failed'; error: string };

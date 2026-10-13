@@ -22,6 +22,7 @@ import { ClassScreen } from './ui/screens/ClassScreen';
 import { ClassroomScreen } from './ui/screens/ClassroomScreen';
 import { TeacherScreen } from './ui/screens/TeacherScreen';
 import { BadgesScreen } from './ui/screens/BadgesScreen';
+import { ReportScreen } from './ui/screens/ReportScreen';
 import { PuzzleScreen } from './puzzle/PuzzleScreen';
 import { RestGuard } from './ui/RestGuard';
 import { startCloudSync } from './online/useCloud';
@@ -59,6 +60,7 @@ const SCREEN_MUSIC: Record<Screen, Track> = {
   classroom: 'island',
   teacher: 'shop',
   badges: 'shop',
+  report: 'shop',
   puzzle: 'quiz',
   gm: 'island',
 };
@@ -161,6 +163,7 @@ export function App() {
         {screen === 'classroom' && <ClassroomScreen />}
         {screen === 'teacher' && <TeacherScreen />}
         {screen === 'badges' && <BadgesScreen />}
+        {screen === 'report' && <ReportScreen />}
         {screen === 'puzzle' && <PuzzleScreen />}
         {screen === 'gm' && <GmHud />}
         {!NO_TEACHER_CALLS.includes(screen) && (

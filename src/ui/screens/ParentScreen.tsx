@@ -22,6 +22,10 @@ import { onlineEnabled } from '../../online/config';
 import { getToken } from '../../online/storage';
 import { useAccount } from '../../online/useAccount';
 import { BADGES } from '../../store/badges';
+import { areaById, areaStats, ruleTipAreas } from '../../content/learningAreas';
+import { useReport } from '../../online/useReport';
+import { RadarChart } from '../RadarChart';
+import { AREA_AXES, AreaTable, areaValues } from '../LearningReport';
 
 const SUBJECT_NAME: Record<SubjectId, string> = { zh: '國語', math: '數學', en: '英語', life: '生活與健康' };
 
@@ -658,9 +662,68 @@ function SourcesTab() {
   );
 }
 
-type Tab = 'report' | 'wrong' | 'curriculum' | 'class' | 'settings' | 'packs' | 'backup' | 'sources';
+/**
+ * 學習分析（docs/plans/learning-report.md 第 2 節）：雷達圖、面向清單，以及寫給家長的摘要與建議。
+ * 目前的雲端角色由 AI 寫（和孩子的學習報告共用同一次分析）；其他角色或單機用規則（強項與要加強的面向）。
+ */
+function AnalysisTab({ profile }: { profile: Profile }) {
+  const activeId = useGame((s) => s.save.activeProfileId);
+  const status = useReport((s) => s.status);
+  const report = useReport((s) => s.report);
+  const note = useReport((s) => s.note);
+  const reportFor = useReport((s) => s.profileId);
+  const stats = useMemo(() => areaStats(profile.indicators), [profile.indicators]);
+  const hasData = stats.some((x) => x.rate !== null);
+  /** AI 只分析目前的角色（伺服器用那個角色的權杖） */
+  const isActive = profile.id === activeId;
+  useEffect(() => {
+    if (isActive && hasData) void useReport.getState().load();
+  }, [isActive, hasData]);
+  const ai = isActive && reportFor === profile.id && status === 'ai' ? report : null;
+  const strong = stats.filter((x) => x.rate !== null && x.rate >= 0.85).map((x) => `${areaById(x.area).label}（${Math.round(x.rate! * 100)}%）`);
+  const weak = ruleTipAreas(stats)
+    .filter((a) => stats.find((x) => x.area === a)?.rate !== null)
+    .map((a) => `${areaById(a).label}（${Math.round(stats.find((x) => x.area === a)!.rate! * 100)}%）`);
+  return (
+    <div data-testid="parent-analysis">
+      <div className="report-body">
+        <RadarChart axes={AREA_AXES} series={[{ name: profile.name, values: areaValues(stats), kind: 'main' }]} testId="parent-radar" />
+        <div className="report-advice">
+          {!hasData && <p className="plain">再多玩幾回合（每個面向至少答 5 題），就看得到分析。</p>}
+          {isActive && status === 'loading' && <p className="plain">🐻 熊熊老師（AI）正在分析…</p>}
+          {ai ? (
+            <div data-testid="parent-ai">
+              <p style={{ margin: '0 0 6px' }}>{ai.parentSummary}</p>
+              {ai.parentTips.length > 0 && (
+                <ul>
+                  {ai.parentTips.map((t, i) => (
+                    <li key={i}>{t}</li>
+                  ))}
+                </ul>
+              )}
+              <p className="plain small-note">AI 依匿名的作答統計寫的建議（不含孩子的名字），請斟酌參考。</p>
+            </div>
+          ) : (
+            hasData && (
+              <div data-testid="parent-rules">
+                {strong.length > 0 && <p style={{ margin: '0 0 6px' }}>表現好：{strong.join('、')}</p>}
+                {weak.length > 0 && <p style={{ margin: '0 0 6px' }}>可以多練：{weak.join('、')}</p>}
+                <p className="plain small-note">在遊戲裡按「📊 學習報告」，孩子也看得到自己的報告與建議。</p>
+              </div>
+            )
+          )}
+          {isActive && note && <p className="plain small-note">{note}</p>}
+        </div>
+        <AreaTable stats={stats} testId="parent-areas" />
+      </div>
+    </div>
+  );
+}
+
+type Tab = 'report' | 'analysis' | 'wrong' | 'curriculum' | 'class' | 'settings' | 'packs' | 'backup' | 'sources';
 const TABS: { id: Tab; name: string }[] = [
   { id: 'report', name: '學習報告' },
+  { id: 'analysis', name: '學習分析' },
   { id: 'wrong', name: '錯題本' },
   { id: 'curriculum', name: '教材版本' },
   { id: 'class', name: '班級帳號' },
@@ -711,7 +774,7 @@ export function ParentScreen() {
                   {t.name}
                 </button>
               ))}
-              {(tab === 'report' || tab === 'wrong' || tab === 'curriculum' || tab === 'class') && profiles.length > 1 && (
+              {(tab === 'report' || tab === 'analysis' || tab === 'wrong' || tab === 'curriculum' || tab === 'class') && profiles.length > 1 && (
                 <select value={pid} onChange={(e) => setPid(e.target.value)} style={{ fontSize: 18, marginLeft: 'auto' }}>
                   {profiles.map((p) => (
                     <option key={p.id} value={p.id}>
@@ -723,6 +786,7 @@ export function ParentScreen() {
             </div>
             <div className="panel-body">
               {tab === 'report' && (profile ? <ReportTab profile={profile} /> : <p className="plain">還沒有角色。</p>)}
+              {tab === 'analysis' && (profile ? <AnalysisTab profile={profile} /> : <p className="plain">還沒有角色。</p>)}
               {tab === 'wrong' && (profile ? <WrongTab profile={profile} /> : <p className="plain">還沒有角色。</p>)}
               {tab === 'curriculum' && (profile ? <CurriculumTab profile={profile} /> : <p className="plain">請先建立角色。</p>)}
               {tab === 'class' && (profile ? <ClassTab profile={profile} /> : <p className="plain">請先建立角色。</p>)}

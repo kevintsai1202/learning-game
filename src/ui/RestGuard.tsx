@@ -18,7 +18,7 @@ import { answerInvite, cancelInvite, leaveDuel, setDuelBlocked, useFriendDuel } 
 /** 多久累計一次（秒） */
 const TICK_SECONDS = 30;
 /** 會被鎖住的畫面 */
-const LOCK_SCREENS: Screen[] = ['island', 'zone', 'activity', 'result', 'shop', 'badges', 'puzzle'];
+const LOCK_SCREENS: Screen[] = ['island', 'zone', 'activity', 'result', 'shop', 'badges', 'puzzle', 'report'];
 /** 算「有操作」的事件（pointermove：按著搖桿走路、拖曳也算） */
 const INPUT_EVENTS = ['pointerdown', 'pointermove', 'keydown', 'touchstart', 'wheel'] as const;
 /** 最後一次操作的時間 */

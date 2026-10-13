@@ -11,6 +11,7 @@ import type { Context, Hono } from 'hono';
 import type { Db, Queryable } from './db';
 import { ApiError, readBody, type Identity } from './http';
 import { AiError, type QuestionGenerator } from './ai';
+import { createJobStore } from './aiJobs';
 import { aiOutputSchema, aiRequestSchema, buildAiPrompt, convertAiOutput } from '../src/content/aiQuestions';
 import { contentPackSchema, formatIssues, type ContentPack } from '../src/content/schema';
 import { INDICATORS, indicatorLabel } from '../src/content/indicators';
@@ -45,20 +46,6 @@ export interface ClassContentDeps {
   onRoomContent?: (roomCode: string) => void;
 }
 
-/** 一次 AI 出題的工作（只放記憶體） */
-interface AiJob {
-  /** 出題的老師 */
-  owner: string;
-  /** 哪一班 */
-  room: string;
-  /** 建立時間（毫秒） */
-  createdAt: number;
-  status: 'running' | 'done' | 'failed';
-  result?: AiQuestionsResponse;
-}
-
-/** 出題工作沒人來拿，多久後刪掉 */
-const AI_JOB_TTL_MS = 10 * 60 * 1000;
 /** 每位老師同時最多幾個出題工作（畫面是一批出完再出下一批） */
 const AI_JOBS_PER_TEACHER = 2;
 
@@ -197,16 +184,8 @@ export function registerClassContentRoutes(app: Hono, deps: ClassContentDeps): v
     return c.json<ClassContentResponse>({ rev, packs: rows.map((r) => ({ id: r.id, title: r.title, pack: r.pack })) });
   });
 
-  /**
-   * 進行中的 AI 出題工作（只放記憶體）：一次出題可能要一分鐘以上，經過閘道器的長請求容易逾時，
-   * 所以 POST 先回工作編號，畫面再用 GET 查結果。拿到結果（完成或失敗）就刪掉；超過 10 分鐘沒人來拿也刪掉。
-   */
-  const jobs = new Map<string, AiJob>();
-  /** 刪掉太舊的工作 */
-  const sweepJobs = () => {
-    const t = now().getTime();
-    for (const [id, j] of jobs) if (t - j.createdAt > AI_JOB_TTL_MS) jobs.delete(id);
-  };
+  /** 進行中的 AI 出題工作（記憶體；server/aiJobs.ts）：POST 先回工作編號，畫面再用 GET 查結果 */
+  const jobs = createJobStore<AiQuestionsResponse>(now);
 
   /** 老師 AI 出題：檢查、預扣額度後在背景出題，回傳工作編號；草稿不存，出題失敗或題目被丟掉時退回額度 */
   app.post('/api/teacher/rooms/:code/ai-questions', async (c) => {
@@ -217,9 +196,7 @@ export function registerClassContentRoutes(app: Hono, deps: ClassContentDeps): v
     const body = await readBody(c, aiRequestSchema);
     const unknown = body.indicators.filter((k) => !(k in INDICATORS));
     if (unknown.length) throw new ApiError(400, 'bad_indicator', `找不到課綱指標：${unknown.join('、')}`);
-    sweepJobs();
-    const running = [...jobs.values()].filter((j) => j.owner === owner && j.status === 'running').length;
-    if (running >= AI_JOBS_PER_TEACHER) throw new ApiError(429, 'ai_busy', '上一批題目還在出，請等它出完');
+    if (jobs.running(owner) >= AI_JOBS_PER_TEACHER) throw new ApiError(429, 'ai_busy', '上一批題目還在出，請等它出完');
     const limit = deps.aiDailyQuestions;
     const quotaError = () => new ApiError(429, 'ai_quota', `今天的 AI 出題額度（${limit} 題）用完了，明天再試`);
     if (body.count > limit) throw quotaError();
@@ -236,27 +213,21 @@ export function registerClassContentRoutes(app: Hono, deps: ClassContentDeps): v
     const refund = async (n: number) => {
       if (n > 0) await db.query('UPDATE ai_usage SET count = GREATEST(count - $3, 0) WHERE user_id = $1 AND day = $2::date', [owner, day, n]);
     };
-    const id = randomUUID();
-    const job: AiJob = { owner, room: room.code, createdAt: now().getTime(), status: 'running' };
-    jobs.set(id, job);
     // 背景出題：結果放進工作，等畫面來拿
-    void (async () => {
+    const id = jobs.start(owner, room.code, async () => {
       let raw: unknown;
       try {
         raw = await generator.generate({ ...buildAiPrompt(body, indicatorLabel), schema: aiOutputSchema(body.indicators, body.types), req: body });
       } catch (e) {
-        console.warn('AI 出題失敗', e instanceof AiError ? `${e.reason} ${e.detail}` : (e as Error).message);
         await refund(body.count).catch(console.error);
-        job.status = 'failed';
-        return;
+        throw new Error(e instanceof AiError ? `出題 ${e.reason} ${e.detail}` : (e as Error).message);
       }
       const result = convertAiOutput(raw, body, { seed: Math.floor(Math.random() * 2 ** 31), idPrefix: `ai-${randomUUID().slice(0, 8)}`, hasZhuyin });
       const unused = body.count - result.drafts.length;
       await refund(unused).catch(console.error);
       if (result.dropped.length) console.warn('AI 出題有題目被丟掉', result.dropped.join(' / '));
-      job.result = { ...result, remaining: Math.max(0, limit - (reserved[0].count - unused)) };
-      job.status = 'done';
-    })();
+      return { ...result, remaining: Math.max(0, limit - (reserved[0].count - unused)) };
+    });
     return c.json<AiJobResponse>({ job: id });
   });
 
@@ -264,12 +235,10 @@ export function registerClassContentRoutes(app: Hono, deps: ClassContentDeps): v
   app.get('/api/teacher/rooms/:code/ai-questions/:job', async (c) => {
     const owner = await deps.authenticateTeacher(c);
     const room = await deps.loadOwnRoom(db, c.req.param('code'), owner);
-    const id = c.req.param('job');
-    const job = jobs.get(id);
-    if (!job || job.owner !== owner || job.room !== room.code) throw new ApiError(404, 'no_job', '找不到這次出題，請重新出題');
+    const job = jobs.take(c.req.param('job'), owner, room.code);
+    if (!job) throw new ApiError(404, 'no_job', '找不到這次出題，請重新出題');
     if (job.status === 'running') return c.json<AiJobStatus>({ status: 'running' });
-    jobs.delete(id);
-    if (job.status === 'failed' || !job.result) return c.json<AiJobStatus>({ status: 'failed', error: 'AI 出題失敗，請再試一次' });
+    if (job.status === 'failed') return c.json<AiJobStatus>({ status: 'failed', error: 'AI 出題失敗，請再試一次' });
     return c.json<AiJobStatus>({ status: 'done', ...job.result });
   });
 }

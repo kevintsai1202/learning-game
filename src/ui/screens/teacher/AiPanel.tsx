@@ -15,10 +15,13 @@ const TOTALS = [5, 10, 15, 20].filter((n) => n <= AI_MAX_TOTAL);
 export function AiPanel({
   code,
   avoid,
+  initialIndicators,
   onDrafts,
   onClose,
 }: {
   code: string;
+  /** 預先勾好的指標（從學習分析跳過來時） */
+  initialIndicators?: string[];
   /** 編輯器裡已經有的題目文字（避免重複） */
   avoid: string[];
   /** 一批草稿出好了 */
@@ -26,7 +29,7 @@ export function AiPanel({
   onClose: () => void;
 }) {
   const call = useAccount((s) => s.call);
-  const [indicators, setIndicators] = useState<string[]>([]);
+  const [indicators, setIndicators] = useState<string[]>(() => (initialIndicators ?? []).slice(0, AI_MAX_INDICATORS));
   const [total, setTotal] = useState(5);
   const [types, setTypes] = useState<AiQuestionType[]>([...AI_TYPES]);
   const [difficulty, setDifficulty] = useState<1 | 2 | 3>(2);

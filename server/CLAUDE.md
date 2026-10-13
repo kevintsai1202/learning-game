@@ -6,8 +6,8 @@
 
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
-- 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/store/puzzle.ts`（益智遊戲的金幣與每日上限）、`src/engine/check.ts`（計分）、`src/content/aiQuestions.ts`（AI 出題的請求格式、提示與檢查）、`src/content/schema.ts`（題庫格式）、`src/content/zhuyinCharset.ts`（注音字型收錄的字）
-- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「老師移出成員」的共用函式）；多班級的成員資格（第一個班級的定義、離開某一班、撤銷某一班的權杖、好友名單的名字）在 `classes.ts`；班級題庫與老師 AI 出題的路由在 `classContent.ts`、出題器（Muse 用戶端與假出題器）在 `ai.ts`；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
+- 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/store/puzzle.ts`（益智遊戲的金幣與每日上限）、`src/engine/check.ts`（計分）、`src/content/aiQuestions.ts`（AI 出題的請求格式、提示與檢查）、`src/content/schema.ts`（題庫格式）、`src/content/zhuyinCharset.ts`（注音字型收錄的字）、`src/content/learningAreas.ts`（學習面向與統計）、`src/content/aiAnalysis.ts`（AI 學習分析的匿名統計、提示與檢查）
+- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「老師移出成員」的共用函式）；多班級的成員資格（第一個班級的定義、離開某一班、撤銷某一班的權杖、好友名單的名字）在 `classes.ts`；班級題庫與老師 AI 出題的路由在 `classContent.ts`、出題器（Muse 用戶端與假出題器）在 `ai.ts`、AI 工作的記憶體存放在 `aiJobs.ts`、學習報告（老師的統計、AI 學習分析）在 `analysis.ts`；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
@@ -88,6 +88,11 @@ docker rm -f li-pg-test
   - AI 出題分兩步：`POST …/ai-questions` 檢查、預扣額度後在背景出題，回工作編號；`GET …/ai-questions/:job` 查結果（只給出題的老師、同一班；拿到結果就刪掉，10 分鐘沒人拿也刪）。工作只放記憶體，伺服器重啟就沒了（畫面會顯示失敗、老師重出）。每位老師同時最多 2 個工作（429 `ai_busy`）。
   - 每日額度（`AI_DAILY_QUESTIONS`，台灣日期）在同一句 `INSERT … ON CONFLICT DO UPDATE … WHERE` 裡預扣，超過就不回傳列（429 `ai_quota`）；出題失敗全部退回、題目被丟掉的部分退回。`ai_usage` 7 天後由 `pruneAiUsage` 刪除（隱私權政策第 2 節寫了）。
   - 模型的回應一律經過 `convertAiOutput`：指標與題型限定老師選的、id／科目／技能／出處由伺服器填、選項與詞卡由伺服器打亂、數字題的算式重算；上游的錯誤訊息只寫進記錄（截短），回給老師的是固定的「AI 出題失敗，請再試一次」。送給模型的只有老師的出題條件，不送孩子的資料或老師的帳號資料。
+- **學習報告與 AI 學習分析**（`analysis.ts`；資料表第 16 版 `ai_reports`；`docs/plans/learning-report.md`）：
+  - 送給 AI 的只有 `aiAnalysis.ts` 的匿名統計（面向的答對率與作答數、弱項指標、回合數、最近玩了幾天），不送名字、暱稱、帳號 id；`tests/server/analysis.test.ts` 檢查三種提示裡都沒有。
+  - 孩子的分析經過 `convertAnalysis` 的內容過濾（比較、貼標籤的字、超過 40 字、面向不對的建議都拿掉）；一個建議都不剩就存「改用規則」（`{ rules: true }`），不再呼叫第二次。
+  - 每次真的呼叫 AI 的結果存 `ai_reports`，指紋（分桶後的統計）一樣就直接回快取、不新增列；每天的次數用這張表數（老師 30 次、孩子 5 次，`ANALYSIS_DAILY`），快取不算。`pruneAiReports` 每天刪 30 天前的。
+  - 工作與 AI 出題共用 `aiJobs.ts`（`createJobStore`）：老師的 scope 是班級代碼，孩子的是 `me`；`GenerateInput.analysis` 讓假出題器知道要回分析。
 - **即時連線**（`hub.ts` 不碰網路、`ws.ts` 掛在 `/ws`）：裝置送來的訊息一律用 `src/online/realtime.ts` 的 zod 格式驗證，格式錯就以 1008 斷線；第一則必須是 `hello`（權杖）；其他人看到的外觀一律經過 `equippedOf`，不轉發裝置送來的外觀；說話只收 `CHAT_PHRASES` 的 id。中樞以「島」為單位（班級島 `class:<代碼>`、自己的島 `kid:<帳號 id>`，`docs/plans/islands.md`）：移動、聊天、外觀只送同島的人；好友的在線狀態（只有在哪座島）送給朋友；全班的通知（`roomContent`、`roomSettings`）照帳號的班級送，不管在哪座島。
 - 伺服器只保證位置在島的圓形範圍內，不做障礙物碰撞（信任模型，見 `docs/plans/online.md` 第 5 節）。
 - HTTP 路由在存檔改變、老師改設定、移除成員、重設密碼時呼叫 `onProfileChanged`／`onRoomChanged`／`onRoomContent`／`onClassChanged`（加入班級，中樞以 4005 讓那個帳號重新上線）／`onLeftClass`（離開某一班）／`onKick` 通知即時中樞；老師成員表的在線與在哪裡來自 `isOnline`／`whereOf(id, 班級)`（`main.ts` 串接；`onKick` 的第三、四個參數是只踢哪種權杖來源、用哪一班代碼登入的連線；`whereOf` 在別班的班級島時回 `otherClass`）。

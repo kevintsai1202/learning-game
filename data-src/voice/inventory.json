@@ -1,13 +1,13 @@
 {
  "_說明": "預錄語音 A 期的句子清單（scripts/voice/collect.test.ts 產生，勿手改）",
  "counts": {
-  "介面": 438,
-  "全部": 3521,
-  "zh": 1900,
+  "介面": 450,
+  "全部": 3533,
+  "zh": 1912,
   "en": 1584,
   "zhuyin": 37
  },
- "chars": 35546,
+ "chars": 35719,
  "items": [
   {
    "key": "en-US|「一」用英文怎麼說？",
@@ -17779,12 +17779,93 @@
    ]
   },
   {
+   "key": "zh-TW|去 ABC 海灘認識英文單字吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去 ABC 海灘認識英文單字吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
+   "key": "zh-TW|去 ABC 海灘練習英文字母吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去 ABC 海灘練習英文字母吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
+   "key": "zh-TW|去文字森林練習注音拼讀吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去文字森林練習注音拼讀吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
+   "key": "zh-TW|去文字森林練習認字和寫字吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去文字森林練習認字和寫字吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
+   "key": "zh-TW|去文字森林讀短文、排句子吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去文字森林讀短文、排句子吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
+   "key": "zh-TW|去生活村學學生活小知識吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去生活村學學生活小知識吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
+   "key": "zh-TW|去數學城堡認識圖形和統計圖吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去數學城堡認識圖形和統計圖吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
+   "key": "zh-TW|去數學城堡練習加減和乘法吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去數學城堡練習加減和乘法吧！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
    "key": "zh-TW|去數學城堡練習看時鐘吧！",
    "lang": "zh-TW",
    "voice": "zh",
    "text": "去數學城堡練習看時鐘吧！",
    "sources": [
     "ui:teacher"
+   ]
+  },
+  {
+   "key": "zh-TW|去數學城堡練習時鐘、錢幣和長度吧！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "去數學城堡練習時鐘、錢幣和長度吧！",
+   "sources": [
+    "ui:report"
    ]
   },
   {
@@ -27030,6 +27111,15 @@
    ]
   },
   {
+   "key": "zh-TW|再多玩幾回合，報告就會出來囉！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "再多玩幾回合，報告就會出來囉！",
+   "sources": [
+    "ui:report"
+   ]
+  },
+  {
    "key": "zh-TW|再來一局吧！",
    "lang": "zh-TW",
    "voice": "zh",
@@ -28378,6 +28468,15 @@
    "sources": [
     "life.safety",
     "tower.life"
+   ]
+  },
+  {
+   "key": "zh-TW|每一項都很棒，繼續加油喔！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "每一項都很棒，繼續加油喔！",
+   "sources": [
+    "ui:report"
    ]
   },
   {
@@ -31721,6 +31820,15 @@
    "text": "這是小屋，要進去看看嗎？",
    "sources": [
     "ui:home"
+   ]
+  },
+  {
+   "key": "zh-TW|這是你在知識島學到的本領！",
+   "lang": "zh-TW",
+   "voice": "zh",
+   "text": "這是你在知識島學到的本領！",
+   "sources": [
+    "ui:report"
    ]
   },
   {

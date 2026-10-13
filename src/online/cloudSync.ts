@@ -6,6 +6,7 @@ import { ApiFailure, type ApiOptions } from './api';
 import { ackBatch, emptyOutbox, rebase, takeBatch, type Outbox } from './sync';
 import type {
   AcceptGiftResponse,
+  AnalysisJobStatus,
   AttachResponse,
   ClassContentResponse,
   ClassInfo,
@@ -329,6 +330,16 @@ export async function ackGiftNotices(deps: CloudDeps, profileId: string, ids: st
 /** 還沒看過的老師獎勵（老師 GM 的 G3） */
 export async function fetchRewards(deps: CloudDeps, profileId: string): Promise<RewardInfo[]> {
   return (await authed<RewardsResponse>(deps, profileId, 'GET', '/api/rewards')).rewards;
+}
+
+/** 開始 AI 分析自己的學習（學習報告，docs/plans/learning-report.md）：回傳工作編號 */
+export async function startKidAnalysis(deps: CloudDeps, profileId: string): Promise<string> {
+  return (await authed<{ job: string }>(deps, profileId, 'POST', '/api/me/ai-analysis', {})).job;
+}
+
+/** 查 AI 分析自己的結果 */
+export async function pollKidAnalysis(deps: CloudDeps, profileId: string, job: string): Promise<AnalysisJobStatus> {
+  return authed<AnalysisJobStatus>(deps, profileId, 'GET', `/api/me/ai-analysis/${encodeURIComponent(job)}`);
 }
 
 /** 讀某一班的班級內容（啟用中的班級題庫與版本號；docs/plans/ai-questions.md） */

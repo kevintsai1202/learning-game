@@ -20,6 +20,7 @@ import { Hub } from './hub';
 import { createMailer } from './mail';
 import { generatorFromEnv } from './ai';
 import { pruneAiUsage } from './classContent';
+import { pruneAiReports } from './analysis';
 import { attachRealtime } from './ws';
 import { retryConnect } from './startup';
 
@@ -49,10 +50,12 @@ async function main(): Promise<void> {
   await retryConnect(() => migrate(db), { tries: 20, delayMs: 3000 });
   await pruneAppliedOps(db, new Date());
   await pruneAiUsage(db, new Date());
-  // 每天清一次：同步去重紀錄（30 天）、AI 出題數紀錄（7 天）
+  await pruneAiReports(db, new Date());
+  // 每天清一次：同步去重紀錄（30 天）、AI 出題數紀錄（7 天）、AI 分析結果（30 天）
   const pruneTimer = setInterval(() => {
     void pruneAppliedOps(db, new Date()).catch(console.error);
     void pruneAiUsage(db, new Date()).catch(console.error);
+    void pruneAiReports(db, new Date()).catch(console.error);
   }, DAY_MS);
 
   const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? DEFAULT_ORIGINS)

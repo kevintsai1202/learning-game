@@ -214,6 +214,10 @@ for (const d of DEVICES) {
       await page.evaluate(() => (window as any).__game.ui.getState().goto('badges'));
       await check('26-badges');
 
+      // 學習報告（雷達圖、建議、面向清單；docs/plans/learning-report.md）
+      await page.evaluate(() => (window as any).__game.ui.getState().goto('report'));
+      await check('26b-report');
+
       // 益智遊戲館：選單、選玩法、各遊戲最擠的畫面（記憶翻牌 20 張牌、其他用和機器人的標題列）
       const openPuzzle = async () => {
         // 先回島上再進去：益智遊戲館的畫面會重新開始，停在選單

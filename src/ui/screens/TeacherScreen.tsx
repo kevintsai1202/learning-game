@@ -19,6 +19,7 @@ import { TEACHER_POS } from '../../world/layout';
 import { whereText } from '../memberWhere';
 import { RewardDialog, type RewardTarget } from './RewardDialog';
 import { ClassPacks } from './teacher/ClassPacks';
+import { TeacherAnalysis } from './teacher/TeacherAnalysis';
 import { player, teleport } from '../../world/input';
 import { JoinClassPanel } from './JoinClassPanel';
 import { ClaimPanel } from './ClaimPanel';
@@ -1482,6 +1483,8 @@ function RoomDashboard({ code, justCreated, onBack }: { code: string; justCreate
           />
           {/* 班級島遊樂場（docs/plans/playground.md） */}
           <PlaygroundPicker value={room.playground} onSave={(pg) => act(() => call('PATCH', base, { playground: pg }), '班級島的遊樂場已更新')} />
+          {/* 學習分析（docs/plans/learning-report.md）：雷達圖、弱項指標、AI 分析，可以接著 AI 出題 */}
+          <TeacherAnalysis code={room.code} />
           {/* 班級題庫與 AI 出題（docs/plans/ai-questions.md） */}
           <ClassPacks code={room.code} />
         </>

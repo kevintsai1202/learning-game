@@ -9,6 +9,7 @@ import { useCloud } from '../../../online/useCloud';
 import type { ClassPackDetail, ClassPackSummary } from '../../../online/protocol';
 import type { ContentPack } from '../../../content/schema';
 import { PackEditor } from './PackEditor';
+import { usePackRequest } from './packRequest';
 
 /** 錯誤訊息（伺服器回的中文，或通用的一句） */
 const messageOf = (err: unknown) => (err instanceof Error ? err.message : '發生錯誤，請再試一次');
@@ -18,6 +19,8 @@ interface Editing {
   id: string | null;
   pack: ContentPack | null;
   ai: boolean;
+  /** AI 出題預先勾好的指標（從學習分析跳過來時） */
+  indicators?: string[];
 }
 
 export function ClassPacks({ code }: { code: string }) {
@@ -45,6 +48,14 @@ export function ClassPacks({ code }: { code: string }) {
     // 伺服器有沒有開 AI 出題
     void useCloud.getState().loadConfig();
   }, [reload]);
+
+  // 學習分析按了「針對這些指標 AI 出題」：打開新的題庫、展開 AI 出題並預先勾好
+  const requested = usePackRequest((s) => s.indicators);
+  useEffect(() => {
+    if (!requested) return;
+    setEditing({ id: null, pack: null, ai: true, indicators: requested });
+    usePackRequest.getState().clear();
+  }, [requested]);
 
   /** 做一個動作後重新整理 */
   const act = async (fn: () => Promise<unknown>, done: string) => {
@@ -147,6 +158,7 @@ export function ClassPacks({ code }: { code: string }) {
           packId={editing.id}
           initial={editing.pack}
           startWithAi={editing.ai}
+          aiIndicators={editing.indicators}
           onClose={(saved) => {
             setEditing(null);
             if (saved) {
