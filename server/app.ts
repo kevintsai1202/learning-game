@@ -19,6 +19,7 @@ import { registerEmailRoutes } from './email';
 import { registerUserGoogleRoutes } from './userGoogle';
 import { registerClassContentRoutes } from './classContent';
 import { ANALYSIS_DAILY, registerAnalysisRoutes, type AnalysisLimits } from './analysis';
+import { ADMIN_TOKEN_HOURS, registerAdminRoutes } from './admin';
 import type { QuestionGenerator } from './ai';
 import { AI_DAILY_QUESTIONS } from '../src/content/aiQuestions';
 import { createMailer, type Mailer } from './mail';
@@ -105,6 +106,10 @@ export interface AppOptions {
   aiDailyQuestions?: number;
   /** AI 學習分析每天的次數上限（老師、孩子各自；測試可以調小）；預設 ANALYSIS_DAILY */
   aiAnalysisDaily?: AnalysisLimits;
+  /** 營運者監控（docs/plans/admin.md）：允許登入的 Google email（ADMIN_EMAILS 解析後，小寫）；空的或沒給就關掉監控 */
+  adminEmails?: readonly string[];
+  /** 現在連著即時中樞的人數（監控頁的「現在線上」；main.ts 由 hub.stats() 提供） */
+  liveStats?: () => { kids: number; teachers: number };
 }
 
 /** 權杖有效天數 */
@@ -203,15 +208,16 @@ export function createApp(opts: AppOptions) {
    */
   const issueToken = async (
     q: Queryable,
-    who: { kind: 'kid'; roomCode: string | null; accountId: string; via: TokenVia } | { kind: 'user'; userId: string } | { kind: 'classroom'; roomCode: string },
+    who: { kind: 'kid'; roomCode: string | null; accountId: string; via: TokenVia } | { kind: 'user'; userId: string } | { kind: 'classroom'; roomCode: string } | { kind: 'admin' },
   ): Promise<{ token: string; expiresAt: string }> => {
     const token = newToken();
-    const life = who.kind === 'classroom' ? CLASSROOM_HOURS * 3600 * 1000 : TOKEN_DAYS * 24 * 3600 * 1000;
+    // 教室權杖 8 小時、營運者監控的 admin 權杖 8 小時（不綁班級、角色或大人帳號），其他 180 天
+    const life = who.kind === 'classroom' ? CLASSROOM_HOURS * 3600 * 1000 : who.kind === 'admin' ? ADMIN_TOKEN_HOURS * 3600 * 1000 : TOKEN_DAYS * 24 * 3600 * 1000;
     const expiresAt = new Date(nowMs() + life).toISOString();
     await q.query('INSERT INTO tokens (token_hash, kind, room_code, account_id, user_id, via, expires_at) VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz)', [
       tokenHash(token),
       who.kind,
-      who.kind === 'user' ? null : who.roomCode,
+      who.kind === 'user' || who.kind === 'admin' ? null : who.roomCode,
       who.kind === 'kid' ? who.accountId : null,
       who.kind === 'user' ? who.userId : null,
       who.kind === 'kid' ? who.via : 'class',
@@ -858,6 +864,18 @@ export function createApp(opts: AppOptions) {
     loadOwnRoom,
     generator: opts.ai ?? null,
     limits: opts.aiAnalysisDaily ?? ANALYSIS_DAILY,
+  });
+
+  // ---------- 營運者監控與匿名造訪計數（docs/plans/admin.md） ----------
+  registerAdminRoutes(app, {
+    db,
+    now,
+    adminEmails: opts.adminEmails ?? [],
+    googleEnabled: !!opts.google,
+    verifyGoogleToken,
+    issueAdminToken: () => issueToken(db, { kind: 'admin' }),
+    checkFlood,
+    liveStats: opts.liveStats,
   });
 
   // ---------- 前端靜態檔（最後註冊，不蓋掉上面的路由） ----------

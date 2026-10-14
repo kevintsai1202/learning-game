@@ -40,6 +40,7 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
 | `MAIL_SMTP_USERNAME` | 寄驗證信與重設密碼信的 Gmail 信箱（A3 上線時加；`docs/plans/accounts.md` 第 8 節）。**你自己在後台設** |
 | `MAIL_SMTP_PASSWORD` | 那個 Gmail 的「應用程式密碼」（16 個字元，有空白也沒關係）。**你自己在後台設，不要貼在對話裡** |
 | `MAIL_FROM` | 寄件人的顯示，例如 `知識島大冒險 <你的信箱>`；沒設就用這個格式 |
+| `ADMIN_EMAILS` | 營運者監控頁（`/admin.html`，`docs/plans/admin.md`）允許登入的 Google 信箱，逗號分隔（2026-10-14 起）。**你自己在後台設**；要搭配 `GOOGLE_CLIENT_ID`，只設這個會拒絕啟動 |
 
 - **絕對不要設 `GOOGLE_TEST_JWKS`、`ALLOW_TEST_GOOGLE`**：那是 e2e 的測試模式，會接受測試金鑰簽的假 Google 登入。
 - **絕對不要設 `TEST_MAIL_OUTBOX`、`ALLOW_TEST_MAIL`**：那是 e2e 的測試信箱，驗證與重設連結會放在記憶體、任何人都讀得到（和 `MAIL_SMTP_USERNAME` 同時設時伺服器會拒絕啟動）。
@@ -47,6 +48,7 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
 - 用 `variable env -f` 設環境變數會取代全部變數：檔案裡要同時有上面全部的變數（包括 SMTP 三個），不然改在後台設定。
 - **沒設 `DATABASE_URL` 會啟動失敗，這是故意的**：正式的映像檔沒有記憶體資料庫，不會悄悄把孩子的進度存在記憶體裡、重開就不見。
 - `PORT`（8080）與 `TZ`（`Asia/Taipei`，每日送禮上限與收禮日期依台灣時間）已經寫在 Dockerfile，不用設。
+- **加 `ADMIN_EMAILS` 請在後台服務的 Variables 頁新增這一個變數**（不會動到其他變數），再重新啟動服務。如果一定要用 `variable env -f`：先把目前全部的變數匯出成檔案、加上 `ADMIN_EMAILS`、整份重新上傳；少寫任何一個（例如 `DATABASE_URL`、`LLM_` 開頭的變數），正式站就會停擺或少掉功能。設好後開 `https://learning-island.zeabur.app/admin.html` 用那個 Google 帳號登入確認。
 
 ## 4. 綁網域
 
@@ -112,6 +114,8 @@ npx zeabur@latest service deploy --json -i=false --project-id <專案 ID> --temp
 .\scripts\deploy\purge-test-rooms.ps1           # 只列出
 .\scripts\deploy\purge-test-rooms.ps1 -Apply    # 真的刪除（班級、角色、權杖、禮物、email 連結、Google 綁定會跟著刪）
 ```
+
+對正式站跑 e2e（`playwright.remote.config.ts`、`class-packs-live`、`report-live`）時，開遊戲的裝置也會送匿名造訪（`visits`，2026-10-14 起），清理腳本不會刪；監控頁的造訪數會包含這些，90 天後自動刪除。
 
 ## 9. 注意事項
 

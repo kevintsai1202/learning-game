@@ -1271,3 +1271,18 @@ describe('第 9 節優化：同步動作（坐、躺、溜滑梯、盪鞦韆）'
     expect(b.of('join').at(-1)!.member.a).toBeUndefined();
   });
 });
+
+describe('營運者監控的線上人數（docs/plans/admin.md）', () => {
+  it('stats：線上的孩子數（同一個帳號兩台裝置算一個）與進島的熊熊老師數', () => {
+    expect(hub.stats()).toEqual({ kids: 0, teachers: 0 });
+    const a = join('a', '阿寶');
+    join('a', '阿寶');
+    join('b', '小美');
+    const t = new FakeConn();
+    hub.joinTeacher(t, { room: '123456', name: '二年一班', flags: FLAGS });
+    expect(hub.stats()).toEqual({ kids: 2, teachers: 1 });
+    hub.leave(t);
+    hub.leave(a);
+    expect(hub.stats()).toEqual({ kids: 2, teachers: 0 });
+  });
+});

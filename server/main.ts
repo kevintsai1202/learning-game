@@ -10,6 +10,7 @@
  * - MAIL_SMTP_USERNAME＋MAIL_SMTP_PASSWORD（＋MAIL_FROM）：用 Gmail SMTP 寄驗證信與重設密碼信；沒有就停用寄信（server/mail.ts）
  * - TEST_MAIL_OUTBOX＋ALLOW_TEST_MAIL=1：e2e 的測試信箱（GET /api/test/mails），正式環境絕不能設
  * - STATIC_DIR：前端建置產物（dist/）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 /app/dist）
+ * - ADMIN_EMAILS：營運者監控（/admin.html）允許登入的 Google email，逗號分隔；沒設就不開監控。要搭配 GOOGLE_CLIENT_ID
  */
 import { serve } from '@hono/node-server';
 import { createApp } from './app';
@@ -21,6 +22,8 @@ import { createMailer } from './mail';
 import { generatorFromEnv } from './ai';
 import { pruneAiUsage } from './classContent';
 import { pruneAiReports } from './analysis';
+import { pruneVisits } from './admin';
+import { adminEmailsFromEnv } from './adminStats';
 import { attachRealtime } from './ws';
 import { retryConnect } from './startup';
 
@@ -45,17 +48,22 @@ async function main(): Promise<void> {
   const ai = generatorFromEnv(process.env);
   if (ai && process.env.TEST_AI_FAKE === '1') console.warn('⚠️ 假出題器模式：AI 出題回固定的測試題目，只能用在 e2e，正式環境絕不能開。');
   if (!ai) console.warn('AI 出題停用（沒有設定 LLM_API_KEY）：班級題庫照常，老師頁面不顯示 AI 出題。');
+  // 營運者監控（docs/plans/admin.md）：有設 ADMIN_EMAILS 卻沒開 Google 登入就拒絕啟動
+  const adminEmails = adminEmailsFromEnv(process.env, !!google);
+  if (!adminEmails.length) console.warn('營運者監控停用（沒有設定 ADMIN_EMAILS）：匿名造訪照常計數。');
   const db = await openDb({ url: process.env.DATABASE_URL, pgliteDir: process.env.PGLITE_DIR });
   // 第一次碰資料庫：平台重建時資料庫常比伺服器晚好，連線錯誤每 3 秒再試、最多約 1 分鐘（server/startup.ts）
   await retryConnect(() => migrate(db), { tries: 20, delayMs: 3000 });
   await pruneAppliedOps(db, new Date());
   await pruneAiUsage(db, new Date());
   await pruneAiReports(db, new Date());
-  // 每天清一次：同步去重紀錄（30 天）、AI 出題數紀錄（7 天）、AI 分析結果（30 天）
+  await pruneVisits(db, new Date());
+  // 每天清一次：同步去重紀錄（30 天）、AI 出題數紀錄（7 天）、AI 分析結果（30 天）、匿名造訪（90 天）
   const pruneTimer = setInterval(() => {
     void pruneAppliedOps(db, new Date()).catch(console.error);
     void pruneAiUsage(db, new Date()).catch(console.error);
     void pruneAiReports(db, new Date()).catch(console.error);
+    void pruneVisits(db, new Date()).catch(console.error);
   }, DAY_MS);
 
   const allowedOrigins = (process.env.ALLOWED_ORIGINS ?? DEFAULT_ORIGINS)
@@ -70,6 +78,8 @@ async function main(): Promise<void> {
     google,
     mailer,
     isOnline: (id) => hub.isOnline(id),
+    adminEmails,
+    liveStats: () => hub.stats(),
     whereOf: (id, room) => hub.whereOf(id, room),
     onProfileChanged: (id, rev, profile) => hub.profileChanged(id, rev, profile),
     onRoomChanged: (code, flags) => hub.roomSettings(code, flags),

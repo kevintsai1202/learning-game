@@ -1,0 +1,122 @@
+/* 營運者監控頁（admin.html）：一般網頁的版面，不用遊戲的注音字型與 3D 畫面 */
+:root {
+  --ink: #1f2a37;
+  --muted: #5d6b7c;
+  --line: #d5dde8;
+  --soft: #f3f6fb;
+  --accent: #3b6fd8;
+  --bad: #c0392b;
+  font-family: 'Microsoft JhengHei', 'PingFang TC', 'Noto Sans TC', sans-serif;
+  color: var(--ink);
+  background: #fbfcfe;
+}
+body {
+  margin: 0;
+}
+h1 {
+  font-size: 22px;
+  margin: 0;
+}
+h2 {
+  font-size: 17px;
+  margin: 24px 0 8px;
+}
+button {
+  font: inherit;
+  padding: 6px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+/* Google 測試按鈕（e2e）沿用遊戲的 class 名稱 */
+.btn {
+  border-color: var(--accent);
+}
+.admin-login {
+  max-width: 420px;
+  margin: 12vh auto;
+  padding: 0 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.admin {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 16px;
+}
+.admin-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.admin-muted {
+  color: var(--muted);
+  font-size: 13px;
+}
+.admin-error {
+  color: var(--bad);
+}
+.admin-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+.admin-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.admin-card-title {
+  color: var(--muted);
+  font-size: 14px;
+}
+.admin-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  margin: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+.admin-two {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 16px;
+}
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.admin-table th,
+.admin-table td {
+  border: 1px solid var(--line);
+  padding: 5px 8px;
+  text-align: left;
+  white-space: nowrap;
+}
+.admin-table th {
+  background: var(--soft);
+}
+section {
+  overflow-x: auto;
+}
+.admin-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.admin-tabs button.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}

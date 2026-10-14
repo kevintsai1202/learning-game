@@ -58,6 +58,16 @@ export async function lookupToken(q: Queryable, token: string, now: Date): Promi
   return null;
 }
 
+/**
+ * 營運者監控的權杖（kind 'admin'，docs/plans/admin.md）：和孩子、大人、教室的權杖分開查，只給 /api/admin/… 用；
+ * lookupToken 看到 admin 權杖一律當無效，admin 權杖也就不能拿去用其他 API。不存在或過期回傳 null
+ */
+export async function lookupAdminToken(q: Queryable, token: string, now: Date): Promise<{ hash: string } | null> {
+  const hash = tokenHash(token);
+  const rows = await q.query("SELECT 1 FROM tokens WHERE token_hash = $1 AND kind = 'admin' AND expires_at > $2::timestamptz", [hash, now.toISOString()]);
+  return rows.length ? { hash } : null;
+}
+
 /** 教室權杖（L3）：查到就回它綁的班級代碼；不存在、過期、班級已刪除回傳 null。和孩子、大人的權杖分開查，三種身分不混在一起 */
 export async function lookupClassroomToken(q: Queryable, token: string, now: Date): Promise<{ roomCode: string; hash: string } | null> {
   const hash = tokenHash(token);

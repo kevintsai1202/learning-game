@@ -7,7 +7,7 @@
 - Node 24 + Hono 4（`@hono/node-server`）；資料庫 PostgreSQL（`pg`），沒有 `DATABASE_URL` 時用 PGlite（測試、e2e、本機開發）
 - 用 `vite build --ssr`（`server/vite.config.ts`）打包成 `server-dist/main.js`；套件不打包，執行時從 `node_modules` 載入
 - 和前端共用 `src/` 的純模組：`src/store/save.ts`（存檔規則）、`src/online/ops.ts`（操作套用）、`src/online/protocol.ts`（HTTP 格式）、`src/online/userRules.ts`（帳號名稱、密碼、email 規則）、`src/store/catalog.ts`（價格）、`src/store/gifts.ts`（禮物目錄與收禮規則）、`src/store/puzzle.ts`（益智遊戲的金幣與每日上限）、`src/engine/check.ts`（計分）、`src/content/aiQuestions.ts`（AI 出題的請求格式、提示與檢查）、`src/content/schema.ts`（題庫格式）、`src/content/zhuyinCharset.ts`（注音字型收錄的字）、`src/content/learningAreas.ts`（學習面向與統計）、`src/content/aiAnalysis.ts`（AI 學習分析的匿名統計、提示與檢查）
-- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「老師移出成員」的共用函式）；多班級的成員資格（第一個班級的定義、離開某一班、撤銷某一班的權杖、好友名單的名字）在 `classes.ts`；班級題庫與老師 AI 出題的路由在 `classContent.ts`、出題器（Muse 用戶端與假出題器）在 `ai.ts`、AI 工作的記憶體存放在 `aiJobs.ts`、學習報告（老師的統計、AI 學習分析）在 `analysis.ts`；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
+- 路由：`app.ts`（孩子帳號、同步、老師的班級管理）、`users.ts`（大人帳號、刪除自己的帳號）、`email.ts`（驗證 email、忘記密碼與重設，A3）、`userGoogle.ts`（Google 快速登入綁大人帳號，A4）、`parents.ts`（家長的雲端角色）、`gifts.ts`（送禮物，也放「結清禮物」與「老師移出成員」的共用函式）；多班級的成員資格（第一個班級的定義、離開某一班、撤銷某一班的權杖、好友名單的名字）在 `classes.ts`；班級題庫與老師 AI 出題的路由在 `classContent.ts`、出題器（Muse 用戶端與假出題器）在 `ai.ts`、AI 工作的記憶體存放在 `aiJobs.ts`、學習報告（老師的統計、AI 學習分析）在 `analysis.ts`；營運者監控與匿名造訪計數在 `admin.ts`（統計的純函式在 `adminStats.ts`）；寄信在 `mail.ts`（nodemailer）；共用的 `ApiError`、`readBody` 在 `http.ts`
 
 ## 指令（PowerShell 7）
 
@@ -40,6 +40,7 @@ docker rm -f li-pg-test
 | `LLM_REASONING_EFFORT` | 推理強度（`minimal`／`low`／`medium`／`high`／`xhigh`），可省略；目前用 `low` |
 | `TEST_AI_FAKE`＋`ALLOW_TEST_AI=1` | **只給 e2e 用**的假出題器：回固定的測試題目、不連網。只設其中一個、或和 `LLM_API_KEY` 同時設會拒絕啟動；正式環境絕不能設 |
 | `STATIC_DIR` | 前端建置產物（`dist/`）的目錄；設定時伺服器同時提供前端（Docker 映像檔設成 `/app/dist`）。本機開發與 e2e 不設 |
+| `ADMIN_EMAILS` | 營運者監控（`/admin.html`，`docs/plans/admin.md`）允許登入的 Google email，逗號分隔、不分大小寫；沒設就不開監控（admin API 回 404，匿名造訪照常計數）。有設卻沒有 `GOOGLE_CLIENT_ID` 會拒絕啟動。e2e 設成 `admin-e2e@example.com` |
 
 ## 規則
 
@@ -82,6 +83,11 @@ docker rm -f li-pg-test
   - 會同時鎖帳號與連結權杖時，先鎖 `users` 再鎖 `email_tokens`（和刪除帳號時外鍵 CASCADE 的順序一樣）。
 - **老師的 API**（`/api/teacher/rooms…`）：大人權杖＋老師身分（只有家長身分回 403 `not_teacher`）＋這個班級是他的；別人的班級和不存在的代碼一樣回 404 `no_room`，不透露代碼存在。改版前用管理密碼建的房間沒有擁有者（`owner_id` 是 null），目前沒有登入方式，上線前要看正式環境有沒有這種房間（`docs/plans/accounts.md` 的 A5）。
 - 錯誤訊息用中文（前端直接顯示給大人看），格式 `{ error, code, retryAfter? }`。
+- **營運者監控**（`admin.ts`、純函式 `adminStats.ts`；資料表第 17 版 `visits`；`docs/plans/admin.md`）：
+  - 登入只收 `ADMIN_EMAILS` 裡、Google 驗證過 email 的帳號（不是就 403 `not_admin`），發 8 小時的 admin 權杖（`tokens.kind = 'admin'`，三個關聯欄位都是 null）。admin 權杖只由 `lookupAdminToken` 查；`lookupToken` 看到 admin 權杖一律當無效，所以 admin 權杖不能拿去用孩子、大人的 API，大人權杖也不能看監控。
+  - 只能看、不能改：不要新增任何會改資料的 admin API。
+  - 明細不選 `password_hash`、`pin_hash`、`google_sub`、存檔全文，也不碰 Google 綁定（隱私權政策第 4 節：Google 使用者資料除了安全與法律要求不給人看）；email 一律 `maskEmail`。孩子的使用量只取存檔的 `history`、`playLog` 在伺服器算成數字。`tests/server/admin.test.ts` 有回應內容的反向檢查。
+  - 匿名造訪（`POST /api/visit`）不用登入：日期用伺服器的台灣時間（不信任裝置送的），只存裝置隨機 id 的 SHA-256 與網址分類（`visitHost`），同一天同一台只一列；`pruneVisits` 每天刪 90 天前的。
 - **班級題庫與老師 AI 出題**（`classContent.ts`、`ai.ts`；資料表第 15 版；`docs/plans/ai-questions.md`）：
   - 題庫包用 `contentPackSchema` 檢查（錯誤列出哪一題哪一欄，400 `bad_pack`）；每班最多 `CLASS_PACKS_MAX`（30）包，新增時先 `SELECT … FROM rooms … FOR UPDATE` 再數。題庫的新增與修改放寬請求大小到 4 MB（`app.ts` 的 `bodyLimit` 依路徑分兩種）。
   - 班級內容改了，`rooms.content_rev` 在同一個交易裡加一，交易結束後 `onRoomContent`；孩子的 `RoomInfo` 帶 `contentRev`，裝置看到版本變了才抓 `GET /api/rooms/:code/content`（只給這一班的成員、只回啟用中的題庫）。不要用 `/api/class/…` 開頭：那是教室權杖專用的路徑。

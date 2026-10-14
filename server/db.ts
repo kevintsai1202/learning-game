@@ -402,6 +402,20 @@ const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS ai_reports_created ON ai_reports (created_at)`,
     ],
   },
+  {
+    // 營運者監控的匿名造訪計數（docs/plans/admin.md 第 3 節）：每台裝置每天一列（台灣日期），只存裝置隨機 id 的雜湊
+    // 與網址分類（pages／zeabur／other），不存 IP、帳號或角色；90 天後由 pruneVisits 刪
+    version: 17,
+    statements: [
+      `CREATE TABLE IF NOT EXISTS visits (
+        day date NOT NULL,
+        device_hash text NOT NULL,
+        host text NOT NULL,
+        first_at timestamptz NOT NULL,
+        PRIMARY KEY (day, device_hash)
+      )`,
+    ],
+  },
 ];
 
 /**
@@ -425,7 +439,7 @@ export async function migrate(db: Db, opts: { upTo?: number; log?: (msg: string)
 
 /** 清空所有資料（測試用；資料表結構保留） */
 export async function resetDb(db: Db): Promise<void> {
-  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, gifts, email_tokens, user_google_links, users CASCADE');
+  await db.query('TRUNCATE rooms, accounts, applied_ops, tokens, gifts, email_tokens, user_google_links, users, visits CASCADE');
 }
 
 /** 刪掉 30 天前的操作去重紀錄（伺服器啟動時與每天執行一次） */

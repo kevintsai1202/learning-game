@@ -50,6 +50,8 @@ export default defineConfig({
             // 假出題器（老師 AI 出題，docs/plans/ai-questions.md）：回固定的測試題目、不連網；兩個都要設，正式環境絕不能設
             TEST_AI_FAKE: '1',
             ALLOW_TEST_AI: '1',
+            // 營運者監控（docs/plans/admin.md）：e2e 的管理者是這個測試信箱（Google 測試模式簽的 token）
+            ADMIN_EMAILS: 'admin-e2e@example.com',
           },
         },
       ],

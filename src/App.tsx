@@ -28,6 +28,7 @@ import { RestGuard } from './ui/RestGuard';
 import { startCloudSync } from './online/useCloud';
 import { startRealtime } from './online/realtimeClient';
 import { startClassContent } from './online/useClassContent';
+import { reportVisit } from './online/visit';
 import { startGm } from './online/gmClient';
 import { GmHud } from './ui/screens/GmHud';
 import { AnnounceBanner, SummonCard } from './ui/TeacherCalls';
@@ -87,6 +88,8 @@ export function App() {
   useEffect(() => startRealtime(), []);
   // 班級題庫（docs/plans/ai-questions.md）：班級島的內容版本變了就重新抓
   useEffect(() => startClassContent(), []);
+  // 匿名造訪計數（docs/plans/admin.md 第 3 節）：有班級伺服器時每台裝置每天送一次
+  useEffect(() => reportVisit(), []);
   // 手機版面（第 10.2 節）：在 <html> 加 phone class 給 CSS 用（判斷在 src/ui/phoneLayout.ts）
   usePhoneLayout();
   // 老師以熊熊老師進島（老師 GM 的 G2）：在 GM 畫面時連線，離開就斷線

@@ -900,6 +900,13 @@ export class Hub {
     return this.accounts.has(accountId);
   }
 
+  /** 營運者監控的「現在線上」（docs/plans/admin.md）：線上的孩子數（一個帳號算一個）與進島的熊熊老師數 */
+  stats(): { kids: number; teachers: number } {
+    let teachers = 0;
+    for (const n of this.gmCount.values()) teachers += n;
+    return { kids: this.accounts.size, teachers };
+  }
+
   /**
    * 某個帳號在哪裡（老師的成員表用）：哪一種島＋建築＋在做什麼；離線是 null。
    * room 是老師看的那一班：在別班的班級島時是 otherClass（不寫是哪一班）；沒給時任何班級島都算 class

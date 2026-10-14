@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -40,6 +41,8 @@ export default defineConfig(({ command }) => ({
     // three 本身約 900 KB（gzip 約 250 KB），是 3D 遊戲的必要成本
     chunkSizeWarningLimit: 1100,
     rolldownOptions: {
+      // 兩個頁面：遊戲（index.html）與營運者監控（admin.html，docs/plans/admin.md；不載入 3D 與遊戲的程式）
+      input: { main: fileURLToPath(new URL('./index.html', import.meta.url)), admin: fileURLToPath(new URL('./admin.html', import.meta.url)) },
       output: {
         // three 與 React 分開打包，改版時瀏覽器快取比較不會整包失效
         codeSplitting: {

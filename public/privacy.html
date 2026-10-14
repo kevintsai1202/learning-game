@@ -147,7 +147,7 @@
         </svg>
         <div>
           <h1>知識島大冒險 隱私權政策</h1>
-          <p class="updated">最後更新：2026 年 10 月 13 日</p>
+          <p class="updated">最後更新：2026 年 10 月 14 日</p>
         </div>
       </header>
       <p class="lang"><a href="#english">English version below</a></p>
@@ -277,6 +277,12 @@
               <td>7 天後自動刪除；刪除帳號時一併刪除</td>
             </tr>
             <tr>
+              <td>匿名的造訪紀錄：每台裝置第一次開啟時產生的隨機識別碼（存在這台裝置；和角色、帳號無關）。伺服器只存它的雜湊值、日期與網站類別（GitHub Pages 或班級伺服器的網址），不存 IP 位址</td>
+              <td>有連到班級伺服器時，每天第一次開啟遊戲（單機遊玩也會送）</td>
+              <td>班級伺服器的資料庫</td>
+              <td>90 天後自動刪除</td>
+            </tr>
+            <tr>
               <td>連線的 IP 位址</td>
               <td>註冊、登入、加入班級、驗證電子郵件與重設密碼的請求</td>
               <td>伺服器的記憶體，不寫入資料庫</td>
@@ -294,10 +300,11 @@
         <li>讓老師管理班級、查看學習摘要與孩子目前在做什麼。</li>
         <li>讓老師建立班級題庫：自己編寫題目，或用 AI 依課綱產生題目草稿再檢查修改（見第 6 節）。</li>
         <li>學習報告：依孩子作答的課綱指標畫出學習面向的雷達圖，並由 AI 依匿名的學習統計寫鼓勵與建議（孩子、家長看的）與教學建議（老師看的，見第 6 節）。</li>
+        <li>維運與改善服務：營運者用只有自己能登入的監控頁，看使用人數、每日使用量、匿名造訪數與帳號明細（見第 5 節），用來確認服務正常、排除問題與規劃改進。</li>
         <li>登入與帳號安全：辨識登入的人，防止猜密碼與大量請求。</li>
         <li>電子郵件地址只用來寄送驗證信與重設密碼的信（見第 6 節），不寄廣告或電子報。</li>
       </ul>
-      <p>我們不會把資料用於廣告、行銷、使用者分析或剖析，不會出售資料，自己也不會用資料訓練人工智慧模型。老師使用 AI 出題時送出的出題條件，以及學習報告送出的匿名學習統計，Meta 可能依其條款用來訓練模型（見第 6 節）；送出的內容不包含孩子的名字、暱稱或帳號。</p>
+      <p>我們不會把資料用於廣告、行銷或剖析（profiling；營運者看使用統計只為了維運與改善這個服務），不會出售資料，自己也不會用資料訓練人工智慧模型。老師使用 AI 出題時送出的出題條件，以及學習報告送出的匿名學習統計，Meta 可能依其條款用來訓練模型（見第 6 節）；送出的內容不包含孩子的名字、暱稱或帳號。</p>
 
       <h2>4. Google 使用者資料（使用 Google 帳號登入）</h2>
       <p>家長或老師可以選擇用 Google 帳號註冊，或在帳號設定把 Google 帳號綁定到自己的帳號，之後在帳號頁按 Google 的「透過 Google 帳戶繼續操作」按鈕快速登入。這是選用功能：用帳號名稱與密碼註冊的帳號，一直可以用帳號名稱與密碼登入；用 Google 註冊的帳號不用另外設定帳號名稱與密碼，之後可以在帳號設定加上密碼。孩子的角色不會綁定 Google 帳號。</p>
@@ -306,7 +313,7 @@
         <li><strong>取得的資料：</strong>登入時，Google 提供的登入按鈕（Google Identity Services）會交給我們一張由 Google 簽署的登入憑證（ID token），內含 Google 帳號識別碼、電子郵件地址（以及 Google 是否驗證過這個地址）、名稱與大頭貼網址。伺服器用 Google 公開的金鑰驗證憑證確實來自 Google。</li>
         <li><strong>如何使用：</strong>Google 帳號識別碼只用來找出綁定的家長或老師帳號，完成登入，以及在設定密碼或刪除帳號時確認是本人。用 Google 註冊時，Google 驗證過的電子郵件地址會成為帳號的電子郵件地址（用途見第 3 節），帳號名稱由這個電子郵件地址「@」前面的英文字母、數字與底線自動產生（只有你自己在帳號頁看得到）；綁定時記下的電子郵件地址只用來在帳號設定顯示「綁定的是哪個 Google 帳號」，畫面上會遮住部分字元。</li>
         <li><strong>保存的資料：</strong>只保存 Google 帳號識別碼、電子郵件地址與綁定時間，存在班級伺服器的資料庫。名稱、大頭貼與憑證裡的其他資料一律不保存。</li>
-        <li><strong>分享與揭露：</strong>Google 使用者資料不會出售、不會用於廣告、不會提供或轉移給任何第三方，也不會用來訓練人工智慧模型。除了維護系統安全或依法律要求之外，不會有人檢視這些資料。老師看不到家長的帳號資料與電子郵件地址。</li>
+        <li><strong>分享與揭露：</strong>Google 使用者資料不會出售、不會用於廣告、不會提供或轉移給任何第三方，也不會用來訓練人工智慧模型。除了維護系統安全或依法律要求之外，不會有人檢視這些資料；營運者的監控頁只顯示帳號電子郵件地址遮住大部分字元後的樣子（只留前兩個字元與網域），不顯示 Google 帳號識別碼，也不顯示有沒有綁定 Google 帳號。老師看不到家長的帳號資料與電子郵件地址。</li>
         <li><strong>刪除與撤銷：</strong>隨時可以在帳號設定按「解除」，伺服器會立即刪除該筆綁定（Google 帳號識別碼與電子郵件地址；沒有密碼的帳號要先設定密碼，才能解除最後一個 Google 帳號，以免沒有辦法登入）；刪除帳號時，所有綁定一併刪除。也可以到 Google 帳戶的「第三方應用程式和服務」頁面（<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>）移除「知識島大冒險」的登入權限。</li>
         <li><strong>有限使用聲明：</strong>知識島大冒險對於從 Google API 取得之資訊的使用與轉移，將遵守 <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API 服務使用者資料政策（Google API Services User Data Policy）</a>，包括其中的有限使用（Limited Use）規定。</li>
       </ul>
@@ -322,6 +329,7 @@
         <li><strong>家長：</strong>用家長帳號登入後，看得到自己名下雲端角色的摘要（名字、外觀、所在班級、星星、金幣、最後上線時間），可以把角色下載到這台裝置、讓角色退出班級或刪除角色；裝置上的家長專區看得到這台裝置上角色的完整進度與錯題本。</li>
         <li><strong>班級題庫：</strong>老師編寫或用 AI 出題後儲存的題目，只有這個班級的老師，以及這一班的孩子在班級島的挑戰塔看得到。</li>
         <li><strong>學習報告：</strong>孩子與家長看得到自己的雷達圖與建議；老師看得到全班平均與班上每個孩子在這些學習面向的一次答對率、弱項指標，以及 AI 寫的分析。同學之間看不到彼此的學習報告。</li>
+        <li><strong>營運者：</strong>只有營運者本人的 Google 帳號能登入監控頁，而且只能看、不能修改。看得到：使用人數與每日使用量的統計、匿名造訪數、現在線上的人數；每個班級的名稱、代碼、老師的帳號名稱、成員數、班級題庫數與最近上線時間；每個孩子雲端角色的名字、所在班級的名稱、有沒有家長帳號、建立與最後上線時間、近 30 天的回合數、題數、遊玩分鐘與金幣；每個家長與老師帳號的帳號名稱、遮住大部分字元的電子郵件地址、身分、電子郵件是否驗證、建立與最後登入時間、名下的班級數與孩子數。看不到密碼、孩子的密碼、完整的電子郵件地址、Google 帳號識別碼與完整的學習進度。</li>
         <li><strong>帳號本人：</strong>帳號設定看得到自己的帳號名稱、電子郵件地址、身分與綁定的 Google 帳號。</li>
         <li>班級以外的人看不到班級裡的任何資料（兄弟姊妹只看得到上面列的好友名單資料）。</li>
       </ul>
@@ -344,7 +352,7 @@
       <h2>7. 本機儲存與 Cookie</h2>
       <ul>
         <li>我們不使用 Cookie。</li>
-        <li>遊戲用瀏覽器的本機儲存（localStorage）存放：遊戲存檔與設定、語音偏好、匯入的題庫與教材版本、班級題庫的副本、孩子角色的登入權杖，以及還沒同步到伺服器的存檔變更。家長與老師帳號的登入狀態預設存在 sessionStorage（關閉分頁就清除），勾選「在這台裝置保持登入」時才存在 localStorage。</li>
+        <li>遊戲用瀏覽器的本機儲存（localStorage）存放：遊戲存檔與設定、語音偏好、匯入的題庫與教材版本、班級題庫的副本、孩子角色的登入權杖、匿名造訪用的隨機識別碼與最後送出的日期，以及還沒同步到伺服器的存檔變更。家長與老師帳號的登入狀態預設存在 sessionStorage（關閉分頁就清除），勾選「在這台裝置保持登入」時才存在 localStorage。</li>
         <li>這些資料只存在你的裝置上，清除瀏覽器的網站資料就會刪除。</li>
         <li>使用 Google 登入按鈕時，Google 可能依其政策在 Google 自己的網域使用 Cookie。</li>
       </ul>
@@ -395,7 +403,7 @@
       <!-- ===== English version ===== -->
       <section class="en" id="english" lang="en">
         <h1>Learning Island (知識島大冒險) Privacy Policy</h1>
-        <p class="updated">Last updated: October 13, 2026</p>
+        <p class="updated">Last updated: October 14, 2026</p>
         <p class="lead">
           Learning Island (知識島大冒險) is a 3D learning game for second-grade elementary school children (<a href="https://kevintsai1202.github.io/learning-game/">https://kevintsai1202.github.io/learning-game/</a>, mirror
           <a href="https://learning-island.zeabur.app/">https://learning-island.zeabur.app/</a>). This policy explains what data we collect, why, where it is stored, how long it is kept, who can see it, and how data obtained through Google Sign-In is used. We only collect the data needed to provide the game. We show no ads, never sell or share data, and use no tracking or analytics tools.
@@ -519,6 +527,12 @@
                 <td>Deleted automatically after 7 days, and when the account is deleted</td>
               </tr>
               <tr>
+                <td>Anonymous visit records: a random identifier created the first time a device opens the game (stored on the device; not tied to any character or account). The server stores only its hash, the date, and the site type (GitHub Pages or the class server address), and does not store IP addresses</td>
+                <td>When connected to a class server, the first time the game is opened each day (also when playing without an account)</td>
+                <td>Class server database</td>
+                <td>Automatically deleted after 90 days</td>
+              </tr>
+              <tr>
                 <td>Connection IP address</td>
                 <td>On requests to register, sign in, join a class, verify an email, or reset a password</td>
                 <td>Server memory only; never written to the database</td>
@@ -536,10 +550,11 @@
           <li>Let teachers manage their classes and see learning summaries.</li>
           <li>Let teachers build class question banks: write questions themselves, or have AI draft questions from curriculum indicators and then check and edit them (see Section 6).</li>
           <li>Learning reports: draw a radar chart of learning areas from the curriculum indicators a child has answered, and have AI write encouragement and suggestions (for children and parents) and teaching suggestions (for teachers) from anonymized learning statistics (see Section 6).</li>
+          <li>Operating and improving the service: the operator uses a monitoring page that only the operator can sign in to, to see user counts, daily usage, anonymous visit counts, and account details (see Section 5), in order to confirm the service works, troubleshoot problems, and plan improvements.</li>
           <li>Sign-in and account security: identify who is signed in and prevent password guessing and request floods.</li>
           <li>Email addresses are used only to send verification and password-reset emails (see Section 6); we never send ads or newsletters.</li>
         </ul>
-        <p>We never use data for advertising, marketing, user analytics, or profiling, never sell it, and do not use it to train AI models ourselves. Meta may use the generation settings a teacher submits for AI question generation, and the anonymized learning statistics submitted for learning reports, to train its models under its terms (see Section 6); the submitted content contains no child's name, nickname, or account.</p>
+        <p>We never use data for advertising, marketing, or profiling (the operator looks at usage statistics only to operate and improve this service), never sell it, and do not use it to train AI models ourselves. Meta may use the generation settings a teacher submits for AI question generation, and the anonymized learning statistics submitted for learning reports, to train its models under its terms (see Section 6); the submitted content contains no child's name, nickname, or account.</p>
 
         <h2>4. Google user data (Sign in with Google)</h2>
         <p>Parents and teachers can choose to register with their Google account, or link a Google account to their own account in account settings, and then sign in quickly with the Google button on the account page ("Continue with Google", shown in Chinese as 「透過 Google 帳戶繼續操作」). This is optional: an account registered with a username and password can always sign in with them; an account registered with Google needs no separate username or password, and a password can be added later in account settings. Children's characters are never linked to Google accounts.</p>
@@ -548,7 +563,7 @@
           <li><strong>Data we receive:</strong> when you sign in, the Google-provided sign-in button (Google Identity Services) gives us an ID token signed by Google that contains the Google account ID, email address (and whether Google has verified it), name, and profile picture URL. The server verifies the token with Google's public keys.</li>
           <li><strong>How we use it:</strong> the Google account ID is used only to find the linked parent or teacher account, complete sign-in, and confirm it is you when you set a password or delete your account. When you register with Google, the email address verified by Google becomes your account's email address (used as described in Section 3), and the username is generated from the letters, digits, and underscores before the "@" in that address (only you can see it on the account page); the email address stored with a link is used only to show which Google account is linked in account settings, partially masked.</li>
           <li><strong>Data we store:</strong> only the Google account ID, email address, and link time, stored in the class server database. The name, profile picture, and any other token data are never stored.</li>
-          <li><strong>Sharing and disclosure:</strong> Google user data is never sold, used for advertising, provided or transferred to any third party, or used to train AI models. No one views it except as needed to keep the system secure or as required by law. Teachers cannot see parents' account details or email addresses.</li>
+          <li><strong>Sharing and disclosure:</strong> Google user data is never sold, used for advertising, provided or transferred to any third party, or used to train AI models. No one views it except as needed to keep the system secure or as required by law; the operator's monitoring page shows account email addresses only with most characters hidden (the first two characters and the domain), and does not show Google account IDs or whether an account is linked to Google. Teachers cannot see parents' account details or email addresses.</li>
           <li><strong>Deletion and revocation:</strong> you can choose "Unlink" in account settings at any time, and the server immediately deletes that link (Google account ID and email address; an account without a password must set one before unlinking its last Google account, so it can still sign in); deleting your account deletes all links. You can also remove Learning Island's access on your Google Account's "Third-party apps &amp; services" page (<a href="https://myaccount.google.com/connections" rel="noopener">https://myaccount.google.com/connections</a>).</li>
           <li><strong>Limited Use disclosure:</strong> Learning Island's use and transfer of information received from Google APIs will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy" rel="noopener">Google API Services User Data Policy</a>, including the Limited Use requirements.</li>
         </ul>
@@ -564,6 +579,7 @@
           <li><strong>Parents:</strong> after signing in with a parent account, a summary of their own cloud characters (name, appearance, class, stars, coins, last online time); they can download a character to the current device, take it out of a class, or delete it. The parent area on a device shows the full progress and mistake notebook of the characters on that device.</li>
           <li><strong>Class question banks:</strong> questions a teacher writes or saves after AI generation can be seen only by that class's teacher and, in the challenge tower on the class island, by that class's children.</li>
           <li><strong>Learning reports:</strong> children and parents see their own radar chart and suggestions; teachers see the class average and, for each child in their class, the first-try correct rate in these learning areas, the weakest indicators, and the AI analysis. Classmates cannot see each other's learning reports.</li>
+          <li><strong>The operator:</strong> only the operator's own Google account can sign in to the monitoring page, which is read-only. It shows: statistics on user counts and daily usage, anonymous visit counts, and how many people are online now; for each class, its name, code, the teacher's username, number of members, number of class question banks, and when someone last came online; for each child's cloud character, its name, the names of its classes, whether it has a parent account, when it was created and last online, and its rounds, questions, minutes played, and coins in the last 30 days; for each parent and teacher account, the username, the email address with most characters hidden, roles, whether the email is verified, when it was created and last signed in, and how many classes and children it has. It does not show passwords, children's passwords, full email addresses, Google account IDs, or full learning progress.</li>
           <li><strong>Account owners:</strong> account settings show your own username, email address, roles, and linked Google accounts.</li>
           <li>People outside a class cannot see any data in that class (siblings only see the friends-list data listed above).</li>
         </ul>
@@ -586,7 +602,7 @@
         <h2>7. Local storage and cookies</h2>
         <ul>
           <li>We do not use cookies.</li>
-          <li>The game uses the browser's localStorage for: game saves and settings, voice preferences, imported question banks and textbook editions, copies of class question banks, sign-in tokens for children's characters, and save changes not yet synced to the server. Parent and teacher sign-in is kept in sessionStorage by default (cleared when the tab is closed), and in localStorage only if "Stay signed in on this device" is checked.</li>
+          <li>The game uses the browser's localStorage for: game saves and settings, voice preferences, imported question banks and textbook editions, copies of class question banks, sign-in tokens for children's characters, the random identifier used for anonymous visit counts and the last date it was sent, and save changes not yet synced to the server. Parent and teacher sign-in is kept in sessionStorage by default (cleared when the tab is closed), and in localStorage only if "Stay signed in on this device" is checked.</li>
           <li>This data stays on your device and is deleted when you clear the browser's site data.</li>
           <li>When you use the Google sign-in button, Google may use cookies on Google's own domains under its own policies.</li>
         </ul>
