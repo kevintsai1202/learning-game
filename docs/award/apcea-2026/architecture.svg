@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" width="1200" height="760" font-family="'Microsoft JhengHei','Noto Sans TC',sans-serif">
+  <!-- 知識島大冒險的系統架構：瀏覽器端（孩子、家長、老師）、班級伺服器（Zeabur）、外部 AI（雲端高階模型）、開發時的 AI 內容管線 -->
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7f"/>
+    </marker>
+    <style>
+      .group { fill: #f6f8fb; stroke: #d5dde8; stroke-width: 2; }
+      .box { fill: #ffffff; stroke: #c9d3df; stroke-width: 1.8; }
+      .ai { fill: #eef4ff; stroke: #3b6fd8; stroke-width: 2.2; }
+      .gt { font-size: 20px; font-weight: 700; fill: #1f2a37; }
+      .t { font-size: 17px; font-weight: 700; fill: #1f2a37; }
+      .s { font-size: 14px; fill: #4a5768; }
+      .lbl { font-size: 14px; fill: #3b6fd8; font-weight: 700; }
+      .line { stroke: #5b6b7f; stroke-width: 2.2; fill: none; marker-end: url(#a); }
+      .both { stroke: #5b6b7f; stroke-width: 2.2; fill: none; marker-end: url(#a); marker-start: url(#a); }
+      .dash { stroke: #8a97a8; stroke-width: 2; fill: none; stroke-dasharray: 6 5; marker-end: url(#a); }
+    </style>
+  </defs>
+  <rect width="1200" height="760" fill="#fbfcfe"/>
+  <text x="600" y="40" text-anchor="middle" font-size="26" font-weight="700" fill="#1f2a37">系統架構</text>
+
+  <!-- 瀏覽器端 -->
+  <rect class="group" x="24" y="64" width="330" height="480" rx="18"/>
+  <text x="44" y="96" class="gt">瀏覽器（免安裝，平板與電腦）</text>
+  <text x="44" y="118" class="s">React 19＋three.js（R3F）＋zustand</text>
+  <rect class="box" x="44" y="134" width="290" height="118" rx="12"/>
+  <text x="60" y="162" class="t">🧒 孩子：3D 學習島</text>
+  <text x="60" y="186" class="s">國語、數學、英語、生活的小遊戲</text>
+  <text x="60" y="208" class="s">AI 預錄語音朗讀、筆順描寫</text>
+  <text x="60" y="230" class="s">📊 學習報告（雷達圖＋建議）</text>
+  <rect class="box" x="44" y="266" width="290" height="96" rx="12"/>
+  <text x="60" y="294" class="t">👨‍👩‍👧 家長專區</text>
+  <text x="60" y="318" class="s">學習分析分頁、錯題本、</text>
+  <text x="60" y="340" class="s">各課綱指標的一次答對率</text>
+  <rect class="box" x="44" y="376" width="290" height="148" rx="12"/>
+  <text x="60" y="404" class="t">🧑‍🏫 老師班級頁</text>
+  <text x="60" y="428" class="s">班級題庫：AI 出題、逐題審核</text>
+  <text x="60" y="450" class="s">學習分析：全班與個別雷達圖、</text>
+  <text x="60" y="472" class="s">弱項指標、AI 分析</text>
+  <text x="60" y="494" class="s">熊熊老師進島、公告、集合、獎勵</text>
+
+  <!-- 班級伺服器 -->
+  <rect class="group" x="420" y="64" width="400" height="480" rx="18"/>
+  <text x="440" y="96" class="gt">班級伺服器（Zeabur）</text>
+  <text x="440" y="118" class="s">Node 24＋Hono 4＋PostgreSQL，同時提供前端</text>
+  <rect class="box" x="440" y="134" width="360" height="74" rx="12"/>
+  <text x="456" y="162" class="t">即時中樞（WebSocket）＋操作同步</text>
+  <text x="456" y="186" class="s">同學互動、存檔只透過「操作」改變</text>
+  <rect class="ai" x="440" y="222" width="360" height="146" rx="12"/>
+  <text x="456" y="250" class="t">🤖 AI 出題（送出 → 查結果）</text>
+  <text x="456" y="274" class="s">組提示：課綱條文、出題邊界、台灣用語</text>
+  <text x="456" y="296" class="s">檢查：指標範圍、選項與答案、算式重算、</text>
+  <text x="456" y="318" class="s">注音字型用字；打亂選項；不合格丟掉</text>
+  <text x="456" y="340" class="s">每位老師每天 200 題</text>
+  <rect class="ai" x="440" y="382" width="360" height="146" rx="12"/>
+  <text x="456" y="410" class="t">🤖 AI 學習分析</text>
+  <text x="456" y="434" class="s">匿名統計：面向答對率、弱項指標</text>
+  <text x="456" y="456" class="s">檢查：面向與指標只能是送去的、字數上限</text>
+  <text x="456" y="478" class="s">兒童用詞過濾，不合格改用規則建議</text>
+  <text x="456" y="500" class="s">統計指紋快取、每日次數上限</text>
+
+  <!-- 外部 AI -->
+  <rect class="group" x="886" y="196" width="290" height="216" rx="18"/>
+  <text x="906" y="228" class="gt">外部 AI 服務</text>
+  <rect class="ai" x="906" y="244" width="250" height="148" rx="12"/>
+  <text x="922" y="272" class="t">雲端高階 AI 模型</text>
+  <text x="922" y="296" class="s">大型語言模型（LLM）</text>
+  <text x="922" y="318" class="s">OpenAI 相容 Chat Completions</text>
+  <text x="922" y="340" class="s">strict JSON Schema 結構化輸出</text>
+  <text x="922" y="362" class="s">串流回應（避免閘道器逾時）</text>
+
+  <!-- 連線 -->
+  <path class="both" d="M336,190 L436,170"/>
+  <path class="both" d="M336,440 L436,300"/>
+  <path class="both" d="M336,450 L436,450"/>
+  <path class="both" d="M336,200 C380,260 400,420 436,440"/>
+  <path class="line" d="M802,286 L902,300"/>
+  <path class="line" d="M902,340 L802,330"/>
+  <path class="line" d="M802,446 L902,370"/>
+  <text x="826" y="278" class="lbl">課綱、題數</text>
+  <text x="846" y="452" class="lbl">匿名統計</text>
+  <text x="824" y="356" class="lbl">JSON</text>
+
+  <!-- 開發時的 AI 管線 -->
+  <rect class="group" x="24" y="572" width="1152" height="164" rx="18"/>
+  <text x="44" y="604" class="gt">開發時的 AI 內容管線（產物放進網站，執行時不連線）</text>
+  <rect class="ai" x="44" y="620" width="270" height="96" rx="12"/>
+  <text x="60" y="648" class="t">AI 語音合成</text>
+  <text x="60" y="672" class="s">Fish Audio、Azure 神經語音</text>
+  <text x="60" y="694" class="s">→ 3,533 句預錄語音</text>
+  <rect class="ai" x="334" y="620" width="270" height="96" rx="12"/>
+  <text x="350" y="648" class="t">AI 語音辨識抽查</text>
+  <text x="350" y="672" class="s">Groq Whisper 聽寫比對原句</text>
+  <text x="350" y="694" class="s">找出唸錯的破音字</text>
+  <rect class="ai" x="624" y="620" width="270" height="96" rx="12"/>
+  <text x="640" y="648" class="t">AI 協作開發</text>
+  <text x="640" y="672" class="s">Claude Code 寫程式與測試</text>
+  <text x="640" y="694" class="s">262／265 次提交有 AI 署名</text>
+  <rect class="box" x="914" y="620" width="242" height="96" rx="12"/>
+  <text x="930" y="648" class="t">靜態網站</text>
+  <text x="930" y="672" class="s">GitHub Pages（單機版）</text>
+  <text x="930" y="694" class="s">GitHub Actions 自動部署</text>
+</svg>

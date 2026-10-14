@@ -14,3 +14,5 @@ server-dist/
 # 子代理的 git worktree（Claude Code 自動建立）
 .claude/worktrees/
 video-out/
+# 比賽報名的產出（scripts/award，docs/award/apcea-2026/README.md）
+award-out/

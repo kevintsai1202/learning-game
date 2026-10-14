@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" font-family="'Microsoft JhengHei','Noto Sans TC',sans-serif">
+  <!-- 知識島大冒險的 AI 學習閉環：作答 → 統計 → AI 分析 → 一鍵出題 → AI 出題＋程式檢查 → 老師審核發佈 → 再作答 -->
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#5b6b7f"/>
+    </marker>
+    <style>
+      .box { fill: #ffffff; stroke: #c9d3df; stroke-width: 2; }
+      .ai { fill: #eef4ff; stroke: #3b6fd8; stroke-width: 2.5; }
+      .teacher { fill: #fff6e8; stroke: #e39b2d; stroke-width: 2; }
+      .kid { fill: #edf9f0; stroke: #38a169; stroke-width: 2; }
+      .t { font-size: 22px; font-weight: 700; fill: #1f2a37; }
+      .s { font-size: 16px; fill: #4a5768; }
+      .tag { font-size: 14px; font-weight: 700; }
+      .flow { stroke: #5b6b7f; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1200" height="640" fill="#fbfcfe"/>
+  <text x="600" y="44" text-anchor="middle" font-size="28" font-weight="700" fill="#1f2a37">AI 學習閉環：分析 → 出題 → 作答 → 再分析</text>
+
+  <!-- 中心 -->
+  <circle cx="600" cy="380" r="86" fill="#f3f6fb" stroke="#d5dde8" stroke-width="2"/>
+  <text x="600" y="366" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2a37">140 多個</text>
+  <text x="600" y="394" text-anchor="middle" font-size="22" font-weight="700" fill="#1f2a37">108 課綱指標</text>
+  <text x="600" y="422" text-anchor="middle" class="s">貫穿每一步</text>
+
+  <!-- ① 孩子作答（上中） -->
+  <rect class="kid" x="420" y="78" width="360" height="104" rx="16"/>
+  <text x="440" y="110" class="t">① 孩子在 3D 島上作答</text>
+  <text x="440" y="138" class="s">挑戰塔出現「班級題庫」；AI 語音朗讀</text>
+  <text x="440" y="162" class="s">每題記下課綱指標與是否一次答對</text>
+
+  <!-- ② 統計（右上） -->
+  <rect class="box" x="850" y="170" width="320" height="104" rx="16"/>
+  <text x="870" y="202" class="t">② 指標統計 → 9 個面向</text>
+  <text x="870" y="230" class="s">注音、識字、閱讀、計算、量與時間、</text>
+  <text x="870" y="254" class="s">圖形統計、字母、英語單字、生活</text>
+
+  <!-- ③ AI 分析（右下） -->
+  <rect class="ai" x="850" y="396" width="320" height="128" rx="16"/>
+  <text x="870" y="428" class="t">③ 🤖 AI 學習分析</text>
+  <text x="870" y="456" class="s">只送匿名統計（無姓名、帳號）</text>
+  <text x="870" y="480" class="s">寫給孩子、家長、老師三種建議</text>
+  <text x="870" y="504" class="s">孩子的句子經伺服器用詞過濾</text>
+
+  <!-- ④ 一鍵出題（下中） -->
+  <rect class="teacher" x="420" y="512" width="360" height="96" rx="16"/>
+  <text x="440" y="546" class="t">④ 老師一鍵「針對弱項出題」</text>
+  <text x="440" y="576" class="s">分析出的弱項指標自動帶入出題設定</text>
+
+  <!-- ⑤ AI 出題（左下） -->
+  <rect class="ai" x="30" y="396" width="330" height="128" rx="16"/>
+  <text x="50" y="428" class="t">⑤ 🤖 AI 依課綱出題</text>
+  <text x="50" y="456" class="s">可跨科、可加補充（例：中秋節）</text>
+  <text x="50" y="480" class="s">程式驗算算式、檢查指標範圍、</text>
+  <text x="50" y="504" class="s">選項答案與注音字型用字</text>
+
+  <!-- ⑥ 老師審核（左上） -->
+  <rect class="teacher" x="30" y="170" width="330" height="104" rx="16"/>
+  <text x="50" y="202" class="t">⑥ 老師逐題審核、發佈</text>
+  <text x="50" y="230" class="s">修改、刪除、單題重出；存起來才算數</text>
+  <text x="50" y="254" class="s">發佈後線上的孩子立刻同步</text>
+
+  <!-- 流向：①→②→③→④→⑤→⑥→① -->
+  <path class="flow" d="M780,140 C840,140 900,150 960,166"/>
+  <path class="flow" d="M1010,276 L1010,392"/>
+  <path class="flow" d="M920,528 C880,556 840,562 784,562"/>
+  <path class="flow" d="M418,562 C360,562 290,556 250,528"/>
+  <path class="flow" d="M195,394 L195,278"/>
+  <path class="flow" d="M240,168 C300,150 360,140 416,136"/>
+
+  <!-- 圖例 -->
+  <rect x="436" y="206" width="16" height="16" class="ai"/><text x="460" y="220" class="tag" fill="#3b6fd8">AI（雲端高階模型）</text>
+  <rect x="610" y="206" width="16" height="16" class="teacher"/><text x="634" y="220" class="tag" fill="#b8741a">老師把關</text>
+  <rect x="436" y="234" width="16" height="16" class="kid"/><text x="460" y="248" class="tag" fill="#2f855a">孩子</text>
+  <rect x="610" y="234" width="16" height="16" class="box"/><text x="634" y="248" class="tag" fill="#4a5768">程式（純函式）</text>
+</svg>
